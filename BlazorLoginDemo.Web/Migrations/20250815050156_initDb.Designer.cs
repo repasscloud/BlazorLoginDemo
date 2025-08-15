@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorLoginDemo.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250815045907_initDb")]
+    [Migration("20250815050156_initDb")]
     partial class initDb
     {
         /// <inheritdoc />
