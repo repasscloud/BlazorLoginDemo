@@ -133,6 +133,9 @@ public class Program
             o.SignIn.RequireConfirmedAccount = true;
         });
 
+        // before building the app:
+        var inContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
@@ -146,7 +149,10 @@ public class Program
             app.UseHsts();
         }
 
-        app.UseHttpsRedirection();
+        if (!inContainer)
+        {
+            app.UseHttpsRedirection();
+        }
 
         // ✅ Auth first
         app.UseAuthentication();

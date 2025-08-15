@@ -1,0 +1,15 @@
+services:
+  blazor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"              # host:container
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+      # Optional: enable full globalization if your app needs it
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "false"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      Logging__LogLevel__Default: "Information"
+      Logging__LogLevel__Microsoft.Hosting.Lifetime: "Information"
+    restart: unless-stopped
