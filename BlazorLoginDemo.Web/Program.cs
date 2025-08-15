@@ -36,8 +36,6 @@ public class Program
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-        // builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        //     options.UseSqlite(connectionString));
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
         // Identity + Roles
@@ -53,7 +51,6 @@ public class Program
         // Authorization policies
         builder.Services.AddAuthorization(options =>
         {
-            // --- Existing base policies you had ---
             options.AddPolicy("RequireMemberOrAbove",
                 p => p.RequireRole("Member", "Manager", "Admin"));
 
@@ -95,33 +92,25 @@ public class Program
                 p => p.RequireRole("SuperAdmin", "SupportAdmin"));
         });
 
-
         // Cookie options (so unauthorized goes to /Account/Login)
         builder.Services.ConfigureApplicationCookie(opts =>
         {
             opts.LoginPath = "/Account/Login";
         });
 
+        // existing DbContext + interceptor
+        builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
+        {
+            options.UseNpgsql(connectionString);
+            options.AddInterceptors(sp.GetRequiredService<UserGroupAssignmentInterceptor>());
+        });
+
         // Group resolver + assignment
         builder.Services.AddScoped<IGroupResolver, GroupResolver>();
         builder.Services.AddScoped<UserGroupAssignmentInterceptor>();
 
-        // Replace your DbContext registration to inject the interceptor:
-        builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
-        {
-            // var cs = builder.Configuration.GetConnectionString("DefaultConnection")
-            //         ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-            // options.UseSqlite(cs);
-            options.UseSqlite(connectionString);
-            options.AddInterceptors(sp.GetRequiredService<UserGroupAssignmentInterceptor>());
-        });
 
-        // --- SMTP Email Sender configuration ---
-        // builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
-        // builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
-        // builder.Services.AddTransient<IEmailSender<ApplicationUser>, SmtpEmailSender>();
-
-        // --- Email Sender (MailerSend) ---
+        // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
         builder.Services.AddHttpClient();
         builder.Services.AddTransient<IEmailSender, MailerSendEmailSender>();
@@ -133,7 +122,7 @@ public class Program
             o.SignIn.RequireConfirmedAccount = true;
         });
 
-        // before building the app:
+        // Detect container
         var inContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 
         var app = builder.Build();
@@ -146,19 +135,20 @@ public class Program
         else
         {
             app.UseExceptionHandler("/Error");
-            app.UseHsts();
+            if (!inContainer) app.UseHsts();               // ⬅ gate HSTS in container
         }
 
         if (!inContainer)
         {
-            app.UseHttpsRedirection();
+            app.UseHttpsRedirection();                     // ⬅ gate HTTPS redirect in container
         }
 
-        // ✅ Auth first
+        // Static files for wwwroot + static web assets for RCLs
+        app.UseStaticFiles();                              // ⬅ ensure blazor.web.js/_framework/* are served
+
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // ✅ Then antiforgery
         app.UseAntiforgery();
 
         // Optional: track LastSeenUtc for signed-in users
@@ -181,23 +171,39 @@ public class Program
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
-        // Add additional endpoints required by the Identity /Account Razor components.
+        // Identity endpoints
         app.MapAdditionalIdentityEndpoints();
 
-        // Simple, reliable logout endpoint (no returnUrl binding)
+        // Simple logout
         app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signIn) =>
         {
             await signIn.SignOutAsync();
             return Results.Redirect("/");
         })
-        .RequireAuthorization();   // keep auth; antiforgery is handled by app.UseAntiforgery()
+        .RequireAuthorization();
 
-        // --- Seed roles and initial admin on startup ---
-        using (var scope = app.Services.CreateScope())
-        {
-            var services = scope.ServiceProvider;
-            await SeedData.InitializeAsync(services, builder.Configuration);
-        }
+        // Seed roles/admin
+        // using (var scope = app.Services.CreateScope())
+        // {
+        //     var services = scope.ServiceProvider;
+        //     await SeedData.InitializeAsync(services, builder.Configuration);
+        // }
+        // --- Seed roles/admin ---
+        // using (var scope = app.Services.CreateScope())
+        // {
+        //     var services = scope.ServiceProvider;
+        //     var db = services.GetRequiredService<ApplicationDbContext>();
+
+        //     if (!await db.Database.CanConnectAsync())
+        //     {
+        //         app.Logger.LogError("❌ Cannot connect to Postgres. Check connection string and that the server/DB/user exist.");
+        //     }
+        //     else
+        //     {
+        //         await SeedData.InitializeAsync(services, builder.Configuration);
+        //     }
+        // }
+
 
         await app.RunAsync();
     }

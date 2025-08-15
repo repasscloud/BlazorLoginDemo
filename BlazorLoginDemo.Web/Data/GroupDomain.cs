@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BlazorLoginDemo.Web.Data;
 
-
 public class GroupDomain
 {
     public int Id { get; set; }

@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1.7-labs
+FROM mcr.microsoft.com/dotnet/sdk:9.0
+WORKDIR /src
+
+# dotnet-ef + pg client (for pg_isready)
+RUN dotnet tool install --global dotnet-ef \
+ && ln -s /root/.dotnet/tools/dotnet-ef /usr/local/bin/dotnet-ef \
+ && apt-get update && apt-get install -y --no-install-recommends postgresql-client \
+ && rm -rf /var/lib/apt/lists/*
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+# Copy csproj first (cache restore)
+COPY ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet restore ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+
+# Copy sources
+COPY ./BlazorLoginDemo.Web/ ./BlazorLoginDemo.Web/
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet build ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj -c Release
+
+# Entrypoint: wait for DB, then apply migrations
+COPY ./.docker/migrator/migrate.sh /usr/local/bin/migrate.sh
+RUN chmod +x /usr/local/bin/migrate.sh
+ENTRYPOINT ["/usr/local/bin/migrate.sh"]

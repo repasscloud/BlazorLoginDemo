@@ -1,15 +1,105 @@
 services:
+  db:
+    image: postgres:15
+    container_name: pgsql
+    env_file: .env
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - demo_pgdata:/var/lib/postgresql/data
+      # Drop .sql/.sh files here to seed (optional)
+      #- ./.docker/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_DB} -q || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    env_file: .env
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+      # Optional: auto-load servers.json mounted below
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      # optional: auto-register "db" server in pgAdmin
+      - ./.docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./.docker/pgadmin/pgpass:/var/lib/pgadmin/pgpass:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/misc/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   blazor:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "8080:8080"              # host:container
-    environment:
-      ASPNETCORE_URLS: "http://+:8080"
-      # Optional: enable full globalization if your app needs it
-      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "false"
-      ASPNETCORE_ENVIRONMENT: "Development"
-      Logging__LogLevel__Default: "Information"
-      Logging__LogLevel__Microsoft.Hosting.Lifetime: "Information"
+      args:
+        # >>>> set these to your project <<<<
+        CSPROJ: BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+        APP_DLL: BlazorLoginDemo.Web.dll
+    image: blazor-app:dev
+    container_name: blazor
     restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_URLS=${ASPNETCORE_URLS}
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=${DOTNET_SYSTEM_GLOBALIZATION_INVARIANT}
+      - ConnectionStrings__DefaultConnection=${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+      - MailerSend__ApiToken=${MAILERSEND__APITOKEN}
+      - MailerSend__FromEmail=${MAILERSEND__FROMEMAIL}
+      - MailerSend__FromName=${MAILERSEND__FROMNAME}
+      - AdminEmail=${ADMINEMAIL}
+      - AdminPassword=${ADMINPASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    volumes:
+      # Persist ASP.NET DataProtection keys (avoid warnings + keep auth cookies valid across restarts)
+      - dataprotection:/home/app/.aspnet/DataProtection-Keys
+
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrator
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=${POSTGRES_HOST}
+      - DB_PORT=${POSTGRES_PORT}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    tty: true
+    restart: "no"
+
+volumes:
+  demo_pgdata:
+  pgadmin-data:
+  dataprotection:
