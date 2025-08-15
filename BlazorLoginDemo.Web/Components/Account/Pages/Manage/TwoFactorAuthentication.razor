@@ -1,0 +1,173 @@
+﻿@page "/Account/Manage/TwoFactorAuthentication"
+
+@using Microsoft.AspNetCore.Http.Features
+@using Microsoft.AspNetCore.Identity
+@using BlazorLoginDemo.Web.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityUserAccessor UserAccessor
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Two-factor authentication (2FA)</PageTitle>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10 col-xl-8">
+
+            <div class="card shadow-sm">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h4 class="mb-0">Two‑factor authentication (2FA)</h4>
+                    <span class="badge text-bg-@(is2faEnabled ? "success" : "secondary")">
+                        @(is2faEnabled ? "Enabled" : "Disabled")
+                    </span>
+                </div>
+
+                <div class="card-body">
+                    <StatusMessage />
+
+                    @if (!canTrack)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <strong>Privacy and cookie policy not accepted.</strong>
+                            <div class="small">You must accept the policy before enabling two‑factor authentication.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        @* Recovery codes health *@
+                        @if (is2faEnabled)
+                        {
+                            if (recoveryCodesLeft == 0)
+                            {
+                                <div class="alert alert-danger" role="alert">
+                                    <strong>You have no recovery codes left.</strong>
+                                    <div class="small">
+                                        You must <a href="/Account/Manage/GenerateRecoveryCodes">generate a new set of recovery codes</a> before you can log in with a recovery code.
+                                    </div>
+                                </div>
+                            }
+                            else if (recoveryCodesLeft == 1)
+                            {
+                                <div class="alert alert-danger" role="alert">
+                                    <strong>You have 1 recovery code left.</strong>
+                                    <div class="small">
+                                        You can <a href="/Account/Manage/GenerateRecoveryCodes">generate a new set of recovery codes</a>.
+                                    </div>
+                                </div>
+                            }
+                            else if (recoveryCodesLeft <= 3)
+                            {
+                                <div class="alert alert-warning" role="alert">
+                                    <strong>You have @recoveryCodesLeft recovery codes left.</strong>
+                                    <div class="small">
+                                        You should <a href="/Account/Manage/GenerateRecoveryCodes">generate a new set of recovery codes</a>.
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <div class="border rounded p-3 h-100">
+                                    <h6 class="mb-2">Browser trust</h6>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="small text-muted">
+                                            @(isMachineRemembered ? "This browser is remembered for 2FA." : "This browser is not remembered.")
+                                        </span>
+
+                                        @if (is2faEnabled && isMachineRemembered)
+                                        {
+                                            <form style="display:inline-block" @formname="forget-browser" @onsubmit="OnSubmitForgetBrowserAsync" method="post">
+                                                <AntiforgeryToken />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Forget this browser</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <div class="border rounded p-3 h-100">
+                                    <h6 class="mb-2">2FA Controls</h6>
+
+                                    @if (is2faEnabled)
+                                    {
+                                        <div class="d-grid gap-2">
+                                            <a class="btn btn-outline-warning" href="/Account/Manage/GenerateRecoveryCodes">Reset recovery codes</a>
+                                            <a class="btn btn-outline-danger" href="/Account/Manage/Disable2fa">Disable 2FA</a>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-grid">
+                                            <a class="btn btn-primary" href="/Account/Manage/EnableAuthenticator">Enable 2FA</a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <h6 class="mb-2">Authenticator app</h6>
+                                <p class="text-muted small mb-3">
+                                    Use an authenticator app (e.g., Microsoft Authenticator, Google Authenticator) to generate time‑based codes.
+                                </p>
+
+                                @if (!hasAuthenticator)
+                                {
+                                    <a href="/Account/Manage/EnableAuthenticator" class="btn btn-outline-primary">Add authenticator app</a>
+                                }
+                                else
+                                {
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="/Account/Manage/EnableAuthenticator" class="btn btn-outline-primary">Set up authenticator app</a>
+                                        <a href="/Account/Manage/ResetAuthenticator" class="btn btn-outline-secondary">Reset authenticator app</a>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="card-footer d-flex justify-content-between">
+                    <a class="btn btn-outline-secondary btn-sm" href="/Account/Manage">Back to profile</a>
+                    <a class="btn btn-outline-primary btn-sm" href="/">Home</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool canTrack;
+    private bool hasAuthenticator;
+    private int recoveryCodesLeft;
+    private bool is2faEnabled;
+    private bool isMachineRemembered;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserAccessor.GetRequiredUserAsync(HttpContext);
+        canTrack = HttpContext.Features.Get<ITrackingConsentFeature>()?.CanTrack ?? true;
+        hasAuthenticator = await UserManager.GetAuthenticatorKeyAsync(user) is not null;
+        is2faEnabled = await UserManager.GetTwoFactorEnabledAsync(user);
+        isMachineRemembered = await SignInManager.IsTwoFactorClientRememberedAsync(user);
+        recoveryCodesLeft = await UserManager.CountRecoveryCodesAsync(user);
+    }
+
+    private async Task OnSubmitForgetBrowserAsync()
+    {
+        await SignInManager.ForgetTwoFactorClientAsync();
+        RedirectManager.RedirectToCurrentPageWithStatus(
+            "The current browser has been forgotten. Next login from this browser will require your 2FA code.",
+            HttpContext);
+    }
+}

@@ -1,0 +1,47 @@
+﻿@page "/Account/RegisterConfirmation"
+@using Microsoft.AspNetCore.Components
+
+<PageTitle>Register confirmation</PageTitle>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+      <div class="card shadow-sm">
+        <div class="card-header text-center">
+          <h4 class="mb-0">Check your inbox</h4>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-success d-flex align-items-center" role="alert">
+            <div class="me-2">✅</div>
+            <div>
+              We’ve sent a confirmation link@((string.IsNullOrWhiteSpace(Email) ? "" : $" to <strong>{Email}</strong>")). 
+              Click the link to activate your account.
+            </div>
+          </div>
+
+          <p class="text-muted mb-4">
+            It can take a minute to arrive. Be sure to check your spam/junk folder.
+          </p>
+
+          <div class="d-grid gap-2">
+            <a class="btn btn-primary" href="@LoginHref">Back to login</a>
+            <a class="btn btn-outline-secondary" href="@ResendHref">Resend confirmation email</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] private string? Email { get; set; }
+    [SupplyParameterFromQuery(Name = "returnUrl")] private string? ReturnUrl { get; set; }
+
+    private string LoginHref => string.IsNullOrWhiteSpace(ReturnUrl)
+        ? "/Account/Login"
+        : $"/Account/Login?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+
+    private string ResendHref => string.IsNullOrWhiteSpace(Email)
+        ? "/Account/ResendEmailConfirmation"
+        : $"/Account/ResendEmailConfirmation?email={Uri.EscapeDataString(Email)}";
+}

@@ -1,0 +1,79 @@
+﻿@page "/Account/Manage/GenerateRecoveryCodes"
+
+@using Microsoft.AspNetCore.Identity
+@using BlazorLoginDemo.Web.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IdentityUserAccessor UserAccessor
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<GenerateRecoveryCodes> Logger
+
+<PageTitle>Generate Two-Factor Authentication (2FA) Recovery Codes</PageTitle>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h4 class="mb-0">Generate 2FA Recovery Codes</h4>
+                </div>
+
+                <div class="card-body">
+                    @if (recoveryCodes is not null)
+                    {
+                        <ShowRecoveryCodes RecoveryCodes="recoveryCodes.ToArray()" StatusMessage="@message" />
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning" role="alert">
+                            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Keep These Safe</h5>
+                            <p>If you lose your device and don't have the recovery codes, you will lose access to your account.</p>
+                            <p>Generating new recovery codes does not change the keys used in authenticator apps.  
+                               If you wish to change the key used in an authenticator app you should  
+                               <a href="Account/Manage/ResetAuthenticator">reset your authenticator keys</a>.
+                            </p>
+                        </div>
+
+                        <form @formname="generate-recovery-codes" @onsubmit="OnSubmitAsync" method="post" class="mt-3">
+                            <AntiforgeryToken />
+                            <button class="btn btn-danger w-100" type="submit">Generate Recovery Codes</button>
+                        </form>
+                    }
+                </div>
+
+                <div class="card-footer text-end">
+                    <a href="/Account/Manage" class="btn btn-outline-secondary btn-sm">Back to Account Settings</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? message;
+    private ApplicationUser user = default!;
+    private IEnumerable<string>? recoveryCodes;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await UserAccessor.GetRequiredUserAsync(HttpContext);
+
+        var isTwoFactorEnabled = await UserManager.GetTwoFactorEnabledAsync(user);
+        if (!isTwoFactorEnabled)
+        {
+            throw new InvalidOperationException("Cannot generate recovery codes for user because they do not have 2FA enabled.");
+        }
+    }
+
+    private async Task OnSubmitAsync()
+    {
+        var userId = await UserManager.GetUserIdAsync(user);
+        recoveryCodes = await UserManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+        message = "You have generated new recovery codes.";
+
+        Logger.LogInformation("User with ID '{UserId}' has generated new 2FA recovery codes.", userId);
+    }
+}

@@ -1,0 +1,112 @@
+﻿@page "/Account/Manage/DeletePersonalData"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Forms
+@using BlazorLoginDemo.Web.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityUserAccessor UserAccessor
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<DeletePersonalData> Logger
+
+<PageTitle>Delete Personal Data</PageTitle>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-6">
+
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Delete Personal Data</h4>
+                </div>
+
+                <div class="card-body">
+                    <StatusMessage Message="@message" />
+
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Warning:</strong> Deleting your data will permanently remove your account and <strong>cannot be recovered</strong>.
+                    </div>
+
+                    <EditForm Model="Input" FormName="delete-user" OnValidSubmit="OnValidSubmitAsync" method="post">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" role="alert" />
+
+                        @if (requirePassword)
+                        {
+                            <div class="form-floating mb-3">
+                                <InputText type="password"
+                                           @bind-Value="Input.Password"
+                                           id="Input.Password"
+                                           class="form-control"
+                                           autocomplete="current-password"
+                                           aria-required="true"
+                                           placeholder="Please enter your password." />
+                                <label for="Input.Password" class="form-label">Password</label>
+                                <ValidationMessage For="@(() => Input.Password)" class="text-danger" />
+                            </div>
+                        }
+
+                        <button class="btn btn-danger w-100" type="submit">
+                            Delete data and close my account
+                        </button>
+                    </EditForm>
+                </div>
+
+                <div class="card-footer d-flex justify-content-between">
+                    <a class="btn btn-outline-secondary btn-sm" href="/Account/Manage">Back to profile</a>
+                    <a class="btn btn-outline-primary btn-sm" href="/">Home</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? message;
+    private ApplicationUser user = default!;
+    private bool requirePassword;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+        user = await UserAccessor.GetRequiredUserAsync(HttpContext);
+        requirePassword = await UserManager.HasPasswordAsync(user);
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (requirePassword && !await UserManager.CheckPasswordAsync(user, Input.Password))
+        {
+            message = "Error: Incorrect password.";
+            return;
+        }
+
+        var result = await UserManager.DeleteAsync(user);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException("Unexpected error occurred deleting user.");
+        }
+
+        await SignInManager.SignOutAsync();
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        Logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);
+
+        RedirectManager.RedirectToCurrentPage();
+    }
+
+    private sealed class InputModel
+    {
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+    }
+}
