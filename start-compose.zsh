@@ -3,11 +3,12 @@
 set -euo pipefail
 
 pgContainerName='pgsql'
+aspContainerName='blazor'
+pgadminContainerName='pgadmin'
 dbPort=5432
-dbUser='webshop'
-dbPass='webshop'
-dbName='webshop'
-
+dbUser='postgres'
+dbPass='YourDbPassword'
+dbName='demodb'
 
 
 echo
@@ -16,13 +17,9 @@ docker compose down
 
 echo
 echo "🧹 0) Cleaning slate: removing Migrations, obj, and bin directories"
-rm -rf BlazorLoginDemo.Web/Migrations BlazorLoginDemo.Web/bin BlazorLoginDemo.Web/obj
-
-echo
-echo "Create fresh migrations"
-dotnet ef migrations add initDb \
-  --project "BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj" \
-  --startup-project "BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj"
+if (Test-Path BlazorLoginDemo.Web/Migrations) { rm -rf BlazorLoginDemo.Web/Migrations }
+if (Test-Path BlazorLoginDemo.Web/bin) { rm -rf BlazorLoginDemo.Web/bin }
+if (Test-Path BlazorLoginDemo.Web/obj) { rm -rf BlazorLoginDemo.Web/obj }
 
 echo
 echo "🐳 0) Restarting Docker stack (db only)"
@@ -51,10 +48,19 @@ echo "✅ Postgres is healthy (container: $pgContainerName, port: $dbPort)"
 
 
 echo
-echo "Run migrations with docker.cli tool"
+echo "Run migrations with docker.migrator tool"
+docker compose up migrator -d
+
+# wait for this to exit (sleep 10 seconds, don't now how to test it?)
 
 
+echo
+echo "start pgadmin"
+docker compose up pgadmin -d
 
-dotnet ef database update \
-  --project "BlazorLoginDemo.Web.csproj" \
-  --startup-project "BlazorLoginDemo.Web.csproj"
+echo
+echo "Seed the DB with additional sql stuff, now db has been migrated"
+docker cp .docker/db/sql/01_seed_identity.sql pgsql:/seed_identity.sql
+
+docker exec -e PGPASSWORD=$dbPass -it $dbName \
+  psql -U $dbUser -d $dbName -v "ON_ERROR_STOP=1" -f /seed_identity.sql

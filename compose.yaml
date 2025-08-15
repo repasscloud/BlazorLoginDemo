@@ -13,7 +13,7 @@ services:
     volumes:
       - demo_pgdata:/var/lib/postgresql/data
       # Drop .sql/.sh files here to seed (optional)
-      #- ./.docker/db/init:/docker-entrypoint-initdb.d:ro
+      - ./.docker/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_DB} -q || exit 1"]
       interval: 2s
