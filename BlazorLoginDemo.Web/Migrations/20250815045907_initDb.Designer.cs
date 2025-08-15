@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorLoginDemo.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250815022850_initDb")]
+    [Migration("20250815045907_initDb")]
     partial class initDb
     {
         /// <inheritdoc />
@@ -47,9 +47,7 @@ namespace BlazorLoginDemo.Web.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Group")
-                        .IsRequired()
-                        .HasMaxLength(32)
+                    b.Property<Guid?>("GroupId")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
@@ -93,6 +91,8 @@ namespace BlazorLoginDemo.Web.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GroupId");
+
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
@@ -101,6 +101,58 @@ namespace BlazorLoginDemo.Web.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("BlazorLoginDemo.Web.Data.Group", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsCatchAll")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Groups");
+                });
+
+            modelBuilder.Entity("BlazorLoginDemo.Web.Data.GroupDomain", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Domain")
+                        .IsRequired()
+                        .HasMaxLength(190)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Domain")
+                        .IsUnique();
+
+                    b.HasIndex("GroupId");
+
+                    b.ToTable("GroupDomains");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -231,6 +283,26 @@ namespace BlazorLoginDemo.Web.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("BlazorLoginDemo.Web.Data.ApplicationUser", b =>
+                {
+                    b.HasOne("BlazorLoginDemo.Web.Data.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId");
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("BlazorLoginDemo.Web.Data.GroupDomain", b =>
+                {
+                    b.HasOne("BlazorLoginDemo.Web.Data.Group", "Group")
+                        .WithMany("Domains")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -280,6 +352,11 @@ namespace BlazorLoginDemo.Web.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("BlazorLoginDemo.Web.Data.Group", b =>
+                {
+                    b.Navigation("Domains");
                 });
 #pragma warning restore 612, 618
         }

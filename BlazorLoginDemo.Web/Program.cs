@@ -36,8 +36,8 @@ public class Program
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-        builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlite(connectionString));
+        // builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        //     options.UseSqlite(connectionString));
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
         // Identity + Roles
@@ -53,6 +53,7 @@ public class Program
         // Authorization policies
         builder.Services.AddAuthorization(options =>
         {
+            // --- Existing base policies you had ---
             options.AddPolicy("RequireMemberOrAbove",
                 p => p.RequireRole("Member", "Manager", "Admin"));
 
@@ -61,12 +62,58 @@ public class Program
 
             options.AddPolicy("AdminsOnly",
                 p => p.RequireRole("Admin"));
+
+            // --- New platform/org policies ---
+            options.AddPolicy("CanManageUsers",
+                p => p.RequireRole("SuperAdmin", "OrgAdmin", "UserAdmin"));
+
+            options.AddPolicy("CanEditPolicies",
+                p => p.RequireRole("SuperAdmin", "OrgAdmin", "PolicyAdmin"));
+
+            options.AddPolicy("CanEditFinancials",
+                p => p.RequireRole("SuperAdmin", "OrgAdmin", "FinanceAdmin", "FinanceEditor"));
+
+            options.AddPolicy("FinanceRead",
+                p => p.RequireRole("SuperAdmin", "OrgAdmin", "FinanceAdmin", "FinanceEditor", "FinanceViewer", "SupportFinance"));
+
+            options.AddPolicy("CanEnableDisableUser",
+                p => p.RequireRole("SuperAdmin", "OrgAdmin", "UserAdmin"));
+
+            options.AddPolicy("SupportArea",
+                p => p.RequireRole("SupportViewer", "SupportAgent", "SupportFinance", "SupportAdmin"));
+
+            options.AddPolicy("ApproverL1OrAbove",
+                p => p.RequireRole("ApproverL1", "ApproverL2", "ApproverL3", "OrgAdmin", "SuperAdmin"));
+
+            options.AddPolicy("ApproverL2OrAbove",
+                p => p.RequireRole("ApproverL2", "ApproverL3", "OrgAdmin", "SuperAdmin"));
+
+            options.AddPolicy("ApproverL3OrAbove",
+                p => p.RequireRole("ApproverL3", "OrgAdmin", "SuperAdmin"));
+                
+            options.AddPolicy("CanManageGroups",
+                p => p.RequireRole("SuperAdmin", "SupportAdmin"));
         });
+
 
         // Cookie options (so unauthorized goes to /Account/Login)
         builder.Services.ConfigureApplicationCookie(opts =>
         {
             opts.LoginPath = "/Account/Login";
+        });
+
+        // Group resolver + assignment
+        builder.Services.AddScoped<IGroupResolver, GroupResolver>();
+        builder.Services.AddScoped<UserGroupAssignmentInterceptor>();
+
+        // Replace your DbContext registration to inject the interceptor:
+        builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
+        {
+            // var cs = builder.Configuration.GetConnectionString("DefaultConnection")
+            //         ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+            // options.UseSqlite(cs);
+            options.UseSqlite(connectionString);
+            options.AddInterceptors(sp.GetRequiredService<UserGroupAssignmentInterceptor>());
         });
 
         // --- SMTP Email Sender configuration ---
@@ -132,14 +179,12 @@ public class Program
         app.MapAdditionalIdentityEndpoints();
 
         // Simple, reliable logout endpoint (no returnUrl binding)
-app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signIn) =>
-{
-    await signIn.SignOutAsync();
-    return Results.Redirect("/");
-})
-.RequireAuthorization();   // keep auth; antiforgery is handled by app.UseAntiforgery()
-
-
+        app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signIn) =>
+        {
+            await signIn.SignOutAsync();
+            return Results.Redirect("/");
+        })
+        .RequireAuthorization();   // keep auth; antiforgery is handled by app.UseAntiforgery()
 
         // --- Seed roles and initial admin on startup ---
         using (var scope = app.Services.CreateScope())

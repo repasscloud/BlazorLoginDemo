@@ -1,0 +1,78 @@
+@page "/admin/groups"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "CanManageGroups")]
+@using BlazorLoginDemo.Web.Data
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Db
+
+<h3>Groups</h3>
+
+<div class="card p-3 mb-3">
+  <div class="row g-2">
+    <div class="col-md-4"><input class="form-control" placeholder="Group name" @bind="newName" /></div>
+    <div class="col-md-4"><input class="form-control" placeholder="Domains (comma-separated)" @bind="newDomains" /></div>
+    <div class="col-md-2 form-check mt-2">
+      <input class="form-check-input" type="checkbox" id="catch" @bind="newCatchAll" />
+      <label class="form-check-label" for="catch">Catch-all</label>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-primary w-100" @onclick="CreateGroup">Create</button>
+    </div>
+  </div>
+</div>
+
+<table class="table table-sm">
+  <thead><tr><th>Name</th><th>Domains</th><th>Active</th><th>Catch-all</th></tr></thead>
+  <tbody>
+    @foreach (var g in groups)
+    {
+      <tr>
+        <td>@g.Name</td>
+        <td>@string.Join(", ", g.Domains.Select(d => d.Domain))</td>
+        <td>@(g.IsActive ? "Yes" : "No")</td>
+        <td>@(g.IsCatchAll ? "Yes" : "No")</td>
+      </tr>
+    }
+  </tbody>
+</table>
+
+@code {
+  List<Group> groups = new();
+  string newName = "";
+  string newDomains = "";
+  bool newCatchAll = false;
+
+  protected override async Task OnInitializedAsync() => await Load();
+
+  private async Task Load()
+  {
+      groups = await Db.Groups.Include(g => g.Domains).OrderBy(g => g.Name).ToListAsync();
+      StateHasChanged();
+  }
+
+  private async Task CreateGroup()
+  {
+      if (string.IsNullOrWhiteSpace(newName)) return;
+
+      // Only one catch-all allowed
+      if (newCatchAll)
+      {
+          foreach (var g in Db.Groups.Where(x => x.IsCatchAll)) g.IsCatchAll = false;
+      }
+
+      var gNew = new Group { Name = newName.Trim(), IsCatchAll = newCatchAll, IsActive = true };
+      var domains = (newDomains ?? "")
+          .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+          .Select(d => d.Trim().ToLowerInvariant())
+          .Distinct();
+
+      foreach (var d in domains) gNew.Domains.Add(new GroupDomain { Domain = d });
+
+      Db.Groups.Add(gNew);
+      await Db.SaveChangesAsync();
+
+      newName = newDomains = ""; newCatchAll = false;
+      await Load();
+  }
+}

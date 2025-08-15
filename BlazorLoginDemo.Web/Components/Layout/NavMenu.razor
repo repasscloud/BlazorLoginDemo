@@ -36,6 +36,13 @@
             </NavLink>
         </div>
 
+        <AuthorizeView Roles="Admin">
+    <li class="nav-item">
+        <a class="nav-link" href="/admin">Admin</a>
+    </li>
+</AuthorizeView>
+
+
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
