@@ -1,25 +1,28 @@
 # syntax=docker/dockerfile:1.7-labs
-FROM mcr.microsoft.com/dotnet/sdk:9.0
+FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim
 WORKDIR /src
 
-# dotnet-ef + pg client (for pg_isready)
+# dotnet-ef + pg client for pg_isready
 RUN dotnet tool install --global dotnet-ef \
  && ln -s /root/.dotnet/tools/dotnet-ef /usr/local/bin/dotnet-ef \
  && apt-get update && apt-get install -y --no-install-recommends postgresql-client \
  && rm -rf /var/lib/apt/lists/*
-ENV PATH="$PATH:/root/.dotnet/tools"
+ENV PATH="$PATH:/root/.dotnet/tools" DOTNET_CLI_TELEMETRY_OPTOUT=1
 
-# Copy csproj first (cache restore)
-COPY ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+# restore cache
+COPY ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj .
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+    dotnet restore BlazorLoginDemo.Web.csproj
 
-# Copy sources
-COPY ./BlazorLoginDemo.Web/ ./BlazorLoginDemo.Web/
+# copy sources & build Release
+COPY ./BlazorLoginDemo.Web/ ./
+RUN rm -rf ./BlazorLoginDemo.Web/bin ./BlazorLoginDemo.Web/obj
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet build ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj -c Release
+    dotnet build BlazorLoginDemo.Web.csproj
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet build BlazorLoginDemo.Web.csproj -c Release
 
-# Entrypoint: wait for DB, then apply migrations
+# runner
 COPY ./.docker/migrator/migrate.sh /usr/local/bin/migrate.sh
 RUN chmod +x /usr/local/bin/migrate.sh
 ENTRYPOINT ["/usr/local/bin/migrate.sh"]

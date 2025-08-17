@@ -101,7 +101,11 @@ public class Program
         // existing DbContext + interceptor
         builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
-            options.UseNpgsql(connectionString);
+            options.UseNpgsql(connectionString, npg =>
+            {
+                npg.EnableRetryOnFailure(5, TimeSpan.FromSeconds(2), null);
+                npg.CommandTimeout(30);
+            });
             options.AddInterceptors(sp.GetRequiredService<UserGroupAssignmentInterceptor>());
         });
 

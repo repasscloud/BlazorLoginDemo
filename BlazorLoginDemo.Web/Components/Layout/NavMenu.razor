@@ -36,12 +36,22 @@
             </NavLink>
         </div>
 
-        <AuthorizeView Roles="Admin">
-    <li class="nav-item">
-        <a class="nav-link" href="/admin">Admin</a>
-    </li>
-</AuthorizeView>
-
+        @* 
+        AuthorizeView Roles="CanManageGroups">
+            <li class="nav-item">
+                <a class="nav-link" href="/admin">Admin</a>
+            </li>
+        </AuthorizeView>
+        *@
+        <AuthorizeView Policy="CanManageGroups">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/admin/users" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span> Admin
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
         <AuthorizeView>
             <Authorized>
@@ -60,11 +70,11 @@
                         </button>
                     </form> *@
                     <form method="post" action="/auth/logout" class="d-inline">
-    <AntiforgeryToken />
-    <button type="submit" class="btn btn-link nav-link p-0 align-baseline">
-        <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
-    </button>
-</form>
+                        <AntiforgeryToken />
+                        <button type="submit" class="btn btn-link nav-link p-0 align-baseline">
+                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
+                        </button>
+                    </form>
 
                 </div>
             </Authorized>
