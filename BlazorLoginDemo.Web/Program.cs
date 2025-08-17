@@ -113,7 +113,6 @@ public class Program
         builder.Services.AddScoped<IGroupResolver, GroupResolver>();
         builder.Services.AddScoped<UserGroupAssignmentInterceptor>();
 
-
         // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
         builder.Services.AddHttpClient();

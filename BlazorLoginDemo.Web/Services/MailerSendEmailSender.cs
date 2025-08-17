@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Options;
 using BlazorLoginDemo.Web.Data;
+using System.Text.Json.Serialization;
 
 namespace BlazorLoginDemo.Web.Services;
 
@@ -86,10 +87,19 @@ public sealed class MailerSendEmailSender :
             })
         };
 
-        var json = JsonSerializer.Serialize(payload);
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        });
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
         var resp = await _http.PostAsync("https://api.mailersend.com/v1/email", content);
-        resp.EnsureSuccessStatusCode();
+        
+        // trow with body for easier debugging if MailerSend is unhappy
+        if (!resp.IsSuccessStatusCode)
+        {
+            var body = await resp.Content.ReadAsStringAsync();
+            throw new HttpRequestException($"MailerSend {((int)resp.StatusCode)}: {resp.ReasonPhrase}\n{body}");
+        }
     }
 
     private static string HtmlToText(string html)

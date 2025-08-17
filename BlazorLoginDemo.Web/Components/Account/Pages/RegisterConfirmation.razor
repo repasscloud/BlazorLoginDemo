@@ -14,9 +14,11 @@
           <div class="alert alert-success d-flex align-items-center" role="alert">
             <div class="me-2">✅</div>
             <div>
-              We’ve sent a confirmation link@((string.IsNullOrWhiteSpace(Email) ? "" : $" to <strong>{Email}</strong>")). 
-              Click the link to activate your account.
+              We’ve sent a confirmation link
+              @((MarkupString)(string.IsNullOrWhiteSpace(Email) ? "" : $" to <strong>{Email}</strong>"))
+              . Click the link to activate your account.
             </div>
+
           </div>
 
           <p class="text-muted mb-4">

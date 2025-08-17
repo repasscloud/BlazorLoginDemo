@@ -28,6 +28,12 @@
                 </div>
                 <div class="card-body">
                     <StatusMessage Message="@Message" />
+                    @if (!string.IsNullOrEmpty(_statusMessage))
+                    {
+                        <div class="alert alert-warning">
+                            @_statusMessage
+                        </div>
+                    }
 
                     <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
                         <DataAnnotationsValidator />
@@ -96,6 +102,8 @@
 
     private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
 
+    private string? _statusMessage;
+
     public async Task RegisterUser(EditContext editContext)
     {
         var user = CreateUser();
@@ -120,7 +128,20 @@
             NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
             new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
 
-        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+        @* await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl)); *@
+        try
+        {
+            await EmailSender.SendConfirmationLinkAsync(
+                user,
+                Input.Email,
+                HtmlEncoder.Default.Encode(callbackUrl));
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            Logger.LogWarning(ex, "MailerSend failed during registration email for {Email}", Input.Email);
+            // (Optional) Set a UI hint instead of throwing:
+            _statusMessage = "Account created, but we couldn't send the confirmation email right now.";
+        }
 
         if (UserManager.Options.SignIn.RequireConfirmedAccount)
         {
