@@ -1,0 +1,54 @@
+@using BlazorLoginDemo.Web.Data
+@using Microsoft.AspNetCore.Identity
+@using System.Globalization
+@using Microsoft.AspNetCore.Localization
+@inject UserManager<ApplicationUser> _userManager
+@inject SignInManager<ApplicationUser> _signInManager
+@inject IHttpContextAccessor _http
+@inject NavigationManager _nav
+
+<select class="form-select form-select-sm w-auto d-inline-block"
+        @onchange="OnChange">
+    @foreach (var c in Supported)
+    {
+        <option value="@c.code" selected="@(Current == c.code)">
+            @c.label
+        </option>
+    }
+</select>
+
+@code {
+    private string Current => CultureInfo.CurrentUICulture.Name;
+
+    private readonly (string code, string label)[] Supported =
+    [
+        ("en-AU","🇦🇺 English"),
+        ("en-GB","🇬🇧 English"),
+        ("es-ES","🇪🇸 Español"),
+        ("it-IT","🇮🇹 Italiano"),
+        ("fr-FR","🇫🇷 Français")
+    ];
+
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        var selectedCulture = e.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(selectedCulture)) return;
+
+        // update user in DB
+        var user = await _userManager.GetUserAsync(_http.HttpContext!.User);
+        if (user != null)
+        {
+            user.PreferredCulture = selectedCulture;
+            await _userManager.UpdateAsync(user);
+            await _signInManager.RefreshSignInAsync(user);
+
+            // cookie
+            _http.HttpContext.Response.Cookies.Append(
+                CookieRequestCultureProvider.DefaultCookieName,
+                CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(user.PreferredCulture)),
+                new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), IsEssential = true });
+        }
+
+        _nav.NavigateTo(_nav.Uri, forceLoad: true);
+    }
+}

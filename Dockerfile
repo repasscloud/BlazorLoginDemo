@@ -2,22 +2,28 @@
 
 # --- Build stage --------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-ARG CSPROJ
+ARG CSPROJ_WEB
+ARG CSPROJ_SHARED
 WORKDIR /src
 
 # Copy only csproj first for better caching
-COPY ${CSPROJ} BlazorLoginDemo.Web.csproj
+COPY ${CSPROJ_WEB} BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+COPY ${CSPROJ_SHARED} BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
 
 # Restore with cache mounts (NuGet packages + HTTP v3 cache)
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
-    dotnet restore BlazorLoginDemo.Web.csproj
-
-# Copy ONLY the web project sources and publish
-COPY ./BlazorLoginDemo.Web/ .
+    dotnet restore BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
-    dotnet publish BlazorLoginDemo.Web.csproj -c Release -o /app/publish /p:UseAppHost=false
+    dotnet restore BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+
+# Copy ONLY the web project sources and publish
+COPY ./BlazorLoginDemo.Shared/ ./BlazorLoginDemo.Shared/
+COPY ./BlazorLoginDemo.Web/ ./BlazorLoginDemo.Web/
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
+    dotnet publish BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # --- Runtime stage ------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS final

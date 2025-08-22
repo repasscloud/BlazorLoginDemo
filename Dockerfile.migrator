@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.7-labs
 FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim
+ARG CSPROJ_WEB
+ARG CSPROJ_SHARED
 WORKDIR /src
 
 # dotnet-ef + pg client for pg_isready
@@ -10,17 +12,22 @@ RUN dotnet tool install --global dotnet-ef \
 ENV PATH="$PATH:/root/.dotnet/tools" DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 # restore cache
-COPY ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj .
+COPY ${CSPROJ_WEB} BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+COPY ${CSPROJ_SHARED} BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+
+
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore BlazorLoginDemo.Web.csproj
+    --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
+    dotnet restore BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
 
 # copy sources & build Release
-COPY ./BlazorLoginDemo.Web/ ./
+COPY ./BlazorLoginDemo.Shared/ ./BlazorLoginDemo.Shared/
+COPY ./BlazorLoginDemo.Web/ ./BlazorLoginDemo.Web/
 RUN rm -rf ./BlazorLoginDemo.Web/bin ./BlazorLoginDemo.Web/obj
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet build BlazorLoginDemo.Web.csproj
+    dotnet build BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet build BlazorLoginDemo.Web.csproj -c Release
+    dotnet build BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj -c Release
 
 # runner
 COPY ./.docker/migrator/migrate.sh /usr/local/bin/migrate.sh

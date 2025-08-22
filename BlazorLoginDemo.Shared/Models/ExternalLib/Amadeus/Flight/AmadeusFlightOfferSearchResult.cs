@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using BlazorLoginDemo.Shared.Validation;
 
-namespace Ava.Shared.Models.ExternalLib.Amadeus.Flight;
+namespace BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
 
 public class AmadeusFlightOfferSearchResult
 {

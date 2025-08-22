@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
 
 namespace BlazorLoginDemo.Web.Data;
 
@@ -14,5 +15,11 @@ public class ApplicationUser : IdentityUser
     // NEW: DB-backed group
     public Guid? GroupId { get; set; }
     public Group? Group { get; set; }
+
+    // Personal data
+    [PersonalData, MaxLength(16)]
+    public string? PreferredCulture { get; set; } = "en-AU"; // e.g. "en", "en-AU", "es"
+
+    
 }
 

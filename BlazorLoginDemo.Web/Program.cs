@@ -1,13 +1,17 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Localization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 using BlazorLoginDemo.Web.Components;
 using BlazorLoginDemo.Web.Components.Account;
 using BlazorLoginDemo.Web.Data;      // ApplicationUser, UserGroup
 using BlazorLoginDemo.Web.Services;  // MailerSendEmailSender + MailerSendOptions
-using BlazorLoginDemo.Web.Startup;   // SeedData
+using BlazorLoginDemo.Web.Startup;
+using BlazorLoginDemo.Web.Security;   // SeedData
 
 namespace BlazorLoginDemo.Web;
 
@@ -41,12 +45,27 @@ public class Program
         // Identity + Roles
         builder.Services.AddIdentityCore<ApplicationUser>(options =>
             {
+                // sign-in rules
                 options.SignIn.RequireConfirmedAccount = true;
+
+                // password policy
+                options.Password.RequiredLength = 8;
+                options.Password.RequireDigit = true;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+
+                // lockout
+                options.Lockout.MaxFailedAccessAttempts = 5;
+
+                // user settings
+                options.User.RequireUniqueEmail = true;
             })
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
+
+        builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, AppClaimsFactory>();
 
         // Authorization policies
         builder.Services.AddAuthorization(options =>
@@ -125,10 +144,43 @@ public class Program
             o.SignIn.RequireConfirmedAccount = true;
         });
 
+        // Localization: RESX under /Resources (in Web or in your Shared assembly)
+        builder.Services.AddLocalization(opts => opts.ResourcesPath = "Resources");
+
+        var supportedCultures = new[] { "en-AU", "en-GB", "es-ES", "it-IT", "fr-FR" };
+        builder.Services.Configure<RequestLocalizationOptions>(options =>
+        {
+            options.SetDefaultCulture("en-AU")
+                .AddSupportedCultures(supportedCultures)
+                .AddSupportedUICultures(supportedCultures);
+
+            options.RequestCultureProviders = new IRequestCultureProvider[]
+            {
+                new ClaimRequestCultureProvider(),
+                new QueryStringRequestCultureProvider { QueryStringKey = "culture" },
+                new CookieRequestCultureProvider(),
+                new AcceptLanguageHeaderRequestCultureProvider()
+            };
+        });
+
+
+
         // Detect container
         var inContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 
         var app = builder.Build();
+
+        // Set culture then redirect back (SSR-friendly switcher)
+        app.MapGet("/set-culture", (string culture, string? redirectUri, HttpContext ctx) =>
+        {
+            ctx.Response.Cookies.Append(
+                CookieRequestCultureProvider.DefaultCookieName,
+                CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture)),
+                new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), IsEssential = true });
+
+            return Results.Redirect(string.IsNullOrWhiteSpace(redirectUri) ? "/" : redirectUri);
+        });
+
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
@@ -148,10 +200,13 @@ public class Program
 
         // Static files for wwwroot + static web assets for RCLs
         app.UseStaticFiles();                              // ⬅ ensure blazor.web.js/_framework/* are served
-
         app.UseAuthentication();
-        app.UseAuthorization();
 
+        // Enable localization
+        app.UseRequestLocalization(app.Services
+            .GetRequiredService<IOptions<RequestLocalizationOptions>>().Value);
+
+        app.UseAuthorization();
         app.UseAntiforgery();
 
         // Optional: track LastSeenUtc for signed-in users

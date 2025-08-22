@@ -28,10 +28,10 @@ echo "✅ DB is queryable."
 CONNECTION="Host=${DB_HOST};Port=${DB_PORT};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD};"
 
 echo "🧱  Adding migration: initDb (if missing)..."
-if ! ls ./Migrations/*initDb*.cs >/dev/null 2>&1; then
+if ! ls ./BlazorLoginDemo.Web/Migrations/*initDb*.cs >/dev/null 2>&1; then
   echo "   - creating initDb..."
   dotnet ef migrations add initDb \
-    -p ./BlazorLoginDemo.Web.csproj \
+    -p ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj \
     --configuration Release \
     --framework net9.0 \
     --no-build
@@ -41,6 +41,7 @@ fi
 
 echo "🏗  Applying migrations..."
 dotnet ef database update \
+  -p ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj \
   --connection "$CONNECTION" \
 
 echo "✅ Migrations applied."

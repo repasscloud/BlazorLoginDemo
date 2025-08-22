@@ -55,7 +55,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        CSPROJ: BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+        CSPROJ_WEB: BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+        CSPROJ_SHARED: BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
         APP_DLL: BlazorLoginDemo.Web.dll
     image: blazor-app:dev
     container_name: blazor
@@ -88,6 +89,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.migrator
+      args:
+        CSPROJ_WEB: BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+        CSPROJ_SHARED: BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
     container_name: migrator
     depends_on:
       db:
