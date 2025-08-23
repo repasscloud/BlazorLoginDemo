@@ -5,6 +5,7 @@ using BlazorLoginDemo.Models.Policies;
 using BlazorLoginDemo.Shared.Models.Kernel.Client;
 using BlazorLoginDemo.Shared.Validation;
 using Microsoft.EntityFrameworkCore;
+using NanoidDotNet;
 
 namespace BlazorLoginDemo.Models.User;
 
@@ -13,7 +14,7 @@ namespace BlazorLoginDemo.Models.User;
 public class AvaUser
 {
     [Key]
-    public long Id { get; set; } = 0;
+    public string Id { get; set; } = Nanoid.Generate();
     public string? AspNetUsersId { get; set; }
     public bool IsActive { get; set; } = true;
 

@@ -36,13 +36,6 @@
             </NavLink>
         </div>
 
-        @* 
-        AuthorizeView Roles="CanManageGroups">
-            <li class="nav-item">
-                <a class="nav-link" href="/admin">Admin</a>
-            </li>
-        </AuthorizeView>
-        *@
         <AuthorizeView Policy="CanManageGroups">
             <Authorized>
                 <div class="nav-item px-3">
@@ -61,14 +54,6 @@
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <!-- Correct: POST + Antiforgery + hidden returnUrl in form body -->
-                    @* <form method="post" action="/Account/Logout" class="d-inline">
-                        <AntiforgeryToken />
-                        <input type="hidden" name="returnUrl" value="/" />
-                        <button type="submit" class="btn btn-link nav-link p-0 align-baseline">
-                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
-                        </button>
-                    </form> *@
                     <form method="post" action="/auth/logout" class="d-inline">
                         <AntiforgeryToken />
                         <button type="submit" class="btn btn-link nav-link p-0 align-baseline">

@@ -19,7 +19,5 @@ public class ApplicationUser : IdentityUser
     // Personal data
     [PersonalData, MaxLength(16)]
     public string? PreferredCulture { get; set; } = "en-AU"; // e.g. "en", "en-AU", "es"
-
-    
 }
 

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -70,6 +71,11 @@ public class Program
         // Authorization policies
         builder.Services.AddAuthorization(options =>
         {
+            // --- Authorization fall back policy
+            options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+
             options.AddPolicy("RequireMemberOrAbove",
                 p => p.RequireRole("Member", "Manager", "Admin"));
 
@@ -115,6 +121,7 @@ public class Program
         builder.Services.ConfigureApplicationCookie(opts =>
         {
             opts.LoginPath = "/Account/Login";
+            opts.AccessDeniedPath = "/Account/AccessDenied";
         });
 
         // existing DbContext + interceptor
