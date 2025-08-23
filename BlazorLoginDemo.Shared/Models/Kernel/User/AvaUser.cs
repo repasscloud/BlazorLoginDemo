@@ -1,13 +1,12 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using BlazorLoginDemo.Models.Policies;
 using BlazorLoginDemo.Shared.Models.Kernel.Client;
 using BlazorLoginDemo.Shared.Validation;
 using Microsoft.EntityFrameworkCore;
 using NanoidDotNet;
 
-namespace BlazorLoginDemo.Models.User;
+namespace BlazorLoginDemo.Shared.Models.User;
 
 [Index(nameof(AspNetUsersId), IsUnique = true)]  // enforce unique constraint
 [Index(nameof(Email), IsUnique = true)]
@@ -15,7 +14,10 @@ public class AvaUser
 {
     [Key]
     public string Id { get; set; } = Nanoid.Generate();
-    public string? AspNetUsersId { get; set; }
+
+    [Required]                       // make this required for true 1:1
+    public string AspNetUsersId { get; set; } = default!;
+
     public bool IsActive { get; set; } = true;
 
     [Required]

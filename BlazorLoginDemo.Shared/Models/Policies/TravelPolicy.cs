@@ -5,7 +5,7 @@ using BlazorLoginDemo.Shared.Models.Kernel.Client;
 using BlazorLoginDemo.Shared.Validation;
 using NanoidDotNet;
 
-namespace BlazorLoginDemo.Models.Policies;
+namespace BlazorLoginDemo.Shared.Models.Policies;
 
 public class TravelPolicy
 {

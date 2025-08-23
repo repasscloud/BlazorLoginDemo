@@ -1,4 +1,4 @@
-namespace BlazorLoginDemo.Models.Policies;
+namespace BlazorLoginDemo.Shared.Models.Policies;
 
 // Join entity for disabled countries in a travel policy
 public class TravelPolicyDisabledCountry {
