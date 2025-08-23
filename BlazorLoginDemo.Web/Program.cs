@@ -1,3 +1,4 @@
+using System.IO;
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -11,7 +12,7 @@ using BlazorLoginDemo.Web.Components;
 using BlazorLoginDemo.Web.Components.Account;
 using BlazorLoginDemo.Web.Data;      // ApplicationUser, UserGroup
 using BlazorLoginDemo.Web.Services;  // MailerSendEmailSender + MailerSendOptions
-using BlazorLoginDemo.Web.Startup;
+using BlazorLoginDemo.Shared.Startup;
 using BlazorLoginDemo.Web.Security;   // SeedData
 
 namespace BlazorLoginDemo.Web;
@@ -30,6 +31,8 @@ public class Program
         builder.Services.AddScoped<IdentityUserAccessor>();
         builder.Services.AddScoped<IdentityRedirectManager>();
         builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
+        // builder.Services.AddHttpContextAccessor();
 
         builder.Services.AddAuthentication(options =>
             {
@@ -136,8 +139,8 @@ public class Program
         });
 
         // Group resolver + assignment
-        builder.Services.AddScoped<IGroupResolver, GroupResolver>();
-        builder.Services.AddScoped<UserGroupAssignmentInterceptor>();
+        builder.Services.AddScoped<BlazorLoginDemo.Shared.Services.Interfaces.IGroupResolver, GroupResolver>();
+        builder.Services.AddScoped<BlazorLoginDemo.Shared.Data.UserGroupAssignmentInterceptor>();
 
         // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
@@ -216,25 +219,10 @@ public class Program
         app.UseAuthorization();
         app.UseAntiforgery();
 
-        // Optional: track LastSeenUtc for signed-in users
-        app.Use(async (ctx, next) =>
-        {
-            if (ctx.User?.Identity?.IsAuthenticated == true)
-            {
-                var um = ctx.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
-                var user = await um.GetUserAsync(ctx.User);
-                if (user is not null)
-                {
-                    user.LastSeenUtc = DateTimeOffset.UtcNow;
-                    _ = await um.UpdateAsync(user); // ignore errors
-                }
-            }
-            await next();
-        });
-
-        app.MapStaticAssets();
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
+
+        app.MapStaticAssets().AllowAnonymous();
 
         // Identity endpoints
         app.MapAdditionalIdentityEndpoints();
@@ -246,6 +234,9 @@ public class Program
             return Results.Redirect("/");
         })
         .RequireAuthorization();
+
+        // 🚨 Add this line so /fish goes through Blazor Router
+        // app.MapFallbackToPage("/_Host");
 
         // Seed roles/admin
         // using (var scope = app.Services.CreateScope())
@@ -268,6 +259,7 @@ public class Program
         //         await SeedData.InitializeAsync(services, builder.Configuration);
         //     }
         // }
+
 
 
         await app.RunAsync();
