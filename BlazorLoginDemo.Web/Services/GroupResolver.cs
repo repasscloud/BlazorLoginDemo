@@ -1,12 +1,8 @@
 // Services/GroupResolver.cs  (namespace BlazorLoginDemo.Web.Data)
 using Microsoft.EntityFrameworkCore;
+using BlazorLoginDemo.Shared.Services.Interfaces;
 
 namespace BlazorLoginDemo.Web.Data;
-
-public interface IGroupResolver
-{
-    Task<Guid?> ResolveGroupIdForEmailAsync(string? email, CancellationToken ct = default);
-}
 
 public class GroupResolver : IGroupResolver
 {

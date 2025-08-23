@@ -47,7 +47,7 @@ done
 echo "✅ Postgres is healthy (container: $pgContainerName, port: $dbPort)"
 
 echo
-echo "🏗 4) Run migrations with migrator (blocks until done, returns exit code)"
+echo "🏗  4) Run migrations with migrator (blocks until done, returns exit code)"
 # Brings up migrator, waits for it to finish, exits with its code
 docker compose up --build --exit-code-from migrator migrator
 

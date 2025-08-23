@@ -30,8 +30,9 @@ CONNECTION="Host=${DB_HOST};Port=${DB_PORT};Database=${DB_NAME};Username=${DB_US
 echo "🧱  Adding migration: initDb (if missing)..."
 if ! ls ./BlazorLoginDemo.Web/Migrations/*initDb*.cs >/dev/null 2>&1; then
   echo "   - creating initDb..."
-  dotnet ef migrations add initDb \
-    -p ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj \
+  dotnet ef migrations add InitDb \
+    -p ./BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj \
+    -s ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj \
     --configuration Release \
     --framework net9.0 \
     --no-build
