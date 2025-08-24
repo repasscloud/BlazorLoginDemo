@@ -1,0 +1,56 @@
+@page "/{*route:nonfile}"
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor Http
+@rendermode InteractiveServer
+
+<PageTitle>404 - Not Found</PageTitle>
+
+@code {
+    // Matches "{*route:nonfile}" so Blazor can pass "fish" etc.
+    [Parameter] public string? route { get; set; }
+
+    // ✅ Set 404 status during SSR before headers are sent (no circuit crash)
+    protected override void OnInitialized()
+    {
+        var ctx = Http?.HttpContext;
+        if (ctx is not null && !ctx.Response.HasStarted)
+        {
+            ctx.Response.StatusCode = 404;
+        }
+    }
+}
+
+<div class="container text-center mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <div class="bg-danger bg-gradient py-5">
+                    <h1 class="display-1 text-white fw-bold mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>404
+                    </h1>
+                    <p class="text-white-50 lead mb-0">Page Not Found</p>
+                </div>
+                <div class="card-body p-5">
+                    @if (!string.IsNullOrWhiteSpace(route))
+                    {
+                        <p class="text-muted mb-2"><small>Requested path: <code>@("/" + route)</code></small></p>
+                    }
+                    <p class="lead text-muted mb-4">
+                        Oops! The page you’re looking for doesn’t exist or has been moved.
+                    </p>
+                    <a href="/" class="btn btn-primary btn-lg">
+                        <i class="bi bi-house-door-fill me-2"></i> Go Home
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg ms-2">
+                        <i class="bi bi-arrow-left-circle me-2"></i> Go Back
+                    </a>
+                </div>
+                <div class="card-footer bg-light text-muted py-3">
+                    <small>Need help? <a href="/contact">Contact support</a></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

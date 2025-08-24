@@ -18,8 +18,19 @@
 
 <body>
     <CascadingAuthenticationState>
-        <Routes />
+        <Router AppAssembly="@typeof(Program).Assembly">
+            <Found Context="routeData">
+                <RouteView RouteData="@routeData"
+                        DefaultLayout="@typeof(BlazorLoginDemo.Web.Components.Layout.MainLayout)" />
+            </Found>
+            <NotFound>
+                <LayoutView Layout="@typeof(BlazorLoginDemo.Web.Components.Layout.MainLayout)">
+                    <BlazorLoginDemo.Web.Components.Pages.NotFound />
+                </LayoutView>
+            </NotFound>
+        </Router>
     </CascadingAuthenticationState>
+
     <script src="_framework/blazor.web.js"></script>
 </body>
 
