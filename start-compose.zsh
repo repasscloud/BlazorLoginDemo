@@ -32,7 +32,7 @@ ACTION="$1"
 # ── 🔎 Extract current version from line 11 ───────────────────────────────────
 # Expected: '            <pre><code>vX.Y.Z-aN</code></pre>'
 # Note: using GNU sed explicitly (gsed)
-LINE=$(gsed -n '11p' "$FILE")
+LINE=$(gsed -n '12p' "$FILE")
 
 # Pull out "X.Y.Z-aN" from the code tag
 VER=$(echo "$LINE" | gsed -E 's/.*<code>v([0-9]+\.[0-9]+\.[0-9]+-[abr][0-9]+)<\/code>.*/\1/')
