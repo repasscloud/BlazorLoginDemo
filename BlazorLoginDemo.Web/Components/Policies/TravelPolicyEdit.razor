@@ -57,7 +57,7 @@
 
         <!-- AvaClientId -->
         <div class="col-md-4">
-          <label class="form-label">Client Id (AvaClientId)</label>
+          <label class="form-label">Client ID</label>
           <InputText class="form-control" @bind-Value="Model.AvaClientId" />
           <ValidationMessage For="@(() => Model.AvaClientId)" />
         </div>
@@ -65,14 +65,22 @@
         <!-- Currency -->
         <div class="col-md-4">
           <label class="form-label">Default Currency (ISO 4217)</label>
-          <InputText class="form-control"
-                    @bind-Value="Model.DefaultCurrencyCode"
-                    maxlength="3"
-                    style="text-transform: uppercase;" />
-          <div class="form-text">3 uppercase letters (e.g., AUD, NZD, USD).</div>
+          <InputSelect class="form-select" @bind-Value="Model.DefaultCurrencyCode">
+            @foreach (var c in CurrencyOptions)
+            {
+              <option value="@c.Code">@c.Flag @c.Code</option>
+            }
+
+            @* Optional: if the model already has a code not in the list, show it so it doesn’t get lost *@
+            @if (!string.IsNullOrWhiteSpace(Model.DefaultCurrencyCode) &&
+                !CurrencyOptions.Any(x => x.Code == Model.DefaultCurrencyCode))
+            {
+              <option value="@Model.DefaultCurrencyCode">@Model.DefaultCurrencyCode</option>
+            }
+          </InputSelect>
+          <div class="form-text">Stores the 3‑letter code (e.g., AUD, USD, EUR).</div>
           <ValidationMessage For="@(() => Model.DefaultCurrencyCode)" />
         </div>
-
 
         <!-- Max Flight Price -->
         <div class="col-md-4">
@@ -317,6 +325,20 @@
         ("ALL_SEGMENTS",  "All Segments")
     ];
 
+    private static readonly (string Code, string Flag)[] CurrencyOptions =
+    [
+        ("AUD", "🇦🇺"),
+        ("USD", "🇺🇸"),
+        ("EUR", "🇪🇺"),
+        ("GBP", "🇬🇧"),
+        ("JPY", "🇯🇵"),
+        ("CHF", "🇨🇭"),
+        ("CAD", "🇨🇦"),
+        ("CNY", "🇨🇳"),
+        ("HKD", "🇭🇰"),
+        ("SGD", "🇸🇬"),
+        ("NZD", "🇳🇿")
+    ];
 
     protected override async Task OnInitializedAsync()
     {
