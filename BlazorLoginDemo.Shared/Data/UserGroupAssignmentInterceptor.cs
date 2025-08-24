@@ -1,9 +1,10 @@
 // Data/UserGroupAssignmentInterceptor.cs
+using BlazorLoginDemo.Shared.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace BlazorLoginDemo.Web.Data;
+namespace BlazorLoginDemo.Shared.Data;
 
 public class UserGroupAssignmentInterceptor : SaveChangesInterceptor
 {
@@ -20,8 +21,8 @@ public class UserGroupAssignmentInterceptor : SaveChangesInterceptor
         if (ctx is null) return await base.SavingChangesAsync(eventData, result, cancellationToken);
 
         // Only for new users; do NOT run on updates like LastSeenUtc
-        IEnumerable<EntityEntry<ApplicationUser>> newUsers =
-            ctx.ChangeTracker.Entries<ApplicationUser>()
+        IEnumerable<EntityEntry<BlazorLoginDemo.Shared.Data.ApplicationUser>> newUsers =
+            ctx.ChangeTracker.Entries<BlazorLoginDemo.Shared.Data.ApplicationUser>()
                .Where(e => e.State == EntityState.Added);
 
         foreach (var entry in newUsers)

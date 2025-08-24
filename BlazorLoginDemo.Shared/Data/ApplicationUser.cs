@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 
-namespace BlazorLoginDemo.Web.Data;
+namespace BlazorLoginDemo.Shared.Data;
 
 
 // Add profile data for application users by adding properties to the ApplicationUser class
@@ -19,5 +19,7 @@ public class ApplicationUser : IdentityUser
     // Personal data
     [PersonalData, MaxLength(16)]
     public string? PreferredCulture { get; set; } = "en-AU"; // e.g. "en", "en-AU", "es"
+
+    public BlazorLoginDemo.Shared.Models.User.AvaUser? Profile { get; set; }
 }
 

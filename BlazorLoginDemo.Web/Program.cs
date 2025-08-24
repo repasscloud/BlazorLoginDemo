@@ -1,3 +1,4 @@
+using System.IO;
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -11,7 +12,7 @@ using BlazorLoginDemo.Web.Components;
 using BlazorLoginDemo.Web.Components.Account;
 using BlazorLoginDemo.Web.Data;      // ApplicationUser, UserGroup
 using BlazorLoginDemo.Web.Services;  // MailerSendEmailSender + MailerSendOptions
-using BlazorLoginDemo.Web.Startup;
+using BlazorLoginDemo.Shared.Startup;
 using BlazorLoginDemo.Web.Security;   // SeedData
 
 namespace BlazorLoginDemo.Web;
@@ -24,12 +25,14 @@ public class Program
 
         // Add services to the container.
         builder.Services.AddRazorComponents()
-            .AddInteractiveServerComponents();
+            .AddInteractiveServerComponents(); // .NET 8 Interactive Server
 
         builder.Services.AddCascadingAuthenticationState();
         builder.Services.AddScoped<IdentityUserAccessor>();
         builder.Services.AddScoped<IdentityRedirectManager>();
         builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
+        builder.Services.AddHttpContextAccessor();
 
         builder.Services.AddAuthentication(options =>
             {
@@ -46,19 +49,15 @@ public class Program
         // Identity + Roles
         builder.Services.AddIdentityCore<ApplicationUser>(options =>
             {
-                // sign-in rules
                 options.SignIn.RequireConfirmedAccount = true;
 
-                // password policy
                 options.Password.RequiredLength = 8;
                 options.Password.RequireDigit = true;
                 options.Password.RequireUppercase = false;
                 options.Password.RequireNonAlphanumeric = false;
 
-                // lockout
                 options.Lockout.MaxFailedAccessAttempts = 5;
 
-                // user settings
                 options.User.RequireUniqueEmail = true;
             })
             .AddRoles<IdentityRole>()
@@ -71,10 +70,10 @@ public class Program
         // Authorization policies
         builder.Services.AddAuthorization(options =>
         {
-            // --- Authorization fall back policy
-            options.FallbackPolicy = new AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .Build();
+            // ❌ Remove global fallback policy — it was forcing auth on static assets
+            // options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            //     .RequireAuthenticatedUser()
+            //     .Build();
 
             options.AddPolicy("RequireMemberOrAbove",
                 p => p.RequireRole("Member", "Manager", "Admin"));
@@ -85,7 +84,7 @@ public class Program
             options.AddPolicy("AdminsOnly",
                 p => p.RequireRole("Admin"));
 
-            // --- New platform/org policies ---
+            // Platform/org policies
             options.AddPolicy("CanManageUsers",
                 p => p.RequireRole("SuperAdmin", "OrgAdmin", "UserAdmin"));
 
@@ -112,19 +111,19 @@ public class Program
 
             options.AddPolicy("ApproverL3OrAbove",
                 p => p.RequireRole("ApproverL3", "OrgAdmin", "SuperAdmin"));
-                
+
             options.AddPolicy("CanManageGroups",
                 p => p.RequireRole("SuperAdmin", "SupportAdmin"));
         });
 
-        // Cookie options (so unauthorized goes to /Account/Login)
+        // Cookie options
         builder.Services.ConfigureApplicationCookie(opts =>
         {
             opts.LoginPath = "/Account/Login";
             opts.AccessDeniedPath = "/Account/AccessDenied";
         });
 
-        // existing DbContext + interceptor
+        // DbContext + interceptor
         builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
             options.UseNpgsql(connectionString, npg =>
@@ -136,8 +135,8 @@ public class Program
         });
 
         // Group resolver + assignment
-        builder.Services.AddScoped<IGroupResolver, GroupResolver>();
-        builder.Services.AddScoped<UserGroupAssignmentInterceptor>();
+        builder.Services.AddScoped<BlazorLoginDemo.Shared.Services.Interfaces.IGroupResolver, GroupResolver>();
+        builder.Services.AddScoped<BlazorLoginDemo.Shared.Data.UserGroupAssignmentInterceptor>();
 
         // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
@@ -145,13 +144,12 @@ public class Program
         builder.Services.AddTransient<IEmailSender, MailerSendEmailSender>();
         builder.Services.AddTransient<IEmailSender<ApplicationUser>, MailerSendEmailSender>();
 
-        // Keep confirmed account requirement (already set above)
         builder.Services.Configure<IdentityOptions>(o =>
         {
             o.SignIn.RequireConfirmedAccount = true;
         });
 
-        // Localization: RESX under /Resources (in Web or in your Shared assembly)
+        // Localization: RESX under /Resources
         builder.Services.AddLocalization(opts => opts.ResourcesPath = "Resources");
 
         var supportedCultures = new[] { "en-AU", "en-GB", "es-ES", "it-IT", "fr-FR" };
@@ -170,14 +168,12 @@ public class Program
             };
         });
 
-
-
         // Detect container
         var inContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 
         var app = builder.Build();
 
-        // Set culture then redirect back (SSR-friendly switcher)
+        // Culture switch endpoint
         app.MapGet("/set-culture", (string culture, string? redirectUri, HttpContext ctx) =>
         {
             ctx.Response.Cookies.Append(
@@ -188,7 +184,6 @@ public class Program
             return Results.Redirect(string.IsNullOrWhiteSpace(redirectUri) ? "/" : redirectUri);
         });
 
-
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
@@ -197,44 +192,58 @@ public class Program
         else
         {
             app.UseExceptionHandler("/Error");
-            if (!inContainer) app.UseHsts();               // ⬅ gate HSTS in container
+            if (!inContainer) app.UseHsts();
         }
 
         if (!inContainer)
         {
-            app.UseHttpsRedirection();                     // ⬅ gate HTTPS redirect in container
+            app.UseHttpsRedirection();
         }
 
-        // Static files for wwwroot + static web assets for RCLs
-        app.UseStaticFiles();                              // ⬅ ensure blazor.web.js/_framework/* are served
-        app.UseAuthentication();
+        // 1) wwwroot files (images, app.css, etc.)
+        app.UseStaticFiles();
 
-        // Enable localization
+        // 2) Localization
         app.UseRequestLocalization(app.Services
             .GetRequiredService<IOptions<RequestLocalizationOptions>>().Value);
 
+        // 3) Auth middlewares
+        app.UseAuthentication();
         app.UseAuthorization();
+
+        // 4) Antiforgery
         app.UseAntiforgery();
 
-        // Optional: track LastSeenUtc for signed-in users
+        // 5) SPA fallback to render NotFound via <Router>, preserving HTTP 404
+        //    - Only triggers for non-file paths (no extension) and non-API/framework/content paths
         app.Use(async (ctx, next) =>
         {
-            if (ctx.User?.Identity?.IsAuthenticated == true)
-            {
-                var um = ctx.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
-                var user = await um.GetUserAsync(ctx.User);
-                if (user is not null)
-                {
-                    user.LastSeenUtc = DateTimeOffset.UtcNow;
-                    _ = await um.UpdateAsync(user); // ignore errors
-                }
-            }
             await next();
+
+            if (ctx.Response.StatusCode == 404
+                && !Path.HasExtension(ctx.Request.Path.Value ?? string.Empty)
+                && !ctx.Request.Path.StartsWithSegments("/api")
+                && !ctx.Request.Path.StartsWithSegments("/_framework")
+                && !ctx.Request.Path.StartsWithSegments("/_content")
+                && !ctx.Request.Path.StartsWithSegments("/css")
+                && !ctx.Request.Path.StartsWithSegments("/js")
+                && !ctx.Request.Path.StartsWithSegments("/images"))
+            {
+                // Preserve 404 status for crawlers/SEO, but re-run pipeline at '/'
+                ctx.Response.Clear();
+                ctx.Response.StatusCode = 404;
+                ctx.Request.Path = "/";
+                await next();
+            }
         });
 
-        app.MapStaticAssets();
+        // 6) Map Razor Components (your app)
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
+
+        // 7) Map static web assets for components/framework (/_framework, /_content, *.styles.css)
+        //    Allow anonymous so fallback auth policy never blocks scripts/styles.
+        app.MapStaticAssets().AllowAnonymous();
 
         // Identity endpoints
         app.MapAdditionalIdentityEndpoints();
@@ -246,29 +255,6 @@ public class Program
             return Results.Redirect("/");
         })
         .RequireAuthorization();
-
-        // Seed roles/admin
-        // using (var scope = app.Services.CreateScope())
-        // {
-        //     var services = scope.ServiceProvider;
-        //     await SeedData.InitializeAsync(services, builder.Configuration);
-        // }
-        // --- Seed roles/admin ---
-        // using (var scope = app.Services.CreateScope())
-        // {
-        //     var services = scope.ServiceProvider;
-        //     var db = services.GetRequiredService<ApplicationDbContext>();
-
-        //     if (!await db.Database.CanConnectAsync())
-        //     {
-        //         app.Logger.LogError("❌ Cannot connect to Postgres. Check connection string and that the server/DB/user exist.");
-        //     }
-        //     else
-        //     {
-        //         await SeedData.InitializeAsync(services, builder.Configuration);
-        //     }
-        // }
-
 
         await app.RunAsync();
     }

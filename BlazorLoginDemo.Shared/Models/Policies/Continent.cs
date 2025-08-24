@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
-namespace BlazorLoginDemo.Models.Policies;
+namespace BlazorLoginDemo.Shared.Models.Policies;
 
 [Index(nameof(Name), IsUnique = true)]
 [Index(nameof(IsoCode), IsUnique = true)]

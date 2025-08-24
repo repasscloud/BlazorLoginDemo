@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using BlazorLoginDemo.Models.Policies;
-using BlazorLoginDemo.Models.User;
+using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.Static;
 using BlazorLoginDemo.Shared.Validation;
 using NanoidDotNet;

@@ -1,10 +1,10 @@
-using BlazorLoginDemo.Web.Data;
+using BlazorLoginDemo.Shared.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;              // <-- needed for AnyAsync/FirstOrDefaultAsync
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BlazorLoginDemo.Web.Startup;
+namespace BlazorLoginDemo.Shared.Startup;
 
 public static class SeedData
 {

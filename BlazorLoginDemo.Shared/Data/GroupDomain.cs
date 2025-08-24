@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace BlazorLoginDemo.Web.Data;
+namespace BlazorLoginDemo.Shared.Data;
 
 public class GroupDomain
 {

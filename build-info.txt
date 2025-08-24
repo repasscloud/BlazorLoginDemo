@@ -1,0 +1,4 @@
++ "--build" it will increment the number at N by +1
++ "--patch" it will increment the number at Z by +1, reset N = 0
++ "--minor" it will increment the number at Y by +1, reset Z = 0, N = 0
++ "--major" it will increment the number at X by +1, reset Y = 0, Z = 0, N = 0

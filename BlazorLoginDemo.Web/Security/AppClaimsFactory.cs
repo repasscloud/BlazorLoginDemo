@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using BlazorLoginDemo.Web.Data;
+using BlazorLoginDemo.Shared.Data;
 using Microsoft.AspNetCore.Identity;
 
 namespace BlazorLoginDemo.Web.Security;
