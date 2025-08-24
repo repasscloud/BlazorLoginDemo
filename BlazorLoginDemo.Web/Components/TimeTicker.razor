@@ -1,6 +1,5 @@
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
-@inject NavigationManager Nav
 @implements IAsyncDisposable
 
 <div class="d-inline-flex align-items-center gap-4">
@@ -16,58 +15,57 @@
 </div>
 
 @code {
-    private IJSObjectReference? _module;
-    private DotNetObjectReference<TimeTicker>? _dotNetRef;
+    private CancellationTokenSource? _cts;
+    private Task? _loopTask;
 
     private string _utcString = "--:--:--";
     private string _localString = "--:--:--";
     private string _timeZoneDisplay = "Local time";
-    private System.Timers.Timer? _utcTimer;
-
-    [JSInvokable]
-    public void UpdateLocalFromJs(string local)
-    {
-        _localString = local;
-        StateHasChanged();
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
+        if (_loopTask is not null) return;
 
-        // Build a base-aware absolute path so it works under virtual directories too
-        var moduleUrl = new Uri(new Uri(Nav.BaseUri), "/js/timeTicker.js").ToString();
-        _module = await JS.InvokeAsync<IJSObjectReference>("import", moduleUrl);
+        // Paint immediately for prerender too
+        _utcString = DateTimeOffset.UtcNow.ToString("HH:mm:ss");
+        try { _timeZoneDisplay = await JS.InvokeAsync<string>("timeTicker.getTimeZone"); } catch { }
+        try { _localString = await JS.InvokeAsync<string>("timeTicker.getLocalHHMMSS"); } catch { }
+        StateHasChanged();
 
-        _timeZoneDisplay = await _module.InvokeAsync<string>("getTimeZone");
-
-        _dotNetRef = DotNetObjectReference.Create(this);
-        await _module.InvokeVoidAsync("startLocalTicker", _dotNetRef);
-
-        _utcTimer = new System.Timers.Timer(1000);
-        _utcTimer.Elapsed += (_, __) =>
-        {
-            _utcString = DateTimeOffset.UtcNow.ToString("HH:mm:ss");
-            InvokeAsync(StateHasChanged);
-        };
-        _utcTimer.AutoReset = true;
-        _utcTimer.Start();
+        _cts = new CancellationTokenSource();
+        _loopTask = RunLoopAsync(_cts.Token);
     }
 
-    public async ValueTask DisposeAsync()
+    private async Task RunLoopAsync(CancellationToken token)
     {
+        var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         try
         {
-            if (_module is not null)
-                await _module.InvokeVoidAsync("stopLocalTicker");
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                _utcString = DateTimeOffset.UtcNow.ToString("HH:mm:ss");
+
+                // Pull local time from JS every tick; if prerender/blocked, it just skips
+                try
+                {
+                    _localString = await JS.InvokeAsync<string>("timeTicker.getLocalHHMMSS");
+                }
+                catch { /* ignore until interactive */ }
+
+                await InvokeAsync(StateHasChanged);
+            }
         }
-        catch { /* ignore */ }
+        catch (OperationCanceledException) { /* normal on dispose */ }
+        finally
+        {
+            timer.Dispose();
+        }
+    }
 
-        _utcTimer?.Stop();
-        _utcTimer?.Dispose();
-        _dotNetRef?.Dispose();
-
-        if (_module is not null)
-            await _module.DisposeAsync();
+    public ValueTask DisposeAsync()
+    {
+        try { _cts?.Cancel(); } catch { }
+        _cts?.Dispose();
+        return ValueTask.CompletedTask;
     }
 }
