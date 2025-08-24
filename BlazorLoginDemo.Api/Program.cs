@@ -41,6 +41,16 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+// CORS
+builder.Services.AddCors(o =>
+{
+    o.AddPolicy("AllowClients", p => p
+        .WithOrigins("https://localhost:5003", "http://localhost:5003") // Blazor dev origins
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials());
+});
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -84,6 +94,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowClients"); // <-- Enable CORS here
 
 app.UseAuthentication();
 app.UseAuthorization();

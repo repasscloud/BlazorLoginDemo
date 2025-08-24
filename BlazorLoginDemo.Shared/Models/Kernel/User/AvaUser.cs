@@ -5,6 +5,7 @@ using BlazorLoginDemo.Shared.Models.Kernel.Client;
 using BlazorLoginDemo.Shared.Validation;
 using Microsoft.EntityFrameworkCore;
 using NanoidDotNet;
+using BlazorLoginDemo.Shared.Models.Auth;
 
 namespace BlazorLoginDemo.Shared.Models.User;
 
@@ -23,7 +24,7 @@ public class AvaUser
     [Required]
     [PassportNameValidation]
     public required string FirstName { get; set; }
-    
+
     [PassportNameValidation]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? MiddleName { get; set; }
@@ -31,7 +32,7 @@ public class AvaUser
     [Required]
     [PassportNameValidation]
     public required string LastName { get; set; }
-    
+
     [Required]
     [EmailAddress]
     public required string Email { get; set; }
@@ -46,14 +47,14 @@ public class AvaUser
 
     [CabinTypeValidation]
     public string MaxFlightSeating { get; set; } = "ECONOMY";
-    
+
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? IncludedAirlineCodes { get; set; }
-    
+
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ExcludedAirlineCodes { get; set; }
     public bool NonStopFlight { get; set; } = false;
-    
+
     // financial considerations for bookings
     [CurrencyTypeValidation]
     [RegularExpression(@"^[A-Z]{3}$", ErrorMessage = "Currency must be exactly 3 uppercase letters.")]
@@ -80,4 +81,7 @@ public class AvaUser
 
     // this will only be filled in by the API, it's completely optional for the user to provide etc
     public string? ClientId { get; set; }
+    
+    // navigation for refresh tokens
+    public List<RefreshToken> RefreshTokens { get; set; } = new();
 }
