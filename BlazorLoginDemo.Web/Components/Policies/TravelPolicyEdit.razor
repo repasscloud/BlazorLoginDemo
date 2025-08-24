@@ -45,7 +45,7 @@
         <div class="col-md-4">
           <label class="form-label">Policy ID</label>
           <input class="form-control" value="@Model.Id" readonly />
-          <div class="form-text">Auto-generated NanoID (read-only).</div>
+          @* <div class="form-text">Auto-generated NanoID (read-only).</div> *@
         </div>
 
         <!-- Policy Name -->
@@ -58,7 +58,7 @@
         <!-- AvaClientId -->
         <div class="col-md-4">
           <label class="form-label">Client ID</label>
-          <InputText class="form-control" @bind-Value="Model.AvaClientId" />
+          <InputText class="form-control" @bind-Value="Model.AvaClientId" readonly />
           <ValidationMessage For="@(() => Model.AvaClientId)" />
         </div>
 
@@ -78,7 +78,7 @@
               <option value="@Model.DefaultCurrencyCode">@Model.DefaultCurrencyCode</option>
             }
           </InputSelect>
-          <div class="form-text">Stores the 3‑letter code (e.g., AUD, USD, EUR).</div>
+          @* <div class="form-text">Stores the 3‑letter code (e.g., AUD, USD, EUR).</div> *@
           <ValidationMessage For="@(() => Model.DefaultCurrencyCode)" />
         </div>
 
