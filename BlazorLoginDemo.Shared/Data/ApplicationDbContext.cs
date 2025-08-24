@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using BlazorLoginDemo.Shared.Models.User;
+using BlazorLoginDemo.Shared.Models.Auth;
 
 
 namespace BlazorLoginDemo.Shared.Data;
@@ -11,6 +12,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupDomain> GroupDomains => Set<GroupDomain>();
+
+    // API
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     // Ava
     public DbSet<AvaUser> AvaUsers => Set<AvaUser>();
@@ -99,7 +103,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // Explicit composite key configuration for disabled countries.
         builder.Entity<TravelPolicyDisabledCountry>()
             .HasKey(tpdc => new { tpdc.TravelPolicyId, tpdc.CountryId });
-            
+
         // Configure one-to-many for Region and Continent.
         builder.Entity<Continent>()
             .HasOne(c => c.Region)
@@ -113,6 +117,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(ct => ct.Countries)
             .HasForeignKey(c => c.ContinentId)
             .OnDelete(DeleteBehavior.Restrict);
-
+            
+        builder.Entity<RefreshToken>(b =>
+        {
+            b.HasIndex(x => x.Token).IsUnique();
+            b.HasOne(x => x.AvaUser)
+            .WithMany(u => u.RefreshTokens)
+            .HasForeignKey(x => x.AvaUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

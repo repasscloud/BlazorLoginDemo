@@ -15,7 +15,7 @@ public class AvaUser
     [Key]
     public string Id { get; set; } = Nanoid.Generate();
 
-    [Required]                       // make this required for true 1:1
+    [Required]  // make this required for true 1:1
     public string AspNetUsersId { get; set; } = default!;
 
     public bool IsActive { get; set; } = true;
