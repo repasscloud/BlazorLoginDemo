@@ -1,0 +1,24 @@
+this is the file path:
+BlazorLoginDemo.Web/Components/Layout/MainLayout.razor
+
+
+What I need, is a zsh, that will read line 11 of that file, which looks like this:
+"            <pre><code>v0.2.22-a11</code></pre>"
+
+the version info here: 0.2.22-a11
+
+is broken down like this: X.Y.Z-aN
+
+a never changes, that will be a letter in lower case, either a,b,r - never anything other than those 3 letters
+
+X = major
+Y = minor
+Z = patch
+
+
+I want a script, that when i call it, it will take into consideration these args:
+
++ "--build" it will increment the number at N by +1
++ "--patch" it will increment the number at Z by +1, reset N = 0
++ "--minor" it will increment the number at Y by +1, reset Z = 0, N = 0
++ "--major" it will increment the number at X by +1, reset Y = 0, Z = 0, N = 0

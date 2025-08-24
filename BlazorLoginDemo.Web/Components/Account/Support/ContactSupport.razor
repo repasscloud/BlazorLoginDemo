@@ -1,12 +1,10 @@
 @page "/support/contact"
-@attribute [AllowAnonymous]
 @rendermode InteractiveServer
 
-@* ContactSupport.razor (Bootstrap 5, pure utilities) *@
+@* Contact.razor — Bootstrap 5, no custom CSS *@
 
 @using System.ComponentModel.DataAnnotations
 @inject IHttpClientFactory HttpClientFactory
-@inject IJSRuntime JS
 
 <EditForm EditContext="editContext" OnValidSubmit="HandleValidSubmit">
     <DataAnnotationsValidator />
@@ -15,7 +13,9 @@
     <div class="card shadow-lg rounded-4 mx-auto my-4" style="max-width:760px;">
         <div class="card-header bg-primary text-bg-primary py-3">
             <div class="d-flex align-items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-life-preserver" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.5-14.95V3.1a5 5 0 0 1 3.4 1.95l1.415-1.415A6.964 6.964 0 0 0 8.5 1.05M14.95 7.5H12.9a5 5 0 0 1-1.95 3.4l1.415 1.415a6.964 6.964 0 0 0 2.585-4.815M8.5 12.9v2.05a6.964 6.964 0 0 0 4.815-2.585L11.9 10.95A5 5 0 0 1 8.5 12.9m-1-11.85A6.964 6.964 0 0 0 2.685 3.635L4.1 5.05A5 5 0 0 1 7.5 3.1zm-5.45 6.45A6.964 6.964 0 0 0 3.635 13.315L5.05 11.9A5 5 0 0 1 3.1 8.5zm6.45 5.45a5 5 0 0 1-3.4-1.95L3.735 13.415A6.964 6.964 0 0 0 7.5 14.95"/></svg>
+                @* <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-life-preserver" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.5-14.95V3.1a5 5 0 0 1 3.4 1.95l1.415-1.415A6.964 6.964 0 0 0 8.5 1.05M14.95 7.5H12.9a5 5 0 0 1-1.95 3.4l1.415 1.415a6.964 6.964 0 0 0 2.585-4.815M8.5 12.9v2.05a6.964 6.964 0 0 0 4.815-2.585L11.9 10.95A5 5 0 0 1 8.5 12.9m-1-11.85A6.964 6.964 0 0 0 2.685 3.635L4.1 5.05A5 5 0 0 1 7.5 3.1zm-5.45 6.45A6.964 6.964 0 0 0 3.635 13.315L5.05 11.9A5 5 0 0 1 3.1 8.5zm6.45 5.45a5 5 0 0 1-3.4-1.95L3.735 13.415A6.964 6.964 0 0 0 7.5 14.95"/></svg> *@
+                <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/refs/heads/7.x/svgs/regular/question-circle.svg"
+                    width="24" height="24" alt="" aria-hidden="true" class="flex-shrink-0" />
                 <h1 class="h4 m-0">Contact Support</h1>
             </div>
             <p class="mb-0 small opacity-75 mt-1">Raise a ticket. We'll create a GitHub issue and log it in our system.</p>
@@ -28,38 +28,48 @@
             }
 
             <div class="row g-3">
+                <!-- Contact name (optional) -->
                 <div class="col-12 col-md-6">
                     <div class="form-floating">
-                        <InputText id="contactName" class="form-control" @bind-Value="Model.Name" />
+                        <InputText id="contactName" class="form-control" @bind-Value="Model.Name" placeholder=" " />
                         <label for="contactName">Your name (optional)</label>
                     </div>
                 </div>
 
+                <!-- Email (required) -->
                 <div class="col-12 col-md-6">
                     <div class="form-floating">
-                        <InputText id="contactEmail" class="form-control" @bind-Value="Model.Email" />
+                        <InputText id="contactEmail" class="form-control" @bind-Value="Model.Email" type="email" inputmode="email" autocomplete="email" placeholder=" " />
                         <label for="contactEmail">Email address *</label>
                         <ValidationMessage For="() => Model.Email" />
                     </div>
                 </div>
 
+                <!-- Message (required) -->
                 <div class="col-12">
                     <div class="form-floating">
-                        <InputTextArea id="message" class="form-control" @bind-Value="Model.Message" rows="6" />
+                        <InputTextArea id="message" class="form-control" @bind-Value="Model.Message" rows="6" placeholder=" " />
                         <label for="message">Message *</label>
                         <ValidationMessage For="() => Model.Message" />
                     </div>
                     <div class="form-text">Include steps to reproduce, error messages, and expected vs actual behaviour.</div>
                 </div>
 
+                <!-- File upload (optional, single) -->
                 <div class="col-12">
                     <label class="form-label" for="fileInput">Attachment (optional)</label>
-                    <div id="dropzone" class="border border-2 border-dashed rounded p-3 text-center" @ondragenter="OnDragEnter" @ondragover="OnDragOver" @ondragleave="OnDragLeave" @ondrop="OnDrop">
-                        <InputFile id="fileInput" OnChange="OnFileSelected" />
+                    <div id="dropzone"
+                         class="@($"border border-2 rounded p-3 text-center {(IsDragOver ? "border-primary bg-primary-subtle" : string.Empty)}")"
+                         @ondragenter="OnDragEnter"
+                         @ondragleave="OnDragLeave"
+                         @ondragover:preventDefault
+                         @ondrop:preventDefault>
+                        <InputFile id="fileInput" OnChange="OnFileSelected" accept=".png,.jpg,.jpeg,.gif,.pdf,.txt,.zip,.log,.mp4,.mov" />
                         <div class="small text-body-secondary mt-2">@FileLabel</div>
                     </div>
                 </div>
 
+                <!-- Submit -->
                 <div class="col-12 d-flex align-items-center justify-content-between mt-2">
                     <div class="small text-body-secondary">Fields marked * are required.</div>
                     <button type="submit" class="btn btn-primary" disabled="@IsSubmitting">
@@ -77,15 +87,15 @@
 
 @code {
     private ContactSupportModel Model { get; set; } = new();
-    private EditContext editContext = default!;
+    private EditContext editContext = default!; // initialized in OnInitialized
 
+    private bool IsSubmitting;
+    private bool IsDragOver;
+    private string SubmitLabel = "Send ticket";
+    private string? StatusMessage;
+    private string StatusClass = "alert-success";
 
-    private bool IsSubmitting { get; set; }
-    private string SubmitLabel { get; set; } = "Send ticket";
-    private string? StatusMessage { get; set; }
-    private string StatusClass { get; set; } = "alert-success";
-
-    private IBrowserFile? SelectedFile { get; set; }
+    private IBrowserFile? SelectedFile;
     private string FileLabel => SelectedFile is null
         ? "Max 25 MB. Common types: .png, .jpg, .pdf, .txt, .zip, .log"
         : $"Selected: {SelectedFile.Name} ({(SelectedFile.Size/1024d/1024d):0.0} MB)";
@@ -104,7 +114,7 @@
 
         try
         {
-            const long MaxFileBytes = 25 * 1024 * 1024;
+            const long MaxFileBytes = 25 * 1024 * 1024; // 25MB
             var client = HttpClientFactory.CreateClient();
 
             using var content = new MultipartFormDataContent();
@@ -123,19 +133,23 @@
                 content.Add(fileContent, "file", SelectedFile.Name);
             }
 
-            // TODO: Replace with your endpoint
-            await Task.Delay(400);
+            // TODO: Replace with your real endpoint that will create the GitHub issue and log to DB
+            // var resp = await client.PostAsync("/api/support/tickets", content);
+            // resp.EnsureSuccessStatusCode();
+            await Task.Delay(400); // simulate success
 
+            // Reset form
             Model = new();
             editContext = new EditContext(Model);
             SelectedFile = null;
+            IsDragOver = false;
 
             StatusMessage = "Ticket submitted successfully.";
             StatusClass = "alert-success";
         }
         catch (Exception ex)
         {
-            StatusMessage = ex.Message.Contains("Failed") ? ex.Message : "Something went wrong. Please try again.";
+            StatusMessage = string.IsNullOrWhiteSpace(ex.Message) ? "Something went wrong. Please try again." : ex.Message;
             StatusClass = "alert-danger";
         }
         finally
@@ -146,40 +160,25 @@
         }
     }
 
-    private void OnDragEnter(DragEventArgs e) => ToggleDrag(true, e);
-    private void OnDragOver(DragEventArgs e) => ToggleDrag(true, e);
-    private void OnDragLeave(DragEventArgs e) => ToggleDrag(false, e);
-
-    private async Task OnDrop(DragEventArgs e)
+    private void OnDragEnter(DragEventArgs _)
     {
-        ToggleDrag(false, e);
-        if (e.DataTransfer?.Files is { Length: > 0 })
-        {
-            var file = e.DataTransfer.Files[0];
-            await SetFile(file);
-        }
-    }
-
-    private async Task OnFileSelected(InputFileChangeEventArgs e)
-    {
-        var file = e.File;
-        await SetFile(file);
-    }
-
-    private async Task SetFile(IBrowserFile file)
-    {
-        SelectedFile = file;
-        await JS.InvokeVoidAsync("eval", "document.getElementById('fileInput')?.classList.remove('is-invalid')");
+        IsDragOver = true;
         StateHasChanged();
     }
 
-    private void ToggleDrag(bool on, DragEventArgs e)
+    private void OnDragLeave(DragEventArgs _)
     {
-        e.PreventDefault();
-        var js = on
-            ? "document.getElementById('dropzone')?.classList.add('border-primary','bg-primary-subtle')"
-            : "document.getElementById('dropzone')?.classList.remove('border-primary','bg-primary-subtle')";
-        JS.InvokeVoidAsync("eval", js);
+        IsDragOver = false;
+        StateHasChanged();
+    }
+
+    private Task OnFileSelected(InputFileChangeEventArgs e) => SetFile(e.File);
+
+    private Task SetFile(IBrowserFile file)
+    {
+        SelectedFile = file;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     public sealed class ContactSupportModel

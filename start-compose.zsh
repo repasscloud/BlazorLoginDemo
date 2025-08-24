@@ -9,6 +9,76 @@ dbPort=5432
 dbUser='demodb'
 dbPass='YourAppPassword'
 dbName='demodb'
+FILE="BlazorLoginDemo.Web/Components/Layout/MainLayout.razor"
+
+usage() {
+  echo "Usage: $(basename "$0") [--build | --patch | --minor | --major]"
+  exit 1
+}
+
+[[ $# -eq 1 ]] || usage
+ACTION="$1"
+
+# Read line 11 (expected: '            <pre><code>vX.Y.Z-aN</code></pre>')
+LINE=$(sed -n '11p' "$FILE")
+
+# Extract version payload: X.Y.Z-aN
+VER=$(echo "$LINE" | sed -E 's/.*<code>v([0-9]+\.[0-9]+\.[0-9]+-[abr][0-9]+)<\/code>.*/\1/')
+if [[ -z "${VER:-}" ]]; then
+  echo "Could not parse version on line 11. Found:"
+  echo "$LINE"
+  exit 2
+fi
+
+# Split into components: X, Y, Z, letter, N
+X=$(echo "$VER" | cut -d. -f1)
+Y=$(echo "$VER" | cut -d. -f2)
+REST=$(echo "$VER" | cut -d. -f3)       # e.g. '22-a11'
+
+Z="${REST%-[abr]*}"                      # before '-a11' => '22'
+SUFFIX="${REST#*-}"                      # after  '-'    => 'a11'
+LETTER="${SUFFIX%%[0-9]*}"               # 'a' (or 'b'/'r')
+N="${SUFFIX#$LETTER}"                    # '11'
+
+# Sanity checks
+[[ "$LETTER" =~ '^(a|b|r)$' ]] || { echo "Unexpected release letter: $LETTER"; exit 3; }
+[[ "$X" =~ '^[0-9]+$' && "$Y" =~ '^[0-9]+$' && "$Z" =~ '^[0-9]+$' && "$N" =~ '^[0-9]+$' ]] || {
+  echo "Parsed numbers look wrong: X=$X Y=$Y Z=$Z N=$N"
+  exit 4
+}
+
+# Apply bump rules
+case "$ACTION" in
+  --build)
+    N=$((N + 1))
+    ;;
+  --patch)
+    Z=$((Z + 1))
+    N=0
+    ;;
+  --minor)
+    Y=$((Y + 1))
+    Z=0
+    N=0
+    ;;
+  --major)
+    X=$((X + 1))
+    Y=0
+    Z=0
+    N=0
+    ;;
+  *)
+    usage
+    ;;
+esac
+
+NEW_VER="${X}.${Y}.${Z}-${LETTER}${N}"
+NEW_LINE="            <pre><code>v${NEW_VER}</code></pre>"
+
+# Replace only line 11 with the new version
+awk -v repl="$NEW_LINE" 'NR==11{$0=repl} {print}' "$FILE" > "${FILE}.tmp" && mv "${FILE}.tmp" "$FILE"
+
+echo "Updated version to: v${NEW_VER}"
 
 echo
 echo "🐳 0) Stop all docker containers"
@@ -24,6 +94,8 @@ if [[ -z "$vols" ]]; then
 else
   echo "$vols" | xargs -n1 docker volume rm -f
 fi
+
+
 
 
 echo
