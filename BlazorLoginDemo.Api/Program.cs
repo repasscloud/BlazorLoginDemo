@@ -7,6 +7,7 @@ using BlazorLoginDemo.Api.Auth;
 using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.Auth;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Options
@@ -18,8 +19,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Identity (if not already in Web or elsewhere; include if API issues tokens)
-builder.Services.AddIdentityCore<AvaUser>(o => { /* password/lockout opts */ })
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddIdentityCore<ApplicationUser>(o =>
+{
+    // password/lockout options if you want
+})
+.AddEntityFrameworkStores<ApplicationDbContext>();
+
 
 // AuthN/JWT
 builder.Services
