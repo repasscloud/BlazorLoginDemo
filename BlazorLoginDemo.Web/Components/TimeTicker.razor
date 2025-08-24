@@ -1,0 +1,80 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="d-inline-flex align-items-center gap-4">
+    <!-- 🌍 UTC Time -->
+    <span class="d-inline-flex align-items-center" title="Coordinated Universal Time">
+        <span class="me-2" aria-hidden="true">🌍</span>
+        <strong>@_utcString</strong>
+    </span>
+
+    <!-- 🕒 Local Time (true browser local via JS) -->
+    <span class="d-inline-flex align-items-center" title="@_timeZoneDisplay">
+        <span class="me-2" aria-hidden="true">🕒</span>
+        <strong>@_localString</strong>
+    </span>
+</div>
+
+@code {
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<TimeTicker>? _dotNetRef;
+
+    private string _utcString = "--:--:--";
+    private string _localString = "--:--:--";
+    private string _timeZoneDisplay = "Local time";
+
+    private System.Timers.Timer? _utcTimer;
+
+    // Called by JS every second with the current local time string.
+    [JSInvokable]
+    public void UpdateLocalFromJs(string local)
+    {
+        _localString = local;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Load the small JS helper
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/timeTicker.js");
+
+        // Display the user's IANA time zone as a tooltip (e.g., "Australia/Sydney")
+        _timeZoneDisplay = await _module.InvokeAsync<string>("getTimeZone");
+
+        // Start a JS-side interval that pushes local time back every second
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await _module.InvokeVoidAsync("startLocalTicker", _dotNetRef);
+
+        // Start a lightweight server/.NET timer for UTC
+        _utcTimer = new System.Timers.Timer(1000);
+        _utcTimer.Elapsed += (_, __) =>
+        {
+            _utcString = DateTimeOffset.UtcNow.ToString("HH:mm:ss");
+            InvokeAsync(StateHasChanged);
+        };
+        _utcTimer.AutoReset = true;
+        _utcTimer.Start();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+                await _module.InvokeVoidAsync("stopLocalTicker");
+
+            _utcTimer?.Stop();
+            _utcTimer?.Dispose();
+            _dotNetRef?.Dispose();
+            if (_module is not null)
+                await _module.DisposeAsync();
+        }
+        catch
+        {
+            // ignore dispose-time exceptions
+        }
+    }
+}
