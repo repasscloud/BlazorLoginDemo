@@ -16,328 +16,328 @@
 <h3 class="mb-4">User Management</h3>
 
 <div class="card shadow-sm">
-  <div class="card-body">
-    <div class="row g-3 align-items-end">
-      <div class="col-sm-6">
-        <label class="form-label">Find by email</label>
-        <input class="form-control" @bind="lookupEmail" autocomplete="off" />
-      </div>
-      <div class="col-sm-6 d-flex gap-2">
-        <button class="btn btn-primary" type="button" @onclick="FindUser">Load</button>
-        <button class="btn btn-outline-secondary" type="button" @onclick="ListUsers">Show first 10 users</button>
-        <button class="btn btn-outline-danger ms-auto" type="button" title="Creates Admin from appsettings if missing" @onclick="SeedAdminFromConfig">Create admin from config</button>
-      </div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-6">
+                <label class="form-label">Find by email</label>
+                <input class="form-control" @bind="lookupEmail" autocomplete="off" />
+            </div>
+            <div class="col-sm-6 d-flex gap-2">
+                <button class="btn btn-primary" type="button" @onclick="FindUser">Load</button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="ListUsers">Show first 10 users</button>
+                <button class="btn btn-outline-danger ms-auto" type="button" title="Creates Admin from appsettings if missing" @onclick="SeedAdminFromConfig">Create admin from config</button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(infoMessage))
+        {
+            <div class="alert alert-info mt-3">@infoMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3">@errorMessage</div>
+        }
+
+        @if (usersPreview?.Count > 0)
+        {
+            <div class="table-responsive mt-3">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>UserName</th>
+                            <th>DisplayName</th>
+                            <th>Group</th>
+                            <th>Active</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in usersPreview)
+                        {
+                            <tr>
+                                <td>@u.Email</td>
+                                <td>@u.UserName</td>
+                                <td>@u.DisplayName</td>
+                                <td>@(u.Group?.Name ?? "-")</td>
+                                <td>@(u.IsActive ? "Yes" : "No")</td>
+                                <td>
+                                    <button class="btn btn-link p-0" @onclick="@(() => LoadFromPreview(u.Id))">Edit</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (user is not null)
+        {
+            <hr />
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Display Name</label>
+                    <input class="form-control" @bind="user.DisplayName" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Department</label>
+                    <input class="form-control" @bind="user.Department" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Group</label>
+                    <InputSelect @bind-Value="user.GroupId" TValue="Guid?" class="form-select">
+                        <option value="">— Select a group —</option>
+                        @foreach (var g in groupOptions)
+                        {
+                            <option value="@g.Id">@g.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="col-md-2 d-flex align-items-center">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="isActive" @bind="user.IsActive" />
+                        <label class="form-check-label" for="isActive">Active</label>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Roles</label>
+                    <div class="d-flex gap-2 flex-wrap">
+                        @foreach (var r in roles)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox"
+                                    checked="@selectedRoles.Contains(r)"
+                                @onchange="(ChangeEventArgs e) => ToggleRole(r, (bool?)e.Value == true)" />
+                                <label class="form-check-label">@r</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-12 d-flex gap-2 mt-2">
+                    <button class="btn btn-success" @onclick="Save">Save</button>
+                </div>
+            </div>
+        }
     </div>
-
-    @if (!string.IsNullOrEmpty(infoMessage))
-    {
-        <div class="alert alert-info mt-3">@infoMessage</div>
-    }
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger mt-3">@errorMessage</div>
-    }
-
-    @if (usersPreview?.Count > 0)
-    {
-        <div class="table-responsive mt-3">
-            <table class="table table-sm align-middle">
-                <thead>
-                    <tr>
-                        <th>Email</th>
-                        <th>UserName</th>
-                        <th>DisplayName</th>
-                        <th>Group</th>
-                        <th>Active</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var u in usersPreview)
-                {
-                    <tr>
-                        <td>@u.Email</td>
-                        <td>@u.UserName</td>
-                        <td>@u.DisplayName</td>
-                        <td>@(u.Group?.Name ?? "-")</td>
-                        <td>@(u.IsActive ? "Yes" : "No")</td>
-                        <td>
-                            <button class="btn btn-link p-0" @onclick="@(() => LoadFromPreview(u.Id))">Edit</button>
-                        </td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
-    }
-
-    @if (user is not null)
-    {
-      <hr />
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Display Name</label>
-          <input class="form-control" @bind="user.DisplayName" />
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Department</label>
-          <input class="form-control" @bind="user.Department" />
-        </div>
-
-        <div class="col-md-6">
-          <label class="form-label">Group</label>
-          <InputSelect @bind-Value="user.GroupId" TValue="Guid?" class="form-select">
-            <option value="">— Select a group —</option>
-            @foreach (var g in groupOptions)
-            {
-              <option value="@g.Id">@g.Name</option>
-            }
-          </InputSelect>
-        </div>
-
-        <div class="col-md-2 d-flex align-items-center">
-          <div class="form-check mt-4">
-            <input class="form-check-input" type="checkbox" id="isActive" @bind="user.IsActive" />
-            <label class="form-check-label" for="isActive">Active</label>
-          </div>
-        </div>
-
-        <div class="col-12">
-          <label class="form-label">Roles</label>
-          <div class="d-flex gap-2 flex-wrap">
-            @foreach (var r in roles)
-            {
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox"
-                       checked="@selectedRoles.Contains(r)"
-                       @onchange="(ChangeEventArgs e) => ToggleRole(r, (bool?)e.Value == true)" />
-                <label class="form-check-label">@r</label>
-              </div>
-            }
-          </div>
-        </div>
-
-        <div class="col-12 d-flex gap-2 mt-2">
-          <button class="btn btn-success" @onclick="Save">Save</button>
-        </div>
-      </div>
-    }
-  </div>
 </div>
 
 @code {
-  // --- backing fields ---
-  string lookupEmail = string.Empty;
-  ApplicationUser? user;
-  HashSet<string> selectedRoles = new();
-  List<string> roles = new();
-  List<ApplicationUser>? usersPreview;
-  List<Group> groupOptions = new();
+    // --- backing fields ---
+    string lookupEmail = string.Empty;
+    ApplicationUser? user;
+    HashSet<string> selectedRoles = new();
+    List<string> roles = new();
+    List<ApplicationUser>? usersPreview;
+    List<Group> groupOptions = new();
 
-  string? infoMessage;
-  string? errorMessage;
+    string? infoMessage;
+    string? errorMessage;
 
-  protected override async Task OnInitializedAsync()
-  {
-      roles = (await RoleManager.Roles
-          .Select(r => r.Name!)
-          .ToListAsync())
-          .Where(n => !string.IsNullOrWhiteSpace(n))
-          .ToList()!;
+    protected override async Task OnInitializedAsync()
+    {
+        roles = (await RoleManager.Roles
+            .Select(r => r.Name!)
+            .ToListAsync())
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .ToList()!;
 
-      groupOptions = await Db.Groups
-          .OrderBy(g => g.IsCatchAll ? 0 : 1)
-          .ThenBy(g => g.Name)
-          .ToListAsync();
-  }
+        groupOptions = await Db.Groups
+            .OrderBy(g => g.IsCatchAll ? 0 : 1)
+            .ThenBy(g => g.Name)
+            .ToListAsync();
+    }
 
-  private async Task FindUser()
-  {
-      infoMessage = errorMessage = null;
-      usersPreview = null;
-      user = null;
-      selectedRoles.Clear();
+    private async Task FindUser()
+    {
+        infoMessage = errorMessage = null;
+        usersPreview = null;
+        user = null;
+        selectedRoles.Clear();
 
-      var email = lookupEmail?.Trim();
-      if (string.IsNullOrEmpty(email))
-      {
-          infoMessage = "Enter an email address.";
-          StateHasChanged();
-          return;
-      }
+        var email = lookupEmail?.Trim();
+        if (string.IsNullOrEmpty(email))
+        {
+            infoMessage = "Enter an email address.";
+            StateHasChanged();
+            return;
+        }
 
-      user = await UserManager.FindByEmailAsync(email)
-          ?? await UserManager.FindByNameAsync(email);
+        user = await UserManager.FindByEmailAsync(email)
+            ?? await UserManager.FindByNameAsync(email);
 
-      if (user is null)
-      {
-          var lower = email.ToLowerInvariant();
-          user = await UserManager.Users
-              .FirstOrDefaultAsync(u =>
-                  (u.Email != null && u.Email.ToLower() == lower) ||
-                  (u.UserName != null && u.UserName.ToLower() == lower));
-      }
+        if (user is null)
+        {
+            var lower = email.ToLowerInvariant();
+            user = await UserManager.Users
+                .FirstOrDefaultAsync(u =>
+                    (u.Email != null && u.Email.ToLower() == lower) ||
+                    (u.UserName != null && u.UserName.ToLower() == lower));
+        }
 
-      if (user is null)
-      {
-          infoMessage = $"No user found for “{email}”. Click ‘Show first 10 users’ to inspect the DB.";
-          StateHasChanged();
-          return;
-      }
+        if (user is null)
+        {
+            infoMessage = $"No user found for “{email}”. Click ‘Show first 10 users’ to inspect the DB.";
+            StateHasChanged();
+            return;
+        }
 
-      // include Group for display
-      user = await UserManager.Users
-          .Include(u => u.Group)
-          .FirstAsync(u => u.Id == user.Id);
+        // include Group for display
+        user = await UserManager.Users
+            .Include(u => u.Group)
+            .FirstAsync(u => u.Id == user.Id);
 
-      var rs = await UserManager.GetRolesAsync(user);
-      selectedRoles = rs.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var rs = await UserManager.GetRolesAsync(user);
+        selectedRoles = rs.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-      infoMessage = $"Loaded user: {user.Email ?? user.UserName}";
-      StateHasChanged();
-  }
+        infoMessage = $"Loaded user: {user.Email ?? user.UserName}";
+        StateHasChanged();
+    }
 
-  private async Task ListUsers()
-  {
-      infoMessage = errorMessage = null;
-      user = null;
-      selectedRoles.Clear();
+    private async Task ListUsers()
+    {
+        infoMessage = errorMessage = null;
+        user = null;
+        selectedRoles.Clear();
 
-      usersPreview = await UserManager.Users
-          .Include(u => u.Group)
-          .OrderBy(u => u.Email ?? u.UserName)
-          .Take(10)
-          .ToListAsync();
+        usersPreview = await UserManager.Users
+            .Include(u => u.Group)
+            .OrderBy(u => u.Email ?? u.UserName)
+            .Take(10)
+            .ToListAsync();
 
-      infoMessage = usersPreview.Count == 0
-          ? "No users in the database."
-          : $"Showing {usersPreview.Count} user(s). Click ‘Edit’ to load one.";
+        infoMessage = usersPreview.Count == 0
+            ? "No users in the database."
+            : $"Showing {usersPreview.Count} user(s). Click ‘Edit’ to load one.";
 
-      StateHasChanged();
-  }
+        StateHasChanged();
+    }
 
-  private async Task LoadFromPreview(string userId)
-  {
-      infoMessage = errorMessage = null;
+    private async Task LoadFromPreview(string userId)
+    {
+        infoMessage = errorMessage = null;
 
-      user = await UserManager.Users
-          .Include(u => u.Group)
-          .FirstOrDefaultAsync(u => u.Id == userId);
+        user = await UserManager.Users
+            .Include(u => u.Group)
+            .FirstOrDefaultAsync(u => u.Id == userId);
 
-      usersPreview = null;
+        usersPreview = null;
 
-      if (user is null)
-      {
-          errorMessage = "User not found (it may have been deleted).";
-          StateHasChanged();
-          return;
-      }
+        if (user is null)
+        {
+            errorMessage = "User not found (it may have been deleted).";
+            StateHasChanged();
+            return;
+        }
 
-      var rs = await UserManager.GetRolesAsync(user);
-      selectedRoles = rs.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var rs = await UserManager.GetRolesAsync(user);
+        selectedRoles = rs.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-      StateHasChanged();
-  }
+        StateHasChanged();
+    }
 
-  private void ToggleRole(string role, bool add)
-  {
-      if (add) selectedRoles.Add(role);
-      else selectedRoles.Remove(role);
-  }
+    private void ToggleRole(string role, bool add)
+    {
+        if (add) selectedRoles.Add(role);
+        else selectedRoles.Remove(role);
+    }
 
-  private async Task Save()
-  {
-      if (user is null) return;
+    private async Task Save()
+    {
+        if (user is null) return;
 
-      infoMessage = errorMessage = null;
+        infoMessage = errorMessage = null;
 
-      // persist profile + GroupId
-      var update = await UserManager.UpdateAsync(user);
-      if (!update.Succeeded)
-      {
-          errorMessage = string.Join("; ", update.Errors.Select(e => e.Description));
-          StateHasChanged();
-          return;
-      }
+        // persist profile + GroupId
+        var update = await UserManager.UpdateAsync(user);
+        if (!update.Succeeded)
+        {
+            errorMessage = string.Join("; ", update.Errors.Select(e => e.Description));
+            StateHasChanged();
+            return;
+        }
 
-      // sync roles
-      var current = await UserManager.GetRolesAsync(user);
-      var toAdd = selectedRoles.Except(current, StringComparer.OrdinalIgnoreCase).ToArray();
-      var toRemove = current.Except(selectedRoles, StringComparer.OrdinalIgnoreCase).ToArray();
+        // sync roles
+        var current = await UserManager.GetRolesAsync(user);
+        var toAdd = selectedRoles.Except(current, StringComparer.OrdinalIgnoreCase).ToArray();
+        var toRemove = current.Except(selectedRoles, StringComparer.OrdinalIgnoreCase).ToArray();
 
-      if (toAdd.Length > 0)
-      {
-          var addRes = await UserManager.AddToRolesAsync(user, toAdd);
-          if (!addRes.Succeeded)
-          {
-              errorMessage = string.Join("; ", addRes.Errors.Select(e => e.Description));
-              StateHasChanged();
-              return;
-          }
-      }
+        if (toAdd.Length > 0)
+        {
+            var addRes = await UserManager.AddToRolesAsync(user, toAdd);
+            if (!addRes.Succeeded)
+            {
+                errorMessage = string.Join("; ", addRes.Errors.Select(e => e.Description));
+                StateHasChanged();
+                return;
+            }
+        }
 
-      if (toRemove.Length > 0)
-      {
-          var remRes = await UserManager.RemoveFromRolesAsync(user, toRemove);
-          if (!remRes.Succeeded)
-          {
-              errorMessage = string.Join("; ", remRes.Errors.Select(e => e.Description));
-              StateHasChanged();
-              return;
-          }
-      }
+        if (toRemove.Length > 0)
+        {
+            var remRes = await UserManager.RemoveFromRolesAsync(user, toRemove);
+            if (!remRes.Succeeded)
+            {
+                errorMessage = string.Join("; ", remRes.Errors.Select(e => e.Description));
+                StateHasChanged();
+                return;
+            }
+        }
 
-      infoMessage = "Saved.";
-      StateHasChanged();
-  }
+        infoMessage = "Saved.";
+        StateHasChanged();
+    }
 
-  // Optional helper: create admin from config if seed was skipped
-  private async Task SeedAdminFromConfig()
-  {
-      infoMessage = errorMessage = null;
+    // Optional helper: create admin from config if seed was skipped
+    private async Task SeedAdminFromConfig()
+    {
+        infoMessage = errorMessage = null;
 
-      var email = Config["AdminEmail"];
-      var password = Config["AdminPassword"];
+        var email = Config["AdminEmail"];
+        var password = Config["AdminPassword"];
 
-      if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
-      {
-          errorMessage = "AdminEmail/AdminPassword not configured.";
-          StateHasChanged();
-          return;
-      }
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "AdminEmail/AdminPassword not configured.";
+            StateHasChanged();
+            return;
+        }
 
-      var existing = await UserManager.FindByEmailAsync(email) ?? await UserManager.FindByNameAsync(email);
-      if (existing is null)
-      {
-          var newAdmin = new ApplicationUser
-          {
-              Email = email,
-              UserName = email,
-              EmailConfirmed = true,
-              DisplayName = "Administrator",
-              IsActive = true
-          };
+        var existing = await UserManager.FindByEmailAsync(email) ?? await UserManager.FindByNameAsync(email);
+        if (existing is null)
+        {
+            var newAdmin = new ApplicationUser
+            {
+                Email = email,
+                UserName = email,
+                EmailConfirmed = true,
+                DisplayName = "Administrator",
+                IsActive = true
+            };
 
-          var catchAll = await Db.Groups.FirstOrDefaultAsync(g => g.IsCatchAll);
-          if (catchAll != null) newAdmin.GroupId = catchAll.Id;
+            var catchAll = await Db.Groups.FirstOrDefaultAsync(g => g.IsCatchAll);
+            if (catchAll != null) newAdmin.GroupId = catchAll.Id;
 
-          var create = await UserManager.CreateAsync(newAdmin, password);
-          if (!create.Succeeded)
-          {
-              errorMessage = "Create failed: " + string.Join("; ", create.Errors.Select(e => e.Description));
-              StateHasChanged();
-              return;
-          }
-          existing = newAdmin;
-      }
+            var create = await UserManager.CreateAsync(newAdmin, password);
+            if (!create.Succeeded)
+            {
+                errorMessage = "Create failed: " + string.Join("; ", create.Errors.Select(e => e.Description));
+                StateHasChanged();
+                return;
+            }
+            existing = newAdmin;
+        }
 
-      if (!await RoleManager.RoleExistsAsync("SuperAdmin"))
-          await RoleManager.CreateAsync(new IdentityRole("SuperAdmin"));
+        if (!await RoleManager.RoleExistsAsync("SuperAdmin"))
+            await RoleManager.CreateAsync(new IdentityRole("SuperAdmin"));
 
-      if (!await UserManager.IsInRoleAsync(existing, "SuperAdmin"))
-          await UserManager.AddToRoleAsync(existing, "SuperAdmin");
+        if (!await UserManager.IsInRoleAsync(existing, "SuperAdmin"))
+            await UserManager.AddToRoleAsync(existing, "SuperAdmin");
 
-      infoMessage = $"Admin ready: {email}";
-      StateHasChanged();
-  }
+        infoMessage = $"Admin ready: {email}";
+        StateHasChanged();
+    }
 }

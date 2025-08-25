@@ -6,11 +6,9 @@ namespace BlazorLoginDemo.Shared.Models.Kernel.Client;
 public class AvaClientLicense
 {
     [Key]
-    [MaxLength(22)]
-    public string Id { get; set; } = Nanoid.Generate(alphabet: Nanoid.Alphabets.UppercaseLettersAndDigits, size: 22);
+    public string Id { get; set; } = Nanoid.Generate();
     
     [Required]
-    [MaxLength(10)]
     public required string ClientID { get; set; }
 
     [Required]

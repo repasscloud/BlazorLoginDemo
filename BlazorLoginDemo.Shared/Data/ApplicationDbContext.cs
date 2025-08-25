@@ -19,6 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // Ava
     public DbSet<AvaUser> AvaUsers => Set<AvaUser>();
     public DbSet<AvaClient> AvaClients => Set<AvaClient>();
+    public DbSet<AvaClientLicense> AvaClientLicenses => Set<AvaClientLicense>();
 
     // Travel Policy
     public DbSet<TravelPolicy> TravelPolicies => Set<TravelPolicy>();
