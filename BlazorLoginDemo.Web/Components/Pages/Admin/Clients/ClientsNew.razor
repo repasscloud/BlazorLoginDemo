@@ -23,28 +23,23 @@
                     <ValidationMessage For="@(() => _model.CompanyName)" />
                 </div>
 
-<div class="col-md-3">
-    <label class="form-label">Tax ID Type</label>
-    <InputSelect class="form-select"
-                 @bind-Value="_model.TaxIdType"
-                 TValue="TaxIdType">
-        @foreach (var t in Enum.GetValues<TaxIdType>())
-        {
-            <option value="@t">@t</option>
-        }
-    </InputSelect>
-</div>
+                <div class="col-md-3">
+                    <label class="form-label">Tax ID Type</label>
+                    <InputSelect class="form-select"
+                                @bind-Value="_model.TaxIdType"
+                                TValue="TaxIdType">
+                        @foreach (var t in Enum.GetValues<TaxIdType>())
+                        {
+                            <option value="@t">@t</option>
+                        }
+                    </InputSelect>
+                </div>
 
-@if (_model.TaxIdType != TaxIdType.None)
-{
-    <div class="col-md-3">
-        <label class="form-label">Tax ID</label>
-        <InputText class="form-control" @bind-Value="_model.TaxId" />
-        <div class="form-text">Format depends on chosen Tax ID Type.</div>
-    </div>
-}
-
-
+                <div class="col-md-3">
+                    <label class="form-label">Tax ID</label>
+                    <InputText class="form-control" @bind-Value="_model.TaxId" />
+                    <div class="form-text">Format depends on chosen Tax ID Type.</div>
+                </div>
                 <div class="col-12">
                     <hr />
                     <h5 class="mb-3">Registered Address</h5>
@@ -89,7 +84,6 @@
                     </InputSelect>
                     <ValidationMessage For="@(() => _model.Country)" />
                 </div>
-
 
                 <div class="col-12">
                     <hr />
