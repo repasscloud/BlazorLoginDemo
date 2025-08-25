@@ -1,5 +1,7 @@
 ﻿@implements IDisposable
 @using Microsoft.AspNetCore.Components.Routing
+@using BlazorLoginDemo.Shared.Auth
+
 @inject NavigationManager NavigationManager
 
 <div class="top-row ps-3 navbar navbar-dark">
@@ -24,7 +26,7 @@
             </NavLink>
         </div>
 
-        <AuthorizeView Policy="CanEditPolicies">
+        <AuthorizeView Policy=@AppPolicies.GlobalPolicy.CanManageUsers>
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="/admin/users" Match="NavLinkMatch.Prefix">
@@ -34,7 +36,7 @@
             </Authorized>
         </AuthorizeView>
 
-        <AuthorizeView Policy="CanManageGroups">
+        <AuthorizeView Policy=@AppPolicies.GlobalPolicy.CanManageUsers>
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="/admin/users" Match="NavLinkMatch.Prefix">
