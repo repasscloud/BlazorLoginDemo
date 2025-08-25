@@ -375,32 +375,25 @@
 
     private async Task HandleValidSubmit()
     {
-        _error = null;
-        _busy = true;
         try
         {
-            // TODO: Adjust endpoint to your API route
-            var resp = await Http.PostAsJsonAsync("/api/clients", _model);
-            if (resp.IsSuccessStatusCode)
-            {
-                // go back to list
-                Nav.NavigateTo("/clients");
-                return;
-            }
+            var created = await AvaClientService.CreateAsync(_model);
 
-            var details = await resp.Content.ReadAsStringAsync();
-            _error = $"Save failed (HTTP {(int)resp.StatusCode}). {details}";
+            if (created is not null)
+            {
+                Nav.NavigateTo("/");
+            }
         }
         catch (Exception ex)
         {
-            _error = ex.Message;
+            // TODO: log or show error message to user
+            Console.Error.WriteLine($"Error creating client: {ex.Message}");
         }
         finally
         {
-            _busy = false;
+            // TODO: any cleanup (e.g., reset loading spinner, enable button, etc.)
         }
     }
-
     private void CopyContactToBilling()
     {
         _model.BillingPersonFirstName   = _model.ContactPersonFirstName;
