@@ -15,6 +15,7 @@ using BlazorLoginDemo.Web.Services;  // MailerSendEmailSender + MailerSendOption
 using BlazorLoginDemo.Shared.Startup;
 using BlazorLoginDemo.Web.Security;   // SeedData
 using BlazorLoginDemo.Shared.Auth;
+using BlazorLoginDemo.Shared.Services;
 
 namespace BlazorLoginDemo.Web;
 
@@ -180,6 +181,7 @@ public class Program
         // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
         builder.Services.AddHttpClient();
+        builder.Services.AddAvaClientServices();
         builder.Services.AddTransient<IEmailSender, MailerSendEmailSender>();
         builder.Services.AddTransient<IEmailSender<ApplicationUser>, MailerSendEmailSender>();
 

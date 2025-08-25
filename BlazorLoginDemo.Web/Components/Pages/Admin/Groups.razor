@@ -1,9 +1,11 @@
 @page "/admin/groups"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize(Policy = "CanManageGroups")]
+@attribute [Authorize(Policy = BlazorLoginDemo.Shared.Auth.AppPolicies.GlobalPolicy.CanManageUsers)]
+
 @using BlazorLoginDemo.Web.Data
 @using Microsoft.EntityFrameworkCore
+
 @inject ApplicationDbContext Db
 
 <h3>Groups</h3>
