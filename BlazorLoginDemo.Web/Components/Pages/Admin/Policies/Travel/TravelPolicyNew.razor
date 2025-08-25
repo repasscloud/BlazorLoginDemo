@@ -297,7 +297,12 @@
     [Parameter] public string? ClientId { get; set; }
 
     // The policy being edited
-    public TravelPolicy Model { get; set; } = default!;
+    public TravelPolicy Model { get; set; } = new TravelPolicy
+    {
+        Id = string.Empty,
+        PolicyName = string.Empty,
+        DefaultCurrencyCode = "AUD",
+    };
 
     // Option sources (populate from API later)
     public List<Region> AllRegions { get; set; } = new();
