@@ -71,10 +71,22 @@
                     <label class="form-label">Postal Code</label>
                     <InputText class="form-control" @bind-Value="_model.PostalCode" />
                 </div>
-                <div class="col-md-3">
+                @* <div class="col-md-3">
                     <label class="form-label">Country</label>
                     <InputText class="form-control" @bind-Value="_model.Country" />
+                </div> *@
+                <div class="col-md-3">
+                    <label class="form-label">Country</label>
+                    <InputSelect class="form-select" @bind-Value="_model.Country">
+                        <option value="">-- Select Country --</option>
+                        @foreach (var c in Countries)
+                        {
+                            <option value="@c">@c</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => _model.Country)" />
                 </div>
+
 
                 <div class="col-12">
                     <hr />
@@ -105,9 +117,20 @@
                     <label class="form-label">Postal Code</label>
                     <InputText class="form-control" @bind-Value="_model.MailingPostalCode" />
                 </div>
-                <div class="col-md-3">
+                @* <div class="col-md-3">
                     <label class="form-label">Country</label>
                     <InputText class="form-control" @bind-Value="_model.MailingCountry" />
+                </div> *@
+                <div class="col-md-3">
+                    <label class="form-label">Country</label>
+                    <InputSelect class="form-select" @bind-Value="_model.MailingCountry">
+                        <option value="">-- Select Country --</option>
+                        @foreach (var c in Countries)
+                        {
+                            <option value="@c">@c</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => _model.MailingCountry)" />
                 </div>
             </div>
         </div>
@@ -266,6 +289,14 @@
     private readonly string[] CurrencyCodes = new[]
     {
         "AUD","USD","EUR","GBP","JPY","CHF","CAD","CNY","HKD","SGD","NZD"
+    };
+
+    private static readonly string[] Countries = new[]
+    {
+        "Australia","New Zealand"
+        @* ,"United States","United Kingdom","Canada","Singapore", *@
+        @* "Hong Kong","China","Japan","Germany","France","Italy","Spain","India","Indonesia", *@
+        @* "Philippines","Malaysia","Thailand","Vietnam","South Africa","Brazil","Mexico","United Arab Emirates" *@
     };
 
     private AvaClient _model = new()
