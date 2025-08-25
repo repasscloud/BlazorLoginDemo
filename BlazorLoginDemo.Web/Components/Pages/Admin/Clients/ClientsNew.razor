@@ -150,9 +150,20 @@
                     <InputText class="form-control" @bind-Value="_model.ContactPersonLastName" />
                     <ValidationMessage For="@(() => _model.ContactPersonLastName)" />
                 </div>
-                <div class="col-md-2">
+                @* <div class="col-md-2">
                     <label class="form-label">Country Code</label>
                     <InputText class="form-control" @bind-Value="_model.ContactPersonCountryCode" placeholder="+61" />
+                    <ValidationMessage For="@(() => _model.ContactPersonCountryCode)" />
+                </div> *@
+                <div class="col-md-2">
+                    <label class="form-label">Country Code</label>
+                    <InputSelect class="form-select" @bind-Value="_model.ContactPersonCountryCode">
+                        <option value="">-- Select --</option>
+                        @foreach (var opt in DialCodes)
+                        {
+                            <option value="@opt.Code">@opt.Label</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => _model.ContactPersonCountryCode)" />
                 </div>
                 <div class="col-md-4">
@@ -190,9 +201,19 @@
                     <label class="form-label">Last Name</label>
                     <InputText class="form-control" @bind-Value="_model.BillingPersonLastName" />
                 </div>
-                <div class="col-md-2">
+                @* <div class="col-md-2">
                     <label class="form-label">Country Code</label>
                     <InputText class="form-control" @bind-Value="_model.BillingPersonCountryCode" />
+                </div> *@
+                <div class="col-md-2">
+                    <label class="form-label">Country Code</label>
+                    <InputSelect class="form-select" @bind-Value="_model.BillingPersonCountryCode">
+                        <option value="">-- Select --</option>
+                        @foreach (var opt in DialCodes)
+                        {
+                            <option value="@opt.Code">@opt.Label</option>
+                        }
+                    </InputSelect>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Phone</label>
@@ -227,9 +248,19 @@
                     <label class="form-label">Last Name</label>
                     <InputText class="form-control" @bind-Value="_model.AdminPersonLastName" />
                 </div>
-                <div class="col-md-2">
+                @* <div class="col-md-2">
                     <label class="form-label">Country Code</label>
                     <InputText class="form-control" @bind-Value="_model.AdminPersonCountryCode" />
+                </div> *@
+                <div class="col-md-2">
+                    <label class="form-label">Country Code</label>
+                    <InputSelect class="form-select" @bind-Value="_model.AdminPersonCountryCode">
+                        <option value="">-- Select --</option>
+                        @foreach (var opt in DialCodes)
+                        {
+                            <option value="@opt.Code">@opt.Label</option>
+                        }
+                    </InputSelect>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Phone</label>
@@ -297,6 +328,33 @@
         @* ,"United States","United Kingdom","Canada","Singapore", *@
         @* "Hong Kong","China","Japan","Germany","France","Italy","Spain","India","Indonesia", *@
         @* "Philippines","Malaysia","Thailand","Vietnam","South Africa","Brazil","Mexico","United Arab Emirates" *@
+    };
+
+    private record DialOption(string Code, string Label);
+
+    // Extend this list anytime — value is the code you’ll store; label is what users see.
+    private static readonly DialOption[] DialCodes = new DialOption[]
+    {
+        new("+61",  "🇦🇺 +61 Australia"),
+        new("+64",  "🇳🇿 +64 New Zealand"),
+        @* new("+1",   "🇺🇸 +1 United States"),
+        new("+44",  "🇬🇧 +44 United Kingdom"),
+        new("+65",  "🇸🇬 +65 Singapore"),
+        new("+852", "🇭🇰 +852 Hong Kong"),
+        new("+81",  "🇯🇵 +81 Japan"),
+        new("+86",  "🇨🇳 +86 China"),
+        new("+33",  "🇫🇷 +33 France"),
+        new("+49",  "🇩🇪 +49 Germany"),
+        new("+34",  "🇪🇸 +34 Spain"),
+        new("+39",  "🇮🇹 +39 Italy"),
+        new("+91",  "🇮🇳 +91 India"),
+        new("+62",  "🇮🇩 +62 Indonesia"),
+        new("+63",  "🇵🇭 +63 Philippines"),
+        new("+60",  "🇲🇾 +60 Malaysia"),
+        new("+66",  "🇹🇭 +66 Thailand"),
+        new("+84",  "🇻🇳 +84 Vietnam"),
+        new("+27",  "🇿🇦 +27 South Africa"),
+        new("+971", "🇦🇪 +971 United Arab Emirates"), *@
     };
 
     private AvaClient _model = new()
