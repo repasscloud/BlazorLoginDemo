@@ -16,6 +16,7 @@ using BlazorLoginDemo.Shared.Startup;
 using BlazorLoginDemo.Web.Security;   // SeedData
 using BlazorLoginDemo.Shared.Auth;
 using BlazorLoginDemo.Shared.Services;
+using System.Collections.Specialized;
 
 namespace BlazorLoginDemo.Web;
 

@@ -1,4 +1,5 @@
 ﻿@implements IDisposable
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Routing
 @using BlazorLoginDemo.Shared.Auth
 
@@ -24,6 +25,33 @@
             <NavLink class="nav-link" href="/auth">
                 <span class="bi bi-lock-nav-menu" aria-hidden="true"></span> Auth Required
             </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAuthGroup">
+                <span>
+                    <span class="bi bi-lock-nav-menu" aria-hidden="true"></span>
+                    Auth Required
+                </span>
+                <span class="caret @(authOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(authOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/login" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span> Profile
+                    </NavLink>
+                </div>
+            </div>
         </div>
 
         <AuthorizeView Policy=@AppPolicies.GlobalPolicy.CanManageUsers>
@@ -81,6 +109,8 @@
 
 @code {
     private string? currentUrl;
+    private bool authOpen; // default: collapsed
+    private void ToggleAuthGroup() => authOpen = !authOpen;
 
     protected override void OnInitialized()
     {

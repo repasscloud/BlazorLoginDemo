@@ -86,4 +86,19 @@ public sealed class AvaClientService : IAvaClientService
     // UTIL
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.AvaClients.AsNoTracking().AnyAsync(c => c.Id == id, ct);
+
+    public async Task<string?> GetClientNameOnlyAsync(string id, CancellationToken ct = default)
+        => await _db.AvaClients
+            .AsNoTracking()
+            .Where(c => c.Id == id)
+            .Select(c => c.CompanyName)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<string?> GetClientDefaultCurrencyAsync(string id, CancellationToken ct = default)
+        => await _db.AvaClients
+            .AsNoTracking()
+            .Where(c => c.Id == id)
+            .Select(c => c.DefaultCurrency)
+            .FirstOrDefaultAsync(ct);
+
 }

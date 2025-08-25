@@ -18,4 +18,6 @@ public interface IAvaClientService
 
     // UTIL
     Task<bool> ExistsAsync(string id, CancellationToken ct = default);
+    Task<string?> GetClientNameOnlyAsync(string id, CancellationToken ct = default);
+    Task<string?> GetClientDefaultCurrencyAsync(string id, CancellationToken ct = default);
 }
