@@ -1,0 +1,335 @@
+@page "/clients/new"
+@using System.Net.Http.Json
+@using BlazorLoginDemo.Shared.Models.Kernel.Client
+@using BlazorLoginDemo.Shared.Models.Static
+@attribute [Authorize]
+
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<h1 class="mb-4">New Client</h1>
+
+<EditForm Model="_model" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="alert alert-danger" />
+
+    <div class="card mb-4">
+        <div class="card-header">Company</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Company Name<span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="_model.CompanyName" />
+                    <ValidationMessage For="@(() => _model.CompanyName)" />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Tax ID Type</label>
+                    <InputSelect class="form-select" @bind-Value="_model.TaxIdType">
+                        @foreach (var t in Enum.GetValues<TaxIdType>())
+                        {
+                            <option value="@t">@t</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                @if (_model.TaxIdType != TaxIdType.None)
+                {
+                    <div class="col-md-3">
+                        <label class="form-label">Tax ID</label>
+                        <InputText class="form-control" @bind-Value="_model.TaxId" />
+                        <div class="form-text">Format depends on chosen Tax ID Type.</div>
+                    </div>
+                }
+
+                <div class="col-12">
+                    <hr />
+                    <h5 class="mb-3">Registered Address</h5>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Address Line 1</label>
+                    <InputText class="form-control" @bind-Value="_model.AddressLine1" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Address Line 2</label>
+                    <InputText class="form-control" @bind-Value="_model.AddressLine2" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Address Line 3</label>
+                    <InputText class="form-control" @bind-Value="_model.AddressLine3" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">City</label>
+                    <InputText class="form-control" @bind-Value="_model.City" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">State/Province</label>
+                    <InputText class="form-control" @bind-Value="_model.State" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Postal Code</label>
+                    <InputText class="form-control" @bind-Value="_model.PostalCode" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Country</label>
+                    <InputText class="form-control" @bind-Value="_model.Country" />
+                </div>
+
+                <div class="col-12">
+                    <hr />
+                    <h5 class="mb-3">Mailing Address (optional)</h5>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Address Line 1</label>
+                    <InputText class="form-control" @bind-Value="_model.MailingAddressLine1" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Address Line 2</label>
+                    <InputText class="form-control" @bind-Value="_model.MailingAddressLine2" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Address Line 3</label>
+                    <InputText class="form-control" @bind-Value="_model.MailingAddressLine3" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">City</label>
+                    <InputText class="form-control" @bind-Value="_model.MailingCity" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">State/Province</label>
+                    <InputText class="form-control" @bind-Value="_model.MailingState" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Postal Code</label>
+                    <InputText class="form-control" @bind-Value="_model.MailingPostalCode" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Country</label>
+                    <InputText class="form-control" @bind-Value="_model.MailingCountry" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">Contact Person<span class="text-danger">*</span></div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">First Name</label>
+                    <InputText class="form-control" @bind-Value="_model.ContactPersonFirstName" />
+                    <ValidationMessage For="@(() => _model.ContactPersonFirstName)" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Last Name</label>
+                    <InputText class="form-control" @bind-Value="_model.ContactPersonLastName" />
+                    <ValidationMessage For="@(() => _model.ContactPersonLastName)" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Country Code</label>
+                    <InputText class="form-control" @bind-Value="_model.ContactPersonCountryCode" placeholder="+61" />
+                    <ValidationMessage For="@(() => _model.ContactPersonCountryCode)" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Phone</label>
+                    <InputText class="form-control" @bind-Value="_model.ContactPersonPhone" />
+                    <ValidationMessage For="@(() => _model.ContactPersonPhone)" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <InputText class="form-control" @bind-Value="_model.ContactPersonEmail" />
+                    <ValidationMessage For="@(() => _model.ContactPersonEmail)" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Job Title (optional)</label>
+                    <InputText class="form-control" @bind-Value="_model.ContactPersonJobTitle" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Billing Contact (optional)</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyContactToBilling">
+                Use Contact Details
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">First Name</label>
+                    <InputText class="form-control" @bind-Value="_model.BillingPersonFirstName" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Last Name</label>
+                    <InputText class="form-control" @bind-Value="_model.BillingPersonLastName" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Country Code</label>
+                    <InputText class="form-control" @bind-Value="_model.BillingPersonCountryCode" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Phone</label>
+                    <InputText class="form-control" @bind-Value="_model.BillingPersonPhone" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <InputText class="form-control" @bind-Value="_model.BillingPersonEmail" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Job Title</label>
+                    <InputText class="form-control" @bind-Value="_model.BillingPersonJobTitle" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Admin Contact (optional)</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyContactToAdmin">
+                Use Contact Details
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">First Name</label>
+                    <InputText class="form-control" @bind-Value="_model.AdminPersonFirstName" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Last Name</label>
+                    <InputText class="form-control" @bind-Value="_model.AdminPersonLastName" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Country Code</label>
+                    <InputText class="form-control" @bind-Value="_model.AdminPersonCountryCode" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Phone</label>
+                    <InputText class="form-control" @bind-Value="_model.AdminPersonPhone" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <InputText class="form-control" @bind-Value="_model.AdminPersonEmail" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Job Title</label>
+                    <InputText class="form-control" @bind-Value="_model.AdminPersonJobTitle" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">Financial</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Default Currency (ISO 4217)<span class="text-danger">*</span></label>
+                    <InputSelect class="form-select" @bind-Value="_model.DefaultCurrency">
+                        @foreach (var curr in CurrencyCodes)
+                        {
+                            <option value="@curr">@curr</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => _model.DefaultCurrency)" />
+                    <div class="form-text">3‑letter currency code (e.g., AUD, USD, EUR).</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@_busy">
+            @_busy ? "Saving..." : "Create Client"
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="NavigateToList" disabled="@_busy">
+            Cancel
+        </button>
+
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger mt-3">
+            <strong>Error:</strong> @_error
+        </div>
+    }
+</EditForm>
+
+@code
+{
+    private readonly string[] CurrencyCodes = new[]
+    {
+        "AUD","USD","EUR","GBP","JPY","CHF","CAD","CNY","HKD","SGD","NZD"
+    };
+
+    private AvaClient _model = new()
+    {
+        CompanyName = string.Empty,
+        DefaultCurrency = "USD",
+        TaxIdType = TaxIdType.None,
+        ContactPersonFirstName = string.Empty,
+        ContactPersonLastName = string.Empty,
+        ContactPersonCountryCode = string.Empty,
+        ContactPersonPhone = string.Empty,
+        ContactPersonEmail = string.Empty,
+    };
+
+    private bool _busy;
+    private string? _error;
+
+    private async Task HandleValidSubmit()
+    {
+        _error = null;
+        _busy = true;
+        try
+        {
+            // TODO: Adjust endpoint to your API route
+            var resp = await Http.PostAsJsonAsync("/api/clients", _model);
+            if (resp.IsSuccessStatusCode)
+            {
+                // go back to list
+                Nav.NavigateTo("/clients");
+                return;
+            }
+
+            var details = await resp.Content.ReadAsStringAsync();
+            _error = $"Save failed (HTTP {(int)resp.StatusCode}). {details}";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void CopyContactToBilling()
+    {
+        _model.BillingPersonFirstName   = _model.ContactPersonFirstName;
+        _model.BillingPersonLastName    = _model.ContactPersonLastName;
+        _model.BillingPersonCountryCode = _model.ContactPersonCountryCode;
+        _model.BillingPersonPhone       = _model.ContactPersonPhone;
+        _model.BillingPersonEmail       = _model.ContactPersonEmail;
+        _model.BillingPersonJobTitle    = _model.ContactPersonJobTitle;
+    }
+
+    private void CopyContactToAdmin()
+    {
+        _model.AdminPersonFirstName   = _model.ContactPersonFirstName;
+        _model.AdminPersonLastName    = _model.ContactPersonLastName;
+        _model.AdminPersonCountryCode = _model.ContactPersonCountryCode;
+        _model.AdminPersonPhone       = _model.ContactPersonPhone;
+        _model.AdminPersonEmail       = _model.ContactPersonEmail;
+        _model.AdminPersonJobTitle    = _model.ContactPersonJobTitle;
+    }
+
+    private void NavigateToList() => Nav.NavigateTo("/clients");
+}

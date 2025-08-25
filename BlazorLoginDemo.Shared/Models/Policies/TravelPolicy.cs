@@ -11,7 +11,7 @@ public class TravelPolicy
 {
     [Key]
     [MaxLength(14)]
-    public required string Id { get; set; } = Nanoid.Generate(alphabet: Nanoid.Alphabets.LettersAndDigits.ToUpper(), size: 14);
+    public string Id { get; set; } = Nanoid.Generate(alphabet: Nanoid.Alphabets.LettersAndDigits.ToUpper(), size: 14);
     public required string PolicyName { get; set; }
     public string AvaClientId { get; set; } = default!;
 
