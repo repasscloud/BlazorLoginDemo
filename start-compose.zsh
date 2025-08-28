@@ -18,6 +18,8 @@ dbUser='demodb'
 dbPass='YourAppPassword'
 dbName='demodb'
 FILE="BlazorLoginDemo.Web/Components/Layout/MainLayout.razor"
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=YourAdminPassword
 LINE_NUMBER=12  # keep this in one place
 
 # ── 🧭 Usage helper ───────────────────────────────────────────────────────────
@@ -149,6 +151,10 @@ docker cp .docker/db/sql/01_seed_identity.sql "$pgContainerName":/seed_identity.
 docker exec -i "$pgContainerName" \
   psql "postgresql://$dbUser:$dbPass@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
   -v ON_ERROR_STOP=1 -f /seed_identity.sql
+docker cp .docker/db/sql/01_seed_serilog.sql "$pgContainerName":/seed_serilog.sql
+docker exec -i "$pgContainerName" \
+  psql "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
+  -v ON_ERROR_STOP=1 -f /seed_serilog.sql
 
 # ── 🚀 7) Start Blazor app ───────────────────────────────────────────────────
 echo
