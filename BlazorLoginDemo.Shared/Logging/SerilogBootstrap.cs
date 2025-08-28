@@ -61,7 +61,7 @@ public static class SerilogBootstrap
                 cs,
                 "logs",
                 columnWriters,
-                needAutoCreateTable: true,
+                needAutoCreateTable: false,
                 schemaName: "serilog")
             .CreateLogger();
     }
