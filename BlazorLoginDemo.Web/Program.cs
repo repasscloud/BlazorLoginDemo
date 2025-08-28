@@ -18,6 +18,9 @@ using BlazorLoginDemo.Shared.Auth;
 using BlazorLoginDemo.Shared.Services;
 using System.Collections.Specialized;
 
+using BlazorLoginDemo.Shared.Logging;
+using Serilog;
+
 namespace BlazorLoginDemo.Web;
 
 public class Program
@@ -25,6 +28,10 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
+        // Serilog first
+        SerilogBootstrap.UseSerilogWithPostgres(builder.Configuration, appName: "Ava.Web");
+        builder.Host.UseSerilog();
 
         // Add services to the container.
         builder.Services.AddRazorComponents()
@@ -214,6 +221,24 @@ public class Program
         var inContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 
         var app = builder.Build();
+
+        // Serilog
+        app.UseSerilogRequestLogging(opts =>
+        {
+            // add request-scoped properties
+            opts.EnrichDiagnosticContext = (ctx, http) =>
+            {
+                ctx.Set("RequestPath", http.Request.Path);
+                ctx.Set("RequestId", http.TraceIdentifier);
+                var userId = http.User?.Identity?.IsAuthenticated == true
+                    ? (http.User.Identity?.Name ?? http.User.FindFirst("sub")?.Value)
+                    : null;
+                if (!string.IsNullOrWhiteSpace(userId))
+                    ctx.Set("UserId", userId);
+                ctx.Set("Environment", app.Environment.EnvironmentName);
+                ctx.Set("Application", "Ava.API");
+            };
+        });
 
         // Culture switch endpoint
         app.MapGet("/set-culture", (string culture, string? redirectUri, HttpContext ctx) =>

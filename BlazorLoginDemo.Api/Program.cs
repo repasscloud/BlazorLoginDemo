@@ -6,9 +6,15 @@ using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Api.Auth;
 using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.Auth;
+using BlazorLoginDemo.Shared.Logging;
+using Serilog;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog first
+SerilogBootstrap.UseSerilogWithPostgres(builder.Configuration, appName: "Ava.API");
+builder.Host.UseSerilog();
 
 // Options
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
@@ -91,6 +97,24 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<TokenService>();
 
 var app = builder.Build();
+
+// Serilog
+app.UseSerilogRequestLogging(opts =>
+{
+    // add request-scoped properties
+    opts.EnrichDiagnosticContext = (ctx, http) =>
+    {
+        ctx.Set("RequestPath", http.Request.Path);
+        ctx.Set("RequestId", http.TraceIdentifier);
+        var userId = http.User?.Identity?.IsAuthenticated == true
+            ? (http.User.Identity?.Name ?? http.User.FindFirst("sub")?.Value)
+            : null;
+        if (!string.IsNullOrWhiteSpace(userId))
+            ctx.Set("UserId", userId);
+        ctx.Set("Environment", app.Environment.EnvironmentName);
+        ctx.Set("Application", "Ava.API");
+    };
+});
 
 if (app.Environment.IsDevelopment())
 {

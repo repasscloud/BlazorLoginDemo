@@ -1,0 +1,36 @@
+@page "/admin/test/log-test"
+@inject ILogger<LogTest> Log
+
+<h3>Log Test</h3>
+
+<button class="btn btn-primary" @onclick="WriteLogs">Write Logs</button>
+
+@code {
+    private void WriteLogs()
+    {
+        // Plain message
+        Log.LogInformation("Button clicked on LogTest page.");
+
+        // Structured logging (ends up as JSON in properties + columns)
+        var orderId = Guid.NewGuid().ToString("N");
+        Log.LogInformation("Processing order {OrderId} for {Customer}", orderId, "dwynyard");
+
+        // With a scope (adds to Properties for each log line in scope)
+        using (Log.BeginScope(new Dictionary<string, object?>
+        {
+            ["SessionId"] = Guid.NewGuid().ToString("N"),
+            ["Feature"] = "Demo"
+        }))
+        {
+            Log.LogWarning("This is a warning within a scoped block.");
+            try
+            {
+                throw new InvalidOperationException("Demo exception");
+            }
+            catch (Exception ex)
+            {
+                Log.LogError(ex, "Boom while doing demo work.");
+            }
+        }
+    }
+}
