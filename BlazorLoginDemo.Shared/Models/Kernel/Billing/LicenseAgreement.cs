@@ -28,8 +28,8 @@ public class LicenseAgreement
     public decimal PrepaidBalance { get; set; } = 0m;
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
 
-    [MaxLength(12)]
-    public string LateFeeConfigId { get; set; } = string.Empty;
+    [MaxLength(14)]
+    public string? LateFeeConfigId { get; set; }
 
     [MoneyPrecision]
     public decimal AccountThreshold { get; set; } = 0m;
