@@ -313,19 +313,19 @@
                         <ValidationMessage For="@(() => _model.DefaultTravelPolicyId)" />
                     </div>
 
-                    <!-- Client License -->
+                    <!-- License Agreement -->
                     <div class="col-md-3">
                         <label class="form-label">
-                            Client License <span class="text-danger">*</span>
+                            License Agreement <span class="text-danger">*</span>
                         </label>
 
                         <div class="input-group">
-                            <InputText class="form-control" @bind-Value="_model.AvaClientLicenseId" />
+                            <InputText class="form-control" @bind-Value="_model.LicenseAgreementId" />
                             <button type="button" class="btn btn-outline-secondary" @onclick="ViewCreateClientLicenseAsync">
                                 <i class="bi bi-search"></i>
                             </button>
                         </div>
-                        <ValidationMessage For="@(() => _model.AvaClientLicenseId )" />
+                        <ValidationMessage For="@(() => _model.LicenseAgreementId )" />
                     </div>
                 </div>
             </div>
@@ -472,7 +472,7 @@ else
 
     private async Task ViewCreateClientLicenseAsync()
     {
-        if (string.IsNullOrWhiteSpace(_model.AvaClientLicenseId))
+        if (string.IsNullOrWhiteSpace(_model.LicenseAgreementId))
         {
             // create a new one
             Nav.NavigateTo($"/admin/license/{_model.Id}/new");
