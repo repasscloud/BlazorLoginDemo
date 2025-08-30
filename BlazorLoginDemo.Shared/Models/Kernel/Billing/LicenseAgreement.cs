@@ -12,7 +12,6 @@ public class LicenseAgreement
     public string Id { get; set; } = Nanoid.Generate(alphabet: Nanoid.Alphabets.HexadecimalUppercase, size: 14);
 
     [Required]
-    [MaxLength(10)]
     public required string AvaClientId { get; set; }
     public PaymentTerms PaymentTerms { get; set; } = PaymentTerms.Net0;
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Stripe;

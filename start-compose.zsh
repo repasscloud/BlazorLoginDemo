@@ -96,6 +96,17 @@ NEW_VER="${X}.${Y}.${Z}-${LETTER}${N}"
 gsed -i -E "${LINE_NUMBER}s~(<code>)v[0-9]+\.[0-9]+\.[0-9]+-[abr][0-9]+(</code>)~\1v${NEW_VER}\2~" "$FILE"
 echo "✅ Updated version to: v${NEW_VER}"
 
+# # ── 🐳 0) Build only ────────────----------------──────────────────────────────
+# case "$ACTION" in
+#   --build)
+#     echo
+#     echo "🐳 0) Restart Blazor container"
+#     docker compose up -d blazor
+#     exit 0
+#     ;;
+# esac
+
+
 # ── 🐳 0) Stop all docker containers ──────────────────────────────────────────
 echo
 echo "🐳 0) Stop all docker containers"

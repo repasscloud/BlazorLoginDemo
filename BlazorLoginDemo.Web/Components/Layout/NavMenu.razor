@@ -27,6 +27,56 @@
             </NavLink>
         </div>
 
+        <!-- Admin Clients -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminClientsGroup">
+                <span>Admin Clients</span>
+                <span class="caret @(adminClientsOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminClientsOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/clients" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-card-list-nav-menu" aria-hidden="true"></span> Clients
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/clients/new" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Policies -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminPoliciesGroup">
+                <span>Admin Policies</span>
+                <span class="caret @(adminPoliciesOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminPoliciesOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/login" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-search-nav-menu" aria-hidden="true"></span> Search
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-file-earmark-plus-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
         <div class="nav-item px-3">
             <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
             <button type="button"
@@ -109,6 +159,10 @@
 
 @code {
     private string? currentUrl;
+    private bool adminClientsOpen;
+    private void ToggleAdminClientsGroup() => adminClientsOpen = !adminClientsOpen;
+    private bool adminPoliciesOpen;
+    private void ToggleAdminPoliciesGroup() => adminPoliciesOpen = !adminPoliciesOpen;
     private bool authOpen; // default: collapsed
     private void ToggleAuthGroup() => authOpen = !authOpen;
 

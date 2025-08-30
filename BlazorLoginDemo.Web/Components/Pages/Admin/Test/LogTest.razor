@@ -1,5 +1,8 @@
 @page "/admin/test/log-test"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<LogTest> Log
 
 <h3>Log Test</h3>
@@ -7,6 +10,28 @@
 <button class="btn btn-primary" @onclick="WriteLogs">Write Logs</button>
 
 @code {
+    private string? _userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get the authentication state
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // Extract the username
+        _userName = user.Identity?.Name;
+
+        // Example log usage
+        if (!string.IsNullOrEmpty(_userName))
+        {
+            Log.LogInformation("User {User} has authenticated and visited /auth", _userName);
+        }
+        else
+        {
+            Log.LogWarning("An anonymous or invalid user visited /auth");
+        }
+    }
+
     private void WriteLogs()
     {
         // Plain message

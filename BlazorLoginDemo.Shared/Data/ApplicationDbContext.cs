@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.Auth;
+using BlazorLoginDemo.Shared.Models.Kernel.Billing;
+using System.ComponentModel;
 
 
 namespace BlazorLoginDemo.Shared.Data;
@@ -20,6 +22,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AvaUser> AvaUsers => Set<AvaUser>();
     public DbSet<AvaClient> AvaClients => Set<AvaClient>();
     public DbSet<AvaClientLicense> AvaClientLicenses => Set<AvaClientLicense>();
+    public DbSet<LicenseAgreement> LicenseAgreements => Set<LicenseAgreement>();
 
     // Travel Policy
     public DbSet<TravelPolicy> TravelPolicies => Set<TravelPolicy>();
@@ -72,6 +75,30 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithOne(u => u.Profile)  // navigation on principal
                 .HasForeignKey<AvaUser>(x => x.AspNetUsersId)
                 .OnDelete(DeleteBehavior.Cascade);  // delete profile when user is deleted
+        });
+
+        // configure the LicenseAgreement relationship for AvaClient.
+        builder.Entity<LicenseAgreement>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(14);
+
+            // prevent multiple agreements using the same AvaClientId
+            e.Property(x => x.AvaClientId).IsRequired();
+            e.HasIndex(x => x.AvaClientId).IsUnique();
+        });
+
+        builder.Entity<AvaClient>(e =>
+        {
+            e.Property(x => x.LicenseAgreementId).HasMaxLength(14);
+
+            e.HasIndex(x => x.LicenseAgreementId).IsUnique();
+
+            e.HasOne<LicenseAgreement>()
+                .WithOne()
+                .HasForeignKey<AvaClient>(c => c.LicenseAgreementId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_AvaClient_LicenseAgreement");
         });
 
         // Configure the DefaultTravelPolicy relationship for AvaClient.

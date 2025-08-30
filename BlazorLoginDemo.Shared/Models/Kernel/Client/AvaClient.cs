@@ -132,6 +132,9 @@ public class AvaClient
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? AvaClientLicenseId { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LicenseAgreementId { get; set; }
     
     // policies
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
