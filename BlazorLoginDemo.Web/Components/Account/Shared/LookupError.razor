@@ -1,0 +1,215 @@
+@page "/errors/lookup"
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager Nav
+
+@* 
+  LookupError.razor
+  - Handles multiple query params (?clientId=..., ?licenseAgreementId=..., etc.)
+  - Displays a friendly "not found" message for the detected entity
+  - Shows a context-aware action button ("Try Again" → goes to the relevant search page) or Home
+  - Easily extensible: add new entries in ErrorRoutes below
+*@
+
+<div class="container py-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/errors">Errors</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Lookup</li>
+    </ol>
+  </nav>
+
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+
+      <div class="alert alert-warning d-flex align-items-start gap-3" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+        <div>
+          <h4 class="alert-heading mb-1">Item not found</h4>
+
+          @if (_primaryContext is not null)
+          {
+            <p class="mb-2">
+              We couldn’t find the requested <strong>@_primaryContext.DisplayName</strong>
+              @if (!string.IsNullOrWhiteSpace(_primaryContext.Value))
+              {
+                <span> with ID <code>@_primaryContext.Value</code></span>
+              }.
+            </p>
+          }
+          else
+          {
+            <p class="mb-2">
+              We couldn’t determine what you were looking for from the query string.
+            </p>
+          }
+
+          @if (_allRecognized.Any())
+          {
+            <details class="mb-2">
+              <summary class="cursor-pointer">Details</summary>
+              <ul class="mb-0 mt-2">
+                @foreach (var ctx in _allRecognized)
+                {
+                  <li>
+                    <strong>@ctx.DisplayName</strong>
+                    @if (!string.IsNullOrWhiteSpace(ctx.Value))
+                    {
+                      <span> → <code>@ctx.Value</code></span>
+                    }
+                    <span class="text-muted"> (@ctx.ParamName)</span>
+                  </li>
+                }
+              </ul>
+            </details>
+          }
+
+          @if (_otherParams.Any())
+          {
+            <details class="mb-0">
+              <summary class="cursor-pointer">Other query parameters</summary>
+              <ul class="mb-0 mt-2">
+                @foreach (var kv in _otherParams)
+                {
+                  <li><code>@kv.Key</code> = <code>@kv.Value</code></li>
+                }
+              </ul>
+            </details>
+          }
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-body d-flex flex-wrap gap-2 justify-content-center">
+          @if (!string.IsNullOrWhiteSpace(_primaryActionHref))
+          {
+            <a class="btn btn-primary" href="@_primaryActionHref">
+              @(_primaryActionLabel ?? "Try Again")
+            </a>
+          }
+          else
+          {
+            <a class="btn btn-primary" href="/">Home</a>
+          }
+
+          <a class="btn btn-outline-secondary" href="/" title="Go back to Home">
+            Home
+          </a>
+        </div>
+      </div>
+
+      @* Optional helper footer *@
+      <div class="text-center text-muted small mt-3">
+        Tip: Check the ID is correct, then try searching again.
+      </div>
+    </div>
+  </div>
+</div>
+
+@code
+{
+    // --- Configuration: Add new recognized query keys here ---
+    // ParamName: what to read from the URL
+    // DisplayName: human-friendly entity name to show in the UI
+    // BuildTryAgainUrl: returns a URL for the relevant "Try Again" search page (use value for prefill if you like)
+    private static readonly List<ErrorRoute> ErrorRoutes =
+    [
+        new("clientId", "Client", value => $"/clients/search?prefill={Uri.EscapeDataString(value ?? string.Empty)}"),
+        new("licenseAgreementId", "License Agreement", value => $"/licenses/search?prefill={Uri.EscapeDataString(value ?? string.Empty)}"),
+        // Add more here as you grow:
+        // new("policyId", "Policy", value => $"/policies/search?prefill={Uri.EscapeDataString(value ?? string.Empty)}"),
+        // new("invoiceId", "Invoice", value => $"/billing/invoices?prefill={Uri.EscapeDataString(value ?? string.Empty)}"),
+    ];
+
+    // Parsed contexts for all recognized params present in the URL
+    private readonly List<ResolvedContext> _allRecognized = new();
+
+    // Any other query params that aren’t recognized yet (future-proofing)
+    private readonly Dictionary<string, string> _otherParams = new(StringComparer.OrdinalIgnoreCase);
+
+    // The primary context we’ll “switch” on to decide the main button
+    private ResolvedContext? _primaryContext;
+
+    // Action button text + href decided by the primary context
+    private string? _primaryActionLabel;
+    private string? _primaryActionHref;
+
+    protected override void OnParametersSet()
+    {
+        _allRecognized.Clear();
+        _otherParams.Clear();
+        _primaryContext = null;
+        _primaryActionHref = null;
+        _primaryActionLabel = null;
+
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        // Collect all provided query params into lookup (single-value preference)
+        var provided = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in query)
+        {
+            // If duplicates exist, prefer the first (or last) — here we pick the first
+            var val = kv.Value.FirstOrDefault();
+            provided[kv.Key] = val ?? string.Empty;
+        }
+
+        // Find recognized keys
+        foreach (var route in ErrorRoutes)
+        {
+            if (provided.TryGetValue(route.ParamName, out var value) && !string.IsNullOrWhiteSpace(value))
+            {
+                _allRecognized.Add(new ResolvedContext(route.ParamName, route.DisplayName, value, route.BuildTryAgainUrl));
+            }
+        }
+
+        // Store unrecognized params for transparency
+        foreach (var kv in provided)
+        {
+            if (!ErrorRoutes.Any(r => r.ParamName.Equals(kv.Key, StringComparison.OrdinalIgnoreCase)))
+                _otherParams[kv.Key] = kv.Value;
+        }
+
+        // Choose which “context” to drive the main CTA
+        // Strategy: if multiple are provided, we pick the first recognized according to ErrorRoutes’ order.
+        _primaryContext = _allRecognized.FirstOrDefault();
+
+        // Decide action button per recognized param (switch-like behavior)
+        if (_primaryContext is not null)
+        {
+            // You can tweak the labels per entity if desired:
+            switch (_primaryContext.ParamName.ToLowerInvariant())
+            {
+                case "clientid":
+                    _primaryActionLabel = "Search Clients";
+                    _primaryActionHref  = SafeHref(_primaryContext.BuildTryAgainUrl(_primaryContext.Value));
+                    break;
+
+                case "licenseagreementid":
+                    _primaryActionLabel = "Search License Agreements";
+                    _primaryActionHref  = SafeHref(_primaryContext.BuildTryAgainUrl(_primaryContext.Value));
+                    break;
+
+                // Add more cases here for new params with custom labels:
+                // case "policyid":
+                //     _primaryActionLabel = "Search Policies";
+                //     _primaryActionHref  = SafeHref(_primaryContext.BuildTryAgainUrl(_primaryContext.Value));
+                //     break;
+
+                default:
+                    _primaryActionLabel = "Try Again";
+                    _primaryActionHref  = "/";
+                    break;
+            }
+        }
+        // else → falls back to Home only
+    }
+
+    // Small helper to avoid null/empty hrefs
+    private static string SafeHref(string? href) => string.IsNullOrWhiteSpace(href) ? "/" : href;
+
+    // --- Helper types ---
+    private sealed record ErrorRoute(string ParamName, string DisplayName, Func<string?, string> BuildTryAgainUrl);
+
+    private sealed record ResolvedContext(string ParamName, string DisplayName, string? Value, Func<string?, string> BuildTryAgainUrl);
+}

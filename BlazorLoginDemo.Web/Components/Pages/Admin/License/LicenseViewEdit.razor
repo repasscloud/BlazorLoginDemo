@@ -25,7 +25,7 @@
     </ol>
   </nav> *@
 
-    <h1 class="mb-3">Existing License Agreement</h1>
+<h1 class="mb-3">Existing License Agreement</h1>
 
 @if (_model is not null)
 {
@@ -100,13 +100,6 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Payment Method</label>
-                    @* 
-                    <InputSelect class="form-select" @bind-Value="_model.PaymentMethod">
-                        @foreach (var v in _paymentMethods) { 
-                        <option value="@v">@v</option>
-                        }
-                    </InputSelect>
-                    *@
                     <InputSelect class="form-select" @bind-Value="_model.PaymentMethod">
                         @foreach (var item in _paymentMethods)
                         {
@@ -124,13 +117,6 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Billing Frequency</label>
-                    @* 
-                    <InputSelect class="form-select" @bind-Value="_model.BillingFrequency">
-                        @foreach (var v in _billingFrequencies) { 
-                        <option value="@v">@v</option>
-                        }
-                    </InputSelect>
-                    *@
                     <InputSelect class="form-select" @bind-Value="_model.BillingFrequency">
                         @foreach (var item in _billingFrequencies)
                         {
@@ -147,8 +133,16 @@
                     </InputSelect>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Late Fee Config ID</label>
-                    <InputText class="form-control" @bind-Value="_model.LateFeeConfigId" readonly />
+                    <label class="form-label">
+                        Late Fee Config ID
+                    </label>
+                    <div class="input-group">
+                            <InputText class="form-control" @bind-Value="_model.LateFeeConfigId" readonly />
+                            <button type="button" class="btn btn-outline-secondary" @onclick="ViewCreateLateFeeConfigAsync">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    <ValidationMessage For="@(() => _model.LateFeeConfigId)" />
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Access Fee</label>
@@ -233,7 +227,7 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label">Markup (%)</label>
-                            InputNumber class="form-control" @bind-Value="_model.HotelMarkupPercent" step="0.01" />
+                            <InputNumber class="form-control" @bind-Value="_model.HotelMarkupPercent" step="0.01" />
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Per-Item Fee</label>
@@ -244,13 +238,6 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Fee Type</label>
-                            @* 
-                            <InputSelect class="form-select" @bind-Value="_model.HotelFeeType">
-                                @foreach (var v in _serviceFeeTypes) { 
-                                <option value="@v">@v</option>
-                                }
-                            </InputSelect>
-                            *@
                             <InputSelect class="form-select" @bind-Value="_model.HotelFeeType">
                                 @foreach (var item in _serviceFeeTypes)
                                 {
@@ -277,13 +264,6 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Fee Type</label>
-                            @* 
-                            <InputSelect class="form-select" @bind-Value="_model.CarFeeType">
-                                @foreach (var v in _serviceFeeTypes) { 
-                                <option value="@v">@v</option>
-                                }
-                            </InputSelect>
-                            *@
                             <InputSelect class="form-select" @bind-Value="_model.CarFeeType">
                                 @foreach (var item in _serviceFeeTypes)
                                 {
@@ -310,13 +290,6 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Fee Type</label>
-                            @* 
-                            <InputSelect class="form-select" @bind-Value="_model.RailFeeType">
-                                @foreach (var v in _serviceFeeTypes) { 
-                                <option value="@v">@v</option>
-                                }
-                            </InputSelect>
-                            *@
                             <InputSelect class="form-select" @bind-Value="_model.RailFeeType">
                                 @foreach (var item in _serviceFeeTypes)
                                 {
@@ -343,13 +316,6 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Fee Type</label>
-                            @* 
-                            <InputSelect class="form-select" @bind-Value="_model.TransferFeeType">
-                                @foreach (var v in _serviceFeeTypes) { 
-                                <option value="@v">@v</option>
-                                }
-                            </InputSelect>
-                            *@
                             <InputSelect class="form-select" @bind-Value="_model.TransferFeeType">
                                 @foreach (var item in _serviceFeeTypes)
                                 {
@@ -376,13 +342,6 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Fee Type</label>
-                            @* 
-                            <InputSelect class="form-select" @bind-Value="_model.ActivityFeeType">
-                                @foreach (var v in _serviceFeeTypes) { 
-                                <option value="@v">@v</option>
-                                }
-                            </InputSelect>
-                            *@
                             <InputSelect class="form-select" @bind-Value="_model.ActivityFeeType">
                                 @foreach (var item in _serviceFeeTypes)
                                 {
@@ -409,13 +368,6 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Fee Type</label>
-                            @* 
-                            <InputSelect class="form-select" @bind-Value="_model.TravelFeeType">
-                                @foreach (var v in _serviceFeeTypes) { 
-                                <option value="@v">@v</option>
-                                }
-                            </InputSelect>
-                            *@
                             <InputSelect class="form-select" @bind-Value="_model.TravelFeeType">
                                 @foreach (var item in _serviceFeeTypes)
                                 {
@@ -432,10 +384,12 @@
     </div>
     <!-- Actions -->
     <div class="d-flex gap-2 mt-4">
-        <button type="submit" class="btn btn-primary">Submit</button>
-        <button type="button" class="btn btn-outline-secondary" @onclick="OnCancel">
-        Cancel
+        <button type="submit" class="btn btn-primary" disabled="@_busy">
+            @(_busy ? "Saving..." : "Save Changes")
         </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnCancel" disabled="@_busy">
+                Cancel
+            </button>
     </div>
 </EditForm>
 }
@@ -468,38 +422,28 @@ else
 @code
 {
     [Parameter, EditorRequired]
-    public required string AvaClientId { get; set; }
+    public required string LicenseAgreementId { get; set; }
 
-    private AvaClient? _client;
-
-    // Backing model for the form
-    private LicenseAgreement _model = new()
-    {
-        //Id = Nanoid.Generate(alphabet: Nanoid.Alphabets.HexadecimalUppercase, size: 14),
-        // This will be overwritten after lookup succeeds
-        AvaClientId = string.Empty
-    };
-
-    private LateFeeConfig? _lateFeeConfig;
+    private bool _busy = false;
+    private string? _error;
+    private LicenseAgreement? _model;
+    private LicenseAgreement? existingLicenseAgreement;
 
     // Placeholder error page (you'll create it later)
-    private const string ErrorPageUrl = "/errors/ava-client-not-found";
+    private const string ErrorPageUrl = "/errors/lookup";
 
     // Enum value sources (populated from real enums at runtime)
     private readonly PaymentTerms[] _paymentTerms = Enum.GetValues<PaymentTerms>();
-    @* private readonly PaymentMethod[] _paymentMethods = Enum.GetValues<PaymentMethod>(); *@
     private static readonly IReadOnlyList<(PaymentMethod Value, string Text)> _paymentMethods =
         Enum.GetValues<PaymentMethod>()
           .Select(e => (e, GetDisplayName(e)))
           .ToList();
     private readonly BillingType[] _billingTypes = Enum.GetValues<BillingType>();
-    @* private readonly BillingFrequency[] _billingFrequencies = Enum.GetValues<BillingFrequency>(); *@
     private static readonly IReadOnlyList<(BillingFrequency Value, string Text)> _billingFrequencies = 
         Enum.GetValues<BillingFrequency>()
           .Select(e => (e, GetDisplayName(e)))
           .ToList();
     private readonly PaymentStatus[] _paymentStatuses = Enum.GetValues<PaymentStatus>();
-    @* private readonly ServiceFeeType[] _serviceFeeTypes = Enum.GetValues<ServiceFeeType>(); *@
     private static readonly IReadOnlyList<(ServiceFeeType Value, string Text)> _serviceFeeTypes =
         Enum.GetValues<ServiceFeeType>()
             .Select(e => (e, GetDisplayName(e)))
@@ -507,36 +451,42 @@ else
     
     protected override async Task OnParametersSetAsync()
     {
-        // ===== lookup =====
-        _client = await AvaClientService.GetByIdAsync(AvaClientId);
-
-        if (_client is null)
+        if (string.IsNullOrWhiteSpace(LicenseAgreementId))
         {
-            // Navigate to your custom error page with context
-            Nav.NavigateTo($"{ErrorPageUrl}?clientId={Uri.EscapeDataString(AvaClientId)}", forceLoad: true);
+            Nav.NavigateTo($"{ErrorPageUrl}?licenseAgreementId={Uri.EscapeDataString(LicenseAgreementId)}", forceLoad: true);
             return;
         }
 
-        // Ensure model has correct client id when form loads
-        _model.AvaClientId = _client.Id;
-        _model.LateFeeConfigId = Nanoid.Generate(size: 14);
-
-        // set the default tax rate
-        _model.TaxRate = _client.TaxIdType switch
+        try
         {
-            TaxIdType.None => 0m,
-            TaxIdType.AU_ABN or TaxIdType.AU_ACN or TaxIdType.AU_ARBN or TaxIdType.AU_ARSN => 10m,
-            _ => 0m
-        };
+            _busy = true;
+
+            // lookup by Id
+            existingLicenseAgreement = await LicenseAgreementService.GetByIdAsync(LicenseAgreementId);
+
+            // if not found, return to error page, lol
+            if (existingLicenseAgreement is null)
+            {
+                Nav.NavigateTo($"{ErrorPageUrl}?licenseAgreementId={Uri.EscapeDataString(LicenseAgreementId)}", forceLoad: true);
+                return;
+            }
+
+            _model = existingLicenseAgreement;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task HandleSubmit()
     {
-        var result = await LicenseAgreementService.CreateAsync(_model);
+        _model.LastUpdatedAt = DateTime.UtcNow;
+        var result = await LicenseAgreementService.UpdateAsync(_model);
 
         if (result is not null)
         {
-            Nav.NavigateTo("/");
+            Nav.NavigateTo("/", forceLoad: true);
             return;
         }
         
@@ -544,6 +494,12 @@ else
     }
 
     private void OnCancel() => Nav.NavigateTo("/");
+
+    private async Task ViewCreateLateFeeConfigAsync()
+    {
+        var lateFeeConfigId = _model.LateFeeConfigId;
+
+    }
 
     private static string GetDisplayName<TEnum>(TEnum value)
         where TEnum : struct, Enum

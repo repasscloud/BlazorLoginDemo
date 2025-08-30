@@ -24,6 +24,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AvaClientLicense> AvaClientLicenses => Set<AvaClientLicense>();
     public DbSet<LicenseAgreement> LicenseAgreements => Set<LicenseAgreement>();
 
+    // Finance
+    public DbSet<LateFeeConfig> LateFeeConfigs => Set<LateFeeConfig>();
+
     // Travel Policy
     public DbSet<TravelPolicy> TravelPolicies => Set<TravelPolicy>();
     public DbSet<Region> Regions => Set<Region>();

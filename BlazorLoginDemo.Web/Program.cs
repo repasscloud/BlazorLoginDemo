@@ -190,6 +190,7 @@ public class Program
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
         builder.Services.AddHttpClient();
         builder.Services.AddAvaClientServices();
+        builder.Services.AddAvaFinanceServices();
         builder.Services.AddTransient<IEmailSender, MailerSendEmailSender>();
         builder.Services.AddTransient<IEmailSender<ApplicationUser>, MailerSendEmailSender>();
 

@@ -35,6 +35,20 @@ public sealed class LicenseAgreementService : ILicenseAgreementService
             client.LastUpdated = DateTime.UtcNow;
         }
 
+        var lateFeeConfig = await _db.LateFeeConfigs.FirstOrDefaultAsync(c => c.Id == agreement.LateFeeConfigId, ct);
+        if (lateFeeConfig is null)
+        {
+            if (!string.IsNullOrEmpty(agreement.LateFeeConfigId))
+            {
+                lateFeeConfig = new LateFeeConfig
+                {
+                    Id = agreement.LateFeeConfigId,
+                    LicenseAgreementId = agreement.Id,
+                };
+
+                await _db.LateFeeConfigs.AddAsync(lateFeeConfig, ct);
+            }
+        }
         await _db.SaveChangesAsync(ct);
         return agreement;
     }
