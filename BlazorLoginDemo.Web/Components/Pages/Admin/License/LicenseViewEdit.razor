@@ -1,0 +1,564 @@
+@page "/admin/license/{LicenseAgreementId}"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@using System.Linq
+@using BlazorLoginDemo.Shared.Models.Kernel.Billing
+@using BlazorLoginDemo.Shared.Models.Static.Billing
+@using BlazorLoginDemo.Shared.Models.Static
+
+@inject NavigationManager Nav
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.ILicenseAgreementService LicenseAgreementService
+@inject ILogger<AvaClient> Log
+
+<PageTitle>New License Agreement</PageTitle>
+
+@* <div class="container py-4">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/clients">Clients</a></li>
+      <li class="breadcrumb-item active" aria-current="page">New License Agreement</li>
+    </ol>
+  </nav> *@
+
+    <h1 class="mb-3">Existing License Agreement</h1>
+
+@if (_model is not null)
+{
+<EditForm Model="_model" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="licenseTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-general" data-bs-toggle="tab" data-bs-target="#panel-general" type="button" role="tab" aria-controls="panel-general"            aria-selected="true">
+            General
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-billing" data-bs-toggle="tab" data-bs-target="#panel-billing" type="button" role="tab" aria-controls="panel-billing" aria-selected="false">
+            Billing
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-fees" data-bs-toggle="tab" data-bs-target="#panel-fees" type="button" role="tab" aria-controls="panel-fees" aria-selected="false">
+            Fees
+            </button>
+        </li>
+    </ul>
+    <div class="tab-content border border-top-0 p-3 rounded-bottom" id="licenseTabsContent">
+        <!-- General -->
+        <div class="tab-pane fade show active" id="panel-general" role="tabpanel" aria-labelledby="tab-general" tabindex="0">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Auto Renew</label>
+                    <div class="form-check form-switch">
+                        <InputCheckbox class="form-check-input" @bind-Value="_model.AutoRenew" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Grace Period (days)</label>
+                    <InputNumber class="form-control" @bind-Value="_model.GracePeriodDays" />
+                    <div class="form-text">Number of days before suspension/enforcement.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Trial Ends On</label>
+                    <InputDate class="form-control" @bind-Value="_model.TrialEndsOn" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Remittance Email</label>
+                    <InputText class="form-control" @bind-Value="_model.RemittanceEmail" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Tax Rate (%)</label>
+                    <InputNumber class="form-control" @bind-Value="_model.TaxRate" step="0.01" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Discount (%)</label>
+                    <InputNumber class="form-control" @bind-Value="_model.Discount" step="0.01" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Discount Expires</label>
+                    <InputDate class="form-control" @bind-Value="_model.DiscountExpires" />
+                </div>
+            </div>
+        </div>
+        <!-- Billing -->
+        <div class="tab-pane fade" id="panel-billing" role="tabpanel" aria-labelledby="tab-billing" tabindex="0">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Payment Terms</label>
+                    <InputSelect class="form-select" @bind-Value="_model.PaymentTerms">
+                        @foreach (var v in _paymentTerms) { 
+                        <option value="@v">@v</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Payment Method</label>
+                    @* 
+                    <InputSelect class="form-select" @bind-Value="_model.PaymentMethod">
+                        @foreach (var v in _paymentMethods) { 
+                        <option value="@v">@v</option>
+                        }
+                    </InputSelect>
+                    *@
+                    <InputSelect class="form-select" @bind-Value="_model.PaymentMethod">
+                        @foreach (var item in _paymentMethods)
+                        {
+                        <option value="@item.Value">@item.Text</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Billing Type</label>
+                    <InputSelect class="form-select" @bind-Value="_model.BillingType">
+                        @foreach (var v in _billingTypes) { 
+                        <option value="@v">@v</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Billing Frequency</label>
+                    @* 
+                    <InputSelect class="form-select" @bind-Value="_model.BillingFrequency">
+                        @foreach (var v in _billingFrequencies) { 
+                        <option value="@v">@v</option>
+                        }
+                    </InputSelect>
+                    *@
+                    <InputSelect class="form-select" @bind-Value="_model.BillingFrequency">
+                        @foreach (var item in _billingFrequencies)
+                        {
+                        <option value="@item.Value">@item.Text</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Payment Status</label>
+                    <InputSelect class="form-select" @bind-Value="_model.PaymentStatus" disabled>
+                        @foreach (var v in _paymentStatuses) { 
+                        <option value="@v">@v</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Late Fee Config ID</label>
+                    <InputText class="form-control" @bind-Value="_model.LateFeeConfigId" readonly />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Access Fee</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <InputNumber class="form-control" @bind-Value="_model.AccessFee" step="0.01" />
+                    </div>
+                    <div class="form-text">Fee paid per billing period to access the platform.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Prepaid Balance</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <InputNumber class="form-control" @bind-Value="_model.PrepaidBalance" step="0.01" />
+                    </div>
+                    <div class="form-text">Account balance if using PrePaid with auto-top-up.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Account Threshold</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <InputNumber class="form-control" @bind-Value="_model.AccountThreshold" step="0.01" />
+                    </div>
+                    <div class="form-text">Alert/auto-top-up threshold (if applicable).</div>
+                </div>
+            </div>
+        </div>
+        <!-- Fees -->
+        <div class="tab-pane fade" id="panel-fees" role="tabpanel" aria-labelledby="tab-fees" tabindex="0">
+            <!-- Category groups -->
+            <div class="row g-4">
+                <!-- PNR -->
+                <div class="col-12">
+                    <h5 class="mb-3">PNR Fees</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">PNR Creation Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="_model.PnrCreationFee" step="0.01" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">PNR Change Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="_model.PnrChangeFee" step="0.01" />
+                            </div>
+                        </div>
+                        <div class="form-text">PNR fees are subject to Tax Rate.</div>
+                    </div>
+                </div>
+                <!-- Flight -->
+                <div class="col-12">
+                    <h5 class="mb-3">Flight Fees</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Markup (%)</label>
+                            <InputNumber class="form-control" @bind-Value="_model.FlightMarkupPercent" step="0.01" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Per-Item Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="_model.FlightPerItemFee" step="0.01" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fee Type</label>
+                            <InputSelect class="form-select" @bind-Value="_model.FlightFeeType">
+                                @foreach (var item in _serviceFeeTypes)
+                                {
+                                <option value="@item.Value">@item.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+                <!-- Hotel -->
+                <div class="col-12">
+                    <h5 class="mb-3">Hotel Fees</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Markup (%)</label>
+                            InputNumber class="form-control" @bind-Value="_model.HotelMarkupPercent" step="0.01" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Per-Item Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="_model.HotelPerItemFee" step="0.01" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fee Type</label>
+                            @* 
+                            <InputSelect class="form-select" @bind-Value="_model.HotelFeeType">
+                                @foreach (var v in _serviceFeeTypes) { 
+                                <option value="@v">@v</option>
+                                }
+                            </InputSelect>
+                            *@
+                            <InputSelect class="form-select" @bind-Value="_model.HotelFeeType">
+                                @foreach (var item in _serviceFeeTypes)
+                                {
+                                <option value="@item.Value">@item.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+                <!-- Car -->
+                <div class="col-12">
+                    <h5 class="mb-3">Car Fees</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Markup (%)</label>
+                            <InputNumber class="form-control" @bind-Value="_model.CarMarkupPercent" step="0.01" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Per-Item Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="_model.CarPerItemFee" step="0.01" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fee Type</label>
+                            @* 
+                            <InputSelect class="form-select" @bind-Value="_model.CarFeeType">
+                                @foreach (var v in _serviceFeeTypes) { 
+                                <option value="@v">@v</option>
+                                }
+                            </InputSelect>
+                            *@
+                            <InputSelect class="form-select" @bind-Value="_model.CarFeeType">
+                                @foreach (var item in _serviceFeeTypes)
+                                {
+                                <option value="@item.Value">@item.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+                <!-- Rail -->
+                <div class="col-12">
+                    <h5 class="mb-3">Rail Fees</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Markup (%)</label>
+                            <InputNumber class="form-control" @bind-Value="_model.RailMarkupPercent" step="0.01" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Per-Item Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="_model.RailPerItemFee" step="0.01" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fee Type</label>
+                            @* 
+                            <InputSelect class="form-select" @bind-Value="_model.RailFeeType">
+                                @foreach (var v in _serviceFeeTypes) { 
+                                <option value="@v">@v</option>
+                                }
+                            </InputSelect>
+                            *@
+                            <InputSelect class="form-select" @bind-Value="_model.RailFeeType">
+                                @foreach (var item in _serviceFeeTypes)
+                                {
+                                <option value="@item.Value">@item.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+                <!-- Transfer -->
+                <div class="col-12">
+                    <h5 class="mb-3">Transfer Fees</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Markup (%)</label>
+                            <InputNumber class="form-control" @bind-Value="_model.TransferMarkupPercent" step="0.01" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Per-Item Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="_model.TransferPerItemFee" step="0.01" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fee Type</label>
+                            @* 
+                            <InputSelect class="form-select" @bind-Value="_model.TransferFeeType">
+                                @foreach (var v in _serviceFeeTypes) { 
+                                <option value="@v">@v</option>
+                                }
+                            </InputSelect>
+                            *@
+                            <InputSelect class="form-select" @bind-Value="_model.TransferFeeType">
+                                @foreach (var item in _serviceFeeTypes)
+                                {
+                                <option value="@item.Value">@item.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+                <!-- Activity -->
+                <div class="col-12">
+                    <h5 class="mb-3">Activity Fees</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Markup (%)</label>
+                            <InputNumber class="form-control" @bind-Value="_model.ActivityMarkupPercent" step="0.01" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Per-Item Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="_model.ActivityPerItemFee" step="0.01" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fee Type</label>
+                            @* 
+                            <InputSelect class="form-select" @bind-Value="_model.ActivityFeeType">
+                                @foreach (var v in _serviceFeeTypes) { 
+                                <option value="@v">@v</option>
+                                }
+                            </InputSelect>
+                            *@
+                            <InputSelect class="form-select" @bind-Value="_model.ActivityFeeType">
+                                @foreach (var item in _serviceFeeTypes)
+                                {
+                                <option value="@item.Value">@item.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+                <!-- Travel (Catch-all) -->
+                <div class="col-12">
+                    <h5 class="mb-3">Travel (Catch-All) Fees</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Markup (%)</label>
+                            <InputNumber class="form-control" @bind-Value="_model.TravelMarkupPercent" step="0.01" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Per-Item Fee</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="_model.TravelPerItemFee" step="0.01" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fee Type</label>
+                            @* 
+                            <InputSelect class="form-select" @bind-Value="_model.TravelFeeType">
+                                @foreach (var v in _serviceFeeTypes) { 
+                                <option value="@v">@v</option>
+                                }
+                            </InputSelect>
+                            *@
+                            <InputSelect class="form-select" @bind-Value="_model.TravelFeeType">
+                                @foreach (var item in _serviceFeeTypes)
+                                {
+                                <option value="@item.Value">@item.Text</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="form-text">Catch-All overrides all other Fees.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /Fees -->
+    </div>
+    <!-- Actions -->
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Submit</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnCancel">
+        Cancel
+        </button>
+    </div>
+</EditForm>
+}
+else if (_busy)
+{
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-2">
+                <div class="spinner-border" role="status" aria-hidden="true"></div>
+                <strong>Loading license agreement…</strong>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-2">
+            <!-- Safety fallback; normally you navigate before reaching here -->
+                <div class="alert alert-warning mb-0">No license agreement loaded.</div>
+            </div>
+        </div>
+    </div>
+}
+
+  
+@* </div> *@
+
+@code
+{
+    [Parameter, EditorRequired]
+    public required string AvaClientId { get; set; }
+
+    private AvaClient? _client;
+
+    // Backing model for the form
+    private LicenseAgreement _model = new()
+    {
+        //Id = Nanoid.Generate(alphabet: Nanoid.Alphabets.HexadecimalUppercase, size: 14),
+        // This will be overwritten after lookup succeeds
+        AvaClientId = string.Empty
+    };
+
+    private LateFeeConfig? _lateFeeConfig;
+
+    // Placeholder error page (you'll create it later)
+    private const string ErrorPageUrl = "/errors/ava-client-not-found";
+
+    // Enum value sources (populated from real enums at runtime)
+    private readonly PaymentTerms[] _paymentTerms = Enum.GetValues<PaymentTerms>();
+    @* private readonly PaymentMethod[] _paymentMethods = Enum.GetValues<PaymentMethod>(); *@
+    private static readonly IReadOnlyList<(PaymentMethod Value, string Text)> _paymentMethods =
+        Enum.GetValues<PaymentMethod>()
+          .Select(e => (e, GetDisplayName(e)))
+          .ToList();
+    private readonly BillingType[] _billingTypes = Enum.GetValues<BillingType>();
+    @* private readonly BillingFrequency[] _billingFrequencies = Enum.GetValues<BillingFrequency>(); *@
+    private static readonly IReadOnlyList<(BillingFrequency Value, string Text)> _billingFrequencies = 
+        Enum.GetValues<BillingFrequency>()
+          .Select(e => (e, GetDisplayName(e)))
+          .ToList();
+    private readonly PaymentStatus[] _paymentStatuses = Enum.GetValues<PaymentStatus>();
+    @* private readonly ServiceFeeType[] _serviceFeeTypes = Enum.GetValues<ServiceFeeType>(); *@
+    private static readonly IReadOnlyList<(ServiceFeeType Value, string Text)> _serviceFeeTypes =
+        Enum.GetValues<ServiceFeeType>()
+            .Select(e => (e, GetDisplayName(e)))
+            .ToList();
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        // ===== lookup =====
+        _client = await AvaClientService.GetByIdAsync(AvaClientId);
+
+        if (_client is null)
+        {
+            // Navigate to your custom error page with context
+            Nav.NavigateTo($"{ErrorPageUrl}?clientId={Uri.EscapeDataString(AvaClientId)}", forceLoad: true);
+            return;
+        }
+
+        // Ensure model has correct client id when form loads
+        _model.AvaClientId = _client.Id;
+        _model.LateFeeConfigId = Nanoid.Generate(size: 14);
+
+        // set the default tax rate
+        _model.TaxRate = _client.TaxIdType switch
+        {
+            TaxIdType.None => 0m,
+            TaxIdType.AU_ABN or TaxIdType.AU_ACN or TaxIdType.AU_ARBN or TaxIdType.AU_ARSN => 10m,
+            _ => 0m
+        };
+    }
+
+    private async Task HandleSubmit()
+    {
+        var result = await LicenseAgreementService.CreateAsync(_model);
+
+        if (result is not null)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+        
+        // display error text
+    }
+
+    private void OnCancel() => Nav.NavigateTo("/");
+
+    private static string GetDisplayName<TEnum>(TEnum value)
+        where TEnum : struct, Enum
+    {
+        var member = typeof(TEnum).GetMember(value.ToString());
+        if (member.Length > 0)
+        {
+            var attr = member[0]
+                .GetCustomAttributes(typeof(DisplayAttribute), inherit: false)
+                .OfType<DisplayAttribute>()
+                .FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(attr?.Name))
+                return attr!.Name!;
+        }
+        return value.ToString()!;
+    }
+}
