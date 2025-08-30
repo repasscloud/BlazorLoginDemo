@@ -34,6 +34,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Country> Countries => Set<Country>();
     public DbSet<TravelPolicyDisabledCountry> TravelPolicyDisabledCountries => Set<TravelPolicyDisabledCountry>();
 
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -148,7 +149,25 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(ct => ct.Countries)
             .HasForeignKey(c => c.ContinentId)
             .OnDelete(DeleteBehavior.Restrict);
-            
+
+        // Included airline codes for travel policy
+        builder.Entity<TravelPolicy>(e =>
+        {
+            e.Property(p => p.IncludedAirlineCodes)
+            .HasColumnType("text[]") // explicit, but Npgsql infers this automatically
+            .IsRequired()                              // NOT NULL
+            .HasDefaultValueSql("'{}'::text[]");       // default empty array
+        });
+
+        // Excluded airline codes for travel policy
+        builder.Entity<TravelPolicy>(e =>
+        {
+            e.Property(p => p.ExcludedAirlineCodes)
+            .HasColumnType("text[]") // explicit, but Npgsql infers this automatically
+            .IsRequired()                              // NOT NULL
+            .HasDefaultValueSql("'{}'::text[]");       // default empty array
+        });
+
         builder.Entity<RefreshToken>(b =>
         {
             b.HasIndex(x => x.Token).IsUnique();

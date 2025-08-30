@@ -12,289 +12,271 @@
 
 @if (loadError is not null)
 {
-  <div class="alert alert-danger"><strong>Couldn’t load:</strong> @loadError</div>
+    <div class="alert alert-danger"><strong>Couldn’t load:</strong> @loadError</div>
 }
 @if (!string.IsNullOrWhiteSpace(successMessage))
 {
-  <div class="alert alert-success alert-dismissible fade show" role="alert">
-    @successMessage
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-  </div>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @successMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 
 <EditForm Model="Model" OnValidSubmit="SaveAsync">
-  <DataAnnotationsValidator />
-  <ValidationSummary class="mb-3" />
-
-  <ul class="nav nav-tabs mb-3" id="policyTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="tab-basic" data-bs-toggle="tab" data-bs-target="#pane-basic" type="button" role="tab">Basics</button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" id="tab-flights" data-bs-toggle="tab" data-bs-target="#pane-flights" type="button" role="tab">Flights</button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" id="tab-windows" data-bs-toggle="tab" data-bs-target="#pane-windows" type="button" role="tab">Booking Windows</button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" id="tab-dest" data-bs-toggle="tab" data-bs-target="#pane-dest" type="button" role="tab">Destinations</button>
-    </li>
-  </ul>
-
-  <div class="tab-content" id="policyTabContent">
-    <!-- BASICS -->
-    <div class="tab-pane fade show active" id="pane-basic" role="tabpanel" aria-labelledby="tab-basic">
-      <div class="row g-3">
-        <!-- Policy ID (read-only) -->
-        <div class="col-md-4">
-          <label class="form-label">Policy ID</label>
-          <input class="form-control" value="@Model.Id" readonly />
-          @* <div class="form-text">Auto-generated NanoID (read-only).</div> *@
+    <DataAnnotationsValidator />
+    <ValidationSummary class="mb-3" />
+    <ul class="nav nav-tabs mb-3" id="policyTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-basic" data-bs-toggle="tab" data-bs-target="#pane-basic" type="button" role="tab">Basics</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-flights" data-bs-toggle="tab" data-bs-target="#pane-flights" type="button" role="tab">Flights</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-windows" data-bs-toggle="tab" data-bs-target="#pane-windows" type="button" role="tab">Booking Windows</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-dest" data-bs-toggle="tab" data-bs-target="#pane-dest" type="button" role="tab">Destinations</button>
+        </li>
+    </ul>
+    <div class="tab-content" id="policyTabContent">
+        <!-- BASICS -->
+        <div class="tab-pane fade show active" id="pane-basic" role="tabpanel" aria-labelledby="tab-basic">
+            <div class="row g-3">
+                <!-- Policy ID (read-only) -->
+                <div class="col-md-4">
+                    <label class="form-label">Policy ID</label>
+                    <input class="form-control" value="@Model.Id" readonly />
+                    @* 
+                    <div class="form-text">Auto-generated NanoID (read-only).</div>
+                    *@
+                </div>
+                <!-- Policy Name -->
+                <div class="col-md-8">
+                    <label class="form-label">Policy Name</label>
+                    <InputText class="form-control" @bind-Value="Model.PolicyName" />
+                    <ValidationMessage For="@(() => Model.PolicyName)" />
+                </div>
+                <!-- AvaClientId -->
+                <div class="col-md-4">
+                    <label class="form-label">Client ID</label>
+                    <InputText class="form-control" @bind-Value="Model.AvaClientId" readonly />
+                    <ValidationMessage For="@(() => Model.AvaClientId)" />
+                </div>
+                <!-- Currency -->
+                <div class="col-md-4">
+                    <label class="form-label">Default Currency (ISO 4217)</label>
+                    <InputSelect class="form-select" @bind-Value="Model.DefaultCurrencyCode">
+                        @foreach (var c in CurrencyOptions)
+                        {
+                        <option value="@c.Code">@c.Flag @c.Code</option>
+                        }
+                        @* Optional: if the model already has a code not in the list, show it so it doesn’t get lost *@
+                        @if (!string.IsNullOrWhiteSpace(Model.DefaultCurrencyCode) &&
+                        !CurrencyOptions.Any(x => x.Code == Model.DefaultCurrencyCode))
+                        {
+                        <option value="@Model.DefaultCurrencyCode">@Model.DefaultCurrencyCode</option>
+                        }
+                    </InputSelect>
+                    @* 
+                    <div class="form-text">Stores the 3‑letter code (e.g., AUD, USD, EUR).</div>
+                    *@
+                    <ValidationMessage For="@(() => Model.DefaultCurrencyCode)" />
+                </div>
+                <!-- Max Flight Price -->
+                <div class="col-md-4">
+                    <label class="form-label">Max Flight Price</label>
+                    <InputNumber class="form-control" @bind-Value="Model.MaxFlightPrice" step="0.01" min="0" />
+                    <ValidationMessage For="@(() => Model.MaxFlightPrice)" />
+                </div>
+            </div>
         </div>
-
-        <!-- Policy Name -->
-        <div class="col-md-8">
-          <label class="form-label">Policy Name</label>
-          <InputText class="form-control" @bind-Value="Model.PolicyName" />
-          <ValidationMessage For="@(() => Model.PolicyName)" />
+        <!-- FLIGHTS -->
+        <div class="tab-pane fade" id="pane-flights" role="tabpanel" aria-labelledby="tab-flights">
+            <div class="row g-3">
+                <!-- Default Cabin -->
+                <div class="col-md-4">
+                    <label class="form-label">Default Cabin</label>
+                    <InputSelect class="form-select" @bind-Value="Model.DefaultFlightSeating">
+                        @foreach (var opt in CabinClassOptions)
+                        {
+                        <option value="@opt.Value">@opt.Label</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => Model.DefaultFlightSeating)" />
+                </div>
+                <!-- Max Cabin -->
+                <div class="col-md-4">
+                    <label class="form-label">Max Cabin</label>
+                    <InputSelect class="form-select" @bind-Value="Model.MaxFlightSeating">
+                        @foreach (var opt in CabinClassOptions)
+                        {
+                        <option value="@opt.Value">@opt.Label</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => Model.MaxFlightSeating)" />
+                </div>
+                <!-- Cabin Coverage -->
+                <div class="col-md-4">
+                    <label class="form-label">Cabin Class Coverage</label>
+                    <InputSelect class="form-select" @bind-Value="Model.CabinClassCoverage">
+                        @foreach (var opt in CabinCoverageOptions)
+                        {
+                        <option value="@opt.Value">@opt.Label</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => Model.CabinClassCoverage)" />
+                </div>
+                <!-- Nonstop switch -->
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <InputCheckbox class="form-check-input" id="nonstop" @bind-Value="Model.NonStopFlight" />
+                        <label class="form-check-label" for="nonstop">Require non‑stop flights</label>
+                    </div>
+                </div>
+                <!-- Included / Excluded airlines -->
+                <div class="col-md-6">
+                    <label class="form-label">Included Airlines (IATA codes)</label>
+                    <InputText class="form-control" @bind-Value="Model.IncludedAirlineCodesCsv" placeholder="QF, VA, NZ, SQ" />
+                    <div class="form-text">Comma-separated list, leave blank for "any".</div>
+                    <ValidationMessage For="@(() => Model.IncludedAirlineCodes)" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Excluded Airlines (IATA codes)</label>
+                    <InputText class="form-control" @bind-Value="Model.ExcludedAirlineCodesCsv" placeholder="JQ,TR" />
+                    <div class="form-text">Comma-separated list, leave blank for "none".</div>
+                    <ValidationMessage For="@(() => Model.ExcludedAirlineCodes)" />
+                </div>
+            </div>
         </div>
-
-        <!-- AvaClientId -->
-        <div class="col-md-4">
-          <label class="form-label">Client ID</label>
-          <InputText class="form-control" @bind-Value="Model.AvaClientId" readonly />
-          <ValidationMessage For="@(() => Model.AvaClientId)" />
+        <!-- BOOKING WINDOWS -->
+        <div class="tab-pane fade" id="pane-windows" role="tabpanel" aria-labelledby="tab-windows">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Flight Booking From</label>
+                    <InputText class="form-control"
+                        @bind-Value="Model.FlightBookingTimeAvailableFrom"
+                        placeholder="hh:mm:ss" />
+                    <div class="form-text">Local time (hh:mm:ss)</div>
+                    <ValidationMessage For="@(() => Model.FlightBookingTimeAvailableFrom)" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Flight Booking To</label>
+                    <InputText class="form-control"
+                        @bind-Value="Model.FlightBookingTimeAvailableTo"
+                        placeholder="hh:mm:ss" />
+                    <div class="form-text">Local time (hh:mm:ss)</div>
+                    <ValidationMessage For="@(() => Model.FlightBookingTimeAvailableTo)" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Default Days In Advance</label>
+                    <InputNumber class="form-control" @bind-Value="Model.DefaultCalendarDaysInAdvanceForFlightBooking" min="0" />
+                    <ValidationMessage For="@(() => Model.DefaultCalendarDaysInAdvanceForFlightBooking)" />
+                </div>
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <InputCheckbox class="form-check-input" id="sat" @bind-Value="Model.EnableSaturdayFlightBookings" />
+                        <label class="form-check-label" for="sat">Allow Saturday bookings</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <InputCheckbox class="form-check-input" id="sun" @bind-Value="Model.EnableSundayFlightBookings" />
+                        <label class="form-check-label" for="sun">Allow Sunday bookings</label>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <!-- Currency -->
-        <div class="col-md-4">
-          <label class="form-label">Default Currency (ISO 4217)</label>
-          <InputSelect class="form-select" @bind-Value="Model.DefaultCurrencyCode">
-            @foreach (var c in CurrencyOptions)
-            {
-              <option value="@c.Code">@c.Flag @c.Code</option>
-            }
-
-            @* Optional: if the model already has a code not in the list, show it so it doesn’t get lost *@
-            @if (!string.IsNullOrWhiteSpace(Model.DefaultCurrencyCode) &&
-                !CurrencyOptions.Any(x => x.Code == Model.DefaultCurrencyCode))
-            {
-              <option value="@Model.DefaultCurrencyCode">@Model.DefaultCurrencyCode</option>
-            }
-          </InputSelect>
-          @* <div class="form-text">Stores the 3‑letter code (e.g., AUD, USD, EUR).</div> *@
-          <ValidationMessage For="@(() => Model.DefaultCurrencyCode)" />
+        <!-- DESTINATIONS -->
+        <div class="tab-pane fade" id="pane-dest" role="tabpanel" aria-labelledby="tab-dest">
+            <div class="row g-3">
+                <!-- Regions -->
+                <div class="col-md-4">
+                    <label class="form-label">Allowed Regions</label>
+                    <select class="form-select" multiple size="8" @onchange="e => MultiSelectChanged(e, SelectedRegionIds)">
+                        @foreach (var r in AllRegions)
+                        {
+                        <option value="@r.Id" selected="@SelectedRegionIds.Contains(r.Id)">@r.Name</option>
+                        }
+                    </select>
+                    <div class="form-text">Selecting a region often implies multiple continents.</div>
+                </div>
+                <!-- Continents -->
+                <div class="col-md-4">
+                    <label class="form-label">Allowed Continents</label>
+                    <select class="form-select" multiple size="8" @onchange="e => MultiSelectChanged(e, SelectedContinentIds)">
+                        @foreach (var c in AllContinents)
+                        {
+                        <option value="@c.Id" selected="@SelectedContinentIds.Contains(c.Id)">@c.Name (@c.IsoCode)</option>
+                        }
+                    </select>
+                    <div class="form-text">Add whole continents or specify individual countries.</div>
+                </div>
+                <!-- Countries -->
+                <div class="col-md-4">
+                    <label class="form-label">Allowed Countries</label>
+                    <select class="form-select" multiple size="8" @onchange="e => MultiSelectChanged(e, SelectedCountryIds)">
+                        @foreach (var c in AllCountries)
+                        {
+                        <option value="@c.Id" selected="@SelectedCountryIds.Contains(c.Id)">
+                            <span class="me-1">@c.Flag</span>@c.Name (@c.IsoCode)
+                        </option>
+                        }
+                    </select>
+                    <div class="form-text">Use this to fine‑tune access beyond regions/continents.</div>
+                </div>
+                <div class="col-12">
+                    <hr />
+                </div>
+                <!-- Disabled Countries -->
+                <div class="col-md-6">
+                    <label class="form-label">Disabled Countries (Exclusions)</label>
+                    <select class="form-select" multiple size="8" @onchange="e => MultiSelectChanged(e, SelectedDisabledCountryIds)">
+                        @foreach (var c in AllCountries)
+                        {
+                        <option value="@c.Id" selected="@SelectedDisabledCountryIds.Contains(c.Id)">
+                            <span class="me-1">@c.Flag</span>@c.Name (@c.IsoCode)
+                        </option>
+                        }
+                    </select>
+                    <div class="form-text">These are excluded even if their continent/region is enabled.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label d-flex align-items-center gap-2">
+                    Current Selections
+                    <span class="badge bg-primary">@SelectedRegionIds.Count</span>
+                    <span class="badge bg-info text-dark">@SelectedContinentIds.Count</span>
+                    <span class="badge bg-success">@SelectedCountryIds.Count</span>
+                    <span class="badge bg-danger">@SelectedDisabledCountryIds.Count</span>
+                    </label>
+                    <div class="small">
+                        <strong>Regions:</strong> @string.Join(", ", AllRegions.Where(x => SelectedRegionIds.Contains(x.Id)).Select(x => x.Name))
+                    </div>
+                    <div class="small">
+                        <strong>Continents:</strong> @string.Join(", ", AllContinents.Where(x => SelectedContinentIds.Contains(x.Id)).Select(x => x.Name))
+                    </div>
+                    <div class="small">
+                        <strong>Countries:</strong> @string.Join(", ", AllCountries.Where(x => SelectedCountryIds.Contains(x.Id)).Select(x => x.Name))
+                    </div>
+                    <div class="small">
+                        <strong>Disabled:</strong> @string.Join(", ", AllCountries.Where(x => SelectedDisabledCountryIds.Contains(x.Id)).Select(x => x.Name))
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <!-- Max Flight Price -->
-        <div class="col-md-4">
-          <label class="form-label">Max Flight Price</label>
-          <InputNumber class="form-control" @bind-Value="Model.MaxFlightPrice" step="0.01" min="0" />
-          <ValidationMessage For="@(() => Model.MaxFlightPrice)" />
-        </div>
-      </div>
     </div>
-
-    <!-- FLIGHTS -->
-    <div class="tab-pane fade" id="pane-flights" role="tabpanel" aria-labelledby="tab-flights">
-      <div class="row g-3">
-        <!-- Default Cabin -->
-        <div class="col-md-4">
-          <label class="form-label">Default Cabin</label>
-          <InputSelect class="form-select" @bind-Value="Model.DefaultFlightSeating">
-            @foreach (var opt in CabinClassOptions)
-            {
-              <option value="@opt.Value">@opt.Label</option>
-            }
-          </InputSelect>
-          <ValidationMessage For="@(() => Model.DefaultFlightSeating)" />
-        </div>
-
-        <!-- Max Cabin -->
-        <div class="col-md-4">
-          <label class="form-label">Max Cabin</label>
-          <InputSelect class="form-select" @bind-Value="Model.MaxFlightSeating">
-            @foreach (var opt in CabinClassOptions)
-            {
-              <option value="@opt.Value">@opt.Label</option>
-            }
-          </InputSelect>
-          <ValidationMessage For="@(() => Model.MaxFlightSeating)" />
-        </div>
-
-        <!-- Cabin Coverage -->
-        <div class="col-md-4">
-          <label class="form-label">Cabin Class Coverage</label>
-          <InputSelect class="form-select" @bind-Value="Model.CabinClassCoverage">
-            @foreach (var opt in CabinCoverageOptions)
-            {
-              <option value="@opt.Value">@opt.Label</option>
-            }
-          </InputSelect>
-          <ValidationMessage For="@(() => Model.CabinClassCoverage)" />
-        </div>
-
-        <!-- Nonstop switch -->
-        <div class="col-12">
-          <div class="form-check form-switch">
-            <InputCheckbox class="form-check-input" id="nonstop" @bind-Value="Model.NonStopFlight" />
-            <label class="form-check-label" for="nonstop">Require non‑stop flights</label>
-          </div>
-        </div>
-
-        <!-- Included / Excluded airlines -->
-        <div class="col-md-6">
-          <label class="form-label">Included Airlines (IATA codes)</label>
-          <InputText class="form-control" @bind-Value="Model.IncludedAirlineCodes" placeholder="QF,VA,NZ,SQ" />
-          <div class="form-text">Comma-separated list, leave blank for “any”.</div>
-          <ValidationMessage For="@(() => Model.IncludedAirlineCodes)" />
-        </div>
-
-        <div class="col-md-6">
-          <label class="form-label">Excluded Airlines (IATA codes)</label>
-          <InputText class="form-control" @bind-Value="Model.ExcludedAirlineCodes" placeholder="JQ,TR" />
-          <div class="form-text">Comma-separated list, leave blank for “none”.</div>
-          <ValidationMessage For="@(() => Model.ExcludedAirlineCodes)" />
-        </div>
-      </div>
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check2-circle me-1"></i> Save Policy
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">
+        Cancel
+        </button>
     </div>
-
-    <!-- BOOKING WINDOWS -->
-    <div class="tab-pane fade" id="pane-windows" role="tabpanel" aria-labelledby="tab-windows">
-      <div class="row g-3">
-        <div class="col-md-4">
-          <label class="form-label">Flight Booking From</label>
-          <InputText class="form-control"
-                    @bind-Value="Model.FlightBookingTimeAvailableFrom"
-                    placeholder="hh:mm:ss" />
-          <div class="form-text">Local time (hh:mm:ss)</div>
-          <ValidationMessage For="@(() => Model.FlightBookingTimeAvailableFrom)" />
-        </div>
-
-        <div class="col-md-4">
-          <label class="form-label">Flight Booking To</label>
-          <InputText class="form-control"
-                    @bind-Value="Model.FlightBookingTimeAvailableTo"
-                    placeholder="hh:mm:ss" />
-          <div class="form-text">Local time (hh:mm:ss)</div>
-          <ValidationMessage For="@(() => Model.FlightBookingTimeAvailableTo)" />
-        </div>
-
-        <div class="col-md-4">
-          <label class="form-label">Default Days In Advance</label>
-          <InputNumber class="form-control" @bind-Value="Model.DefaultCalendarDaysInAdvanceForFlightBooking" min="0" />
-          <ValidationMessage For="@(() => Model.DefaultCalendarDaysInAdvanceForFlightBooking)" />
-        </div>
-
-        <div class="col-12">
-          <div class="form-check form-switch">
-            <InputCheckbox class="form-check-input" id="sat" @bind-Value="Model.EnableSaturdayFlightBookings" />
-            <label class="form-check-label" for="sat">Allow Saturday bookings</label>
-          </div>
-          <div class="form-check form-switch">
-            <InputCheckbox class="form-check-input" id="sun" @bind-Value="Model.EnableSundayFlightBookings" />
-            <label class="form-check-label" for="sun">Allow Sunday bookings</label>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- DESTINATIONS -->
-    <div class="tab-pane fade" id="pane-dest" role="tabpanel" aria-labelledby="tab-dest">
-      <div class="row g-3">
-        <!-- Regions -->
-        <div class="col-md-4">
-          <label class="form-label">Allowed Regions</label>
-          <select class="form-select" multiple size="8" @onchange="e => MultiSelectChanged(e, SelectedRegionIds)">
-            @foreach (var r in AllRegions)
-            {
-              <option value="@r.Id" selected="@SelectedRegionIds.Contains(r.Id)">@r.Name</option>
-            }
-          </select>
-          <div class="form-text">Selecting a region often implies multiple continents.</div>
-        </div>
-
-        <!-- Continents -->
-        <div class="col-md-4">
-          <label class="form-label">Allowed Continents</label>
-          <select class="form-select" multiple size="8" @onchange="e => MultiSelectChanged(e, SelectedContinentIds)">
-            @foreach (var c in AllContinents)
-            {
-              <option value="@c.Id" selected="@SelectedContinentIds.Contains(c.Id)">@c.Name (@c.IsoCode)</option>
-            }
-          </select>
-          <div class="form-text">Add whole continents or specify individual countries.</div>
-        </div>
-
-        <!-- Countries -->
-        <div class="col-md-4">
-          <label class="form-label">Allowed Countries</label>
-          <select class="form-select" multiple size="8" @onchange="e => MultiSelectChanged(e, SelectedCountryIds)">
-            @foreach (var c in AllCountries)
-            {
-              <option value="@c.Id" selected="@SelectedCountryIds.Contains(c.Id)">
-                <span class="me-1">@c.Flag</span>@c.Name (@c.IsoCode)
-              </option>
-            }
-          </select>
-          <div class="form-text">Use this to fine‑tune access beyond regions/continents.</div>
-        </div>
-
-        <div class="col-12">
-          <hr />
-        </div>
-
-        <!-- Disabled Countries -->
-        <div class="col-md-6">
-          <label class="form-label">Disabled Countries (Exclusions)</label>
-          <select class="form-select" multiple size="8" @onchange="e => MultiSelectChanged(e, SelectedDisabledCountryIds)">
-            @foreach (var c in AllCountries)
-            {
-              <option value="@c.Id" selected="@SelectedDisabledCountryIds.Contains(c.Id)">
-                <span class="me-1">@c.Flag</span>@c.Name (@c.IsoCode)
-              </option>
-            }
-          </select>
-          <div class="form-text">These are excluded even if their continent/region is enabled.</div>
-        </div>
-
-        <div class="col-md-6">
-          <label class="form-label d-flex align-items-center gap-2">
-            Current Selections
-            <span class="badge bg-primary">@SelectedRegionIds.Count</span>
-            <span class="badge bg-info text-dark">@SelectedContinentIds.Count</span>
-            <span class="badge bg-success">@SelectedCountryIds.Count</span>
-            <span class="badge bg-danger">@SelectedDisabledCountryIds.Count</span>
-          </label>
-          <div class="small">
-            <strong>Regions:</strong> @string.Join(", ", AllRegions.Where(x => SelectedRegionIds.Contains(x.Id)).Select(x => x.Name))
-          </div>
-          <div class="small">
-            <strong>Continents:</strong> @string.Join(", ", AllContinents.Where(x => SelectedContinentIds.Contains(x.Id)).Select(x => x.Name))
-          </div>
-          <div class="small">
-            <strong>Countries:</strong> @string.Join(", ", AllCountries.Where(x => SelectedCountryIds.Contains(x.Id)).Select(x => x.Name))
-          </div>
-          <div class="small">
-            <strong>Disabled:</strong> @string.Join(", ", AllCountries.Where(x => SelectedDisabledCountryIds.Contains(x.Id)).Select(x => x.Name))
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="d-flex gap-2 mt-4">
-    <button type="submit" class="btn btn-primary">
-      <i class="bi bi-check2-circle me-1"></i> Save Policy
-    </button>
-    <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">
-      Cancel
-    </button>
-  </div>
 </EditForm>
 
 @code {
     [Parameter] public string? ClientId { get; set; }
+
+    private bool _busy = true;
 
     // The policy being edited
     public TravelPolicy Model { get; set; } = new TravelPolicy
@@ -349,34 +331,26 @@
         ("NZD", "🇳🇿")
     ];
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        _busy = true;
         try
         {
-            // if no ClientId, bounce back to home
-            if (string.IsNullOrWhiteSpace(ClientId))
-            {
-                Nav.NavigateTo("/");
-                return;
-            }
-
-            // TODO: Replace with API calls
             await LoadOptionSourcesAsync();
-
 
             if (!string.IsNullOrWhiteSpace(ClientId))
             {
-                // get client name only
                 var clientName = await AvaClientService.GetClientNameOnlyAsync(ClientId);
+
                 if (string.IsNullOrWhiteSpace(clientName))
                 {
-                    Nav.NavigateTo("/");
+                    Nav.NavigateTo("/admin/clients");
                     return;
                 }
                 var defaultCurrencyCode = await AvaClientService.GetClientDefaultCurrencyAsync(ClientId);
                 if (string.IsNullOrWhiteSpace(defaultCurrencyCode))
                 {
-                    Nav.NavigateTo("/");
+                    Nav.NavigateTo("/admin/clients");
                     return;
                 }
                 Model = CreateTravelPolicy(ClientId, clientName, defaultCurrencyCode);
@@ -384,14 +358,14 @@
             }
             else
             {
-                Nav.NavigateTo("/");
+                Nav.NavigateTo("/admin/clients");
                 return;
             }
         }
-        catch (Exception ex)
+        finally
         {
-            loadError = ex.Message;
-            @* Log.LogError(ex, "Failed to initialize TravelPolicyEdit"); *@
+            _busy = false;
+            StateHasChanged();
         }
     }
 
@@ -458,10 +432,7 @@
 
         try
         {
-            // TODO:
-            // if (string.IsNullOrWhiteSpace(Id)) POST /api/travelpolicies
-            // else PUT /api/travelpolicies/{Id}
-            await Task.Delay(250); // simulate
+            await Task.Delay(250);
 
             successMessage = "Travel Policy saved.";
             StateHasChanged();
@@ -504,7 +475,7 @@
         Id = Nanoid.Generate(
             alphabet: NanoidDotNet.Nanoid.Alphabets.LettersAndDigits.ToUpper(),
             size: 14),
-        PolicyName = $"{clientName} Corporate Default",
+        PolicyName = $"{clientName} Corporate Default Travel Policy",
         AvaClientId = clientId,
         DefaultCurrencyCode = defaultCurrency,
         MaxFlightPrice = 100m,
@@ -512,12 +483,8 @@
         MaxFlightSeating = "BUSINESS",
         CabinClassCoverage = "MOST_SEGMENTS",
         NonStopFlight = false,
-        IncludedAirlineCodes = string.Empty,
-        ExcludedAirlineCodes = string.Empty,
-        FlightBookingTimeAvailableFrom = string.Empty,
-        FlightBookingTimeAvailableTo = string.Empty,
         EnableSaturdayFlightBookings = false,
         EnableSundayFlightBookings = true,
-        DefaultCalendarDaysInAdvanceForFlightBooking = 2
+        DefaultCalendarDaysInAdvanceForFlightBooking = 7
     };
 }

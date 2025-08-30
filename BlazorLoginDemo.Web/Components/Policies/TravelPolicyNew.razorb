@@ -1,4 +1,4 @@
-@page "/policies/new/{Id?}"
+@* @page "/policies/new/{Id?}"
 @using BlazorLoginDemo.Shared.Models.Policies
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager Nav
@@ -497,4 +497,4 @@
         EnableSundayFlightBookings = true,
         DefaultCalendarDaysInAdvanceForFlightBooking = 2
     };
-}
+} *@

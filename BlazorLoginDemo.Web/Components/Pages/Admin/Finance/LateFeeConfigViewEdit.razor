@@ -107,6 +107,7 @@ else if (_model is not null)
 }
 @code {
     [Parameter] public string LateFeeConfigId { get; set; } = string.Empty;
+    
     private bool _busy = true;
     private bool _saving = false;
     private LateFeeConfig? _model;
