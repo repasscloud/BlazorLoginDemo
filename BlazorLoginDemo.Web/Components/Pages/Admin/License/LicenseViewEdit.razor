@@ -385,11 +385,11 @@
     <!-- Actions -->
     <div class="d-flex gap-2 mt-4">
         <button type="submit" class="btn btn-primary" disabled="@_busy">
-            @(_busy ? "Saving..." : "Save Changes")
+            <i class="bi bi-check2-circle me-1"></i> @(_busy ? "Updating..." : "Update License")
         </button>
         <button type="button" class="btn btn-outline-secondary" @onclick="OnCancel" disabled="@_busy">
-                Cancel
-            </button>
+            Cancel
+        </button>
     </div>
 </EditForm>
 }
@@ -415,9 +415,6 @@ else
         </div>
     </div>
 }
-
-  
-@* </div> *@
 
 @code
 {
@@ -486,7 +483,7 @@ else
 
         if (result is not null)
         {
-            Nav.NavigateTo("/", forceLoad: true);
+            Nav.NavigateTo($"/admin/clients/{_model.AvaClientId}", forceLoad: true);
             return;
         }
         
@@ -497,8 +494,8 @@ else
 
     private async Task ViewCreateLateFeeConfigAsync()
     {
-        var lateFeeConfigId = _model.LateFeeConfigId;
-
+        Nav.NavigateTo($"admin/finance/latefeeconfig/{_model.LateFeeConfigId}", forceLoad: true);
+        return;
     }
 
     private static string GetDisplayName<TEnum>(TEnum value)

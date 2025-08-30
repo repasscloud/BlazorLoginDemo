@@ -24,11 +24,11 @@ else if (_model is not null)
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div class="fw-semibold">Late Fee Configuration</div>
-                <div class="small text-muted">ID: @_model.Id</div>
+                @* <div class="small text-muted">ID: @_model.Id</div> *@
             </div>
 
             <div class="card-body">
-                <EditForm Model="_model" OnValidSubmit="HandleSaveAsync">
+                <EditForm Model="_model" OnValidSubmit="HandleSaveAsync" FormName="LateFeeConfigForm">
                     <DataAnnotationsValidator />
                     <ValidationSummary />
 
@@ -93,8 +93,8 @@ else if (_model is not null)
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary" disabled="@_saving">
-                            @_saving ? "Saving…" : "Save"
+                        <button type="submit" class="btn btn-primary" disabled="@_busy">
+                            <i class="bi bi-check2-circle me-1"></i> @(_saving ? "Updating..." : "Update Config")
                         </button>
                         <button type="button" class="btn btn-outline-secondary" @onclick="NavigateBack" disabled="@_saving">
                             Cancel
@@ -144,12 +144,12 @@ else if (_model is not null)
         {
             _saving = true;
 
-            // Replace with your actual save call:
-            // await LateFeeConfigService.UpsertAsync(_model!, CancellationToken.None);
-
-            await Task.Delay(250); // simulate work
-            // Navigate or toast as appropriate after save
-            // Nav.NavigateTo("/billing/latefees");
+            var result = await LateFeeConfigService.UpdateAsync(_model);
+            if (result is not null)
+            {
+                Nav.NavigateTo($"/admin/license/{_model.LicenseAgreementId}", forceLoad: true);
+                return;
+            }
         }
         finally
         {
@@ -159,7 +159,7 @@ else if (_model is not null)
 
     private void NavigateBack()
     {
-        // Adjust as needed to match your app’s back target
-        Nav.NavigateTo("/billing/latefees");
+        Nav.NavigateTo($"/admin/license/{_model.LicenseAgreementId}", forceLoad: true);
+        return;
     }
 }

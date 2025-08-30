@@ -3,6 +3,7 @@ public interface ITravelPolicyService
 {
     // CREATE
     Task<TravelPolicy> CreateAsync(TravelPolicy policy, CancellationToken ct = default);
+    Task<TravelPolicy> CreateDefaultAsync(TravelPolicy policy, CancellationToken ct = default);
 
     // READ
     Task<TravelPolicy?> GetByIdAsync(string id, CancellationToken ct = default);

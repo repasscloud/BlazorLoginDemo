@@ -1,4 +1,4 @@
-@page "/admin/policies/travel/{ClientId?}/new"
+@page "/admin/policies/travel/{TravelPolicyId}"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = BlazorLoginDemo.Shared.Auth.AppPolicies.GlobalPolicy.CanEditPolicies)]
@@ -266,7 +266,7 @@
     </div>
     <div class="d-flex gap-2 mt-4">
         <button type="submit" class="btn btn-primary">
-        <i class="bi bi-check2-circle me-1"></i> Save Policy
+        <i class="bi bi-check2-circle me-1"></i> Update Policy
         </button>
         <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">
         Cancel
@@ -275,7 +275,7 @@
 </EditForm>
 
 @code {
-    [Parameter] public string? ClientId { get; set; }
+    [Parameter] public string TravelPolicyId { get; set; } = string.Empty;
 
     private bool _busy = true;
 
@@ -339,22 +339,18 @@
         {
             await LoadOptionSourcesAsync();
 
-            if (!string.IsNullOrWhiteSpace(ClientId))
+            if (!string.IsNullOrWhiteSpace(TravelPolicyId))
             {
-                var clientName = await AvaClientService.GetClientNameOnlyAsync(ClientId);
+                var travelPolicy = await TravelPolicyService.GetByIdAsync(TravelPolicyId);
 
-                if (string.IsNullOrWhiteSpace(clientName))
+                if (travelPolicy is null)
                 {
                     Nav.NavigateTo("/admin/clients");
                     return;
                 }
-                var defaultCurrencyCode = await AvaClientService.GetClientDefaultCurrencyAsync(ClientId);
-                if (string.IsNullOrWhiteSpace(defaultCurrencyCode))
-                {
-                    Nav.NavigateTo("/admin/clients");
-                    return;
-                }
-                Model = CreateTravelPolicy(ClientId, clientName, defaultCurrencyCode);
+
+                Model = travelPolicy;
+
                 MapModelCollectionsToSelections();
             }
             else
@@ -428,25 +424,25 @@
     private async Task SaveAsync()
     {
         successMessage = string.Empty;
-        loadError = string.Empty;
 
         MapSelectionsToModelCollections();
 
         try
         {
-            var clientOrWhateverThisReturns = await AvaClientService.GetByIdAsync(Model.AvaClientId);
-
-            // If nothing returned OR DefaultTravelPolicyId is blank → create default, else normal create
-            var created = (clientOrWhateverThisReturns is null ||
-                        string.IsNullOrWhiteSpace(clientOrWhateverThisReturns.DefaultTravelPolicyId))
-                ? await TravelPolicyService.CreateDefaultAsync(Model)
-                : await TravelPolicyService.CreateAsync(Model);
-
-            if (created is null)
-                throw new InvalidOperationException("Policy failed to save.");
-
-            successMessage = "Travel Policy saved.";
-            Nav.NavigateTo($"/admin/clients/{Model.AvaClientId}", forceLoad: true);
+            var result = await TravelPolicyService.UpdateAsync(Model);
+            
+            if (result is not null)
+            {
+                successMessage = "Travel Policy saved.";
+                StateHasChanged();
+                Nav.NavigateTo($"/admin/clients/{Model.AvaClientId}", forceLoad: true);
+                return;
+            }
+            else
+            {
+                loadError = $"Policy failed to save.";
+            }
+            
         }
         catch (Exception ex)
         {
@@ -454,8 +450,7 @@
         }
     }
 
-
-    private void Cancel() => Nav.NavigateTo("/policies");
+    private void Cancel() => Nav.NavigateTo("/");
 
     private void UppercaseCurrency(ChangeEventArgs e)
     {
