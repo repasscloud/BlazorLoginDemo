@@ -1,0 +1,71 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="d-inline-flex align-items-center gap-4">
+    <span class="d-inline-flex align-items-center" title="Coordinated Universal Time">
+        <span class="me-2" aria-hidden="true">🌍</span>
+        <strong>@_utcString</strong>
+    </span>
+
+    <span class="d-inline-flex align-items-center" title="@_timeZoneDisplay">
+        <span class="me-2" aria-hidden="true">🕒</span>
+        <strong>@_localString</strong>
+    </span>
+</div>
+
+@code {
+    private CancellationTokenSource? _cts;
+    private Task? _loopTask;
+
+    private string _utcString = "--:--:--";
+    private string _localString = "--:--:--";
+    private string _timeZoneDisplay = "Local time";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_loopTask is not null) return;
+
+        // Paint immediately for prerender too
+        _utcString = DateTimeOffset.UtcNow.ToString("HH:mm:ss");
+        try { _timeZoneDisplay = await JS.InvokeAsync<string>("timeTicker.getTimeZone"); } catch { }
+        try { _localString = await JS.InvokeAsync<string>("timeTicker.getLocalHHMMSS"); } catch { }
+        StateHasChanged();
+
+        _cts = new CancellationTokenSource();
+        _loopTask = RunLoopAsync(_cts.Token);
+    }
+
+    private async Task RunLoopAsync(CancellationToken token)
+    {
+        var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                _utcString = DateTimeOffset.UtcNow.ToString("HH:mm:ss");
+
+                // Pull local time from JS every tick; if prerender/blocked, it just skips
+                try
+                {
+                    _localString = await JS.InvokeAsync<string>("timeTicker.getLocalHHMMSS");
+                }
+                catch { /* ignore until interactive */ }
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { /* normal on dispose */ }
+        finally
+        {
+            timer.Dispose();
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        try { _cts?.Cancel(); } catch { }
+        _cts?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

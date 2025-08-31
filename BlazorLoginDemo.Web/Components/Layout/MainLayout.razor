@@ -8,10 +8,13 @@
 
     <main>
         <div class="top-row px-4 d-flex align-items-center gap-2">
-            <pre><code>v0.2.22-a12</code></pre>
+                <pre class="mb-0 d-flex align-items-center" style="padding:0; margin:0;">
+                    <code>v0.3.3-a143</code>
+                </pre>
             @* <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a> *@
             <div class="ms-auto">
-                <LanguageSwitcher />
+                @* <LanguageSwitcher /> *@
+                <TimeTicker @rendermode="RenderMode.InteractiveServer" />
             </div>
         </div>
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env zsh
 # ──────────────────────────────────────────────────────────────────────────────
 # 🎯 Version bump + full local rebuild pipeline (Zsh)
-# • Parses vX.Y.Z-aN from line 11 of MainLayout.razor
+# • Parses vX.Y.Z-aN from **line 12** of MainLayout.razor
 # • Bumps based on --build/--patch/--minor/--major
-# • Rewrites line 11 in place
+# • Rewrites only the version inside <code>…</code> on line 12 (preserves quotes/indent)
 # • Tears down and rebuilds DB + migrator + pgAdmin + Blazor app
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -18,6 +18,9 @@ dbUser='demodb'
 dbPass='YourAppPassword'
 dbName='demodb'
 FILE="BlazorLoginDemo.Web/Components/Layout/MainLayout.razor"
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=YourAdminPassword
+LINE_NUMBER=12  # keep this in one place
 
 # ── 🧭 Usage helper ───────────────────────────────────────────────────────────
 usage() {
@@ -29,23 +32,23 @@ usage() {
 [[ $# -eq 1 ]] || usage
 ACTION="$1"
 
-# ── 🔎 Extract current version from line 11 ───────────────────────────────────
-# Expected: '            <pre><code>vX.Y.Z-aN</code></pre>'
-# Note: using GNU sed explicitly (gsed)
-LINE=$(gsed -n '11p' "$FILE")
+# ── 🔎 Extract current version from line 12 ───────────────────────────────────
+# Expected to find: <code>vX.Y.Z-aN</code> (quotes/indent may surround it)
+# Uses GNU sed (gsed).
+LINE="$(gsed -n "${LINE_NUMBER}p" "$FILE")"
 
 # Pull out "X.Y.Z-aN" from the code tag
-VER=$(echo "$LINE" | gsed -E 's/.*<code>v([0-9]+\.[0-9]+\.[0-9]+-[abr][0-9]+)<\/code>.*/\1/')
-if [[ -z "${VER:-}" ]]; then
-  echo "❌ Could not parse version on line 11. Found:"
+VER="$(echo "$LINE" | gsed -nE 's~.*<code>v([0-9]+\.[0-9]+\.[0-9]+-[abr][0-9]+)</code>.*~\1~p')"
+if [[ -z ${VER:-} ]]; then
+  echo "❌ Could not parse version on line ${LINE_NUMBER}. Found:"
   echo "   $LINE"
   exit 2
 fi
 
 # ── 🧩 Split into components: X, Y, Z, letter, N ──────────────────────────────
-X=$(echo "$VER" | cut -d. -f1)
-Y=$(echo "$VER" | cut -d. -f2)
-REST=$(echo "$VER" | cut -d. -f3)       # e.g. '22-a11'
+X="$(echo "$VER" | cut -d. -f1)"
+Y="$(echo "$VER" | cut -d. -f2)"
+REST="$(echo "$VER" | cut -d. -f3)"      # e.g. '22-a11'
 
 Z="${REST%-[abr]*}"                      # before '-a11' => '22'
 SUFFIX="${REST#*-}"                      # after  '-'    => 'a11'
@@ -53,8 +56,8 @@ LETTER="${SUFFIX%%[0-9]*}"               # 'a' (or 'b'/'r')
 N="${SUFFIX#$LETTER}"                    # '11'
 
 # ── ✅ Sanity checks ──────────────────────────────────────────────────────────
-[[ "$LETTER" =~ '^(a|b|r)$' ]] || { echo "❌ Unexpected release letter: $LETTER"; exit 3; }
-[[ "$X" =~ '^[0-9]+$' && "$Y" =~ '^[0-9]+$' && "$Z" =~ '^[0-9]+$' && "$N" =~ '^[0-9]+$' ]] || {
+[[ "$LETTER" =~ ^(a|b|r)$ ]] || { echo "❌ Unexpected release letter: $LETTER"; exit 3; }
+[[ "$X" =~ ^[0-9]+$ && "$Y" =~ ^[0-9]+$ && "$Z" =~ ^[0-9]+$ && "$N" =~ ^[0-9]+$ ]] || {
   echo "❌ Parsed numbers look wrong: X=$X Y=$Y Z=$Z N=$N"
   exit 4
 }
@@ -71,21 +74,15 @@ case "$ACTION" in
     ;;
   --patch)
     echo "🩹 Bumping patch (Z) and resetting N…"
-    Z=$((Z + 1))
-    N=0
+    Z=$((Z + 1)); N=0
     ;;
   --minor)
     echo "📦 Bumping minor (Y) and resetting Z, N…"
-    Y=$((Y + 1))
-    Z=0
-    N=0
+    Y=$((Y + 1)); Z=0; N=0
     ;;
   --major)
     echo "🚀 Bumping major (X) and resetting Y, Z, N…"
-    X=$((X + 1))
-    Y=0
-    Z=0
-    N=0
+    X=$((X + 1)); Y=0; Z=0; N=0
     ;;
   *)
     usage
@@ -93,11 +90,22 @@ case "$ACTION" in
 esac
 
 NEW_VER="${X}.${Y}.${Z}-${LETTER}${N}"
-NEW_LINE="            <pre><code>v${NEW_VER}</code></pre>"
 
-# ── ✍️ Replace only line 11 with the new version ──────────────────────────────
-awk -v repl="$NEW_LINE" 'NR==11{$0=repl} {print}' "$FILE" > "${FILE}.tmp" && mv "${FILE}.tmp" "$FILE"
+# ── ✍️ Replace only the version inside <code>…</code> on line 12 ──────────────
+# This keeps leading/trailing quotes, indentation, and does NOT touch <pre>.
+gsed -i -E "${LINE_NUMBER}s~(<code>)v[0-9]+\.[0-9]+\.[0-9]+-[abr][0-9]+(</code>)~\1v${NEW_VER}\2~" "$FILE"
 echo "✅ Updated version to: v${NEW_VER}"
+
+# # ── 🐳 0) Build only ────────────----------------──────────────────────────────
+# case "$ACTION" in
+#   --build)
+#     echo
+#     echo "🐳 0) Restart Blazor container"
+#     docker compose up -d blazor
+#     exit 0
+#     ;;
+# esac
+
 
 # ── 🐳 0) Stop all docker containers ──────────────────────────────────────────
 echo
@@ -127,8 +135,7 @@ echo "⏳ 3) Waiting for Postgres to be healthy..."
 deadline=$((SECONDS + 180))
 state=""
 while :; do
-  # If you don't set container_name in compose, use: pgId=$(docker compose ps -q db) and inspect "$pgId"
-  if ! state=$(docker inspect --format '{{.State.Health.Status}}' "$pgContainerName" 2>/dev/null); then
+  if ! state="$(docker inspect --format '{{.State.Health.Status}}' "$pgContainerName" 2>/dev/null)"; then
     state="unknown"
   fi
   echo "   - health: $state"
@@ -155,6 +162,10 @@ docker cp .docker/db/sql/01_seed_identity.sql "$pgContainerName":/seed_identity.
 docker exec -i "$pgContainerName" \
   psql "postgresql://$dbUser:$dbPass@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
   -v ON_ERROR_STOP=1 -f /seed_identity.sql
+docker cp .docker/db/sql/01_seed_serilog.sql "$pgContainerName":/seed_serilog.sql
+docker exec -i "$pgContainerName" \
+  psql "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
+  -v ON_ERROR_STOP=1 -f /seed_serilog.sql
 
 # ── 🚀 7) Start Blazor app ───────────────────────────────────────────────────
 echo

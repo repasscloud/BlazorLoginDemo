@@ -8,8 +8,8 @@ namespace BlazorLoginDemo.Shared.Models.Kernel.Billing;
 public class LateFeeConfig
 {
     [Key]
-    [MaxLength(12)]
-    public string Id { get; set; } = Nanoid.Generate(Nanoid.Alphabets.UppercaseLettersAndDigits, 12);
+    [MaxLength(14)]
+    public string Id { get; set; } = Nanoid.Generate(Nanoid.Alphabets.UppercaseLettersAndDigits, 14);
 
     [MaxLength(14)]
     [Required]

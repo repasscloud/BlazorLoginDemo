@@ -5,12 +5,36 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 INSERT INTO "AspNetRoles" ("Id","Name","NormalizedName","ConcurrencyStamp")
 SELECT gen_random_uuid()::text, r.name, upper(r.name), gen_random_uuid()::text
 FROM (VALUES
-  ('SuperAdmin'),('SupportAdmin'),('SupportFinance'),('SupportAgent'),('SupportViewer'),
-  ('OrgAdmin'),('UserAdmin'),('PolicyAdmin'),('FinanceAdmin'),('FinanceEditor'),('FinanceViewer'),
-  ('SecurityAdmin'),('IntegrationAdmin'),('BookingsManager'),('TravelAgent'),
-  ('ApproverL1'),('ApproverL2'),('ApproverL3'),
-  ('ReportsViewer'),('DataExporter'),('Auditor'),
-  ('Requestor'),('ReadOnly')
+  ('SuperAdmin'),
+  ('Auditor'),
+  ('UserAdmin'),
+  ('PolicyAdmin'),
+  ('FinanceAdmin'),
+  ('FinanceEditor'),
+  ('FinanceViewer'),
+  ('SecurityAdmin'),
+  ('IntegrationAdmin'),
+  ('SalesRep'),
+  ('SalesManager'),
+  ('SalesAdmin'),
+  ('SupportViewer'),
+  ('SupportAgent'),
+  ('SupportFinance'),
+  ('SupportAdmin'),
+  ('ReportsViewer'),
+  ('DataExporter'),
+  ('Requestor'),
+  ('ReadOnly'),
+  ('OrgAdmin'),
+  ('OrgUserAdmin'),
+  ('OrgPolicyAdmin'),
+  ('OrgFinanceAdmin'),
+  ('OrgBookingsManager'),
+  ('OrgApproverL1'),
+  ('OrgApproverL2'),
+  ('OrgApproverL3'),
+  ('OrgReportsViewer'),
+  ('OrgDataExporter')
 ) AS r(name)
 ON CONFLICT ("NormalizedName") DO NOTHING;
 

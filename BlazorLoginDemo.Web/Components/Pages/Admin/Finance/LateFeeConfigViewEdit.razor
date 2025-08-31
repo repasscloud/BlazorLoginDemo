@@ -1,0 +1,165 @@
+@page "/admin/finance/latefeeconfig/{LateFeeConfigId}"
+@using System.ComponentModel.DataAnnotations
+@using BlazorLoginDemo.Shared.Models.Kernel.Billing
+@using BlazorLoginDemo.Shared.Models.Static.Billing
+
+@inject NavigationManager Nav
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Finance.ILateFeeConfigService LateFeeConfigService
+@inject ILogger<LateFeeConfig> Log
+
+<PageTitle>Late Fee Config</PageTitle>
+
+@if (_busy)
+{
+    <div class="d-flex align-items-center justify-content-center" style="min-height: 40vh;">
+        <div class="text-center">
+            <div class="spinner-border" role="status" aria-hidden="true"></div>
+            <div class="mt-3">Loading late fee configuration…</div>
+        </div>
+    </div>
+}
+else if (_model is not null)
+{
+    <div class="container py-4">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">Late Fee Configuration</div>
+                @* <div class="small text-muted">ID: @_model.Id</div> *@
+            </div>
+
+            <div class="card-body">
+                <EditForm Model="_model" OnValidSubmit="HandleSaveAsync" FormName="LateFeeConfigForm">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Late Fee Config ID</label>
+                            <InputText class="form-control" @bind-Value="_model.Id" readonly />
+                            @* <div class="form-text">Auto-generated identifier.</div> *@
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">License Agreement ID</label>
+                            <InputText class="form-control" @bind-Value="_model.LicenseAgreementId" readonly />
+                            <div class="form-text">Link to the associated license agreement.</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Grace Period (days)</label>
+                            <InputNumber class="form-control" @bind-Value="_model.GracePeriodDays" />
+                            <div class="form-text">Days after due date before late fee applies.</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <InputCheckbox class="form-check-input" @bind-Value="_model.UseFixedAmount" id="useFixed" />
+                                <label class="form-check-label" for="useFixed">Use Fixed Amount</label>
+                            </div>
+                            <div class="form-text">If unchecked, percent of invoice is used.</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Fixed Amount</label>
+                            <InputNumber class="form-control" @bind-Value="_model.FixedAmount" />
+                            <div class="form-text">Currency amount (applies when “Use Fixed Amount” is on).</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Percent of Invoice</label>
+                            <div class="input-group">
+                                <InputNumber class="form-control" @bind-Value="_model.PercentOfInvoice" />
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Percent applied to invoice total (when not using fixed amount).</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Recurring Option</label>
+                            <InputSelect class="form-select" @bind-Value="_model.RecurringOption">
+                                @foreach (var opt in Enum.GetValues<RecurringLateFeeOption>())
+                                {
+                                    <option value="@opt">@opt</option>
+                                }
+                            </InputSelect>
+                            <div class="form-text">How often the late fee recurs, if at all.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Max Late Fee Cap</label>
+                            <InputNumber class="form-control" @bind-Value="_model.MaxLateFeeCap" />
+                            <div class="form-text">Maximum total late fee that can accrue.</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary" disabled="@_busy">
+                            <i class="bi bi-check2-circle me-1"></i> @(_saving ? "Updating..." : "Update Config")
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="NavigateBack" disabled="@_saving">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+@code {
+    [Parameter] public string LateFeeConfigId { get; set; } = string.Empty;
+    
+    private bool _busy = true;
+    private bool _saving = false;
+    private LateFeeConfig? _model;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _busy = true;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(LateFeeConfigId))
+            {
+                _model = await LateFeeConfigService.GetByIdAsync(LateFeeConfigId);
+            }
+            // ===== End placeholder =====
+
+            if (_model is null)
+            {
+                // Not found – redirect away
+                // Adjust destination as needed (e.g., a search or error page)
+                Nav.NavigateTo("/billing/latefees/search", forceLoad: true);
+                return;
+            }
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSaveAsync()
+    {
+        try
+        {
+            _saving = true;
+
+            var result = await LateFeeConfigService.UpdateAsync(_model);
+            if (result is not null)
+            {
+                Nav.NavigateTo($"/admin/license/{_model.LicenseAgreementId}", forceLoad: true);
+                return;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Nav.NavigateTo($"/admin/license/{_model.LicenseAgreementId}", forceLoad: true);
+        return;
+    }
+}

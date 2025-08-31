@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 using BlazorLoginDemo.Shared.Models.Kernel.Client;
 using BlazorLoginDemo.Shared.Validation;
@@ -11,7 +12,7 @@ public class TravelPolicy
 {
     [Key]
     [MaxLength(14)]
-    public required string Id { get; set; } = Nanoid.Generate(alphabet: Nanoid.Alphabets.LettersAndDigits.ToUpper(), size: 14);
+    public string Id { get; set; } = Nanoid.Generate(alphabet: Nanoid.Alphabets.LettersAndDigits.ToUpper(), size: 14);
     public required string PolicyName { get; set; }
     public string AvaClientId { get; set; } = default!;
 
@@ -34,12 +35,9 @@ public class TravelPolicy
     [CabinTypeValidation]
     [DefaultValue("ECONOMY")]
     public string MaxFlightSeating { get; set; } = "ECONOMY";
-    
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? IncludedAirlineCodes { get; set; }
-    
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? ExcludedAirlineCodes { get; set; }
+
+    public string[] IncludedAirlineCodes { get; set; } = Array.Empty<string>();
+    public string[] ExcludedAirlineCodes { get; set; } = Array.Empty<string>();
 
     [CoverageTypeValidation]
     [DefaultValue("MOST_SEGMENTS")]
@@ -78,4 +76,36 @@ public class TravelPolicy
     // If a broader selection is made (e.g. enabling APAC),
     // you can exclude specific countries via this collection.
     public ICollection<TravelPolicyDisabledCountry> DisabledCountries { get; set; } = new List<TravelPolicyDisabledCountry>();
+
+    // Convenience for UI binding / readability (not stored)
+    [NotMapped]
+    public string IncludedAirlineCodesCsv
+    {
+        get => string.Join(", ", IncludedAirlineCodes);
+        set
+        {
+            IncludedAirlineCodes = string.IsNullOrWhiteSpace(value)
+                ? Array.Empty<string>()
+                : value.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                       .Select(s => s.Trim().ToUpperInvariant())
+                       .Distinct()
+                       .ToArray();
+        }
+    }
+    
+    // Convenience for UI binding / readability (not stored)
+    [NotMapped]
+    public string ExcludedAirlineCodesCsv
+    {
+        get => string.Join(", ", ExcludedAirlineCodes);
+        set
+        {
+            ExcludedAirlineCodes = string.IsNullOrWhiteSpace(value)
+                ? Array.Empty<string>()
+                : value.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                       .Select(s => s.Trim().ToUpperInvariant())
+                       .Distinct()
+                       .ToArray();
+        }
+    }
 }

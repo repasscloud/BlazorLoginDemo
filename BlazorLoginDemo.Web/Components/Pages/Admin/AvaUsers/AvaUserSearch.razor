@@ -1,0 +1,214 @@
+@page "/admin/avausers/search"
+@rendermode InteractiveServer
+
+@using BlazorLoginDemo.Shared.Models.User
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
+@inject NavigationManager Nav
+
+
+
+<PageTitle>AvaUsers</PageTitle>
+
+<div class="container py-4">
+
+    <div class="card shadow-sm">
+        <div class="card-header">Find an AvaUser</div>
+        <div class="card-body">
+
+            <form @onsubmit="SearchFirstPageAsync">
+                <div class="input-group">
+                <input
+                    class="form-control"
+                    placeholder="Search users by name or email…"
+                    aria-label="AvaUser search"
+                    @bind="_query"
+                    @bind:event="oninput"
+                    autocomplete="off" />
+
+                <button class="btn btn-primary" type="submit" disabled="@_busy">
+                    <i class="bi bi-search me-1"></i> @(_busy ? "Searching…" : "Search")
+                </button>
+                </div>
+            </form>
+
+            @if (_busy)
+            {
+                <div class="d-flex align-items-center justify-content-center" style="min-height:30vh;">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status" aria-hidden="true"></div>
+                        <div class="mt-3">Searching…</div>
+                    </div>
+                </div>
+            }
+            else if (_searched && _results.Count == 0)
+            {
+                <div class="alert alert-warning mt-3">No users matched "<strong>@_query</strong>".</div>
+            }
+            else if (_results.Count > 0)
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:18%">First Name</th>
+                                <th style="width:18%">Last Name</th>
+                                <th style="width:28%">Email</th>
+                                <th style="width:26%">Client</th>
+                                <th style="width:10%"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var u in _results)
+                        {
+                            <tr>
+                                <td>@u.FirstName</td>
+                                <td>@u.LastName</td>
+                                <td>@u.EmailAddress</td>
+                                <td>@(string.IsNullOrWhiteSpace(u.AvaClientName) ? "—" : u.AvaClientName)</td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-primary" href="@($"/admin/avausers/{u.Id}")">View/Edit</a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div class="text-muted">Showing up to 50 results.</div>
+                    <div class="btn-group">
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                @onclick="PrevPageAsync"
+                                disabled="@(!CanGoPrev)">
+                            ◀ Prev
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                @onclick="NextPageAsync"
+                                disabled="@(!CanGoNext)">
+                            Next ▶
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _query = string.Empty;
+
+    private bool _busy;
+    private bool _searched;
+
+    private List<AvaUserSearchResult> _results = new(); // init so .Clear() is safe
+    private int _resultsPage = 0;                       // 0-based
+
+    private const int PageSize = 50;
+
+    private class AvaUserSearchResult
+    {
+        public string Id { get; set; } = default!;
+        public string FirstName { get; set; } = default!;
+        public string LastName { get; set; } = default!;
+        public string EmailAddress { get; set; } = default!;
+        public string? AvaClientName { get; set; }
+    }
+
+    // Enable/disable logic
+    private bool CanGoPrev => _resultsPage > 0 && !_busy;
+    private bool CanGoNext => _results?.Count == PageSize && !_busy;
+
+    // Call this when the user submits a *new* query (resets to first page)
+    private async Task SearchFirstPageAsync()
+    {
+        _resultsPage = 0;
+        await HandleSearchAsync();
+    }
+
+    private async Task PrevPageAsync()
+    {
+        if (!CanGoPrev) return;
+        _resultsPage--;
+        await HandleSearchAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (!CanGoNext) return;  // only if current page is “full”
+        _resultsPage++;
+        await HandleSearchAsync();
+    }
+
+
+    // Cache for AvaClientId -> CompanyName
+    private readonly Dictionary<string, string> _clientNameCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task HandleSearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            _searched = true;
+            _results.Clear();
+            StateHasChanged();
+            return;
+        }
+
+        _busy = true;
+        _searched = true;
+        _results.Clear();
+
+        try
+        {
+            // Call your paged search correctly (note the named args; no type declarations here)
+            var found = await AvaUserService.SearchUsersAsync(
+                query: _query.Trim(),
+                page: _resultsPage,
+                take: PageSize
+            );
+
+            // Map users -> search result view models (with cached client names)
+            _results = await PopulateClientNamesAsync(found);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task<List<AvaUserSearchResult>> PopulateClientNamesAsync(IReadOnlyList<AvaUser> users)
+    {
+        // Run lookups concurrently
+        var tasks = users.Select(async u =>
+        {
+            string clientName = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(u.AvaClientId))
+            {
+                if (!_clientNameCache.TryGetValue(u.AvaClientId, out clientName))
+                {
+                    clientName = await AvaClientService.GetClientNameOnlyAsync(u.AvaClientId)
+                                 ?? string.Empty;
+                    _clientNameCache[u.AvaClientId] = clientName;
+                }
+            }
+
+            return new AvaUserSearchResult
+            {
+                Id = u.Id,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                EmailAddress = u.Email,
+                AvaClientName = clientName
+            };
+        });
+
+        return (await Task.WhenAll(tasks)).ToList();
+    }
+}

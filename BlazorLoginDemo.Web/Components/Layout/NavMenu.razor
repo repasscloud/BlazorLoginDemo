@@ -1,5 +1,8 @@
 ﻿@implements IDisposable
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Routing
+@using BlazorLoginDemo.Shared.Auth
+
 @inject NavigationManager NavigationManager
 
 <div class="top-row ps-3 navbar navbar-dark">
@@ -24,7 +27,146 @@
             </NavLink>
         </div>
 
-        <AuthorizeView Policy="CanEditPolicies">
+        <!-- Admin Clients -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminClientsGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-building-gear-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Clients</span>
+                </span>
+                <span class="caret @(adminClientsOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminClientsOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/clients" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-card-list-nav-menu" aria-hidden="true"></span> Clients
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/clients/new" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Users -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminUsersGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Users</span>
+                </span>
+                <span class="caret @(adminUsersOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminUsersOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/avausers/resync" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-down-nav-menu" aria-hidden="true"></span> Resync Users
+                    </NavLink>
+                </div>
+                @* <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/clients/new" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div> *@
+            </div>
+        </div>
+
+        <!-- Admin Policies -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminPoliciesGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-file-earmark-lock-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Policies</span>
+                </span>
+                <span class="caret @(adminPoliciesOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminPoliciesOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/login" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-search-nav-menu" aria-hidden="true"></span> Search
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-file-earmark-plus-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <!-- Administration -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminKeyGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-key-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Administration</span>
+                </span>
+                <span class="caret @(adminKeyOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminKeyOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/license/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-file-earmark-pdf-nav-menu" aria-hidden="true"></span> Licensing
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/finance/latefeeconfig/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-hourglass-bottom-nav-menu" aria-hidden="true"></span> Late Fee Config
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAuthGroup">
+                <span>
+                    <span class="bi bi-lock-nav-menu" aria-hidden="true"></span>
+                    Auth Required
+                </span>
+                <span class="caret @(authOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(authOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/login" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span> Profile
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <AuthorizeView Policy=@AppPolicies.GlobalPolicy.CanManageUsers>
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="/admin/users" Match="NavLinkMatch.Prefix">
@@ -34,7 +176,7 @@
             </Authorized>
         </AuthorizeView>
 
-        <AuthorizeView Policy="CanManageGroups">
+        <AuthorizeView Policy=@AppPolicies.GlobalPolicy.CanManageUsers>
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="/admin/users" Match="NavLinkMatch.Prefix">
@@ -79,6 +221,16 @@
 
 @code {
     private string? currentUrl;
+    private bool adminClientsOpen;
+    private void ToggleAdminClientsGroup() => adminClientsOpen = !adminClientsOpen;
+    private bool adminPoliciesOpen;
+    private void ToggleAdminPoliciesGroup() => adminPoliciesOpen = !adminPoliciesOpen;
+    private bool adminUsersOpen;
+    private void ToggleAdminUsersGroup() => adminUsersOpen = !adminUsersOpen;
+    private bool adminKeyOpen;
+    private void ToggleAdminKeyGroup() => adminKeyOpen = !adminKeyOpen;
+    private bool authOpen; // default: collapsed
+    private void ToggleAuthGroup() => authOpen = !authOpen;
 
     protected override void OnInitialized()
     {

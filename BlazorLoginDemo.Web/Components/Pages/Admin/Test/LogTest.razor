@@ -1,0 +1,62 @@
+@page "/admin/test/log-test"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ILogger<LogTest> Log
+
+<h3>Log Test</h3>
+
+<button class="btn btn-primary" @onclick="WriteLogs">Write Logs</button>
+
+@code {
+    private string? _userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get the authentication state
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // Extract the username
+        _userName = user.Identity?.Name;
+
+        // Example log usage
+        if (!string.IsNullOrEmpty(_userName))
+        {
+            Log.LogInformation("User {User} has authenticated and visited /auth", _userName);
+        }
+        else
+        {
+            Log.LogWarning("An anonymous or invalid user visited /auth");
+        }
+    }
+
+    private void WriteLogs()
+    {
+        // Plain message
+        Log.LogInformation("Button clicked on LogTest page.");
+
+        // Structured logging (ends up as JSON in properties + columns)
+        var orderId = Guid.NewGuid().ToString("N");
+        Log.LogInformation("Processing order {OrderId} for {Customer}", orderId, "dwynyard");
+
+        // With a scope (adds to Properties for each log line in scope)
+        using (Log.BeginScope(new Dictionary<string, object?>
+        {
+            ["SessionId"] = Guid.NewGuid().ToString("N"),
+            ["Feature"] = "Demo"
+        }))
+        {
+            Log.LogWarning("This is a warning within a scoped block.");
+            try
+            {
+                throw new InvalidOperationException("Demo exception");
+            }
+            catch (Exception ex)
+            {
+                Log.LogError(ex, "Boom while doing demo work.");
+            }
+        }
+    }
+}

@@ -21,8 +21,8 @@ public class UserGroupAssignmentInterceptor : SaveChangesInterceptor
         if (ctx is null) return await base.SavingChangesAsync(eventData, result, cancellationToken);
 
         // Only for new users; do NOT run on updates like LastSeenUtc
-        IEnumerable<EntityEntry<BlazorLoginDemo.Shared.Data.ApplicationUser>> newUsers =
-            ctx.ChangeTracker.Entries<BlazorLoginDemo.Shared.Data.ApplicationUser>()
+        IEnumerable<EntityEntry<ApplicationUser>> newUsers =
+            ctx.ChangeTracker.Entries<ApplicationUser>()
                .Where(e => e.State == EntityState.Added);
 
         foreach (var entry in newUsers)

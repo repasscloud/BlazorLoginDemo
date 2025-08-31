@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using BlazorLoginDemo.Shared.Models.User;
-
+using BlazorLoginDemo.Shared.Models.Auth;
+using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -12,9 +13,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupDomain> GroupDomains => Set<GroupDomain>();
 
+    // API
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     // Ava
     public DbSet<AvaUser> AvaUsers => Set<AvaUser>();
     public DbSet<AvaClient> AvaClients => Set<AvaClient>();
+    public DbSet<AvaClientLicense> AvaClientLicenses => Set<AvaClientLicense>();
+    public DbSet<LicenseAgreement> LicenseAgreements => Set<LicenseAgreement>();
+
+    // Finance
+    public DbSet<LateFeeConfig> LateFeeConfigs => Set<LateFeeConfig>();
 
     // Travel Policy
     public DbSet<TravelPolicy> TravelPolicies => Set<TravelPolicy>();
@@ -22,6 +31,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Continent> Continents => Set<Continent>();
     public DbSet<Country> Countries => Set<Country>();
     public DbSet<TravelPolicyDisabledCountry> TravelPolicyDisabledCountries => Set<TravelPolicyDisabledCountry>();
+
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -69,6 +79,30 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);  // delete profile when user is deleted
         });
 
+        // configure the LicenseAgreement relationship for AvaClient.
+        builder.Entity<LicenseAgreement>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(14);
+
+            // prevent multiple agreements using the same AvaClientId
+            e.Property(x => x.AvaClientId).IsRequired();
+            e.HasIndex(x => x.AvaClientId).IsUnique();
+        });
+
+        builder.Entity<AvaClient>(e =>
+        {
+            e.Property(x => x.LicenseAgreementId).HasMaxLength(14);
+
+            e.HasIndex(x => x.LicenseAgreementId).IsUnique();
+
+            e.HasOne<LicenseAgreement>()
+                .WithOne()
+                .HasForeignKey<AvaClient>(c => c.LicenseAgreementId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_AvaClient_LicenseAgreement");
+        });
+
         // Configure the DefaultTravelPolicy relationship for AvaClient.
         builder.Entity<AvaClient>()
             .HasOne(ac => ac.DefaultTravelPolicy)
@@ -99,7 +133,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // Explicit composite key configuration for disabled countries.
         builder.Entity<TravelPolicyDisabledCountry>()
             .HasKey(tpdc => new { tpdc.TravelPolicyId, tpdc.CountryId });
-            
+
         // Configure one-to-many for Region and Continent.
         builder.Entity<Continent>()
             .HasOne(c => c.Region)
@@ -114,5 +148,31 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(c => c.ContinentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Included airline codes for travel policy
+        builder.Entity<TravelPolicy>(e =>
+        {
+            e.Property(p => p.IncludedAirlineCodes)
+            .HasColumnType("text[]") // explicit, but Npgsql infers this automatically
+            .IsRequired()                              // NOT NULL
+            .HasDefaultValueSql("'{}'::text[]");       // default empty array
+        });
+
+        // Excluded airline codes for travel policy
+        builder.Entity<TravelPolicy>(e =>
+        {
+            e.Property(p => p.ExcludedAirlineCodes)
+            .HasColumnType("text[]") // explicit, but Npgsql infers this automatically
+            .IsRequired()                              // NOT NULL
+            .HasDefaultValueSql("'{}'::text[]");       // default empty array
+        });
+
+        builder.Entity<RefreshToken>(b =>
+        {
+            b.HasIndex(x => x.Token).IsUnique();
+            b.HasOne(x => x.AvaUser)
+            .WithMany(u => u.RefreshTokens)
+            .HasForeignKey(x => x.AvaUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

@@ -14,6 +14,12 @@ using BlazorLoginDemo.Web.Data;      // ApplicationUser, UserGroup
 using BlazorLoginDemo.Web.Services;  // MailerSendEmailSender + MailerSendOptions
 using BlazorLoginDemo.Shared.Startup;
 using BlazorLoginDemo.Web.Security;   // SeedData
+using BlazorLoginDemo.Shared.Auth;
+using BlazorLoginDemo.Shared.Services;
+using System.Collections.Specialized;
+
+using BlazorLoginDemo.Shared.Logging;
+using Serilog;
 
 namespace BlazorLoginDemo.Web;
 
@@ -22,6 +28,10 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
+        // Serilog first
+        SerilogBootstrap.UseSerilogWithPostgres(builder.Configuration, appName: "Ava.Web");
+        builder.Host.UseSerilog();
 
         // Add services to the container.
         builder.Services.AddRazorComponents()
@@ -70,50 +80,88 @@ public class Program
         // Authorization policies
         builder.Services.AddAuthorization(options =>
         {
-            // ❌ Remove global fallback policy — it was forcing auth on static assets
-            // options.FallbackPolicy = new AuthorizationPolicyBuilder()
-            //     .RequireAuthenticatedUser()
-            //     .Build();
+            // ── GLOBAL POLICIES ──────────────────────────────────────────────────────
+            options.AddPolicy(AppPolicies.GlobalPolicy.AdminsOnly,
+                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.UserAdmin, AppRoles.GlobalRole.PolicyAdmin, AppRoles.GlobalRole.FinanceAdmin));
 
-            options.AddPolicy("RequireMemberOrAbove",
+            // Keep your legacy “member/manager/admin” if still used:
+            options.AddPolicy(AppPolicies.GlobalPolicy.RequireMemberOrAbove,
                 p => p.RequireRole("Member", "Manager", "Admin"));
 
-            options.AddPolicy("ManagersOnly",
+            options.AddPolicy(AppPolicies.GlobalPolicy.ManagersOnly,
                 p => p.RequireRole("Manager", "Admin"));
 
-            options.AddPolicy("AdminsOnly",
-                p => p.RequireRole("Admin"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.CanManageUsers,
+                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.UserAdmin));
 
-            // Platform/org policies
-            options.AddPolicy("CanManageUsers",
-                p => p.RequireRole("SuperAdmin", "OrgAdmin", "UserAdmin"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.CanEditPolicies,
+                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.PolicyAdmin));
 
-            options.AddPolicy("CanEditPolicies",
-                p => p.RequireRole("SuperAdmin", "OrgAdmin", "PolicyAdmin"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.CanEditFinancials,
+                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.FinanceAdmin, AppRoles.GlobalRole.FinanceEditor));
 
-            options.AddPolicy("CanEditFinancials",
-                p => p.RequireRole("SuperAdmin", "OrgAdmin", "FinanceAdmin", "FinanceEditor"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.FinanceRead,
+                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.FinanceAdmin, AppRoles.GlobalRole.FinanceEditor, AppRoles.GlobalRole.FinanceViewer, AppRoles.GlobalRole.SupportFinance));
 
-            options.AddPolicy("FinanceRead",
-                p => p.RequireRole("SuperAdmin", "OrgAdmin", "FinanceAdmin", "FinanceEditor", "FinanceViewer", "SupportFinance"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.CanEnableDisableUser,
+                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.UserAdmin));
 
-            options.AddPolicy("CanEnableDisableUser",
-                p => p.RequireRole("SuperAdmin", "OrgAdmin", "UserAdmin"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.SupportArea,
+                p => p.RequireRole(AppRoles.GlobalRole.SupportViewer, AppRoles.GlobalRole.SupportAgent, AppRoles.GlobalRole.SupportFinance, AppRoles.GlobalRole.SupportAdmin, AppRoles.GlobalRole.SuperAdmin));
 
-            options.AddPolicy("SupportArea",
-                p => p.RequireRole("SupportViewer", "SupportAgent", "SupportFinance", "SupportAdmin"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.CanManageGroups,
+                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.SupportAdmin));
 
-            options.AddPolicy("ApproverL1OrAbove",
-                p => p.RequireRole("ApproverL1", "ApproverL2", "ApproverL3", "OrgAdmin", "SuperAdmin"));
+            // Sales / Licensing
+            options.AddPolicy(AppPolicies.GlobalPolicy.SalesArea,
+                p => p.RequireRole(AppRoles.GlobalRole.SalesRep, AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
 
-            options.AddPolicy("ApproverL2OrAbove",
-                p => p.RequireRole("ApproverL2", "ApproverL3", "OrgAdmin", "SuperAdmin"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.CanCreateCustomers,
+                p => p.RequireRole(AppRoles.GlobalRole.SalesRep, AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
 
-            options.AddPolicy("ApproverL3OrAbove",
-                p => p.RequireRole("ApproverL3", "OrgAdmin", "SuperAdmin"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.LicenseRead,
+                p => p.RequireRole(AppRoles.GlobalRole.SalesRep, AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.FinanceViewer, AppRoles.GlobalRole.SupportFinance, AppRoles.GlobalRole.SuperAdmin));
 
-            options.AddPolicy("CanManageGroups",
-                p => p.RequireRole("SuperAdmin", "SupportAdmin"));
+            options.AddPolicy(AppPolicies.GlobalPolicy.CanManageLicenses,
+                p => p.RequireRole(AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
+
+            options.AddPolicy(AppPolicies.GlobalPolicy.CanAmendLicenses,
+                p => p.RequireRole(AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
+
+            options.AddPolicy(AppPolicies.GlobalPolicy.CanApproveDiscounts,
+                p => p.RequireRole(AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
+
+            // ── ORG-SCOPED POLICIES (tenant matching via OrgRoleRequirement) ────────
+            options.AddPolicy(AppPolicies.OrgPolicy.Admin,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.Admin)));
+
+            options.AddPolicy(AppPolicies.OrgPolicy.UserAdmin,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.UserAdmin, AppRoles.OrgRole.Admin)));
+
+            options.AddPolicy(AppPolicies.OrgPolicy.PolicyAdmin,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.PolicyAdmin, AppRoles.OrgRole.Admin)));
+
+            options.AddPolicy(AppPolicies.OrgPolicy.FinanceAdmin,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.FinanceAdmin, AppRoles.OrgRole.Admin)));
+
+            options.AddPolicy(AppPolicies.OrgPolicy.BookingsManager,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.BookingsManager, AppRoles.OrgRole.Admin)));
+
+            options.AddPolicy(AppPolicies.OrgPolicy.ReportsViewer,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.ReportsViewer, AppRoles.OrgRole.Admin)));
+
+            options.AddPolicy(AppPolicies.OrgPolicy.DataExporter,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.DataExporter, AppRoles.OrgRole.Admin)));
+
+            // Approvals ladder per org
+            options.AddPolicy(AppPolicies.OrgPolicy.ApproverL1OrAbove,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.ApproverL1, AppRoles.OrgRole.ApproverL2, AppRoles.OrgRole.ApproverL3, AppRoles.OrgRole.Admin)));
+
+            options.AddPolicy(AppPolicies.OrgPolicy.ApproverL2OrAbove,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.ApproverL2, AppRoles.OrgRole.ApproverL3, AppRoles.OrgRole.Admin)));
+
+            options.AddPolicy(AppPolicies.OrgPolicy.ApproverL3OrAbove,
+                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.ApproverL3, AppRoles.OrgRole.Admin)));
         });
 
         // Cookie options
@@ -141,6 +189,9 @@ public class Program
         // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
         builder.Services.AddHttpClient();
+        builder.Services.AddAvaClientServices();
+        builder.Services.AddAvaFinanceServices();
+        builder.Services.AddAvaPolicyServices();
         builder.Services.AddTransient<IEmailSender, MailerSendEmailSender>();
         builder.Services.AddTransient<IEmailSender<ApplicationUser>, MailerSendEmailSender>();
 
@@ -172,6 +223,24 @@ public class Program
         var inContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 
         var app = builder.Build();
+
+        // Serilog
+        app.UseSerilogRequestLogging(opts =>
+        {
+            // add request-scoped properties
+            opts.EnrichDiagnosticContext = (ctx, http) =>
+            {
+                ctx.Set("RequestPath", http.Request.Path);
+                ctx.Set("RequestId", http.TraceIdentifier);
+                var userId = http.User?.Identity?.IsAuthenticated == true
+                    ? (http.User.Identity?.Name ?? http.User.FindFirst("sub")?.Value)
+                    : null;
+                if (!string.IsNullOrWhiteSpace(userId))
+                    ctx.Set("UserId", userId);
+                ctx.Set("Environment", app.Environment.EnvironmentName);
+                ctx.Set("Application", "Ava.API");
+            };
+        });
 
         // Culture switch endpoint
         app.MapGet("/set-culture", (string culture, string? redirectUri, HttpContext ctx) =>

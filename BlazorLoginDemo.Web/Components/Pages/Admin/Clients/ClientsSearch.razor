@@ -1,0 +1,99 @@
+@page "/admin/clients"
+@rendermode InteractiveServer
+
+@inject NavigationManager Nav
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
+@inject ILogger<AvaClient> Log
+
+<PageTitle>Client Search</PageTitle>
+
+<div class="container py-4">
+    <h3 class="mb-3">Ava Client Search</h3>
+    <div class="card shadow-sm">
+        <div class="card-header">Find a client</div>
+        <div class="card-body">
+            <form @onsubmit="HandleSearchAsync">
+                <div class="input-group">
+                    <input
+                        class="form-control"
+                        placeholder="Search by name, ID, or keyword…"
+                        aria-label="Client search"
+                        @bind="_query"
+                        @bind:event="oninput"
+                        autocomplete="off" />
+                    <button class="btn btn-primary" type="submit" disabled="@_busy">
+                        <i class="bi bi-search me-1"></i> @(_busy ? "Searching…" : "Search")
+                    </button>
+                </div>
+            </form>
+            @if (_noResults && !_busy)
+            {
+            <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0" role="alert">
+                <i class="bi bi-info-circle"></i>
+                <span>No results found</span>
+            </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _query = string.Empty;
+    private bool _busy;
+    private bool _noResults;
+
+    // Adjust this to wherever your client details live
+    private const string ClientDetailsBaseUrl = "/admin/clients/";
+
+    private string? _error;
+
+    private async Task HandleSearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            _noResults = true;
+            _error = null;
+            return;
+        }
+
+        _busy = true;
+        _noResults = false;
+        _error = null;
+
+        try
+        {
+            var clients = await AvaClientService.SearchClientAsync(_query);
+
+            // Safely handle null/empty responses
+            if (clients is null || clients.Count == 0)
+            {
+                _noResults = true;
+                return;
+            }
+
+            var id = clients[0].Id; // now safe
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                _noResults = true;
+                return;
+            }
+
+            var target = $"{ClientDetailsBaseUrl}{Uri.EscapeDataString(id)}";
+            Nav.NavigateTo(target, forceLoad: true);
+        }
+        catch (OperationCanceledException)
+        {
+            // Ignore user-initiated cancels if you wire a CancellationToken later
+        }
+        catch (Exception ex)
+        {
+            // Don’t let it escape the circuit
+            _error = ex.Message; // or log ex
+            _noResults = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

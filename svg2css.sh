@@ -35,7 +35,7 @@ echo "$CSS"
 
 # If NavMenu.razor.css exists, append
 if [ -f "$TARGET_CSS" ]; then
-  echo "" >> "$TARGET_CSS"
+#  echo "" >> "$TARGET_CSS"
   echo "$CSS" >> "$TARGET_CSS"
   echo "✅ Appended to $TARGET_CSS"
 fi
