@@ -1,6 +1,7 @@
 using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Services.Interfaces.User;
 using Microsoft.EntityFrameworkCore;
+using BlazorLoginDemo.Shared.Data;
 
 namespace BlazorLoginDemo.Shared.Services.User;
 
@@ -51,9 +52,11 @@ public sealed class AvaUserService : IAvaUserService
             .OrderBy(u => u.LastName).ThenBy(u => u.FirstName)
             .ToListAsync(ct);
 
-    public async Task<IReadOnlyList<AvaUser>> SearchUsersAsync(string query, int take = 50, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AvaUser>> SearchUsersAsync(string query, int page = 0, int take = 50, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(query)) return Array.Empty<AvaUser>();
+        if (string.IsNullOrWhiteSpace(query))
+            return Array.Empty<AvaUser>();
+
         var q = query.Trim();
         var pattern = $"%{q}%";
 
@@ -65,8 +68,10 @@ public sealed class AvaUserService : IAvaUserService
                 EF.Functions.ILike(u.LastName ?? string.Empty, pattern));
 
         return await filtered
-            .OrderBy(u => u.LastName).ThenBy(u => u.FirstName)
-            .Take(Math.Max(1, take))
+            .OrderBy(u => u.LastName)
+            .ThenBy(u => u.FirstName)
+            .Skip(page * take)        // 👈 shift starting point
+            .Take(Math.Max(1, take))  // 👈 how many to grab
             .ToListAsync(ct);
     }
 
@@ -100,4 +105,64 @@ public sealed class AvaUserService : IAvaUserService
     // -----------------------------
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.AvaUsers.AsNoTracking().AnyAsync(u => u.Id == id, ct);
+
+    public async Task<int> IngestUsersAsync(CancellationToken ct = default)
+    {
+        // 1) Find Identity users that don't have an AvaUser profile yet
+        var missing = await (from u in _db.Users.AsNoTracking() // AspNetUsers via Identity
+                             join au in _db.AvaUsers.AsNoTracking()
+                                 on u.Id equals au.AspNetUsersId into aug
+                             from au in aug.DefaultIfEmpty()
+                             where au == null
+                             select new
+                             {
+                                 u.Id,
+                                 u.Email,
+                                 u.UserName,
+                                 // If you store human name in Identity:
+                                 u.DisplayName
+                             })
+                            .ToListAsync(ct);
+
+        if (missing.Count == 0) return 0;
+
+        // 2) Bulk-add AvaUser rows
+        var prevDetect = _db.ChangeTracker.AutoDetectChangesEnabled;
+        _db.ChangeTracker.AutoDetectChangesEnabled = false;
+        try
+        {
+            foreach (var m in missing)
+            {
+                var (first, last) = SplitDisplayName(m.DisplayName);
+
+                _db.AvaUsers.Add(new AvaUser
+                {
+                    // NOTE: set Id if your AvaUser key isn't DB-generated
+                    AspNetUsersId = m.Id,
+                    Email = m.Email ?? m.UserName ?? string.Empty,
+                    FirstName = first,
+                    LastName = last
+                });
+            }
+
+            return await _db.SaveChangesAsync(ct);
+        }
+        finally
+        {
+            _db.ChangeTracker.AutoDetectChangesEnabled = prevDetect;
+        }
+
+    }
+    
+    private static (string First, string Last) SplitDisplayName(string? display)
+    {
+        if (string.IsNullOrWhiteSpace(display)) return (string.Empty, string.Empty);
+        var parts = display.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => (string.Empty, string.Empty),
+            1 => (parts[0], string.Empty),
+            _ => (parts[0], string.Join(' ', parts.Skip(1)))
+        };
+    }
 }

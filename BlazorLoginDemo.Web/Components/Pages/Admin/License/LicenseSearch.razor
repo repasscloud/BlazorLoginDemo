@@ -1,11 +1,12 @@
-@page "/admin/avausers/search"
+@page "/admin/license/search"
 @rendermode InteractiveServer
 
-@using BlazorLoginDemo.Shared.Models.User
+@using BlazorLoginDemo.Shared.Models.Kernel.Client;
 @using Microsoft.AspNetCore.Components.Forms
 
 @inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
 @inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.ILicenseAgreementService LicenseAgreementService
 @inject NavigationManager Nav
 
 
@@ -14,16 +15,17 @@
 
 <div class="container py-4">
 
+    <h3 class="mb-3">License Agreement Search</h3>
     <div class="card shadow-sm">
-        <div class="card-header">Find an AvaUser</div>
+        <div class="card-header">Find a client</div>
         <div class="card-body">
 
             <form @onsubmit="SearchFirstPageAsync">
                 <div class="input-group">
                 <input
                     class="form-control"
-                    placeholder="Search users by name or email…"
-                    aria-label="AvaUser search"
+                    placeholder="Search by name, ID, or keyword…"
+                    aria-label="Client search"
                     @bind="_query"
                     @bind:event="oninput"
                     autocomplete="off" />
@@ -45,31 +47,58 @@
             }
             else if (_searched && _results.Count == 0)
             {
-                <div class="alert alert-warning mt-3">No users matched "<strong>@_query</strong>".</div>
+                <div class="alert alert-warning mt-3">No clients matched "<strong>@_query</strong>".</div>
             }
             else if (_results.Count > 0)
             {
-                <div class="table-responsive">
+                @* Results Table *@
+                <div class="table-responsive mt-3">
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:18%">First Name</th>
-                                <th style="width:18%">Last Name</th>
-                                <th style="width:28%">Email</th>
-                                <th style="width:26%">Client</th>
+                                <th style="width:24%">Company Name</th>
+                                <th style="width:12%">Country</th>
+                                <th style="width:18%">Contact Person Email</th>
+                                <th style="width:18%">Billing Person Email</th>
+                                <th style="width:18%">Admin Person Email</th>
                                 <th style="width:10%"></th>
                             </tr>
                         </thead>
                         <tbody>
-                        @foreach (var u in _results)
+                        @foreach (var x in _results)
                         {
                             <tr>
-                                <td>@u.FirstName</td>
-                                <td>@u.LastName</td>
-                                <td>@u.EmailAddress</td>
-                                <td>@(string.IsNullOrWhiteSpace(u.AvaClientName) ? "—" : u.AvaClientName)</td>
+                                <td>@x.CompanyName</td>
+                                <td>@x.Country</td>
+
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(x.ContactPersonEmail))
+                                    { <span>—</span> }
+                                    else
+                                    { <a href="mailto:@x.ContactPersonEmail">@x.ContactPersonEmail</a> }
+                                </td>
+
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(x.BillingPersonEmail))
+                                    { <span>—</span> }
+                                    else
+                                    { <a href="mailto:@x.BillingPersonEmail">@x.BillingPersonEmail</a> }
+                                </td>
+
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(x.AdminPersonEmail))
+                                    { <span>—</span> }
+                                    else
+                                    { <a href="mailto:@x.AdminPersonEmail">@x.AdminPersonEmail</a> }
+                                </td>
+
                                 <td class="text-end">
-                                    <a class="btn btn-sm btn-outline-primary" href="@($"/admin/avausers/{u.Id}")">View/Edit</a>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                    href="@(string.IsNullOrWhiteSpace(x.LicenseAgreementId) 
+                                            ? $"/admin/license/{x.Id}/new" 
+                                            : $"/admin/license/{x.LicenseAgreementId}")">
+                                        @(string.IsNullOrWhiteSpace(x.LicenseAgreementId) ? "Generate" : "View/Edit")
+                                    </a>
                                 </td>
                             </tr>
                         }
@@ -106,18 +135,20 @@
     private bool _busy;
     private bool _searched;
 
-    private List<AvaUserSearchResult> _results = new(); // init so .Clear() is safe
+    private List<AvaClientSearchResult> _results = new(); // init so .Clear() is safe
     private int _resultsPage = 0;                       // 0-based
 
     private const int PageSize = 50;
 
-    private class AvaUserSearchResult
+    private class AvaClientSearchResult
     {
         public string Id { get; set; } = default!;
-        public string FirstName { get; set; } = default!;
-        public string LastName { get; set; } = default!;
-        public string EmailAddress { get; set; } = default!;
-        public string? AvaClientName { get; set; }
+        public string CompanyName { get; set; } = default!;
+        public string Country { get; set; } = default!;
+        public string ContactPersonEmail { get; set; }
+        public string? BillingPersonEmail { get; set; }
+        public string? AdminPersonEmail { get; set; }
+        public string? LicenseAgreementId { get; set; }
     }
 
     // Enable/disable logic
@@ -145,11 +176,6 @@
         await HandleSearchAsync();
     }
 
-
-    // Cache for AvaClientId -> CompanyName
-    private readonly Dictionary<string, string> _clientNameCache =
-        new(StringComparer.OrdinalIgnoreCase);
-
     private async Task HandleSearchAsync()
     {
         if (string.IsNullOrWhiteSpace(_query))
@@ -167,14 +193,14 @@
         try
         {
             // Call your paged search correctly (note the named args; no type declarations here)
-            var found = await AvaUserService.SearchUsersAsync(
+            var found = await AvaClientService.SearchClientByPageAsync(
                 query: _query.Trim(),
                 page: _resultsPage,
                 take: PageSize
             );
 
             // Map users -> search result view models (with cached client names)
-            _results = await PopulateClientNamesAsync(found);
+            _results = await PopulateClientResultsAsync(found);
         }
         finally
         {
@@ -182,33 +208,29 @@
         }
     }
 
-    private async Task<List<AvaUserSearchResult>> PopulateClientNamesAsync(IReadOnlyList<AvaUser> users)
+    private Task<List<AvaClientSearchResult>> PopulateClientResultsAsync(IReadOnlyList<AvaClient> clients)
     {
-        // Run lookups concurrently
-        var tasks = users.Select(async u =>
+        if (clients is null || clients.Count == 0)
+            return Task.FromResult(new List<AvaClientSearchResult>(0));
+
+        var results = new List<AvaClientSearchResult>(clients.Count);
+
+        for (int i = 0; i < clients.Count; i++)
         {
-            string clientName = string.Empty;
+            var c = clients[i];
 
-            if (!string.IsNullOrWhiteSpace(u.AvaClientId))
+            results.Add(new AvaClientSearchResult
             {
-                if (!_clientNameCache.TryGetValue(u.AvaClientId, out clientName))
-                {
-                    clientName = await AvaClientService.GetClientNameOnlyAsync(u.AvaClientId)
-                                 ?? string.Empty;
-                    _clientNameCache[u.AvaClientId] = clientName;
-                }
-            }
+                Id = c.Id,
+                CompanyName = c.CompanyName ?? string.Empty,
+                Country = c.Country ?? string.Empty,
+                ContactPersonEmail = c.ContactPersonEmail ?? string.Empty,
+                BillingPersonEmail = c.BillingPersonEmail ?? string.Empty,
+                AdminPersonEmail = c.AdminPersonEmail ?? string.Empty,
+                LicenseAgreementId = c.LicenseAgreementId ?? string.Empty,
+            });
+        }
 
-            return new AvaUserSearchResult
-            {
-                Id = u.Id,
-                FirstName = u.FirstName,
-                LastName = u.LastName,
-                EmailAddress = u.Email,
-                AvaClientName = clientName
-            };
-        });
-
-        return (await Task.WhenAll(tasks)).ToList();
+        return Task.FromResult(results);
     }
 }

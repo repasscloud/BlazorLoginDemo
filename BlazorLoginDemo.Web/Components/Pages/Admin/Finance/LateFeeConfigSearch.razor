@@ -1,0 +1,287 @@
+@page "/admin/finance/latefeeconfig/search"
+@rendermode InteractiveServer
+
+@using BlazorLoginDemo.Shared.Models.Kernel.Client;
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.ILicenseAgreementService LicenseAgreementService
+@inject NavigationManager Nav
+
+
+
+<PageTitle>AvaUsers</PageTitle>
+
+<div class="container py-4">
+
+    <h3 class="mb-3">Late Fee Config Search</h3>
+    <div class="card shadow-sm">
+        <div class="card-header">Find a client</div>
+        <div class="card-body">
+
+            <form @onsubmit="SearchFirstPageAsync">
+                <div class="input-group">
+                <input
+                    class="form-control"
+                    placeholder="Search by name, ID, or keyword…"
+                    aria-label="Client search"
+                    @bind="_query"
+                    @bind:event="oninput"
+                    autocomplete="off" />
+
+                <button class="btn btn-primary" type="submit" disabled="@_busy">
+                    <i class="bi bi-search me-1"></i> @(_busy ? "Searching…" : "Search")
+                </button>
+                </div>
+            </form>
+
+            @if (_busy)
+            {
+                <div class="d-flex align-items-center justify-content-center" style="min-height:30vh;">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status" aria-hidden="true"></div>
+                        <div class="mt-3">Searching…</div>
+                    </div>
+                </div>
+            }
+            else if (_searched && _results.Count == 0)
+            {
+                <div class="alert alert-warning mt-3">No clients matched "<strong>@_query</strong>".</div>
+            }
+            else if (_results.Count > 0)
+            {
+                @* Results Table *@
+                <div class="table-responsive mt-3">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:24%">Company Name</th>
+                                <th style="width:12%">Country</th>
+                                <th style="width:18%">Contact Person Email</th>
+                                <th style="width:18%">Billing Person Email</th>
+                                <th style="width:18%">Admin Person Email</th>
+                                <th style="width:10%"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var x in _results)
+                        {
+                            <tr>
+                                <td>@x.CompanyName</td>
+                                <td>@x.Country</td>
+
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(x.ContactPersonEmail))
+                                    { <span>—</span> }
+                                    else
+                                    { <a href="mailto:@x.ContactPersonEmail">@x.ContactPersonEmail</a> }
+                                </td>
+
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(x.BillingPersonEmail))
+                                    { <span>—</span> }
+                                    else
+                                    { <a href="mailto:@x.BillingPersonEmail">@x.BillingPersonEmail</a> }
+                                </td>
+
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(x.AdminPersonEmail))
+                                    { <span>—</span> }
+                                    else
+                                    { <a href="mailto:@x.AdminPersonEmail">@x.AdminPersonEmail</a> }
+                                </td>
+
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-primary"
+                                    href="@(string.IsNullOrWhiteSpace(x.LateFeeConfigId) 
+                                            ? $"/admin/clients/{x.Id}" 
+                                            : $"/admin/finance/latefeeconfig/{x.LateFeeConfigId}")">
+                                        @(string.IsNullOrWhiteSpace(x.LateFeeConfigId) ? "Generate" : "View/Edit")
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div class="text-muted">Showing up to 50 results.</div>
+                    <div class="btn-group">
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                @onclick="PrevPageAsync"
+                                disabled="@(!CanGoPrev)">
+                            ◀ Prev
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                @onclick="NextPageAsync"
+                                disabled="@(!CanGoNext)">
+                            Next ▶
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _query = string.Empty;
+
+    private bool _busy;
+    private bool _searched;
+
+    private List<AvaClientSearchResult> _results = new(); // init so .Clear() is safe
+    private int _resultsPage = 0;                       // 0-based
+
+    private const int PageSize = 50;
+
+    private class AvaClientSearchResult
+    {
+        public string Id { get; set; } = default!;
+        public string CompanyName { get; set; } = default!;
+        public string Country { get; set; } = default!;
+        public string ContactPersonEmail { get; set; }
+        public string? BillingPersonEmail { get; set; }
+        public string? AdminPersonEmail { get; set; }
+        public string? LicenseAgreementId { get; set; }
+        public string? LateFeeConfigId { get; set; }
+    }
+
+    // Enable/disable logic
+    private bool CanGoPrev => _resultsPage > 0 && !_busy;
+    private bool CanGoNext => _results?.Count == PageSize && !_busy;
+
+    // Call this when the user submits a *new* query (resets to first page)
+    private async Task SearchFirstPageAsync()
+    {
+        _resultsPage = 0;
+        await HandleSearchAsync();
+    }
+
+    private async Task PrevPageAsync()
+    {
+        if (!CanGoPrev) return;
+        _resultsPage--;
+        await HandleSearchAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (!CanGoNext) return;  // only if current page is “full”
+        _resultsPage++;
+        await HandleSearchAsync();
+    }
+
+    private async Task HandleSearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            _searched = true;
+            _results.Clear();
+            StateHasChanged();
+            return;
+        }
+
+        _busy = true;
+        _searched = true;
+        _results.Clear();
+
+        try
+        {
+            // Call your paged search correctly (note the named args; no type declarations here)
+            var found = await AvaClientService.SearchClientByPageAsync(
+                query: _query.Trim(),
+                page: _resultsPage,
+                take: PageSize
+            );
+
+            // Map users -> search result view models (with cached client names)
+            _results = await PopulateClientResultsAsync(found);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task<List<AvaClientSearchResult>> PopulateClientResultsAsync(IReadOnlyList<AvaClient> clients)
+    {
+        if (clients is null || clients.Count == 0)
+            return new List<AvaClientSearchResult>(0);
+
+        var results = new List<AvaClientSearchResult>(clients.Count);
+
+        // 1) Build result shells (fast, no awaits), capture unique LicenseAgreementIds that need a lookup
+        var uniqueLicenseIds = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < clients.Count; i++)
+        {
+            var c = clients[i];
+
+            var licenseId = c.LicenseAgreementId?.Trim();
+            if (!string.IsNullOrWhiteSpace(licenseId))
+                uniqueLicenseIds.Add(licenseId);
+
+            results.Add(new AvaClientSearchResult
+            {
+                Id                 = c.Id,
+                CompanyName        = c.CompanyName        ?? string.Empty,
+                Country            = c.Country            ?? string.Empty,
+                ContactPersonEmail = c.ContactPersonEmail ?? string.Empty,
+                BillingPersonEmail = c.BillingPersonEmail ?? string.Empty,
+                AdminPersonEmail   = c.AdminPersonEmail   ?? string.Empty,
+                LicenseAgreementId = licenseId            ?? string.Empty,
+                LateFeeConfigId    = string.Empty, // will fill after lookups
+            });
+        }
+
+        // 2) Concurrently fetch LateFeeConfigIds for unique license IDs (skip entirely if none)
+        Dictionary<string, string> lateFeeByLicenseId;
+        if (uniqueLicenseIds.Count == 0)
+        {
+            lateFeeByLicenseId = new Dictionary<string, string>(0, StringComparer.Ordinal);
+        }
+        else
+        {
+            // Kick off all lookups in parallel (one per unique ID)
+            var tasks = uniqueLicenseIds.ToDictionary(
+                id => id,
+                id => GetLateFeeConfigIdAsync(id),
+                StringComparer.Ordinal
+            );
+
+            await Task.WhenAll(tasks.Values);
+
+            // Materialize results into a plain dictionary: licenseId -> LateFeeConfigId (or empty)
+            lateFeeByLicenseId = tasks.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.Result ?? string.Empty,
+                StringComparer.Ordinal
+            );
+        }
+
+        // 3) Apply the LateFeeConfigId to each result
+        for (int i = 0; i < results.Count; i++)
+        {
+            var r = results[i];
+            if (!string.IsNullOrEmpty(r.LicenseAgreementId) &&
+                lateFeeByLicenseId.TryGetValue(r.LicenseAgreementId, out var lf))
+            {
+                r.LateFeeConfigId = lf ?? string.Empty;
+            }
+        }
+
+        return results;
+
+        // Local helper keeps the call tidy and returns only what you need
+        async Task<string?> GetLateFeeConfigIdAsync(string licenseAgreementId)
+        {
+            var la = await LicenseAgreementService.GetByIdAsync(licenseAgreementId);
+            return la?.LateFeeConfigId;
+        }
+    }
+}

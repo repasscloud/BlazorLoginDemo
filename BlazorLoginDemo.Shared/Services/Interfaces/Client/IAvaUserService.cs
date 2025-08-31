@@ -12,7 +12,7 @@ public interface IAvaUserService
     Task<AvaUser?> GetByEmailAsync(string email, CancellationToken ct = default);
     Task<AvaUser?> GetByAspNetUserIdAsync(string aspNetUsersId, CancellationToken ct = default);
     Task<IReadOnlyList<AvaUser>> GetAllAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<AvaUser>> SearchUsersAsync(string query, int take = 50, CancellationToken ct = default);
+    Task<IReadOnlyList<AvaUser>> SearchUsersAsync(string query, int page = 0, int take = 50, CancellationToken ct = default);
 
     // UPDATE (replace whole object)
     Task<AvaUser> UpdateAsync(AvaUser user, CancellationToken ct = default);
@@ -22,4 +22,6 @@ public interface IAvaUserService
 
     // UTIL
     Task<bool> ExistsAsync(string id, CancellationToken ct = default);
+
+    Task<int> IngestUsersAsync(CancellationToken ct = default);
 }

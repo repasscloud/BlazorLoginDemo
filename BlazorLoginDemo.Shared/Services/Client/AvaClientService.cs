@@ -61,6 +61,50 @@ public sealed class AvaClientService : IAvaClientService
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<AvaClient>> SearchClientByPageAsync(
+        string query, 
+        int page = 0, 
+        int take = 50, 
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query)) 
+            return Array.Empty<AvaClient>();
+
+        var q = query.Trim();
+        var pattern = $"%{q}%";
+
+        // For phone matching like "492257868" vs "0492257868"
+        var qDigits = new string(q.Where(char.IsDigit).ToArray());
+        var digitsPattern = $"%{qDigits}%";
+
+        var filtered = _db.AvaClients
+            .AsNoTracking()
+            .Where(c =>
+                // Company name contains (case-insensitive)
+                EF.Functions.ILike(c.CompanyName ?? string.Empty, pattern)
+                // Tax ID contains
+                || EF.Functions.ILike(c.TaxId ?? string.Empty, pattern)
+                // Email contains
+                || EF.Functions.ILike(c.ContactPersonEmail ?? string.Empty, pattern)
+                // Phone contains (digits-only compare; ignore spaces, +, (), -)
+                || (qDigits != string.Empty && EF.Functions.ILike(
+                    ((c.ContactPersonPhone ?? string.Empty)
+                        .Replace(" ", string.Empty)
+                        .Replace("-", string.Empty)
+                        .Replace("(", string.Empty)
+                        .Replace(")", string.Empty)
+                        .Replace("+", string.Empty)),
+                    digitsPattern))
+            );
+
+        return await filtered
+            .OrderBy(c => c.CompanyName)
+            .Skip(page * take)        // 👈 offset
+            .Take(Math.Max(1, take))  // 👈 limit
+            .ToListAsync(ct);
+    }
+
+
     // UPDATE (replace whole object)
     public async Task<AvaClient> UpdateAsync(AvaClient client, CancellationToken ct = default)
     {
