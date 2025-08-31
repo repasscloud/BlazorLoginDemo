@@ -17,19 +17,19 @@
 
 <div class="container py-4">
   <!-- Breadcrumb -->
-  <nav aria-label="breadcrumb">
+  @* <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/">Home</a></li>
       <li class="breadcrumb-item"><a href="/clients">Clients</a></li>
       <li class="breadcrumb-item active" aria-current="page">New License Agreement</li>
     </ol>
-  </nav>
+  </nav> *@
 
   <h1 class="mb-3">License Agreement</h1>
   <p class="text-muted mb-4">
     Creating agreement for: <strong>@(_client?.CompanyName ?? "…")</strong>
     @* <span class="ms-2 badge bg-secondary">AvaClientId: @AvaClientId</span> *@
-    <span class="ms-2 badge bg-light text-dark border border-dark round-pill fw-normal">@AvaClientId</span>
+    @* <span class="ms-2 badge bg-light text-dark border border-dark round-pill fw-normal">@AvaClientId</span> *@
   </p>
 
   <EditForm Model="_model" OnValidSubmit="HandleSubmit">
@@ -504,7 +504,7 @@
 
         if (result is not null)
         {
-            Nav.NavigateTo("/");
+            Nav.NavigateTo($"/admin/clients/{AvaClientId}", forceLoad: true);
             return;
         }
         

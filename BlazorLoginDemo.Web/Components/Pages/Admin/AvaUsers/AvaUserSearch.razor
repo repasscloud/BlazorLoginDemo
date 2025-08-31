@@ -1,0 +1,141 @@
+@page "/admin/avausers/search"
+@using BlazorLoginDemo.Shared.Models.User
+@using Microsoft.AspNetCore.Components.Forms
+@inject NavigationManager Nav
+@* @inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService *@
+@* @inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService *@
+
+<PageTitle>Ava Users</PageTitle>
+
+<div class="container py-4">
+    <EditForm Model="_vm" OnValidSubmit="HandleSearchAsync" FormName="AvaUserSearchForm">
+        <div class="input-group mb-3">
+            <InputText class="form-control" @bind-Value="_vm.Query" placeholder="Search users by name or email…" />
+            <button type="submit" class="btn btn-primary" disabled="@_busy">
+                @_busy ? "Searching…" : "Search"
+            </button>
+        </div>
+    </EditForm>
+
+    @if (_busy)
+    {
+        <div class="d-flex align-items-center justify-content-center" style="min-height:30vh;">
+            <div class="text-center">
+                <div class="spinner-border" role="status" aria-hidden="true"></div>
+                <div class="mt-3">Searching…</div>
+            </div>
+        </div>
+    }
+    else if (_searched && _results.Count == 0)
+    {
+        <div class="alert alert-warning">No users matched "<strong>@_vm.Query</strong>".</div>
+    }
+    else if (_results.Count > 0)
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:18%">First Name</th>
+                        <th style="width:18%">Last Name</th>
+                        <th style="width:28%">Email</th>
+                        <th style="width:26%">Client</th>
+                        <th style="width:10%"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var u in _results)
+                {
+                    var company = GetCachedCompanyName(u.AvaClientId);
+                    <tr>
+                        <td>@u.FirstName</td>
+                        <td>@u.LastName</td>
+                        <td>@u.Email</td>
+                        <td>@(string.IsNullOrWhiteSpace(company) ? "—" : company)</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="@($"/admin/avausers/{u.Id}")">View/Edit</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="text-muted">Showing up to 50 results.</div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary btn-sm" disabled>◀ Prev</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" disabled>Next ▶</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // --- tiny VM so EditForm has a Model ---
+    private sealed class UserSearchVm { public string Query { get; set; } = string.Empty; }
+    private readonly UserSearchVm _vm = new();
+
+    private bool _busy;
+    private bool _searched;
+    private List<AvaUser> _results = new();
+
+    // Cache for AvaClientId -> CompanyName
+    private readonly Dictionary<string, string> _clientNameCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task HandleSearchAsync()
+    {
+        _busy = true;
+        _searched = true;
+        _results.Clear();
+
+        try
+        {
+            // 🔧 Replace with your real search: e.g. await AvaUserService.SearchUsersAsync(_vm.Query, 50);
+            var found = await SearchUsersPlaceholderAsync(_vm.Query, take: 50);
+
+            _results = found.ToList();
+            await PopulateClientNamesAsync(_results);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // ------------------------------
+    // Placeholders to swap in later
+    // ------------------------------
+    private Task<IReadOnlyList<AvaUser>> SearchUsersPlaceholderAsync(string query, int take)
+        => Task.FromResult<IReadOnlyList<AvaUser>>(Array.Empty<AvaUser>());
+
+    private Task<string?> GetClientCompanyNamePlaceholderAsync(string avaClientId)
+        => Task.FromResult<string?>(null);
+
+    // ------------------------------
+    // Helpers
+    // ------------------------------
+    private string? GetCachedCompanyName(string? avaClientId)
+        => string.IsNullOrWhiteSpace(avaClientId) ? null :
+           (_clientNameCache.TryGetValue(avaClientId, out var name) ? name : null);
+
+    private async Task PopulateClientNamesAsync(IEnumerable<AvaUser> users)
+    {
+        var missingIds = users
+            .Select(u => u.AvaClientId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(id => !_clientNameCache.ContainsKey(id!))
+            .ToArray();
+
+        if (missingIds.Length == 0) return;
+
+        var tasks = missingIds.Select(async id =>
+        {
+            var name = await GetClientCompanyNamePlaceholderAsync(id!);
+            _clientNameCache[id!] = name ?? string.Empty;
+        });
+
+        await Task.WhenAll(tasks);
+    }
+}

@@ -11,7 +11,7 @@
 
 <h1 class="display-6 mb-3">Travel Policy</h1>
 
-@if (loadError is not null)
+@if (!string.IsNullOrWhiteSpace(loadError))
 {
     <div class="alert alert-danger"><strong>Couldn’t load:</strong> @loadError</div>
 }
@@ -428,7 +428,7 @@
     private async Task SaveAsync()
     {
         successMessage = string.Empty;
-        loadError = string.Empty;
+        loadError = null;
 
         MapSelectionsToModelCollections();
 
@@ -446,6 +446,7 @@
                 throw new InvalidOperationException("Policy failed to save.");
 
             successMessage = "Travel Policy saved.";
+            await Task.Delay(1);
             Nav.NavigateTo($"/admin/clients/{Model.AvaClientId}", forceLoad: true);
         }
         catch (Exception ex)
