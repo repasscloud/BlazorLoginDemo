@@ -5,34 +5,30 @@
 
 @inject NavigationManager Nav
 @inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
-@inject BlazorLoginDemo.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
-@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
 @inject IJSRuntime JS
 
-<PageTitle>User</PageTitle>
+<PageTitle>Ava User</PageTitle>
 
 <h1 class="mb-3">Ava User</h1>
 
-@if (!string.IsNullOrWhiteSpace(_errorMessage))
+@if (!string.IsNullOrWhiteSpace(_error))
 {
-    <div class="alert alert-danger" role="alert">
-        @_errorMessage
-    </div>
+    <div class="alert alert-danger" role="alert">@_error</div>
 }
 
 <EditForm Model="_model" OnValidSubmit="SaveAsync">
     <DataAnnotationsValidator />
     <ValidationSummary />
 
-    <!-- Top action bar -->
-    <div class="d-flex gap-2 mb-3">
-        <button type="submit" class="btn btn-primary" disabled="_busy">
+    <!-- Top actions -->
+    <div class="d-flex gap-2 mb-4">
+        @* <button type="submit" class="btn btn-primary" disabled="_busy">
             <i class="bi bi-save me-1"></i> Save
         </button>
         <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="_busy">
             <i class="bi bi-x-circle me-1"></i> Cancel
-        </button>
-        @if (_isExisting)
+        </button> *@
+        @if (_existing)
         {
             <button type="button" class="btn btn-outline-danger ms-auto" @onclick="DeleteAsync" disabled="_busy">
                 <i class="bi bi-trash me-1"></i> Delete
@@ -40,38 +36,34 @@
         }
     </div>
 
-    <div class="row g-3">
-        <!-- Identity -->
+    <!-- Identity -->
+    <div class="row g-3 mb-4">
         <div class="col-md-4">
             <label class="form-label">Ava User ID</label>
             <div class="input-group">
                 <InputText class="form-control" @bind-Value="_model.Id" readonly />
-                <button class="btn btn-outline-secondary" type="button" title="Copy ID" @onclick="() => CopyToClipboardAsync(_model.Id)">
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.Id)">
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-5">
             <label class="form-label">AspNetUsers ID <span class="text-danger">*</span></label>
-            <div class="input-group">
-                <InputText class="form-control" @bind-Value="_model.AspNetUsersId" />
-                <button class="btn btn-outline-secondary" type="button" title="Find user…" @onclick="LookupAspNetUserAsync">
-                    <i class="bi bi-search"></i>
-                </button>
-            </div>
-            <div class="form-text">1:1 link to Identity user.</div>
+            <InputText class="form-control" @bind-Value="_model.AspNetUsersId" />
             <ValidationMessage For="@(() => _model.AspNetUsersId)" />
         </div>
 
-        <div class="col-md-4 d-flex align-items-end">
+        <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
                 <InputCheckbox class="form-check-input" @bind-Value="_model.IsActive" />
                 <label class="form-check-label ms-2">Active</label>
             </div>
         </div>
+    </div>
 
-        <!-- Name & Email -->
+    <!-- Name & Email -->
+    <div class="row g-3 mb-4">
         <div class="col-md-4">
             <label class="form-label">First Name <span class="text-danger">*</span></label>
             <InputText class="form-control" @bind-Value="_model.FirstName" />
@@ -96,18 +88,31 @@
             <ValidationMessage For="@(() => _model.Email)" />
         </div>
 
+
+
+
+
+
         <div class="col-md-3">
             <label class="form-label">Origin Location Code</label>
-            <InputText class="form-control" maxlength="3" @bind-Value="_model.OriginLocationCode" />
-            <div class="form-text">IATA code (e.g., SYD).</div>
+            <InputText class="form-control text-uppercase" maxlength="3" @bind-Value="_model.OriginLocationCode" />
+            <div class="form-text">IATA code (e.g., SYD)</div>
             <ValidationMessage For="@(() => _model.OriginLocationCode)" />
         </div>
 
-        <!-- Flight preferences -->
+        <div class="col-md-3">
+            <label class="form-label">Default Currency</label>
+            <InputText class="form-control text-uppercase" maxlength="3" @bind-Value="_model.DefaultCurrencyCode" />
+            <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
+        </div>
+    </div>
+
+    <!-- Flight preferences -->
+    <div class="row g-3 mb-4">
         <div class="col-md-3">
             <label class="form-label">Default Seating</label>
             <InputSelect class="form-select" @bind-Value="_model.DefaultFlightSeating">
-                @foreach (var c in _cabinOptions) { <option value="@c">@c</option> }
+                @foreach (var c in _cabins) { <option value="@c">@c</option> }
             </InputSelect>
             <ValidationMessage For="@(() => _model.DefaultFlightSeating)" />
         </div>
@@ -115,36 +120,9 @@
         <div class="col-md-3">
             <label class="form-label">Max Seating</label>
             <InputSelect class="form-select" @bind-Value="_model.MaxFlightSeating">
-                @foreach (var c in _cabinOptions) { <option value="@c">@c</option> }
+                @foreach (var c in _cabins) { <option value="@c">@c</option> }
             </InputSelect>
             <ValidationMessage For="@(() => _model.MaxFlightSeating)" />
-        </div>
-
-        <div class="col-md-3 d-flex align-items-end">
-            <div class="form-check form-switch">
-                <InputCheckbox class="form-check-input" @bind-Value="_model.NonStopFlight" />
-                <label class="form-check-label ms-2">Non-stop only</label>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <label class="form-label">Included Airline Codes</label>
-            <InputTextArea class="form-control" rows="2" @bind-Value="_model.IncludedAirlineCodes" />
-            <div class="form-text">Comma-separated (e.g., QF,VA,EK).</div>
-        </div>
-
-        <div class="col-md-6">
-            <label class="form-label">Excluded Airline Codes</label>
-            <InputTextArea class="form-control" rows="2" @bind-Value="_model.ExcludedAirlineCodes" />
-            <div class="form-text">Comma-separated (e.g., JQ,TT).</div>
-        </div>
-
-        <!-- Money & policy -->
-        <div class="col-md-3">
-            <label class="form-label">Default Currency</label>
-            <InputText class="form-control text-uppercase" maxlength="3" @bind-Value="_model.DefaultCurrencyCode" />
-            <div class="form-text">3-letter code (e.g., AUD).</div>
-            <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
         </div>
 
         <div class="col-md-3">
@@ -153,27 +131,43 @@
             <ValidationMessage For="@(() => _model.MaxFlightPrice)" />
         </div>
 
+        <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check form-switch">
+                <InputCheckbox class="form-check-input" @bind-Value="_model.NonStopFlight" />
+                <label class="form-check-label ms-2">Non-stop only</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Airline code filters (single-line inputs, per your note) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <label class="form-label">Included Airline Codes</label>
+            <InputText class="form-control" @bind-Value="_model.IncludedAirlineCodes" />
+            <div class="form-text">Comma-separated (e.g., QF,VA,EK)</div>
+            <ValidationMessage For="@(() => _model.IncludedAirlineCodes)" />
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Excluded Airline Codes</label>
+            <InputText class="form-control" @bind-Value="_model.ExcludedAirlineCodes" />
+            <div class="form-text">Comma-separated (e.g., JQ,TT)</div>
+            <ValidationMessage For="@(() => _model.ExcludedAirlineCodes)" />
+        </div>
+    </div>
+
+    <!-- Policy & Client -->
+    <div class="row g-3">
         <div class="col-md-6">
             <label class="form-label">Travel Policy</label>
-            <div class="input-group">
-                <InputText class="form-control" @bind-Value="_model.TravelPolicyId" />
-                <button class="btn btn-outline-secondary" type="button" title="Find policy…" @onclick="LookupTravelPolicyAsync">
-                    <i class="bi bi-search"></i>
-                </button>
-            </div>
+            <InputText class="form-control" @bind-Value="_model.TravelPolicyId" />
             <ValidationMessage For="@(() => _model.TravelPolicyId)" />
         </div>
 
-        <!-- Client linkage (optional) -->
         <div class="col-md-6">
             <label class="form-label">Ava Client</label>
-            <div class="input-group">
-                <InputText class="form-control" @bind-Value="_model.AvaClientId" />
-                <button class="btn btn-outline-secondary" type="button" title="Find client…" @onclick="LookupClientAsync">
-                    <i class="bi bi-search"></i>
-                </button>
-            </div>
-            <div class="form-text">Optional link; may be auto-set by email domain.</div>
+            <InputText class="form-control" @bind-Value="_model.AvaClientId" />
+            <div class="form-text">Optional; can be inferred from email domain.</div>
             <ValidationMessage For="@(() => _model.AvaClientId)" />
         </div>
 
@@ -184,7 +178,7 @@
         </div>
     </div>
 
-    <!-- Bottom action bar -->
+    <!-- Bottom actions -->
     <div class="d-flex gap-2 mt-4">
         <button type="submit" class="btn btn-primary" disabled="_busy">
             <i class="bi bi-save me-1"></i> Save
@@ -206,133 +200,60 @@
         Email = string.Empty,
     };
 
-    private bool _isExisting;
+    private bool _existing;
     private bool _busy;
-    private string? _errorMessage;
+    private string? _error;
 
-    // Keep cabin options aligned with your CabinTypeValidation
-    private readonly string[] _cabinOptions = new[]
-    {
-        "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"
-    };
+    private readonly string[] _cabins = new[] { "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST" };
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             _busy = true;
-
             if (!string.IsNullOrWhiteSpace(Id))
             {
-                var existing = await AvaUserService.GetByIdAsync(Id);
-                if (existing is not null)
-                {
-                    _model = existing;
-                    _isExisting = true;
-                }
-                else
-                {
-                    _errorMessage = "User not found.";
-                }
-            }
-            else
-            {
-                // brand-new user: defaults already present on _model
+                var u = await AvaUserService.GetByIdAsync(Id);
+                if (u is not null) { _model = u; _existing = true; }
+                else { _error = "User not found."; }
             }
         }
-        catch (Exception ex)
-        {
-            _errorMessage = ex.Message;
-        }
-        finally
-        {
-            _busy = false;
-            StateHasChanged();
-        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
     }
 
     private async Task SaveAsync()
     {
         if (_busy) return;
-
         try
         {
-            _busy = true;
-            _errorMessage = null;
-
-            if (_isExisting)
-            {
-                await AvaUserService.UpdateAsync(_model);
-            }
-            else
-            {
-                await AvaUserService.CreateAsync(_model);
-                _isExisting = true;
-            }
-
-            // Navigate back or stay — adjust as your UX does on Clients page
-            Nav.NavigateTo("/admin/avausers/search", forceLoad: true);
+            _busy = true; _error = null;
+            if (_existing) { await AvaUserService.UpdateAsync(_model); }
+            else { await AvaUserService.CreateAsync(_model); _existing = true; }
+            Nav.NavigateTo("/admin/users", forceLoad: true);
         }
-        catch (Exception ex)
-        {
-            _errorMessage = ex.Message;
-        }
-        finally
-        {
-            _busy = false;
-        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
     }
 
-    private void Cancel()
-    {
-        // Match Clients page behavior (navigate back/list)
-        Nav.NavigateTo("/admin/avausers/search", forceLoad: true);
-    }
+    private void Cancel() => Nav.NavigateTo("/admin/users", forceLoad: true);
 
     private async Task DeleteAsync()
     {
-        if (!_isExisting || _busy) return;
-
+        if (!_existing || _busy) return;
         try
         {
-            _busy = true;
-            _errorMessage = null;
-
+            _busy = true; _error = null;
             await AvaUserService.DeleteAsync(_model.Id);
-            Nav.NavigateTo("/admin/avausers/search", forceLoad: true);
+            Nav.NavigateTo("/admin/users", forceLoad: true);
         }
-        catch (Exception ex)
-        {
-            _errorMessage = ex.Message;
-        }
-        finally
-        {
-            _busy = false;
-        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
     }
 
-    // --- Lookups (wire up like on Clients page) ---
-    private async Task LookupAspNetUserAsync()
+    private async Task CopyAsync(string? v)
     {
-        // open a modal/search, then set _model.AspNetUsersId
-        await Task.CompletedTask;
-    }
-
-    private async Task LookupTravelPolicyAsync()
-    {
-        // open a modal/search, then set _model.TravelPolicyId
-        await Task.CompletedTask;
-    }
-
-    private async Task LookupClientAsync()
-    {
-        // open a modal/search, then set _model.AvaClientId
-        await Task.CompletedTask;
-    }
-
-    private async Task CopyToClipboardAsync(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return;
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", value);
+        if (string.IsNullOrWhiteSpace(v)) return;
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", v);
     }
 }
