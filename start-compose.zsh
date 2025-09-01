@@ -110,7 +110,7 @@ echo "✅ Updated version to: v${NEW_VER}"
 # ── 🐳 0) Stop all docker containers ──────────────────────────────────────────
 echo
 echo "🐳 0) Stop all docker containers"
-docker compose down -v
+docker compose down -v --rmi all --remove-orphans
 
 # ── 🧹 1) Clean slate: migrations, obj, bin, and blazorlogin* volumes ────────
 echo
