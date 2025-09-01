@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.Auth;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
+using BlazorLoginDemo.Shared.Models.Kernel.User;
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -18,6 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     // Ava
     public DbSet<AvaUser> AvaUsers => Set<AvaUser>();
+    public DbSet<AvaUserSysPreference> AvaUserSysPreferences => Set<AvaUserSysPreference>();
     public DbSet<AvaClient> AvaClients => Set<AvaClient>();
     public DbSet<AvaClientLicense> AvaClientLicenses => Set<AvaClientLicense>();
     public DbSet<LicenseAgreement> LicenseAgreements => Set<LicenseAgreement>();
@@ -61,23 +63,61 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(u => u.Department).HasMaxLength(128);
         });
 
+        builder.Entity<AvaUserSysPreference>(e =>
+        {
+            e.ToTable("ava_user_sys_preferences", "ava");
+
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.FirstName)
+                .IsRequired();
+
+            e.Property(x => x.LastName)
+                .IsRequired();
+
+            e.Property(x => x.Email)
+                .IsRequired();
+
+            // enforce uniqueness of Email inside prefs table
+            e.HasIndex(x => x.Email).IsUnique();
+        });
+
         builder.Entity<AvaUser>(e =>
         {
-            // put the table where you want
             e.ToTable("ava_users", "ava");
 
             e.HasKey(x => x.Id);
             e.Property(x => x.AspNetUsersId).IsRequired();
 
-            // enforce email uniqueness (at db level)
+            // enforce email uniqueness
             e.HasIndex(x => x.Email).IsUnique();
 
             // 1:1 AvaUser (FK) -> ApplicationUser (PK)
-            e.HasOne<ApplicationUser>()  // principal
-                .WithOne(u => u.Profile)  // navigation on principal
+            e.HasOne<ApplicationUser>()
+                .WithOne(u => u.Profile)
                 .HasForeignKey<AvaUser>(x => x.AspNetUsersId)
-                .OnDelete(DeleteBehavior.Cascade);  // delete profile when user is deleted
-        });
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // -----------------------------------------
+            // OPTIONAL 1:1 AvaUser ↔ AvaUserSysPreference
+            // FK: AvaUser.AvaUserSysPreferenceId → AvaUserSysPreference.Id
+            // -----------------------------------------
+            e.Property(x => x.AvaUserSysPreferenceId)
+                .IsRequired(false);               // nullable FK
+
+            e.HasOne<AvaUserSysPreference>()      // principal type (no nav on AvaUser)
+                .WithOne()                        // no nav on prefs side
+                .HasForeignKey<AvaUser>(x => x.AvaUserSysPreferenceId)
+                .HasPrincipalKey<AvaUserSysPreference>(p => p.Id)
+                .OnDelete(DeleteBehavior.SetNull); // delete prefs => FK becomes NULL
+
+            // unique FK ensures true 1:1 (each prefs row can map to at most one user)
+            e.HasIndex(x => x.AvaUserSysPreferenceId).IsUnique()
+#if SQLSERVER
+                .HasFilter("[AvaUserSysPreferenceId] IS NOT NULL") // allow many NULLs on SQL Server
+#endif
+                ;
+            });
 
         // configure the LicenseAgreement relationship for AvaClient.
         builder.Entity<LicenseAgreement>(e =>

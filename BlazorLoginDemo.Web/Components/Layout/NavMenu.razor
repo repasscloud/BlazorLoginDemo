@@ -71,15 +71,15 @@
             <!-- Children -->
             <div class="nav-submenu @(adminUsersOpen ? "show" : null)">
                 <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/avausers/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-people-nav-menu" aria-hidden="true"></span> Users
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
                     <NavLink class="nav-link" href="/admin/avausers/resync" Match="NavLinkMatch.Prefix">
                         <span class="bi bi-person-down-nav-menu" aria-hidden="true"></span> Resync Users
                     </NavLink>
                 </div>
-                @* <div class="nav-subitem">
-                    <NavLink class="nav-link" href="/admin/clients/new" Match="NavLinkMatch.Prefix">
-                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> New
-                    </NavLink>
-                </div> *@
             </div>
         </div>
 

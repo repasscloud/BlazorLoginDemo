@@ -81,6 +81,9 @@ public class AvaUser
 
     // this will only be filled in by the API, it's completely optional for the user to provide etc
     public string? ClientId { get; set; }
+
+    // FK
+    public string? AvaUserSysPreferenceId { get; set; }
     
     // navigation for refresh tokens
     public List<RefreshToken> RefreshTokens { get; set; } = new();

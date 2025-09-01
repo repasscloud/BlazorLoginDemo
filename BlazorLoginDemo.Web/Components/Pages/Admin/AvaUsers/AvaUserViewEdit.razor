@@ -1,4 +1,5 @@
 @page "/admin/avausers/{Id?}"
+@rendermode InteractiveServer
 
 @using BlazorLoginDemo.Shared.Models.User
 @using Microsoft.AspNetCore.Components.Forms
@@ -9,7 +10,7 @@
 
 <PageTitle>Ava User</PageTitle>
 
-<h1 class="mb-3">Ava User</h1>
+<h1 class="display-6 mb-3">Ava User</h1>
 
 @if (!string.IsNullOrWhiteSpace(_error))
 {
@@ -19,22 +20,6 @@
 <EditForm Model="_model" OnValidSubmit="SaveAsync">
     <DataAnnotationsValidator />
     <ValidationSummary />
-
-    <!-- Top actions -->
-    <div class="d-flex gap-2 mb-4">
-        @* <button type="submit" class="btn btn-primary" disabled="_busy">
-            <i class="bi bi-save me-1"></i> Save
-        </button>
-        <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="_busy">
-            <i class="bi bi-x-circle me-1"></i> Cancel
-        </button> *@
-        @if (_existing)
-        {
-            <button type="button" class="btn btn-outline-danger ms-auto" @onclick="DeleteAsync" disabled="_busy">
-                <i class="bi bi-trash me-1"></i> Delete
-            </button>
-        }
-    </div>
 
     <!-- Identity -->
     <div class="row g-3 mb-4">
@@ -84,32 +69,47 @@
 
         <div class="col-md-6">
             <label class="form-label">Email <span class="text-danger">*</span></label>
-            <InputText class="form-control" type="email" @bind-Value="_model.Email" />
+            <InputText class="form-control" type="email" @bind-Value="_model.Email" readonly />
             <ValidationMessage For="@(() => _model.Email)" />
         </div>
 
-
-
-
-
-
         <div class="col-md-3">
             <label class="form-label">Origin Location Code</label>
-            <InputText class="form-control text-uppercase" maxlength="3" @bind-Value="_model.OriginLocationCode" />
-            <div class="form-text">IATA code (e.g., SYD)</div>
+            <InputSelect class="form-select" @bind-Value="_model.OriginLocationCode">
+                @foreach (var opt in OriginLocationCodes)
+                {
+                    <option value="@opt.Code">@opt.Label</option>
+                }
+            </InputSelect>
             <ValidationMessage For="@(() => _model.OriginLocationCode)" />
+            <div class="form-text">IATA code (e.g., SYD)</div>
         </div>
 
+
+        <!-- Currency -->
         <div class="col-md-3">
-            <label class="form-label">Default Currency</label>
-            <InputText class="form-control text-uppercase" maxlength="3" @bind-Value="_model.DefaultCurrencyCode" />
+            <label class="form-label">Default Currency (ISO 4217)</label>
+            <InputSelect class="form-select" @bind-Value="_model.DefaultCurrencyCode">
+                @foreach (var c in CurrencyOptions)
+                {
+                <option value="@c.Code">@c.Flag @c.Code</option>
+                }
+                @if (!string.IsNullOrWhiteSpace(_model.DefaultCurrencyCode) &&
+                !CurrencyOptions.Any(x => x.Code == _model.DefaultCurrencyCode))
+                {
+                <option value="@_model.DefaultCurrencyCode">@_model.DefaultCurrencyCode</option>
+                }
+            </InputSelect>
             <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
         </div>
     </div>
 
+
+
+
     <!-- Flight preferences -->
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
+        @* <div class="col-md-3">
             <label class="form-label">Default Seating</label>
             <InputSelect class="form-select" @bind-Value="_model.DefaultFlightSeating">
                 @foreach (var c in _cabins) { <option value="@c">@c</option> }
@@ -123,6 +123,27 @@
                 @foreach (var c in _cabins) { <option value="@c">@c</option> }
             </InputSelect>
             <ValidationMessage For="@(() => _model.MaxFlightSeating)" />
+        </div> *@
+        <div class="col-md-3">
+            <label class="form-label">Default Cabin</label>
+            <InputSelect class="form-select" @bind-Value="_model.DefaultFlightSeating">
+                @foreach (var opt in CabinClassOptions)
+                {
+                <option value="@opt.Value">@opt.Label</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => _model.DefaultFlightSeating)" />
+        </div>
+        <!-- Max Cabin -->
+        <div class="col-md-3">
+            <label class="form-label">Max Cabin</label>
+            <InputSelect class="form-select" @bind-Value="_model.MaxFlightSeating">
+                @foreach (var opt in CabinClassOptions)
+                {
+                <option value="@opt.Value">@opt.Label</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => _model.MaxFlightSeating)" />
         </div>
 
         <div class="col-md-3">
@@ -134,7 +155,7 @@
         <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
                 <InputCheckbox class="form-check-input" @bind-Value="_model.NonStopFlight" />
-                <label class="form-check-label ms-2">Non-stop only</label>
+                <label class="form-check-label ms-2">Non-Stop only</label>
             </div>
         </div>
     </div>
@@ -158,34 +179,54 @@
 
     <!-- Policy & Client -->
     <div class="row g-3">
-        <div class="col-md-6">
-            <label class="form-label">Travel Policy</label>
-            <InputText class="form-control" @bind-Value="_model.TravelPolicyId" />
+        <div class="col-md-4">
+            <label class="form-label">Assigned Travel Policy</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="_model.TravelPolicyId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Set TravelPolicyId" @onclick="() => CopyAsync(_model.TravelPolicyId)">
+                    <i class="bi bi-file-earmark-text"></i>
+                </button>
+            </div>
             <ValidationMessage For="@(() => _model.TravelPolicyId)" />
         </div>
 
-        <div class="col-md-6">
-            <label class="form-label">Ava Client</label>
-            <InputText class="form-control" @bind-Value="_model.AvaClientId" />
-            <div class="form-text">Optional; can be inferred from email domain.</div>
-            <ValidationMessage For="@(() => _model.AvaClientId)" />
+        <div class="col-md-4">
+            <label class="form-label">User System Preferences</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="_model.AvaUserSysPreferenceId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Open AvaUserSysPreferenceId" @onclick="() => CopyAsync(_model.AvaUserSysPreferenceId)">
+                    <i class="bi bi-person-gear"></i>
+                </button>
+            </div>
+            <ValidationMessage For="@(() => _model.AvaUserSysPreferenceId)" />
         </div>
 
-        <div class="col-md-6">
-            <label class="form-label">External Client Id</label>
-            <InputText class="form-control" @bind-Value="_model.ClientId" />
-            <ValidationMessage For="@(() => _model.ClientId)" />
+        <div class="col-md-4">
+            <label class="form-label">Ava Client</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="_model.AvaClientId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Open AvaClientId" @onclick="() => CopyAsync(_model.AvaClientId)">
+                    <i class="bi bi-building-gear"></i>
+                </button>
+            </div>
+            <ValidationMessage For="@(() => _model.AvaClientId)" />
         </div>
     </div>
 
     <!-- Bottom actions -->
     <div class="d-flex gap-2 mt-4">
         <button type="submit" class="btn btn-primary" disabled="_busy">
-            <i class="bi bi-save me-1"></i> Save
+            <i class="bi bi-check2-circle me-1"></i> Update User
         </button>
         <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="_busy">
             <i class="bi bi-x-circle me-1"></i> Cancel
         </button>
+        @if (_existing)
+        {
+            <button type="button" class="btn btn-outline-danger ms-auto" @onclick="DeleteAsync" disabled="_busy">
+                <i class="bi bi-trash me-1"></i> Delete User
+            </button>
+        }
     </div>
 </EditForm>
 
@@ -195,16 +236,65 @@
     private AvaUser _model = new AvaUser
     {
         AspNetUsersId = string.Empty,
-        FirstName = string.Empty,
-        LastName = string.Empty,
-        Email = string.Empty,
+        FirstName = "Ronald",
+        LastName = "McDonald",
+        Email = "user@example.com",
     };
 
     private bool _existing;
     private bool _busy;
     private string? _error;
 
+    private record DropDownOption(string Code, string Label);
+
+    private static readonly DropDownOption[] OriginLocationCodes = new DropDownOption[]
+    {
+        new("SYD", "Sydney, Australia 🇦🇺"),
+        new("MEL", "Melbourne, Australia 🇦🇺"),
+        new("BNE", "Brisbane, Australia 🇦🇺"),
+        new("PER", "Perth, Australia 🇦🇺"),
+        new("ADL", "Adelaide, Australia 🇦🇺"),
+        new("OOL", "Gold Coast, Australia 🇦🇺"),
+        new("CNS", "Cairns, Australia 🇦🇺"),
+        new("CBR", "Canberra, Australia 🇦🇺"),
+        new("HBA", "Hobart, Australia 🇦🇺"),
+        new("MCY", "Sunshine Coast, Australia 🇦🇺"),
+        new("DRW", "Darwin, Australia 🇦🇺"),
+        new("TSV", "Townsville, Australia 🇦🇺"),
+        new("HTI", "Hamilton Island, Australia 🇦🇺"),
+        new("AKL", "Auckland, New Zealand 🇳🇿"),
+        new("CHC", "Christchurch, New Zealand 🇳🇿"),
+        new("WLG", "Wellington, New Zealand 🇳🇿"),
+        new("ZQN", "Queenstown, New Zealand 🇳🇿"),
+        new("NSN", "Nelson, New Zealand 🇳🇿"),
+        new("DUD", "Dunedin, New Zealand 🇳🇿"),
+        new("NPE", "Hawkes Bay / Napier, New Zealand 🇳🇿"),
+    };
+
+        private static readonly (string Code, string Flag)[] CurrencyOptions =
+    [
+        ("AUD", "🇦🇺"),
+        ("USD", "🇺🇸"),
+        ("EUR", "🇪🇺"),
+        ("GBP", "🇬🇧"),
+        ("JPY", "🇯🇵"),
+        ("CHF", "🇨🇭"),
+        ("CAD", "🇨🇦"),
+        ("CNY", "🇨🇳"),
+        ("HKD", "🇭🇰"),
+        ("SGD", "🇸🇬"),
+        ("NZD", "🇳🇿")
+    ];
+
     private readonly string[] _cabins = new[] { "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST" };
+
+    private static readonly (string Value, string Label)[] CabinClassOptions =
+    [
+        ("ECONOMY",         "Economy"),
+        ("PREMIUM_ECONOMY", "Premium Economy"),
+        ("BUSINESS",        "Business"),
+        ("FIRST",           "First")
+    ];
 
     protected override async Task OnInitializedAsync()
     {
