@@ -1,0 +1,338 @@
+@page "/admin/avausers/{Id?}"
+
+@using BlazorLoginDemo.Shared.Models.User
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject NavigationManager Nav
+@inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
+@inject IJSRuntime JS
+
+<PageTitle>User</PageTitle>
+
+<h1 class="mb-3">Ava User</h1>
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        @_errorMessage
+    </div>
+}
+
+<EditForm Model="_model" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <!-- Top action bar -->
+    <div class="d-flex gap-2 mb-3">
+        <button type="submit" class="btn btn-primary" disabled="_busy">
+            <i class="bi bi-save me-1"></i> Save
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="_busy">
+            <i class="bi bi-x-circle me-1"></i> Cancel
+        </button>
+        @if (_isExisting)
+        {
+            <button type="button" class="btn btn-outline-danger ms-auto" @onclick="DeleteAsync" disabled="_busy">
+                <i class="bi bi-trash me-1"></i> Delete
+            </button>
+        }
+    </div>
+
+    <div class="row g-3">
+        <!-- Identity -->
+        <div class="col-md-4">
+            <label class="form-label">Ava User ID</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="_model.Id" readonly />
+                <button class="btn btn-outline-secondary" type="button" title="Copy ID" @onclick="() => CopyToClipboardAsync(_model.Id)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">AspNetUsers ID <span class="text-danger">*</span></label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="_model.AspNetUsersId" />
+                <button class="btn btn-outline-secondary" type="button" title="Find user…" @onclick="LookupAspNetUserAsync">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+            <div class="form-text">1:1 link to Identity user.</div>
+            <ValidationMessage For="@(() => _model.AspNetUsersId)" />
+        </div>
+
+        <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check form-switch">
+                <InputCheckbox class="form-check-input" @bind-Value="_model.IsActive" />
+                <label class="form-check-label ms-2">Active</label>
+            </div>
+        </div>
+
+        <!-- Name & Email -->
+        <div class="col-md-4">
+            <label class="form-label">First Name <span class="text-danger">*</span></label>
+            <InputText class="form-control" @bind-Value="_model.FirstName" />
+            <ValidationMessage For="@(() => _model.FirstName)" />
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Middle Name</label>
+            <InputText class="form-control" @bind-Value="_model.MiddleName" />
+            <ValidationMessage For="@(() => _model.MiddleName)" />
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Last Name <span class="text-danger">*</span></label>
+            <InputText class="form-control" @bind-Value="_model.LastName" />
+            <ValidationMessage For="@(() => _model.LastName)" />
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Email <span class="text-danger">*</span></label>
+            <InputText class="form-control" type="email" @bind-Value="_model.Email" />
+            <ValidationMessage For="@(() => _model.Email)" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Origin Location Code</label>
+            <InputText class="form-control" maxlength="3" @bind-Value="_model.OriginLocationCode" />
+            <div class="form-text">IATA code (e.g., SYD).</div>
+            <ValidationMessage For="@(() => _model.OriginLocationCode)" />
+        </div>
+
+        <!-- Flight preferences -->
+        <div class="col-md-3">
+            <label class="form-label">Default Seating</label>
+            <InputSelect class="form-select" @bind-Value="_model.DefaultFlightSeating">
+                @foreach (var c in _cabinOptions) { <option value="@c">@c</option> }
+            </InputSelect>
+            <ValidationMessage For="@(() => _model.DefaultFlightSeating)" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Max Seating</label>
+            <InputSelect class="form-select" @bind-Value="_model.MaxFlightSeating">
+                @foreach (var c in _cabinOptions) { <option value="@c">@c</option> }
+            </InputSelect>
+            <ValidationMessage For="@(() => _model.MaxFlightSeating)" />
+        </div>
+
+        <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check form-switch">
+                <InputCheckbox class="form-check-input" @bind-Value="_model.NonStopFlight" />
+                <label class="form-check-label ms-2">Non-stop only</label>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Included Airline Codes</label>
+            <InputTextArea class="form-control" rows="2" @bind-Value="_model.IncludedAirlineCodes" />
+            <div class="form-text">Comma-separated (e.g., QF,VA,EK).</div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Excluded Airline Codes</label>
+            <InputTextArea class="form-control" rows="2" @bind-Value="_model.ExcludedAirlineCodes" />
+            <div class="form-text">Comma-separated (e.g., JQ,TT).</div>
+        </div>
+
+        <!-- Money & policy -->
+        <div class="col-md-3">
+            <label class="form-label">Default Currency</label>
+            <InputText class="form-control text-uppercase" maxlength="3" @bind-Value="_model.DefaultCurrencyCode" />
+            <div class="form-text">3-letter code (e.g., AUD).</div>
+            <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Max Flight Price</label>
+            <InputNumber class="form-control" @bind-Value="_model.MaxFlightPrice" />
+            <ValidationMessage For="@(() => _model.MaxFlightPrice)" />
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Travel Policy</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="_model.TravelPolicyId" />
+                <button class="btn btn-outline-secondary" type="button" title="Find policy…" @onclick="LookupTravelPolicyAsync">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+            <ValidationMessage For="@(() => _model.TravelPolicyId)" />
+        </div>
+
+        <!-- Client linkage (optional) -->
+        <div class="col-md-6">
+            <label class="form-label">Ava Client</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="_model.AvaClientId" />
+                <button class="btn btn-outline-secondary" type="button" title="Find client…" @onclick="LookupClientAsync">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+            <div class="form-text">Optional link; may be auto-set by email domain.</div>
+            <ValidationMessage For="@(() => _model.AvaClientId)" />
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">External Client Id</label>
+            <InputText class="form-control" @bind-Value="_model.ClientId" />
+            <ValidationMessage For="@(() => _model.ClientId)" />
+        </div>
+    </div>
+
+    <!-- Bottom action bar -->
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary" disabled="_busy">
+            <i class="bi bi-save me-1"></i> Save
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="_busy">
+            <i class="bi bi-x-circle me-1"></i> Cancel
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    private AvaUser _model = new AvaUser
+    {
+        AspNetUsersId = string.Empty,
+        FirstName = string.Empty,
+        LastName = string.Empty,
+        Email = string.Empty,
+    };
+
+    private bool _isExisting;
+    private bool _busy;
+    private string? _errorMessage;
+
+    // Keep cabin options aligned with your CabinTypeValidation
+    private readonly string[] _cabinOptions = new[]
+    {
+        "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _busy = true;
+
+            if (!string.IsNullOrWhiteSpace(Id))
+            {
+                var existing = await AvaUserService.GetByIdAsync(Id);
+                if (existing is not null)
+                {
+                    _model = existing;
+                    _isExisting = true;
+                }
+                else
+                {
+                    _errorMessage = "User not found.";
+                }
+            }
+            else
+            {
+                // brand-new user: defaults already present on _model
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_busy) return;
+
+        try
+        {
+            _busy = true;
+            _errorMessage = null;
+
+            if (_isExisting)
+            {
+                await AvaUserService.UpdateAsync(_model);
+            }
+            else
+            {
+                await AvaUserService.CreateAsync(_model);
+                _isExisting = true;
+            }
+
+            // Navigate back or stay — adjust as your UX does on Clients page
+            Nav.NavigateTo("/admin/avausers/search", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        // Match Clients page behavior (navigate back/list)
+        Nav.NavigateTo("/admin/avausers/search", forceLoad: true);
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!_isExisting || _busy) return;
+
+        try
+        {
+            _busy = true;
+            _errorMessage = null;
+
+            await AvaUserService.DeleteAsync(_model.Id);
+            Nav.NavigateTo("/admin/avausers/search", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // --- Lookups (wire up like on Clients page) ---
+    private async Task LookupAspNetUserAsync()
+    {
+        // open a modal/search, then set _model.AspNetUsersId
+        await Task.CompletedTask;
+    }
+
+    private async Task LookupTravelPolicyAsync()
+    {
+        // open a modal/search, then set _model.TravelPolicyId
+        await Task.CompletedTask;
+    }
+
+    private async Task LookupClientAsync()
+    {
+        // open a modal/search, then set _model.AvaClientId
+        await Task.CompletedTask;
+    }
+
+    private async Task CopyToClipboardAsync(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", value);
+    }
+}
