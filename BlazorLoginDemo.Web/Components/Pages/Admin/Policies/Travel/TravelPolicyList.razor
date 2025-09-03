@@ -1,14 +1,12 @@
-@page "/admin/policies/travel2/{AvaClientId}/list"
+@page "/admin/policies/travel/{AvaClientId}/list"
 @rendermode InteractiveServer
 
 @using BlazorLoginDemo.Shared.Models.Kernel.Client;
 @using Microsoft.AspNetCore.Components.Forms
-@using BlazorLoginDemo.Shared.Models.Static
 
 @inject BlazorLoginDemo.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
 @inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
 @inject NavigationManager Nav
-
 
 <PageTitle>[ADMIN] Policy List</PageTitle>
 
@@ -30,7 +28,7 @@
             }
             else if (_searched && _results.Count == 0)
             {
-                <div class="alert alert-warning mt-3">No travel policies matched "<strong>@_query</strong>".</div>
+                <div class="alert alert-warning mt-3">No travel policies matched "<strong>@AvaClientId</strong>".</div>
             }
             else if (_results.Count > 0)
             {
@@ -39,15 +37,15 @@
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:24%">Travel Policy ID</th>
-                                <th style="width:12%">Policy Name</th>
-                                <th style="width:18%">Default</th>
-                                <th style="width:18%">View/Edit Button</th>
-                                <th style="width:10%">Set As Default Button</th>
+                                <th style="width:20%">Travel Policy ID</th>
+                                <th style="width:50%">Policy Name</th>
+                                <th style="width:10%">Default</th>
+                                <th style="width:10%"></th>
+                                <th style="width:10%"></th>
                             </tr>
                         </thead>
                         <tbody>
-                        @foreach (var x in _results)
+                        @foreach (var x in _results.Skip(_resultsPage * PageSize).Take(PageSize))
                         {
                             <tr>
                                 <td>@x.Id</td>
@@ -55,9 +53,9 @@
 
                                 <td>
                                     @if (x.IsDefault)
-                                    { <span>Yes</span> }
+                                    { <i class="bi bi-bookmark-check text-success"></i> }
                                     else
-                                    { <span>No</span> }
+                                    { <i class="bi bi-x-lg text-warning"></i> }
                                 </td>
 
                                 <td>
@@ -68,10 +66,14 @@
                                 </td>
 
                                 <td>
-                                    <a class="btn btn-sm btn-outline-primary"
-                                        href="@($"/admin/policies/travel/{x.Id}/set-as-default")">
-                                        <i class="bi bi-search"></i> Set Default
+                                    @if (!x.IsDefault)
+                                    {
+                                        <a class="btn btn-sm btn-outline-primary"
+                                            href="@($"/admin/policies/travel/{x.Id}/set-as-default")">
+                                        <i class="bi bi-award"></i> Set Default
                                     </a>
+                                    }
+                                    
                                 </td>
                             </tr>
                         }
@@ -80,7 +82,7 @@
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mt-3">
-                    <div class="text-muted">Showing up to 20 results.</div>
+                    <div class="text-muted">Showing @StartIndexDisplay–@EndIndexDisplay of @_results.Count results.</div>
                     <div class="btn-group">
                         <button type="button"
                                 class="btn btn-outline-secondary btn-sm"
@@ -112,6 +114,10 @@
     private int _resultsPage = 0;                       // 0-based
 
     private const int PageSize = 20;
+    private int TotalPages => _results.Count == 0 ? 1 : (_results.Count + PageSize - 1) / PageSize;
+    private int StartIndexDisplay => _results.Count == 0 ? 0 : (_resultsPage * PageSize) + 1;
+    private int EndIndexDisplay => _results.Count == 0 ? 0 : Math.Min((_resultsPage * PageSize) + PageSize, _results.Count);
+    
 
     private class TravelPolicyListResult
     {
@@ -122,27 +128,18 @@
 
     // Enable/disable logic
     private bool CanGoPrev => _resultsPage > 0 && !_busy;
-    private bool CanGoNext => _results?.Count == PageSize && !_busy;
-
-    // Call this when the user submits a *new* query (resets to first page)
-    private async Task SearchFirstPageAsync()
-    {
-        _resultsPage = 0;
-        await HandleSearchAsync();
-    }
+    private bool CanGoNext => _results.Count > (_resultsPage + 1) * PageSize && !_busy;
 
     private async Task PrevPageAsync()
     {
-        if (!CanGoPrev) return;
-        _resultsPage--;
-        await HandleSearchAsync();
+        if (_resultsPage > 0) _resultsPage--;
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task NextPageAsync()
     {
-        if (!CanGoNext) return;  // only if current page is “full”
-        _resultsPage++;
-        await HandleSearchAsync();
+        if ((_resultsPage + 1) * PageSize < _results.Count) _resultsPage++;
+        await InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnParametersSetAsync()
