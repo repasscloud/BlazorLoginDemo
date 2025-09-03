@@ -11,13 +11,13 @@
 *@
 
 <div class="container py-4">
-  <nav aria-label="breadcrumb">
+  @* <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/">Home</a></li>
       <li class="breadcrumb-item"><a href="/errors">Errors</a></li>
       <li class="breadcrumb-item active" aria-current="page">Lookup</li>
     </ol>
-  </nav>
+  </nav> *@
 
   <div class="row justify-content-center">
     <div class="col-md-10 col-lg-8">
@@ -116,6 +116,7 @@
     [
         new("clientId", "Client", value => $"/clients/search?prefill={Uri.EscapeDataString(value ?? string.Empty)}"),
         new("licenseAgreementId", "License Agreement", value => $"/licenses/search?prefill={Uri.EscapeDataString(value ?? string.Empty)}"),
+        new("travelPolicyListId", "Travel Policy List", value => $"/admin/policies/search"),
         // Add more here as you grow:
         // new("policyId", "Policy", value => $"/policies/search?prefill={Uri.EscapeDataString(value ?? string.Empty)}"),
         // new("invoiceId", "Invoice", value => $"/billing/invoices?prefill={Uri.EscapeDataString(value ?? string.Empty)}"),
@@ -189,6 +190,9 @@
                     _primaryActionLabel = "Search License Agreements";
                     _primaryActionHref  = SafeHref(_primaryContext.BuildTryAgainUrl(_primaryContext.Value));
                     break;
+                case "travelPolicyListId":
+                    _primaryActionLabel = "Search Travel Policies";
+                    _primaryActionHref  = SafeHref(_primaryContext.BuildTryAgainUrl(_primaryContext.Value));
 
                 // Add more cases here for new params with custom labels:
                 // case "policyid":
