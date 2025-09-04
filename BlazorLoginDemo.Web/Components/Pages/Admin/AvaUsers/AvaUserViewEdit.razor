@@ -200,7 +200,7 @@
                 <InputText class="form-control" @bind-Value="_model.TravelPolicyId" readonly />
                 @if (!string.IsNullOrWhiteSpace(_model.AvaClientId))
                 {
-                    <button type="button" class="btn btn-outline-secondary" title="Set TravelPolicyId" @onclick="() => OpenTravelPolicyPicker(_model.AvaClientId)">
+                    <button type="button" class="btn btn-outline-secondary" title="Set TravelPolicyId" @onclick="OpenTravelPolicyPicker">
                         <i class="bi bi-file-earmark-text"></i>
                     </button>
                 }
@@ -317,7 +317,7 @@
         {
             <div class="p-3 text-muted small">Loading policies...</div>
         }
-        else if (!Filtered.Any())
+        else if (!FilteredTravelPolicy.Any())
         {
             <div class="p-3 text-muted small">No matches.</div>
         }
@@ -341,13 +341,14 @@
         }
     </ChildContent>
     <Footer>
-        <div class="me-auto text-muted small">@Filtered.Count() shown</div>
+        <div class="me-auto text-muted small">@FilteredTravelPolicy.Count() shown</div>
         <button class="btn btn-light" @onclick="_travelPolicyPicker!.Hide">Close</button>
     </Footer>
 </Modal>
 
 
 @code {
+#region code
     [Parameter] public string? Id { get; set; }
 
     private AvaUser _model = new AvaUser
@@ -463,13 +464,7 @@
         if (string.IsNullOrWhiteSpace(v)) return;
         await JS.InvokeVoidAsync("navigator.clipboard.writeText", v);
     }
-
-
-
-
-
-
-
+#endregion code
 
 #region ClientPickerModal
     private BlazorLoginDemo.Web.Components.Modal? _clientPicker;
@@ -528,20 +523,20 @@
                 (!string.IsNullOrEmpty(c.Id) && c.Id.Contains(_tpSearch, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.PolicyName) && c.PolicyName.Contains(_tpSearch, StringComparison.OrdinalIgnoreCase)));
 
-    private async Task OpenTravelPolicyPicker(string clientId)
+    private async Task OpenTravelPolicyPicker()
     {
-        if (_travelPolicyAll.Count == 0)
-        {
-            _isTpLoading = true;
-            StateHasChanged();
+        if (_model.AvaClientId is null) return;  // exit early
 
-            IReadOnlyList<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy>? items = await TravelPolicyService.GetForClientAsync(clientId);
-            _travelPolicyAll = items ?? Array.Empty<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy>();
+        _travelPolicyAll = Array.Empty<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy>();  //clear the list
 
-            _isTpLoading = false;
-            _tpSearch = string.Empty;
-        }
+        _isTpLoading = true;
+        StateHasChanged();
 
+        IReadOnlyList<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy>? items = await TravelPolicyService.GetForClientAsync(_model.AvaClientId);
+        _travelPolicyAll = items ?? Array.Empty<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy>();
+
+        _isTpLoading = false;
+        _tpSearch = string.Empty;
         await _travelPolicyPicker!.Show();
     }
 
