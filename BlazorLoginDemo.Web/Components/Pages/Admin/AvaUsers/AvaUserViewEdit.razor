@@ -9,6 +9,7 @@
 @inject NavigationManager Nav
 @inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
 @inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
 @inject IJSRuntime JS
 
 <PageTitle>Ava User</PageTitle>
@@ -182,18 +183,7 @@
 
     <!-- Policy & Client -->
     <div class="row g-3">
-        <div class="col-md-4">
-            <label class="form-label">Assigned Travel Policy</label>
-            <div class="input-group">
-                <InputText class="form-control" @bind-Value="_model.TravelPolicyId" readonly />
-                <button type="button" class="btn btn-outline-secondary" title="Set TravelPolicyId" @onclick="() => CopyAsync(_model.TravelPolicyId)">
-                    <i class="bi bi-file-earmark-text"></i>
-                </button>
-            </div>
-            <ValidationMessage For="@(() => _model.TravelPolicyId)" />
-        </div>
-
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label">User System Preferences</label>
             <div class="input-group">
                 <InputText class="form-control" @bind-Value="_model.AvaUserSysPreferenceId" readonly />
@@ -203,8 +193,39 @@
             </div>
             <ValidationMessage For="@(() => _model.AvaUserSysPreferenceId)" />
         </div>
+        
+        <div class="col-md-3">
+            <label class="form-label">Assigned Travel Policy</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="_model.TravelPolicyId" readonly />
+                @if (!string.IsNullOrWhiteSpace(_model.AvaClientId))
+                {
+                    <button type="button" class="btn btn-outline-secondary" title="Set TravelPolicyId" @onclick="() => OpenTravelPolicyPicker(_model.AvaClientId)">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-outline-secondary" title="Set TravelPolicyId">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </button>
+                }
+            </div>
+            <ValidationMessage For="@(() => _model.TravelPolicyId)" />
+        </div>
 
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <label class="form-label">Assigned Expense Policy</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="_model.ExpensePolicyId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Set ExpensePolicy" @onclick="() => CopyAsync(_model.ExpensePolicyId)">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                </button>
+            </div>
+            <ValidationMessage For="@(() => _model.TravelPolicyId)" />
+        </div>
+
+        <div class="col-md-3">
             <label class="form-label">Ava Client</label>
             <div class="input-group">
                 <InputText class="form-control" @bind-Value="_model.AvaClientId" readonly />
@@ -278,6 +299,53 @@
         <button class="btn btn-light" @onclick="_clientPicker!.Hide">Close</button>
     </Footer>
 </Modal>
+
+<Modal @ref="_travelPolicyPicker"
+    Id="travelPolicyPicker"
+    Title="Select a Travel Policy"
+    DialogClass="modal-dialog-scrollable modal-lg">
+    <ChildContent>
+        <div class="p-2 border-bottom bg-light">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input class="form-control" placeholder="Search by ID or policy name..."
+                       @bind="_tpSearch" @bind:event="oninput" />
+            </div>
+        </div>
+
+        @if (_isTpLoading)
+        {
+            <div class="p-3 text-muted small">Loading policies...</div>
+        }
+        else if (!Filtered.Any())
+        {
+            <div class="p-3 text-muted small">No matches.</div>
+        }
+        else
+        {
+            <ul class="list-group list-group-flush">
+                @foreach (var tp in FilteredTravelPolicy)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="me-3">
+                            <div class="fw-semibold">@tp.PolicyName</div>
+                            <div class="text-muted small">@tp.Id</div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => OnTravelPolicySelected(tp.Id)">
+                            Assign to AvaUser
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+    </ChildContent>
+    <Footer>
+        <div class="me-auto text-muted small">@Filtered.Count() shown</div>
+        <button class="btn btn-light" @onclick="_travelPolicyPicker!.Hide">Close</button>
+    </Footer>
+</Modal>
+
 
 @code {
     [Parameter] public string? Id { get; set; }
@@ -403,7 +471,7 @@
 
 
 
-    
+#region ClientPickerModal
     private BlazorLoginDemo.Web.Components.Modal? _clientPicker;
 
     // Use your real AvaClient type here (fully-qualify if you avoid @using)
@@ -444,4 +512,47 @@
             Nav.NavigateTo(Nav.Uri, forceLoad: true);
         }
     }
+#endregion
+
+#region TravelPolicyPickerModal
+    private BlazorLoginDemo.Web.Components.Modal? _travelPolicyPicker;
+
+    private IReadOnlyList<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy> _travelPolicyAll = Array.Empty<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy>();
+    private string _tpSearch = string.Empty;
+    private bool _isTpLoading;
+
+    private IEnumerable<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy> FilteredTravelPolicy =>
+        string.IsNullOrWhiteSpace(_tpSearch)
+            ? _travelPolicyAll
+            : _travelPolicyAll.Where(c =>
+                (!string.IsNullOrEmpty(c.Id) && c.Id.Contains(_tpSearch, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.PolicyName) && c.PolicyName.Contains(_tpSearch, StringComparison.OrdinalIgnoreCase)));
+
+    private async Task OpenTravelPolicyPicker(string clientId)
+    {
+        if (_travelPolicyAll.Count == 0)
+        {
+            _isTpLoading = true;
+            StateHasChanged();
+
+            IReadOnlyList<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy>? items = await TravelPolicyService.GetForClientAsync(clientId);
+            _travelPolicyAll = items ?? Array.Empty<BlazorLoginDemo.Shared.Models.Policies.TravelPolicy>();
+
+            _isTpLoading = false;
+            _tpSearch = string.Empty;
+        }
+
+        await _travelPolicyPicker!.Show();
+    }
+
+    private async Task OnTravelPolicySelected(string travelPolicyId)
+    {
+        var result = await AvaUserService.AssignTravelPolicyToUserAsync(Id, travelPolicyId);
+        await _travelPolicyPicker!.Hide();
+        if (result)
+        {
+            Nav.NavigateTo(Nav.Uri, forceLoad: true);
+        }
+    }
+#endregion TravelPolicyPickerModal
 }

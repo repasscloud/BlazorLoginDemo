@@ -106,6 +106,15 @@ public sealed class AvaUserService : IAvaUserService
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.AvaUsers.AsNoTracking().AnyAsync(u => u.Id == id, ct);
 
+    public async Task<bool> AssignTravelPolicyToUserAsync(string id, string travelPolicyId, CancellationToken ct = default)
+    {
+        var usr = await _db.AvaUsers.FindAsync([id], ct);
+        if (usr is null) return false;
+        usr.TravelPolicyId = travelPolicyId;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<int> IngestUsersAsync(CancellationToken ct = default)
     {
         // 1) Find Identity users that don't have an AvaUser profile yet
