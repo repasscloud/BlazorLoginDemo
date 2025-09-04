@@ -2,10 +2,13 @@
 @rendermode InteractiveServer
 
 @using BlazorLoginDemo.Shared.Models.User
+@using BlazorLoginDemo.Shared.Models.Kernel.Client;
 @using Microsoft.AspNetCore.Components.Forms
+@using BlazorLoginDemo.Web.Components
 
 @inject NavigationManager Nav
 @inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
 @inject IJSRuntime JS
 
 <PageTitle>Ava User</PageTitle>
@@ -205,7 +208,7 @@
             <label class="form-label">Ava Client</label>
             <div class="input-group">
                 <InputText class="form-control" @bind-Value="_model.AvaClientId" readonly />
-                <button type="button" class="btn btn-outline-secondary" title="Open AvaClientId" @onclick="() => CopyAsync(_model.AvaClientId)">
+                <button type="button" class="btn btn-outline-secondary" title="Open AvaClientId" @onclick="OpenClientPicker">
                     <i class="bi bi-building-gear"></i>
                 </button>
             </div>
@@ -229,6 +232,52 @@
         }
     </div>
 </EditForm>
+
+<Modal @ref="_clientPicker"
+    Id="clientPicker"
+    Title="Select a client"
+    DialogClass="modal-dialog-scrollable modal-lg">
+    <ChildContent>
+        <div class="p-2 border-bottom bg-light">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input class="form-control" placeholder="Search by ID or company name..."
+                       @bind="_search" @bind:event="oninput" />
+            </div>
+        </div>
+
+        @if (_isLoading)
+        {
+            <div class="p-3 text-muted small">Loading clients...</div>
+        }
+        else if (!Filtered.Any())
+        {
+            <div class="p-3 text-muted small">No matches.</div>
+        }
+        else
+        {
+            <ul class="list-group list-group-flush">
+                @foreach (var c in Filtered)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="me-3">
+                            <div class="fw-semibold">@c.CompanyName</div>
+                            <div class="text-muted small">@c.Id</div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => OnClientSelected(c.Id)">
+                            Assign to Client
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+    </ChildContent>
+    <Footer>
+        <div class="me-auto text-muted small">@Filtered.Count() shown</div>
+        <button class="btn btn-light" @onclick="_clientPicker!.Hide">Close</button>
+    </Footer>
+</Modal>
 
 @code {
     [Parameter] public string? Id { get; set; }
@@ -345,5 +394,54 @@
     {
         if (string.IsNullOrWhiteSpace(v)) return;
         await JS.InvokeVoidAsync("navigator.clipboard.writeText", v);
+    }
+
+
+
+
+
+
+
+
+    
+    private BlazorLoginDemo.Web.Components.Modal? _clientPicker;
+
+    // Use your real AvaClient type here (fully-qualify if you avoid @using)
+    private IReadOnlyList<BlazorLoginDemo.Shared.Models.Kernel.Client.AvaClient> _all = Array.Empty<BlazorLoginDemo.Shared.Models.Kernel.Client.AvaClient>();
+    private string _search = string.Empty;
+    private bool _isLoading;
+
+    private IEnumerable<BlazorLoginDemo.Shared.Models.Kernel.Client.AvaClient> Filtered =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _all
+            : _all.Where(c =>
+                (!string.IsNullOrEmpty(c.Id) && c.Id.Contains(_search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.CompanyName) && c.CompanyName.Contains(_search, StringComparison.OrdinalIgnoreCase)));
+
+    private async Task OpenClientPicker()
+    {
+        if (_all.Count == 0)
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            IReadOnlyList<BlazorLoginDemo.Shared.Models.Kernel.Client.AvaClient>? items = await AvaClientService.GetAllAsync();
+            _all = items ?? Array.Empty<BlazorLoginDemo.Shared.Models.Kernel.Client.AvaClient>();
+
+            _isLoading = false;
+            _search = string.Empty;
+        }
+
+        await _clientPicker!.Show();
+    }
+
+    private async Task OnClientSelected(string clientId)
+    {
+        var result = await AvaUserService.AssignAvaClientToUserAsync(Id, clientId);
+        await _clientPicker!.Hide();
+        if (result)
+        {
+            Nav.NavigateTo(Nav.Uri, forceLoad: true);
+        }
     }
 }

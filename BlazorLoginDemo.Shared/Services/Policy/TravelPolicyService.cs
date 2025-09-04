@@ -144,6 +144,19 @@ public sealed class TravelPolicyService : ITravelPolicyService
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.TravelPolicies.AsNoTracking().AnyAsync(x => x.Id == id, ct);
 
+    public async Task<bool> SetAsDefaultAsync(string policyId, string avaClientId, CancellationToken ct = default)
+    {
+        var client = await _db.AvaClients.FirstOrDefaultAsync(x => x.Id == avaClientId);
+        if (client is not null)
+        {
+            client.DefaultTravelPolicyId = policyId;
+            client.LastUpdated = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+            return true;
+        }
+        return false;
+    }
+
     // -----------------------------
     // Helpers
     // -----------------------------

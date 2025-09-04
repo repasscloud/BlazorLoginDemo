@@ -153,7 +153,16 @@ public sealed class AvaUserService : IAvaUserService
         }
 
     }
-    
+
+    public async Task<bool> AssignAvaClientToUserAsync(string id, string clientId, CancellationToken ct = default)
+    {
+        var usr = await _db.AvaUsers.FindAsync([id], ct);
+        if (usr == null) return false;
+
+        usr.AvaClientId = clientId;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
     private static (string First, string Last) SplitDisplayName(string? display)
     {
         if (string.IsNullOrWhiteSpace(display)) return (string.Empty, string.Empty);

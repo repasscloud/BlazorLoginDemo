@@ -1,4 +1,5 @@
 namespace BlazorLoginDemo.Shared.Services.Interfaces.Policy;
+
 public interface ITravelPolicyService
 {
     // CREATE
@@ -18,4 +19,5 @@ public interface ITravelPolicyService
 
     // UTIL
     Task<bool> ExistsAsync(string id, CancellationToken ct = default);
+    Task<bool> SetAsDefaultAsync(string policyId, string avaClientId, CancellationToken ct = default);
 }

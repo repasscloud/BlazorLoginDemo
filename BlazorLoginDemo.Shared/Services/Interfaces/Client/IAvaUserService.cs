@@ -24,4 +24,5 @@ public interface IAvaUserService
     Task<bool> ExistsAsync(string id, CancellationToken ct = default);
 
     Task<int> IngestUsersAsync(CancellationToken ct = default);
+    Task<bool> AssignAvaClientToUserAsync(string id, string clientId, CancellationToken ct = default);
 }

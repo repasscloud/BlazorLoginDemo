@@ -14,7 +14,12 @@
 
     <h3 class="mb-3">Travel Policy List</h3>
     <div class="card shadow-sm">
-        @* <div class="card-header">Header</div> *@
+        <div class="card-header d-flex justify-content-end">
+            <a class="btn btn-sm btn-outline-primary"
+                href="@($"/admin/policies/travel/{AvaClientId}/new/additional")">
+                <i class="bi bi-file-earmark-plus"></i> New Policy
+            </a>
+        </div>
         <div class="card-body">
 
             @if (_busy)
@@ -60,21 +65,21 @@
 
                                 <td>
                                     <a class="btn btn-sm btn-outline-primary"
-                                        href="@($"/admin/policies/travel/{x.Id}")">
-                                        <i class="bi bi-search"></i> View
+                                        href="@($"/admin/policies/travel/{x.Id}?returnPath=/admin/policies/travel/{AvaClientId}/list")">
+                                        <i class="bi bi-search"></i> View/Edit
                                     </a>
                                 </td>
 
                                 <td>
                                     @if (!x.IsDefault)
                                     {
-                                        <a class="btn btn-sm btn-outline-primary"
-                                            href="@($"/admin/policies/travel/{x.Id}/set-as-default")">
-                                        <i class="bi bi-award"></i> Set Default
-                                    </a>
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                @onclick="() => SetDefaultTravelPolicyAsync(x.Id, AvaClientId)">
+                                            <i class="bi bi-award"></i> Set Default
+                                        </button>
                                     }
-                                    
                                 </td>
+
                             </tr>
                         }
                         </tbody>
@@ -199,5 +204,14 @@
         }
 
         return results;
+    }
+
+    private async Task SetDefaultTravelPolicyAsync(string policyId, string avaClientId)
+    {
+        var result = await TravelPolicyService.SetAsDefaultAsync(policyId, avaClientId);
+        if (result)
+        {
+            Nav.NavigateTo(Nav.Uri, forceLoad: true);
+        }
     }
 }
