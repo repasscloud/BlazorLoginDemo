@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using BlazorLoginDemo.Shared.Models.Kernel.Client;
+using BlazorLoginDemo.Shared.Models.Static;
 using BlazorLoginDemo.Shared.Validation;
 using NanoidDotNet;
 
@@ -23,7 +23,7 @@ public class AvaUserSysPreference
 
     [Required]
     [PassportNameValidation]
-    public required string FirstName { get; set; }
+    public required string FirstName { get; set; } = string.Empty;
     
     [PassportNameValidation]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -31,7 +31,25 @@ public class AvaUserSysPreference
 
     [Required]
     [PassportNameValidation]
-    public required string LastName { get; set; }
+    public required string LastName { get; set; } = string.Empty;
+
+    [Required]
+    [DataType(DataType.Date)] // Only year, month, day
+    public DateOnly DateOfBirth { get; set; } = new DateOnly(1900, 1, 1);
+
+    [Required]
+    [PassportNameValidation]
+    public required string PassportName { get; set; } = string.Empty;
+
+    [Required]
+    public required GenderType Gender { get; set; } = GenderType.Unspecified;
+
+    [Required]
+    public required PassportCountry CountryOfIssue { get; set; } = PassportCountry.AUS;
+
+    [Required]
+    [DataType(DataType.Date)]
+    public DateOnly PassportExpirationDate { get; set; } = new DateOnly(1900, 1, 1);
 
     // user location defaults
     [AlphaNumeric3Validation]

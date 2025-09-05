@@ -87,7 +87,10 @@ public class AvaUser
 
     // FK
     public string? AvaUserSysPreferenceId { get; set; }
-    
+
     // navigation for refresh tokens
     public List<RefreshToken> RefreshTokens { get; set; } = new();
+    
+    // multiple airline memberships per user
+    public ICollection<AvaUserLoyaltyAccount> LoyaltyAccounts { get; set; } = new List<AvaUserLoyaltyAccount>();
 }

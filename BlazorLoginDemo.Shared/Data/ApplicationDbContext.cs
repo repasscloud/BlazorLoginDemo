@@ -4,6 +4,7 @@ using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.Auth;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 using BlazorLoginDemo.Shared.Models.Kernel.User;
+using BlazorLoginDemo.Shared.Models.Kernel.Transactions;
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -23,6 +24,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AvaClient> AvaClients => Set<AvaClient>();
     public DbSet<AvaClientLicense> AvaClientLicenses => Set<AvaClientLicense>();
     public DbSet<LicenseAgreement> LicenseAgreements => Set<LicenseAgreement>();
+    public DbSet<Airline> Airlines => Set<Airline>();
+    public DbSet<LoyaltyProgram> LoyaltyPrograms => Set<LoyaltyProgram>();
+    public DbSet<AvaUserLoyaltyAccount> UserLoyaltyAccounts => Set<AvaUserLoyaltyAccount>();
 
     // Finance
     public DbSet<LateFeeConfig> LateFeeConfigs => Set<LateFeeConfig>();
@@ -117,7 +121,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasFilter("[AvaUserSysPreferenceId] IS NOT NULL") // allow many NULLs on SQL Server
 #endif
                 ;
-            });
+        });
 
         // configure the LicenseAgreement relationship for AvaClient.
         builder.Entity<LicenseAgreement>(e =>
@@ -213,6 +217,37 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(u => u.RefreshTokens)
             .HasForeignKey(x => x.AvaUserId)
             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Airline>(e =>
+        {
+            e.ToTable("airlines", "ava");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Iata).IsUnique();
+            e.Property(x => x.Iata).HasMaxLength(3).IsRequired();
+            e.Property(x => x.Icao).HasMaxLength(4);
+            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+        });
+
+        builder.Entity<LoyaltyProgram>(e =>
+        {
+            e.ToTable("loyalty_programs", "ava");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(32).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+            e.HasOne(x => x.Airline)
+             .WithMany(a => a.Programs)
+             .HasForeignKey(x => x.AirlineId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AvaUserLoyaltyAccount>(e =>
+        {
+            e.ToTable("user_loyalty_accounts", "ava");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.AvaUserId, x.LoyaltyProgramId }).IsUnique();
+            e.Property(x => x.MembershipNumber).HasMaxLength(64).IsRequired();
         });
     }
 }
