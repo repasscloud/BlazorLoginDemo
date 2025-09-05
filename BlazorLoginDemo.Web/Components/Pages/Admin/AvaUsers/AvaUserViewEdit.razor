@@ -39,7 +39,7 @@
 
         <div class="col-md-5">
             <label class="form-label">AspNetUsers ID <span class="text-danger">*</span></label>
-            <InputText class="form-control" @bind-Value="_model.AspNetUsersId" />
+            <InputText class="form-control" @bind-Value="_model.AspNetUsersId" readonly />
             <ValidationMessage For="@(() => _model.AspNetUsersId)" />
         </div>
 
@@ -96,12 +96,12 @@
             <InputSelect class="form-select" @bind-Value="_model.DefaultCurrencyCode">
                 @foreach (var c in CurrencyOptions)
                 {
-                <option value="@c.Code">@c.Flag @c.Code</option>
+                    <option value="@c.Code">@c.Flag @c.Code</option>
                 }
                 @if (!string.IsNullOrWhiteSpace(_model.DefaultCurrencyCode) &&
                 !CurrencyOptions.Any(x => x.Code == _model.DefaultCurrencyCode))
                 {
-                <option value="@_model.DefaultCurrencyCode">@_model.DefaultCurrencyCode</option>
+                    <option value="@_model.DefaultCurrencyCode">@_model.DefaultCurrencyCode</option>
                 }
             </InputSelect>
             <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />

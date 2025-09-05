@@ -106,17 +106,21 @@ public class AvaUserSysPreference
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? DefaultCalendarDaysInAdvanceForFlightBooking { get; set; }
 
-    // travel policy name
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? TravelPolicyName { get; set; }
-
     // travel policy - if this is not provided, it will find out if one should exist from
     // the AvaClientId (if provided) else from the email address (if domain exists)
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? TravelPolicyId { get; set; }
 
+    // name of the policy assigned to this user by company admin/rules
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TravelPolicyName { get; set; }
+
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ExpensePolicyId { get; set; }
+
+    // name of the policy assigned to this user by company admin/rules
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ExpensePolicyName { get; set; }
 
     //[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonIgnore]
@@ -132,8 +136,4 @@ public class AvaUserSysPreference
 
     [JsonIgnore]
     public AvaClient? AvaClient { get; set; }
-
-    // this will only be filled in by the API, it's completely optional for the user to provide etc
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? ClientId { get; set; }
 }
