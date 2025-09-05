@@ -101,10 +101,6 @@
                     <InputDate class="form-control" @bind-Value="_model.DateOfBirth" />
                 </div>
                 <div class="col-12 col-md-4">
-                    <label class="form-label">Passport name</label>
-                    <InputText class="form-control" @bind-Value="_model.PassportName" />
-                </div>
-                <div class="col-12 col-md-4">
                     <label class="form-label">Gender</label>
                     <InputSelect class="form-select" @bind-Value="_model.Gender">
                         @foreach (var g in Enum.GetValues<GenderType>())
