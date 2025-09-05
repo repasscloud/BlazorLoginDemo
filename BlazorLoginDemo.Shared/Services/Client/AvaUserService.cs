@@ -150,7 +150,8 @@ public sealed class AvaUserService : IAvaUserService
                     AspNetUsersId = m.Id,
                     Email = m.Email ?? m.UserName ?? string.Empty,
                     FirstName = first,
-                    LastName = last
+                    LastName = last,
+                    OriginLocationCode = "SYD"
                 });
             }
 
