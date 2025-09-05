@@ -67,11 +67,8 @@ public class AvaUserSysPreference
     [DefaultValue("ECONOMY")]
     public required string MaxFlightSeating { get; set; } = "ECONOMY";
 
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? IncludedAirlineCodes { get; set; }
-
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? ExcludedAirlineCodes { get; set; }
+    public string[] IncludedAirlineCodes { get; set; } = Array.Empty<string>();
+    public string[] ExcludedAirlineCodes { get; set; } = Array.Empty<string>();
 
     [CoverageTypeValidation]
     [DefaultValue("MOST_SEGMENTS")]
@@ -122,9 +119,15 @@ public class AvaUserSysPreference
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? TravelPolicyId { get; set; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ExpensePolicyId { get; set; }
+
     //[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonIgnore]
     public TravelPolicy? TravelPolicy { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? AvaUserId { get; set; }
 
     // Optional link to a Client; not every user must have a Client parent, this will also be
     // updated by the API if it finds a match for the email address domain

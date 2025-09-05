@@ -113,6 +113,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             // enforce uniqueness of Email inside prefs table
             e.HasIndex(x => x.Email).IsUnique();
+
+            e.Property(p => p.IncludedAirlineCodes)
+             .HasColumnType("text[]")
+             .IsRequired()
+             .HasDefaultValueSql("'{}'::text[]");
+
+            e.Property(p => p.ExcludedAirlineCodes)
+             .HasColumnType("text[]")
+             .IsRequired()
+             .HasDefaultValueSql("'{}'::text[]");
         });
 
         builder.Entity<AvaUser>(e =>
