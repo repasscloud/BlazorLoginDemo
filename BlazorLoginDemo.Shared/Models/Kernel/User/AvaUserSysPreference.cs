@@ -38,10 +38,6 @@ public class AvaUserSysPreference
     public DateOnly DateOfBirth { get; set; } = new DateOnly(1900, 1, 1);
 
     [Required]
-    [PassportNameValidation]
-    public required string PassportName { get; set; } = string.Empty;
-
-    [Required]
     public required GenderType Gender { get; set; } = GenderType.Unspecified;
 
     [Required]

@@ -27,9 +27,6 @@ public sealed class AvaUserSysPreferenceService : IAvaUserSysPreferenceService
         if (string.IsNullOrWhiteSpace(preference.LastName))
             throw new ArgumentException("LastName must be provided.", nameof(preference));
 
-        if (string.IsNullOrWhiteSpace(preference.PassportName))
-            throw new ArgumentException("PassportName must be provided.", nameof(preference));
-
         if (string.IsNullOrWhiteSpace(preference.DefaultFlightSeating))
             throw new ArgumentException("DefaultFlightSeating must be provided.", nameof(preference));
 
