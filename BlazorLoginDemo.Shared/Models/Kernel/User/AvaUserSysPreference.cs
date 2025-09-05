@@ -85,7 +85,7 @@ public class AvaUserSysPreference
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public required string DefaultCurrencyCode { get; set; } = "AUD";
 
-    public int MaxFlightPrice { get; set; } = 0;
+    public decimal MaxFlightPrice { get; set; } = 0m;
 
     // amadeus (and other system) specifics
     public int MaxResults { get; set; } = 20;

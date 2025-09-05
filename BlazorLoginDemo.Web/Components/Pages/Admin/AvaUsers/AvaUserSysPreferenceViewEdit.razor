@@ -1,6 +1,10 @@
 @page "/admin/avausers/{AvaUserId?}/usersyspreference"
 @rendermode InteractiveServer
 
+@* KEEP YOUR EXISTING @page LINE ABOVE. DO NOT CHANGE YOUR ROUTE. *@
+@using System.Text.RegularExpressions
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
 @using BlazorLoginDemo.Shared.Models.Kernel.User
 @using BlazorLoginDemo.Shared.Models.Static
 
@@ -9,53 +13,76 @@
 @inject BlazorLoginDemo.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
 @inject NavigationManager Nav
 
-<PageTitle>AvaUser System Preference</PageTitle>
+<PageTitle>User Preference</PageTitle>
 
 <EditForm Model="_model" OnValidSubmit="SaveAsync">
     <DataAnnotationsValidator />
     <ValidationSummary class="mb-3" />
 
-    <div class="card shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <div>
-                <strong>Ava User System Preference</strong>
+    <!-- Header / action bar (visual tidy-up; no route changes, no logging) -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-person-gear"></i>
+                <strong>User System Preference</strong>
                 @if (!string.IsNullOrWhiteSpace(_model.Email))
                 {
-                    <span class="text-muted ms-2">(@_model.Email)</span>
+                    <span class="badge bg-light text-dark border">@_model.Email</span>
                 }
+                @if (!string.IsNullOrWhiteSpace(_model.Id))
+                {
+                    <span class="badge bg-secondary">Id: @_model.Id</span>
+                }
+                <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
+                    @(_model.IsActive ? "Active" : "Inactive")
+                </span>
             </div>
+
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="Back">Back</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="Back">
+                    <i class="bi bi-arrow-left"></i> Back
+                </button>
+                @if (!_isNew)
+                {
+                    <button type="button" class="btn btn-outline-danger btn-sm" disabled="_busy" @onclick="DeleteAsync">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                }
                 <button type="submit" class="btn btn-primary btn-sm" disabled="_busy">
-                    <i class="bi bi-save"></i>
-                    <span class="ms-1">@(_isNew ? "Create" : "Save")</span>
+                    <i class="bi bi-save"></i> @(_isNew ? "Create" : "Save")
                 </button>
             </div>
         </div>
 
+        <!-- Body -->
         <div class="card-body">
+            <!-- Identity / linkage -->
             <div class="row g-3">
-                <!-- Identity / linkage -->
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-lg-6">
                     <label class="form-label">ASP.NET User Id</label>
                     <InputText class="form-control" @bind-Value="_model.AspNetUsersId" />
-                    <div class="form-text">FK to AspNetUsers</div>
                 </div>
-                <div class="col-12 col-md-6">
-                    <label class="form-label">Email</label>
-                    <InputText class="form-control" @bind-Value="_model.Email" />
+                <div class="col-12 col-lg-3">
+                    <label class="form-label">Ava User Id</label>
+                    <InputText class="form-control" @bind-Value="_model.AvaUserId" />
                 </div>
-
-                <div class="col-12">
-                    <div class="form-check">
+                <div class="col-12 col-lg-3 d-flex align-items-center">
+                    <div class="form-check mt-4">
                         <InputCheckbox class="form-check-input" @bind-Value="_model.IsActive" />
                         <label class="form-check-label">Active</label>
                     </div>
                 </div>
 
-                <div class="col-12"><hr /></div>
+                <div class="col-12 col-lg-6">
+                    <label class="form-label">Email</label>
+                    <InputText class="form-control" @bind-Value="_model.Email" />
+                </div>
+            </div>
 
-                <!-- Personal / Passport -->
+            <hr class="my-4" />
+
+            <!-- Personal / Passport -->
+            <div class="row g-3">
                 <div class="col-12 col-md-4">
                     <label class="form-label">First name</label>
                     <InputText class="form-control" @bind-Value="_model.FirstName" />
@@ -102,12 +129,14 @@
                 </div>
                 <div class="col-12 col-md-4">
                     <label class="form-label">Home airport (IATA)</label>
-                    <InputText class="form-control text-uppercase" @bind-Value="_model.OriginLocationCode" />
+                    <InputText class="form-control text-uppercase" @bind-Value="_model.OriginLocationCode" @oninput="UppercaseIata" />
                 </div>
+            </div>
 
-                <div class="col-12"><hr /></div>
+            <hr class="my-4" />
 
-                <!-- Flight defaults -->
+            <!-- Flight prefs -->
+            <div class="row g-3">
                 <div class="col-12 col-md-4">
                     <label class="form-label">Default cabin</label>
                     <InputSelect class="form-select" @bind-Value="_model.DefaultFlightSeating">
@@ -136,30 +165,34 @@
                     </InputSelect>
                 </div>
 
-                <div class="col-12 col-md-6">
-                    <label class="form-label">Include airline codes (comma separated)</label>
-                    <InputTextArea class="form-control" @bind-Value="_model.IncludedAirlineCodes" rows="2" />
-                </div>
-                <div class="col-12 col-md-6">
-                    <label class="form-label">Exclude airline codes (comma separated)</label>
-                    <InputTextArea class="form-control" @bind-Value="_model.ExcludedAirlineCodes" rows="2" />
+                <!-- Airline codes (CSV <-> string[]) -->
+                <div class="col-12 col-lg-6">
+                    <label class="form-label">Include airline codes (CSV)</label>
+                    <InputTextArea class="form-control" @bind-Value="IncludedCsv" rows="2" />
+                    <div class="form-text">Example: QF,AA,BA</div>
                 </div>
 
-                <div class="col-12 col-md-4">
-                    <div class="form-check">
+                <div class="col-12 col-lg-6">
+                    <label class="form-label">Exclude airline codes (CSV)</label>
+                    <InputTextArea class="form-control" @bind-Value="ExcludedCsv" rows="2" />
+                    <div class="form-text">Example: JQ,FR</div>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <div class="form-check mt-2">
                         <InputCheckbox class="form-check-input" @bind-Value="_model.NonStopFlight" />
                         <label class="form-check-label">Non-stop only</label>
                     </div>
                 </div>
+            </div>
 
-                <div class="col-12"><hr /></div>
+            <hr class="my-4" />
 
-                <!-- Money / limits -->
+            <!-- Money / limits -->
+            <div class="row g-3">
                 <div class="col-12 col-md-3">
                     <label class="form-label">Currency (ISO 4217)</label>
-                    <InputText class="form-control text-uppercase"
-                               @bind-Value="_model.DefaultCurrencyCode"
-                               oninput="@UppercaseCurrency" />
+                    <InputText class="form-control text-uppercase" @bind-Value="_model.DefaultCurrencyCode" @oninput="UppercaseCurrency" />
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">Max flight price</label>
@@ -182,55 +215,56 @@
                     <label class="form-label">Bookable to (hh:mm:ss)</label>
                     <InputText class="form-control" @bind-Value="_model.FlightBookingTimeAvailableTo" placeholder="22:00:00" />
                 </div>
-
                 <div class="col-12 col-md-3">
-                    <div class="form-check">
+                    <div class="form-check mt-2">
                         <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSaturdayFlightBookings" />
                         <label class="form-check-label">Allow Saturday bookings</label>
                     </div>
                 </div>
                 <div class="col-12 col-md-3">
-                    <div class="form-check">
+                    <div class="form-check mt-2">
                         <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSundayFlightBookings" />
                         <label class="form-check-label">Allow Sunday bookings</label>
                     </div>
                 </div>
+            </div>
 
-                <div class="col-12"><hr /></div>
+            <hr class="my-4" />
 
-                <!-- Policy / Client hints -->
-                <div class="col-12 col-md-6">
+            <!-- Policy / Client refs -->
+            <div class="row g-3">
+                <div class="col-12 col-md-4">
                     <label class="form-label">Travel policy name</label>
                     <InputText class="form-control" @bind-Value="_model.TravelPolicyName" />
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
                     <label class="form-label">Travel policy Id</label>
                     <InputText class="form-control" @bind-Value="_model.TravelPolicyId" />
                 </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Expense policy Id</label>
+                    <InputText class="form-control" @bind-Value="_model.ExpensePolicyId" />
+                </div>
 
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
                     <label class="form-label">AvaClient Id</label>
                     <InputText class="form-control" @bind-Value="_model.AvaClientId" />
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
                     <label class="form-label">Client Id (external)</label>
                     <InputText class="form-control" @bind-Value="_model.ClientId" />
                 </div>
             </div>
         </div>
 
-        <div class="card-footer d-flex justify-content-between align-items-center small text-muted">
+        <!-- Footer -->
+        <div class="card-footer small text-muted d-flex justify-content-between align-items-center">
             <div>
-                <span class="me-3">Id: <code>@_model.Id</code></span>
-                <span>Last action: @_status</span>
+                <span class="me-3">Status: @_status</span>
+                <span>Last saved: @_lastSaved</span>
             </div>
-            <div>
-                @if (!_isNew)
-                {
-                    <button class="btn btn-outline-danger btn-sm" disabled="_busy" @onclick="DeleteAsync">
-                        <i class="bi bi-trash"></i><span class="ms-1">Delete</span>
-                    </button>
-                }
+            <div class="text-truncate">
+                <span class="text-muted">@Nav.Uri</span>
             </div>
         </div>
     </div>
@@ -256,21 +290,38 @@
         DefaultCurrencyCode = "AUD",
         AvaUserId = string.Empty
     };
-
     private bool _isNew;
     private bool _busy;
     private string _status = "Ready";
+    private string _lastSaved = "—";
 
-    // Cabin values validated by CabinTypeValidation
     private readonly string[] _cabins = new[] { "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST" };
-    // Typical coverage values (align to CoverageTypeValidation in your validators)
     private readonly string[] _coverage = new[] { "MOST_SEGMENTS", "ALL_SEGMENTS" };
 
+    // CSV wrappers <-> string[] on the model
+    private string IncludedCsv
+    {
+        get => string.Join(",", _model.IncludedAirlineCodes ?? Array.Empty<string>());
+        set => _model.IncludedAirlineCodes = ParseCsv(value);
+    }
+    private string ExcludedCsv
+    {
+        get => string.Join(",", _model.ExcludedAirlineCodes ?? Array.Empty<string>());
+        set => _model.ExcludedAirlineCodes = ParseCsv(value);
+    }
+    private static string[] ParseCsv(string? s) =>
+        string.IsNullOrWhiteSpace(s)
+            ? Array.Empty<string>()
+            : s.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+               .Select(x => x.ToUpperInvariant())
+               .Distinct()
+               .ToArray();
+
+    // EXACT LOAD FLOW YOU SPECIFIED
     protected override async Task OnParametersSetAsync()
     {
         if (!string.IsNullOrWhiteSpace(AvaUserId))
         {
-
             var found = await AvaUserSysPreferenceService.GetByUserIdAsync(AvaUserId);
             if (found is not null)
             {
@@ -337,37 +388,22 @@
         }
     }
 
-    private void UppercaseCurrency(ChangeEventArgs e)
-    {
-        if (e.Value is string s)
-            _model.DefaultCurrencyCode = s.ToUpperInvariant();
-    }
-
     private async Task SaveAsync()
     {
-        _busy = true;
-        _status = "Saving…";
-
+        _busy = true; _status = "Saving…";
         try
         {
             if (_isNew)
-            {
-                await AvaUserSysPreferenceService.CreateAsync(_model);
-            }
+                _model = await AvaUserSysPreferenceService.CreateAsync(_model);
             else
-            {
-                await AvaUserSysPreferenceService.UpdateAsync(_model);
-            }
+                _model = await AvaUserSysPreferenceService.UpdateAsync(_model);
 
             _isNew = false;
             _status = "Saved";
-            //Log.LogInformation("Saved AvaUserSysPreference {Id}", _model.Id);
-            // stay on page; if you prefer redirect:
-            // Nav.NavigateTo($"/admin/userprefs/{_model.Id}", forceLoad: false);
+            _lastSaved = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
-        catch (Exception ex)
+        catch
         {
-            //Log.LogError(ex, "Save failed");
             _status = "Save failed";
         }
         finally
@@ -379,19 +415,12 @@
     private async Task DeleteAsync()
     {
         if (_isNew) return;
-        _busy = true;
-        _status = "Deleting…";
+        _busy = true; _status = "Deleting…";
         try
         {
-            @* Db.AvaUserSysPreferences.Remove(Model);
-            await Db.SaveChangesAsync(); *@
-            _status = "Deleted";
-            @* Nav.NavigateTo("/admin/userprefs"); *@
-        }
-        catch (Exception ex)
-        {
-            @* Log.LogError(ex, "Delete failed"); *@
-            _status = "Delete failed";
+            var ok = await AvaUserSysPreferenceService.DeleteAsync(_model.Id);
+            _status = ok ? "Deleted" : "Not found";
+            Back();
         }
         finally
         {
@@ -400,4 +429,15 @@
     }
 
     private void Back() => Nav.NavigateTo("/");
+
+    private void UppercaseIata(ChangeEventArgs _)
+    {
+        if (!string.IsNullOrEmpty(_model.OriginLocationCode))
+            _model.OriginLocationCode = _model.OriginLocationCode.ToUpperInvariant();
+    }
+    private void UppercaseCurrency(ChangeEventArgs _)
+    {
+        if (!string.IsNullOrEmpty(_model.DefaultCurrencyCode))
+            _model.DefaultCurrencyCode = _model.DefaultCurrencyCode.ToUpperInvariant();
+    }
 }
