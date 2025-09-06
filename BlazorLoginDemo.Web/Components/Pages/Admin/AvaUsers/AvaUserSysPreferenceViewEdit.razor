@@ -50,6 +50,12 @@
             </div>
             <ValidationMessage For="@(() => _model.AspNetUsersId)" />
         </div>
+
+        @* <div class="col-md-3 d-flex align-items-end justify-content-center">
+            <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
+                @(_model.IsActive ? "Active" : "Inactive")
+            </span>
+        </div> *@
     </div>
 
     <div class="row g-3 mb-4">
@@ -116,7 +122,7 @@
         <div class="col-md-3">
             <label class="form-label">Default Cabin</label>
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultFlightSeating" readonly />
-            \<ValidationMessage For="@(() => _model.DefaultFlightSeating)" />
+            <ValidationMessage For="@(() => _model.DefaultFlightSeating)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Max Cabin</label>
@@ -240,7 +246,7 @@
         </button>
     </div>
 
-    <ValidationDebugger />
+    @* <ValidationDebugger /> *@
 </EditForm>
 
 @code {
