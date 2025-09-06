@@ -243,15 +243,15 @@
 
     <!-- Bottom actions -->
     <div class="d-flex gap-2 mt-4">
-        <button type="submit" class="btn btn-primary" disabled="_busy">
+        <button type="submit" class="btn btn-primary" disabled="@_busy">
             <i class="bi bi-check2-circle me-1"></i> Update User
         </button>
-        <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="_busy">
+        <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="@_busy">
             <i class="bi bi-x-circle me-1"></i> Cancel
         </button>
         @if (_existing)
         {
-            <button type="button" class="btn btn-outline-danger ms-auto" @onclick="DeleteAsync" disabled="_busy">
+            <button type="button" class="btn btn-outline-danger ms-auto" @onclick="DeleteAsync" disabled="@_busy">
                 <i class="bi bi-trash me-1"></i> Delete User
             </button>
         }
