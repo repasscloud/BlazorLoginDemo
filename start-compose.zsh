@@ -109,9 +109,9 @@ case "$ACTION" in
     docker compose up -d --build blazor
     exit 0
     ;;
-  *)
-    usage
-    ;;
+  # *)
+  #   usage
+  #   ;;
 esac
 
 

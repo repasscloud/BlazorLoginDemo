@@ -119,19 +119,21 @@ public sealed class AvaUserService : IAvaUserService
     {
         // 1) Find Identity users that don't have an AvaUser profile yet
         var missing = await (from u in _db.Users.AsNoTracking() // AspNetUsers via Identity
-                             join au in _db.AvaUsers.AsNoTracking()
-                                 on u.Id equals au.AspNetUsersId into aug
-                             from au in aug.DefaultIfEmpty()
-                             where au == null
-                             select new
-                             {
-                                 u.Id,
-                                 u.Email,
-                                 u.UserName,
-                                 // If you store human name in Identity:
-                                 u.DisplayName
-                             })
-                            .ToListAsync(ct);
+                                join au in _db.AvaUsers.AsNoTracking()
+                                    on u.Id equals au.AspNetUsersId into aug
+                                from au in aug.DefaultIfEmpty()
+                                where au == null
+                                select new
+                                {
+                                    u.Id,
+                                    u.Email,
+                                    u.UserName,
+                                    // If you store human name in Identity:
+                                    u.DisplayName,
+                                    u.FirstName,
+                                    u.LastName,
+                                })
+                                .ToListAsync(ct);
 
         if (missing.Count == 0) return 0;
 
@@ -142,15 +144,15 @@ public sealed class AvaUserService : IAvaUserService
         {
             foreach (var m in missing)
             {
+                
                 var (first, last) = SplitDisplayName(m.DisplayName);
-
                 _db.AvaUsers.Add(new AvaUser
                 {
                     // NOTE: set Id if your AvaUser key isn't DB-generated
                     AspNetUsersId = m.Id,
                     Email = m.Email ?? m.UserName ?? string.Empty,
-                    FirstName = first,
-                    LastName = last,
+                    FirstName = m.FirstName ?? first,
+                    LastName = m.LastName ?? last,
                     OriginLocationCode = "SYD"
                 });
             }
