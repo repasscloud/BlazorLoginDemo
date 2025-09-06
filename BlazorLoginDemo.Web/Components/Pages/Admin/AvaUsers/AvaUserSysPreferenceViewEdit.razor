@@ -51,9 +51,15 @@
             <ValidationMessage For="@(() => _model.AspNetUsersId)" />
         </div>
 
-        <div class="col-md-3 d-flex align-items-end justify-content-center">
+        <div class="col-md-1 d-flex align-items-end justify-content-center">
             <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
                 @(_model.IsActive ? "Active" : "Inactive")
+            </span>
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end justify-content-center">
+            <span class="badge @(_savedOK ? "bg-success" : "bg-danger")">
+                @(_savedOK ? "Saved" : "Unsaved")
             </span>
         </div>
     </div>
@@ -275,6 +281,8 @@
     private bool _IsBookingTimeFromReadonly = false;
     private bool _IsBookingTimeToReadonly = false;
 
+    private _savedOK = false;
+
     private readonly string[] _cabins = new[] { "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST" };
     private readonly string[] _coverage = new[] { "MOST_SEGMENTS", "ALL_SEGMENTS" };
 
@@ -412,6 +420,7 @@
         finally
         {
             _busy = false;
+            _savedOK = true;
         }
     }
 
