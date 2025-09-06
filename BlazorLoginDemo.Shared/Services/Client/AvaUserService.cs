@@ -107,56 +107,42 @@ public sealed class AvaUserService : IAvaUserService
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.AvaUsers.AsNoTracking().AnyAsync(u => u.Id == id, ct);
 
-public async Task<bool> AssignTravelPolicyToUserAsync( string userId, string travelPolicyId, CancellationToken ct = default)
-{
-    // 1) Validate the policy & get only what we need
-    var policy = await _db.TravelPolicies
-        .AsNoTracking()
-        .Where(p => p.Id == travelPolicyId)
-        .Select(p => new { p.Id, p.PolicyName })
-        .SingleOrDefaultAsync(ct);
-
-    if (policy is null) return false;
-
-    // 2) Load the user (tracked)
-    var user = await _db.AvaUsers.FindAsync([userId], ct);
-    if (user is null) return false;
-
-    // 3) Load sys-pref if linked (tracked)
-    AvaUserSysPreference? usp = null;
-    if (!string.IsNullOrEmpty(user.AvaUserSysPreferenceId))
-        usp = await _db.AvaUserSysPreferences.FindAsync([user.AvaUserSysPreferenceId!], ct);
-
-    // 4) Skip writes if nothing changes
-    var needsUserUpdate = user.TravelPolicyId != travelPolicyId;
-
-    var needsSysPrefUpdate = usp is not null && (
-        usp.TravelPolicyId   != travelPolicyId ||
-        !string.Equals(usp.TravelPolicyName, policy.PolicyName, StringComparison.Ordinal)
-    );
-
-    if (!needsUserUpdate && !needsSysPrefUpdate)
-        return true;
-
-    // 5) Do it atomically
-    await using var tx = await _db.Database.BeginTransactionAsync(ct);
-
-    if (needsUserUpdate)
-        user.TravelPolicyId = travelPolicyId;
-
-    if (needsSysPrefUpdate && usp is not null)
+    public async Task<bool> AssignTravelPolicyToUserAsync(string id, string travelPolicyId, CancellationToken ct = default)
     {
-        usp.TravelPolicyId   = travelPolicyId;
-        usp.TravelPolicyName = policy.PolicyName;
-        // optional sync metadata:
-        // usp.TravelPolicyVersion = policy.Version;
-        // usp.LastSyncedUtc = DateTime.UtcNow;
-    }
+        var policy = await _db.TravelPolicies
+            .AsNoTracking()
+            .Where(p => p.Id == travelPolicyId)
+            .Select(p => new { p.Id, p.PolicyName })
+            .SingleOrDefaultAsync(ct);
+        if (policy == null) return false;
 
-    await _db.SaveChangesAsync(ct);
-    await tx.CommitAsync(ct);
-    return true;
-}
+        var usr = await _db.AvaUsers.FindAsync([id], ct);
+        if (usr is null) return false;
+
+        AvaUserSysPreference? usp = null;
+        if (!string.IsNullOrWhiteSpace(usr.AvaUserSysPreferenceId))
+        {
+            usp = await _db.AvaUserSysPreferences.FindAsync([usr.AvaUserSysPreferenceId], ct);
+        }
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        usr.TravelPolicyId = travelPolicyId;
+        _db.Entry(usr).Property(x => x.TravelPolicyId).IsModified = true;
+
+        if (usp is not null)
+        {
+            usp.TravelPolicyId = policy.Id;
+            usp.TravelPolicyName = policy.PolicyName;
+
+            _db.Entry(usp).Property(x => x.TravelPolicyId).IsModified   = true;
+            _db.Entry(usp).Property(x => x.TravelPolicyName).IsModified = true;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+        return true;
+    }
 
 
 
