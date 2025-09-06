@@ -107,42 +107,47 @@ public sealed class AvaUserService : IAvaUserService
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.AvaUsers.AsNoTracking().AnyAsync(u => u.Id == id, ct);
 
-    public async Task<bool> AssignTravelPolicyToUserAsync(string id, string travelPolicyId, CancellationToken ct = default)
+    public async Task<bool> AssignTravelPolicyToUserAsync(
+        string id,
+        string travelPolicyId,
+        CancellationToken ct = default)
     {
+        // read policy name only
         var policy = await _db.TravelPolicies
             .AsNoTracking()
             .Where(p => p.Id == travelPolicyId)
             .Select(p => new { p.Id, p.PolicyName })
             .SingleOrDefaultAsync(ct);
-        if (policy == null) return false;
+        if (policy is null) return false;
 
+        // user (tracked)
         var usr = await _db.AvaUsers.FindAsync([id], ct);
         if (usr is null) return false;
 
-        AvaUserSysPreference? usp = null;
-        if (!string.IsNullOrWhiteSpace(usr.AvaUserSysPreferenceId))
-        {
-            usp = await _db.AvaUserSysPreferences.FindAsync([usr.AvaUserSysPreferenceId], ct);
-        }
-
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
-
+        // 1) update AvaUser (force write)
         usr.TravelPolicyId = travelPolicyId;
         _db.Entry(usr).Property(x => x.TravelPolicyId).IsModified = true;
+        await _db.SaveChangesAsync(ct);
 
-        if (usp is not null)
+        // 2) update SysPref only if it exists (force write)
+        if (!string.IsNullOrWhiteSpace(usr.AvaUserSysPreferenceId))
         {
-            usp.TravelPolicyId = policy.Id;
-            usp.TravelPolicyName = policy.PolicyName;
+            var usp = await _db.AvaUserSysPreferences.FindAsync([usr.AvaUserSysPreferenceId!], ct);
+            if (usp is not null)
+            {
+                usp.TravelPolicyId   = policy.Id;
+                usp.TravelPolicyName = policy.PolicyName;
 
-            _db.Entry(usp).Property(x => x.TravelPolicyId).IsModified   = true;
-            _db.Entry(usp).Property(x => x.TravelPolicyName).IsModified = true;
+                _db.Entry(usp).Property(x => x.TravelPolicyId).IsModified   = true;
+                _db.Entry(usp).Property(x => x.TravelPolicyName).IsModified = true;
+
+                await _db.SaveChangesAsync(ct);
+            }
         }
 
-        await _db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
         return true;
     }
+
 
 
 
