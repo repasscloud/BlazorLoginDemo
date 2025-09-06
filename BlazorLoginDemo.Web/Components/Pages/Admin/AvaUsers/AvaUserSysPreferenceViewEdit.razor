@@ -38,7 +38,7 @@
             </div>
         </div>
 
-        <div class="col-md-5">
+        <div class="col-md-4">
             <label class="form-label">AspNetUsers ID</label>
             <div class="input-group">
                 <InputText class="form-control bg-light" @bind-Value="_model.AspNetUsersId" readonly />
@@ -48,11 +48,11 @@
             </div>
         </div>
 
-        <div class="col-md-3 d-flex align-items-end justify-content-center">
+        @* <div class="col-md-3 d-flex align-items-end justify-content-center">
             <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
                 @(_model.IsActive ? "Active" : "Inactive")
             </span>
-        </div>
+        </div> *@
     </div>
 
     <div class="row g-3 mb-4">
