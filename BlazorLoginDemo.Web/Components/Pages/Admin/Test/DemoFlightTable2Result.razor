@@ -4,156 +4,155 @@
 
 <PageTitle>Flights from SYD — Table View (Demo)</PageTitle>
 
-<div class="container my-4">
-    <div class="d-flex align-items-center gap-2 mb-3">
-        <i class="bi bi-table fs-4"></i>
-        <h1 class="h3 m-0">Flights from <strong>SYD</strong> — Table View</h1>
-        <span class="badge text-bg-secondary">Dummy data</span>
-    </div>
 
-    <div class="table-responsive shadow-sm rounded">
-        <table class="table align-middle mb-0">
-            <thead class="table-light">
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-table fs-4"></i>
+    <h1 class="h3 m-0">Flights from <strong>SYD</strong> — Table View</h1>
+    <span class="badge text-bg-secondary">Dummy data</span>
+</div>
+
+<div class="table-responsive shadow-sm rounded">
+    <table class="table align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="min-width:180px;">Carrier(s)</th>
+                <th style="min-width:240px;">Route</th>
+                <th style="min-width:110px;">Stops</th>
+                <th style="min-width:110px;">Duration</th>
+                <th class="text-end" style="min-width:140px;">Price</th>
+                <th class="text-end" style="min-width:160px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in Flights)
+            {
                 <tr>
-                    <th style="min-width:180px;">Carrier(s)</th>
-                    <th style="min-width:240px;">Route</th>
-                    <th style="min-width:110px;">Stops</th>
-                    <th style="min-width:110px;">Duration</th>
-                    <th class="text-end" style="min-width:140px;">Price</th>
-                    <th class="text-end" style="min-width:160px;">Actions</th>
+                    <td>
+                        <span class="badge rounded-pill text-bg-secondary">@string.Join(" + ", f.Carriers)</span>
+                        @if (f.IsSingleCarrier)
+                        {
+                            <span class="badge text-bg-success ms-1 lh-1"><i class="bi bi-check2-circle"></i> Single</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-light ms-1 lh-1">Mixed</span>
+                        }
+                    </td>
+                    <td>
+                        SYD → <strong>@f.Destination</strong>
+                        <div class="small text-muted">@f.Outbound.DepartLocal – @f.Outbound.ArriveLocal (local)</div>
+                    </td>
+                    <td>@((MarkupString)StopsBadge(f.Stops))</td>
+                    <td><i class="bi bi-clock"></i> @f.TotalDuration</td>
+                    <td class="text-end">
+                        <div class="fw-bold">@FormatPrice(f.Price, f.Currency)</div>
+                        <div class="small text-muted">incl. taxes &amp; fees</div>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group">
+                            <button class="btn btn-primary btn-sm">
+                                <i class="bi bi-check2-circle"></i> Select
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#row-details-@f.Id"
+                                    aria-expanded="false"
+                                    aria-controls="row-details-@f.Id">
+                                <i class="bi bi-chevron-down"></i> Details
+                            </button>
+                        </div>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                @foreach (var f in Flights)
-                {
-                    <tr>
-                        <td>
-                            <span class="badge rounded-pill text-bg-secondary">@string.Join(" + ", f.Carriers)</span>
-                            @if (f.IsSingleCarrier)
-                            {
-                                <span class="badge text-bg-success ms-1 lh-1"><i class="bi bi-check2-circle"></i> Single</span>
-                            }
-                            else
-                            {
-                                <span class="badge text-bg-light ms-1 lh-1">Mixed</span>
-                            }
-                        </td>
-                        <td>
-                            SYD → <strong>@f.Destination</strong>
-                            <div class="small text-muted">@f.Outbound.DepartLocal – @f.Outbound.ArriveLocal (local)</div>
-                        </td>
-                        <td>@((MarkupString)StopsBadge(f.Stops))</td>
-                        <td><i class="bi bi-clock"></i> @f.TotalDuration</td>
-                        <td class="text-end">
-                            <div class="fw-bold">@FormatPrice(f.Price, f.Currency)</div>
-                            <div class="small text-muted">incl. taxes &amp; fees</div>
-                        </td>
-                        <td class="text-end">
-                            <div class="btn-group">
-                                <button class="btn btn-primary btn-sm">
-                                    <i class="bi bi-check2-circle"></i> Select
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm"
-                                        type="button"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#row-details-@f.Id"
-                                        aria-expanded="false"
-                                        aria-controls="row-details-@f.Id">
-                                    <i class="bi bi-chevron-down"></i> Details
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
 
-                    <!-- Details row -->
-                    <tr class="collapse bg-body-secondary" id="row-details-@f.Id">
-                        <td colspan="6" class="p-0">
-                            <div class="p-3">
-                                <div class="row g-3">
-                                    <div class="col-12 col-xl-8">
-                                        <div class="d-flex align-items-center gap-2 mb-2">
-                                            <div class="fw-semibold"><i class="bi bi-airplane"></i> Flight segments</div>
-                                            <span class="ms-2 small text-muted"><i class="bi bi-geo-alt"></i> SYD → @f.Destination</span>
-                                            <span class="small text-muted"><i class="bi bi-clock"></i> Total @f.TotalDuration</span>
-                                        </div>
-
-                                        @foreach (var s in f.Segments)
-                                        {
-                                            <div class="mb-2 p-2 border rounded bg-white">
-                                                <div class="d-flex justify-content-between">
-                                                    <div>
-                                                        <div class="fw-semibold">
-                                                            @s.Carrier @s.FlightNo
-                                                            <span class="text-muted">(@s.Cabin)</span>
-                                                        </div>
-                                                        <div class="text-muted small">
-                                                            @s.From → @s.To • @s.DepartLocal – @s.ArriveLocal • @s.Duration
-                                                        </div>
-                                                    </div>
-                                                    <div class="text-end small">
-                                                        <div><i class="bi bi-cup-hot"></i> @s.Meal</div>
-                                                        <div><i class="bi bi-bag"></i> @s.Baggage</div>
-                                                        @if (s.WiFi) { <div><i class="bi bi-wifi"></i> Wi-Fi</div> }
-                                                    </div>
-                                                </div>
-                                                <div class="mt-2 d-flex flex-wrap gap-1">
-                                                    @foreach (var inc in s.Inclusions)
-                                                    {
-                                                        <span class="badge text-bg-light border lh-1"><i class="@inc.Icon"></i> @inc.Label</span>
-                                                    }
-                                                    @foreach (var exc in s.Exclusions)
-                                                    {
-                                                        <span class="badge text-bg-danger-subtle border border-danger text-danger lh-1"><i class="@exc.Icon"></i> @exc.Label</span>
-                                                    }
-                                                </div>
-                                            </div>
-
-                                            @if (s != f.Segments.Last())
-                                            {
-                                                <div class="d-flex align-items-center text-muted small my-2">
-                                                    <i class="bi bi-stopwatch me-1"></i>
-                                                    Layover @s.To: @f.LayoverAt(s.To)
-                                                    <div class="flex-grow-1 ms-2" style="height:1px; background-color:var(--bs-border-color);"></div>
-                                                </div>
-                                            }
-                                        }
+                <!-- Details row -->
+                <tr class="collapse bg-body-secondary" id="row-details-@f.Id">
+                    <td colspan="6" class="p-0">
+                        <div class="p-3">
+                            <div class="row g-3">
+                                <div class="col-12 col-xl-8">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <div class="fw-semibold"><i class="bi bi-airplane"></i> Flight segments</div>
+                                        <span class="ms-2 small text-muted"><i class="bi bi-geo-alt"></i> SYD → @f.Destination</span>
+                                        <span class="small text-muted"><i class="bi bi-clock"></i> Total @f.TotalDuration</span>
                                     </div>
-                                    <div class="col-12 col-xl-4">
-                                        <div class="fw-semibold mb-2"><i class="bi bi-list-check"></i> Fare summary</div>
-                                        <div class="border rounded bg-white p-2">
-                                            <div class="fw-bold mb-2">@FormatPrice(f.Price, f.Currency)</div>
-                                            <div class="mb-2">
-                                                <div class="text-uppercase small text-muted mb-1">Overall inclusions</div>
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    @foreach (var inc in f.Inclusions)
-                                                    {
-                                                        <span class="badge text-bg-light border lh-1"><i class="@inc.Icon"></i> @inc.Label</span>
-                                                    }
+
+                                    @foreach (var s in f.Segments)
+                                    {
+                                        <div class="mb-2 p-2 border rounded bg-white">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <div class="fw-semibold">
+                                                        @s.Carrier @s.FlightNo
+                                                        <span class="text-muted">(@s.Cabin)</span>
+                                                    </div>
+                                                    <div class="text-muted small">
+                                                        @s.From → @s.To • @s.DepartLocal – @s.ArriveLocal • @s.Duration
+                                                    </div>
+                                                </div>
+                                                <div class="text-end small">
+                                                    <div><i class="bi bi-cup-hot"></i> @s.Meal</div>
+                                                    <div><i class="bi bi-bag"></i> @s.Baggage</div>
+                                                    @if (s.WiFi) { <div><i class="bi bi-wifi"></i> Wi-Fi</div> }
                                                 </div>
                                             </div>
-                                            <div>
-                                                <div class="text-uppercase small text-muted mb-1">Overall exclusions</div>
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    @foreach (var exc in f.Exclusions)
-                                                    {
-                                                        <span class="badge text-bg-danger-subtle border border-danger text-danger lh-1"><i class="@exc.Icon"></i> @exc.Label</span>
-                                                    }
-                                                </div>
+                                            <div class="mt-2 d-flex flex-wrap gap-1">
+                                                @foreach (var inc in s.Inclusions)
+                                                {
+                                                    <span class="badge text-bg-light border lh-1"><i class="@inc.Icon"></i> @inc.Label</span>
+                                                }
+                                                @foreach (var exc in s.Exclusions)
+                                                {
+                                                    <span class="badge text-bg-danger-subtle border border-danger text-danger lh-1"><i class="@exc.Icon"></i> @exc.Label</span>
+                                                }
                                             </div>
-                                            <hr />
-                                            <button class="btn btn-primary btn-sm w-100">
-                                                <i class="bi bi-check2-circle me-1"></i> Select this flight
-                                            </button>
                                         </div>
+
+                                        @if (s != f.Segments.Last())
+                                        {
+                                            <div class="d-flex align-items-center text-muted small my-2">
+                                                <i class="bi bi-stopwatch me-1"></i>
+                                                Layover @s.To: @f.LayoverAt(s.To)
+                                                <div class="flex-grow-1 ms-2" style="height:1px; background-color:var(--bs-border-color);"></div>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                                <div class="col-12 col-xl-4">
+                                    <div class="fw-semibold mb-2"><i class="bi bi-list-check"></i> Fare summary</div>
+                                    <div class="border rounded bg-white p-2">
+                                        <div class="fw-bold mb-2">@FormatPrice(f.Price, f.Currency)</div>
+                                        <div class="mb-2">
+                                            <div class="text-uppercase small text-muted mb-1">Overall inclusions</div>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach (var inc in f.Inclusions)
+                                                {
+                                                    <span class="badge text-bg-light border lh-1"><i class="@inc.Icon"></i> @inc.Label</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="text-uppercase small text-muted mb-1">Overall exclusions</div>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach (var exc in f.Exclusions)
+                                                {
+                                                    <span class="badge text-bg-danger-subtle border border-danger text-danger lh-1"><i class="@exc.Icon"></i> @exc.Label</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <hr />
+                                        <button class="btn btn-primary btn-sm w-100">
+                                            <i class="bi bi-check2-circle me-1"></i> Select this flight
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 </div>
 
 @code {
