@@ -58,7 +58,7 @@
         </div>
     </div>
 
-    @* <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4">
         <div class="col-md-4">
             <label class="form-label">First Name</label>
             <InputText class="form-control bg-light" @bind-Value="_model.FirstName" readonly />
@@ -95,7 +95,7 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    @* <div class="row g-3 mb-4">
         <div class="col-md-4">
             <label class="form-label">Passport Country of Issue</label>
             <InputSelect class="form-select" @bind-Value="_model.CountryOfIssue">
@@ -116,9 +116,9 @@
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.OriginLocationCode" readonly />
             <ValidationMessage For="@(() => _model.OriginLocationCode)" />
         </div>
-    </div>
+    </div> *@
 
-    <div class="row g-3 mb-4">
+    @* <div class="row g-3 mb-4">
         <div class="col-md-3">
             <label class="form-label">Default Cabin</label>
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultFlightSeating" readonly />
@@ -199,9 +199,9 @@
                 <label class="form-check-label ms-2">Allow Sunday bookings</label>
             </div>
         </div>
-    </div>
+    </div> *@
 
-    <div class="row g-3 mb-4">
+    @* <div class="row g-3 mb-4">
         <div class="col-md-3">
             <label class="form-label">Travel Policy Name</label>
             <InputText class="form-control bg-light" @bind-Value="_model.TravelPolicyName" readonly />
@@ -232,7 +232,7 @@
             </div>
             <ValidationMessage For="@(() => _model.ExpensePolicyId)" />
         </div>
-    </div>
+    </div> *@
 
     <!-- Bottom actions -->
     <div class="d-flex gap-2 mb-4">
@@ -242,7 +242,7 @@
         <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="@_busy">
             <i class="bi bi-x-circle me-1"></i> Cancel
         </button>
-    </div> *@
+    </div>
 
     @* <ValidationDebugger /> *@
 </EditForm>
