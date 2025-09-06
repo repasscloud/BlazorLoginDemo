@@ -151,7 +151,7 @@
             <InputNumber class="form-control bg-light" @bind-Value="_model.DefaultCalendarDaysInAdvanceForFlightBooking" readonly />
         </div>
         <div class="col-md-3">
-            <label class="form-label">Bookable from HH:mm)</label>
+            <label class="form-label">Bookable from (HH:mm)</label>
             <InputText type="time"
                 class="form-control"
                 step="60"
@@ -160,16 +160,12 @@
         </div>
 
         <div class="col-md-3">
-            <label class="form-label">Bookable to HH:mm)</label>
+            <label class="form-label">Bookable to (HH:mm)</label>
             <InputText type="time"
                 class="form-control"
                 step="60"
                 @bind-Value="_model.FlightBookingTimeAvailableTo"
                 readonly="@_IsBookingTimeToReadonly" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Bookable to (hh:mm:ss)</label>
-            <InputText class="form-control" @bind-Value="_model.FlightBookingTimeAvailableTo" placeholder="22:00:00" />
         </div>
         <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
