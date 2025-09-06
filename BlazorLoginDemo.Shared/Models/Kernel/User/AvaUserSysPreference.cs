@@ -22,15 +22,15 @@ public class AvaUserSysPreference
     public required string Email { get; set; }
 
     [Required]
-    [PassportNameValidation]
+    // [PassportNameValidation]
     public required string FirstName { get; set; } = string.Empty;
     
-    [PassportNameValidation]
+    // [PassportNameValidation]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? MiddleName { get; set; }
 
     [Required]
-    [PassportNameValidation]
+    // [PassportNameValidation]
     public required string LastName { get; set; } = string.Empty;
 
     [Required]
