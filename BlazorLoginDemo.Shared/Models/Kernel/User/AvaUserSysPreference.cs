@@ -88,12 +88,58 @@ public class AvaUserSysPreference
 
     // earliest time bookable
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    [RegularExpression(@"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$", ErrorMessage = "Time must be in the format hh:mm:ss.")]
-    public string? FlightBookingTimeAvailableFrom { get; set; }  // Local time. hh:mm:ss format, e.g 10:30:00
+    [RegularExpression(@"^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", ErrorMessage = "Time must be in the format hh:mm:ss.")]
+    public string? FlightBookingTimeAvailableFrom   // Local time. hh:mm:ss format, e.g 10:30:00
+    {
+        get => _flightBookingTimeAvailableFrom;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                _flightBookingTimeAvailableFrom = null;
+            }
+            else if (TimeSpan.TryParse(value, out var ts))
+            {
+                // Always normalize to hh:mm:ss (zero-padded, 24-hour)
+                _flightBookingTimeAvailableFrom = ts.ToString(@"hh\:mm\:ss");
+            }
+            else
+            {
+                // If it doesn’t parse, keep the raw value (so validation can catch it)
+                _flightBookingTimeAvailableFrom = value;
+            }
+        }
+    }
+
+    private string? _flightBookingTimeAvailableFrom;
+
+
+   private string? _flightBookingTimeAvailableTo;
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    [RegularExpression(@"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$", ErrorMessage = "Time must be in the format hh:mm:ss.")]
-    public string? FlightBookingTimeAvailableTo { get; set; }  // Local time. hh:mm:ss format, e.g 10:30:00
+    [RegularExpression(@"^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", ErrorMessage = "Time must be in the format hh:mm:ss.")]
+    public string? FlightBookingTimeAvailableTo   // Local time. hh:mm:ss format, e.g 10:30:00
+    {
+        get => _flightBookingTimeAvailableTo;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                _flightBookingTimeAvailableTo = null;
+            }
+            else if (TimeSpan.TryParse(value, out var ts))
+            {
+                // Always normalize to hh:mm:ss (zero-padded, 24-hour)
+                _flightBookingTimeAvailableTo = ts.ToString(@"hh\:mm\:ss");
+            }
+            else
+            {
+                // If it doesn’t parse, keep the raw value (so validation can catch it)
+                _flightBookingTimeAvailableTo = value;
+            }
+        }
+    }
+
 
     // things that come from policy ONLY
     // allow bookings on weekends

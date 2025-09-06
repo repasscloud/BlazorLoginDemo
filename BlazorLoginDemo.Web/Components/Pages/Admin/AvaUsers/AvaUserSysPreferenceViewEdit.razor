@@ -31,7 +31,7 @@
         <div class="col-md-4">
             <label class="form-label">Ava User ID</label>
             <div class="input-group">
-                <InputText class="form-control" @bind-Value="_model.AvaUserId" readonly />
+                <InputText class="form-control bg-light" @bind-Value="_model.AvaUserId" readonly />
                 <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.AvaUserId)">
                     <i class="bi bi-clipboard"></i>
                 </button>
@@ -39,12 +39,16 @@
         </div>
 
         <div class="col-md-5">
-            <label class="form-label">AspNetUsers ID <span class="text-danger">*</span></label>
-            <InputText class="form-control" @bind-Value="_model.AspNetUsersId" readonly />
-            <ValidationMessage For="@(() => _model.AspNetUsersId)" />
+            <label class="form-label">AspNetUsers ID</label>
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.AspNetUsersId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.AspNetUsersId)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
         </div>
 
-        <div class="col-md-3 d-flex align-items-end">
+        <div class="col-md-3 d-flex align-items-end justify-content-center">
             <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
                 @(_model.IsActive ? "Active" : "Inactive")
             </span>
@@ -54,20 +58,17 @@
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <label class="form-label">First Name</label>
-            <InputText class="form-control" @bind-Value="_model.FirstName" />
-            <ValidationMessage For="@(() => _model.FirstName)" />
+            <InputText class="form-control bg-light" @bind-Value="_model.FirstName" readonly />
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Middle Name</label>
-            <InputText class="form-control" @bind-Value="_model.MiddleName" />
-            <ValidationMessage For="@(() => _model.MiddleName)" />
+            <InputText class="form-control bg-light" @bind-Value="_model.MiddleName" readonly />
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Last name</label>
-            <InputText class="form-control" @bind-Value="_model.LastName" />
-            <ValidationMessage For="@(() => _model.LastName)" />
+            <InputText class="form-control bg-light" @bind-Value="_model.LastName" readonly />
         </div>
 
         <div class="col-md-4">
@@ -102,44 +103,44 @@
         </div>
         <div class="col-md-4">
             <label class="form-label">Home Airport (IATA)</label>
-            <InputText class="form-control text-uppercase" @bind-Value="_model.OriginLocationCode" readonly />
+            <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.OriginLocationCode" readonly />
         </div>
     </div>
 
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <label class="form-label">Default Cabin</label>
-            <InputText class="form-control text-uppercase" @bind-Value="_model.DefaultFlightSeating" readonly />
+            <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultFlightSeating" readonly />
         </div>
         <div class="col-md-3">
             <label class="form-label">Max Cabin</label>
-            <InputText class="form-control text-uppercase" @bind-Value="_model.MaxFlightSeating" readonly />
+            <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.MaxFlightSeating" readonly />
         </div>
         <div class="col-md-3">
             <label class="form-label">Max Flight Price</label>
-            <InputNumber class="form-control" @bind-Value="_model.MaxFlightPrice" readonly />
+            <InputNumber class="form-control bg-light" @bind-Value="_model.MaxFlightPrice" readonly />
         </div>
         <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
-                <InputCheckbox class="form-check-input" @bind-Value="_model.NonStopFlight" disabled />
+                <InputCheckbox class="form-check-input bg-light" @bind-Value="_model.NonStopFlight" disabled />
                 <label class="form-check-label ms-2">Non-Stop only</label>
             </div>
         </div>
         <div class="col-md-6">
             <label class="form-label">Include airline codes</label>
-            <InputText class="form-control" @bind-Value="IncludedCsv" readonly />
+            <InputText class="form-control bg-light" @bind-Value="IncludedCsv" readonly />
         </div>
         <div class="col-md-6">
             <label class="form-label">Exclude airline codes</label>
-            <InputText class="form-control" @bind-Value="ExcludedCsv" readonly />
+            <InputText class="form-control bg-light" @bind-Value="ExcludedCsv" readonly />
         </div>
         <div class="col-md-3">
             <label class="form-label">Currency (ISO 4217)</label>
-            <InputText class="form-control text-uppercase" @bind-Value="_model.DefaultCurrencyCode" @oninput="UppercaseCurrency" readonly />
+            <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultCurrencyCode" @oninput="UppercaseCurrency" readonly />
         </div>
         <div class="col-md-3">
             <label class="form-label">Max flight price</label>
-            <InputNumber class="form-control" @bind-Value="_model.MaxFlightPrice" readonly />
+            <InputNumber class="form-control bg-light" @bind-Value="_model.MaxFlightPrice" readonly />
         </div>
         <div class="col-md-3">
             <label class="form-label">Search max results</label>
@@ -147,11 +148,24 @@
         </div>
         <div class="col-md-3">
             <label class="form-label">Booking Lead Days</label>
-            <InputNumber class="form-control" @bind-Value="_model.DefaultCalendarDaysInAdvanceForFlightBooking" readonly />
+            <InputNumber class="form-control bg-light" @bind-Value="_model.DefaultCalendarDaysInAdvanceForFlightBooking" readonly />
         </div>
         <div class="col-md-3">
-            <label class="form-label">Bookable from (hh:mm:ss)</label>
-            <InputText class="form-control" @bind-Value="_model.FlightBookingTimeAvailableFrom" placeholder="07:00:00" />
+            <label class="form-label">Bookable from HH:mm)</label>
+            <InputText type="time"
+                class="form-control"
+                step="60"
+                @bind-Value="_model.FlightBookingTimeAvailableFrom"
+                readonly="@_IsBookingTimeFromReadonly" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Bookable to HH:mm)</label>
+            <InputText type="time"
+                class="form-control"
+                step="60"
+                @bind-Value="_model.FlightBookingTimeAvailableTo"
+                readonly="@_IsBookingTimeToReadonly" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Bookable to (hh:mm:ss)</label>
@@ -159,13 +173,13 @@
         </div>
         <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
-                <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSaturdayFlightBookings" />
+                <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSaturdayFlightBookings" disabled />
                 <label class="form-check-label ms-2">Allow Sunday bookings</label>
             </div>
         </div>
         <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
-                <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSundayFlightBookings" />
+                <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSundayFlightBookings" disabled />
                 <label class="form-check-label ms-2">Allow Sunday bookings</label>
             </div>
         </div>
@@ -174,21 +188,31 @@
     <div class="row g-3">
         <div class="col-md-4">
             <label class="form-label">Travel Policy Name</label>
-            <InputText class="form-control" @bind-Value="_model.TravelPolicyName" />
+            <InputText class="form-control bg-light" @bind-Value="_model.TravelPolicyName" readonly />
         </div>
         <div class="col-md-4">
             <label class="form-label">Travel Policy ID</label>
-            <InputText class="form-control" @bind-Value="_model.TravelPolicyId" />
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.TravelPolicyId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.TravelPolicyId)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
         </div>
     </div>
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <label class="form-label">Expense Policy Name</label>
-            <InputText class="form-control" @bind-Value="_model.ExpensePolicyName" />
+            <InputText class="form-control bg-light" @bind-Value="_model.ExpensePolicyName" readonly />
         </div>
         <div class="col-md-4">
             <label class="form-label">Expense Policy ID</label>
-            <InputText class="form-control" @bind-Value="_model.ExpensePolicyId" />
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.ExpensePolicyId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.ExpensePolicyId)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
         </div>
     </div>
 </EditForm>
@@ -217,6 +241,8 @@
     private string _status = "Ready";
     private string _lastSaved = "—";
     private string? _error;
+    private bool _IsBookingTimeFromReadonly = false;
+    private bool _IsBookingTimeToReadonly = false;
 
     private readonly string[] _cabins = new[] { "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST" };
     private readonly string[] _coverage = new[] { "MOST_SEGMENTS", "ALL_SEGMENTS" };
@@ -249,6 +275,17 @@
             if (found is not null)
             {
                 _model = found;
+
+                // set booking time values to read only (independently)
+                if (!string.IsNullOrWhiteSpace(_model.FlightBookingTimeAvailableFrom))
+                {
+                    _IsBookingTimeFromReadonly = true;
+                }
+                if (!string.IsNullOrWhiteSpace(_model.FlightBookingTimeAvailableTo))
+                {
+                    _IsBookingTimeToReadonly = true;
+                }
+
                 _isNew = false;
                 return;
             }
@@ -297,6 +334,16 @@
                 _model.EnableSundayFlightBookings = travelPolicy.EnableSundayFlightBookings;
                 _model.DefaultCalendarDaysInAdvanceForFlightBooking = travelPolicy.DefaultCalendarDaysInAdvanceForFlightBooking;
                 _model.AvaClientId = usr.AvaClientId;
+
+                // set booking time values to read only (independently)
+                if (!string.IsNullOrWhiteSpace(_model.FlightBookingTimeAvailableFrom))
+                {
+                    _IsBookingTimeFromReadonly = true;
+                }
+                if (!string.IsNullOrWhiteSpace(_model.FlightBookingTimeAvailableTo))
+                {
+                    _IsBookingTimeToReadonly = true;
+                }
 
                 _isNew = true;
             }
