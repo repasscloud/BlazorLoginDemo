@@ -98,14 +98,17 @@
                     <option value="@c">@c</option>
                 }
             </InputSelect>
+            <ValidationMessage For="@(() => _model.CountryOfIssue)" />
         </div>
         <div class="col-md-4">
             <label class="form-label">Passport Expiry</label>
             <InputDate class="form-control" @bind-Value="_model.PassportExpirationDate" />
+            <ValidationMessage For="@(() => _model.PassportExpirationDate)" />
         </div>
         <div class="col-md-4">
             <label class="form-label">Home Airport (IATA)</label>
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.OriginLocationCode" readonly />
+            <ValidationMessage For="@(() => _model.OriginLocationCode)" />
         </div>
     </div>
 
@@ -113,14 +116,17 @@
         <div class="col-md-3">
             <label class="form-label">Default Cabin</label>
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultFlightSeating" readonly />
+            \<ValidationMessage For="@(() => _model.DefaultFlightSeating)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Max Cabin</label>
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.MaxFlightSeating" readonly />
+            <ValidationMessage For="@(() => _model.MaxFlightSeating)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Max Flight Price</label>
             <InputNumber class="form-control bg-light" @bind-Value="_model.MaxFlightPrice" readonly />
+            <ValidationMessage For="@(() => _model.MaxFlightPrice)" />
         </div>
         <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
@@ -131,26 +137,32 @@
         <div class="col-md-6">
             <label class="form-label">Include airline codes</label>
             <InputText class="form-control bg-light" @bind-Value="IncludedCsv" readonly />
+            @* <ValidationMessage For="@(() => _model.AvaUserId)" /> *@
         </div>
         <div class="col-md-6">
             <label class="form-label">Exclude airline codes</label>
             <InputText class="form-control bg-light" @bind-Value="ExcludedCsv" readonly />
+            @* <ValidationMessage For="@(() => _model.AvaUserId)" /> *@
         </div>
         <div class="col-md-3">
             <label class="form-label">Currency (ISO 4217)</label>
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultCurrencyCode" @oninput="UppercaseCurrency" readonly />
+            <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Max flight price</label>
-            <InputNumber class="form-control bg-light" @bind-Value="_model.MaxFlightPrice" readonly />
+            <InputNumber class="form-control bg-light" @bind-Value="_modelDefaultCurrencyCode" readonly />
+            <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Search max results</label>
             <InputNumber class="form-control" @bind-Value="_model.MaxResults" />
+            <ValidationMessage For="@(() => _model.MaxResults)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Booking Lead Days</label>
             <InputNumber class="form-control bg-light" @bind-Value="_model.DefaultCalendarDaysInAdvanceForFlightBooking" readonly />
+            <ValidationMessage For="@(() => _model.DefaultCalendarDaysInAdvanceForFlightBooking)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Bookable from (HH:mm)</label>
@@ -159,6 +171,7 @@
                 step="60"
                 @bind-Value="_model.FlightBookingTimeAvailableFrom"
                 readonly="@_IsBookingTimeFromReadonly" />
+            <ValidationMessage For="@(() => _model.FlightBookingTimeAvailableFrom)" />
         </div>
 
         <div class="col-md-3">
@@ -168,6 +181,7 @@
                 step="60"
                 @bind-Value="_model.FlightBookingTimeAvailableTo"
                 readonly="@_IsBookingTimeToReadonly" />
+            <ValidationMessage For="@(() => _model.FlightBookingTimeAvailableTo)" />
         </div>
         <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
@@ -187,6 +201,7 @@
         <div class="col-md-3">
             <label class="form-label">Travel Policy Name</label>
             <InputText class="form-control bg-light" @bind-Value="_model.TravelPolicyName" readonly />
+            <ValidationMessage For="@(() => _model.TravelPolicyName)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Travel Policy ID</label>
@@ -196,10 +211,12 @@
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
+            <ValidationMessage For="@(() => _model.TravelPolicyId)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Expense Policy Name</label>
             <InputText class="form-control bg-light" @bind-Value="_model.ExpensePolicyName" readonly />
+            <ValidationMessage For="@(() => _model.ExpensePolicyName)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Expense Policy ID</label>
@@ -209,6 +226,7 @@
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
+            <ValidationMessage For="@(() => _model.ExpensePolicyId)" />
         </div>
     </div>
 
