@@ -159,12 +159,12 @@
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultCurrencyCode" @oninput="UppercaseCurrency" readonly />
             <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
         </div>
-        <div class="col-md-3">
+        @* <div class="col-md-3">
             <label class="form-label">Max flight price</label>
             <InputNumber class="form-control bg-light" @bind-Value="_model.DefaultCurrencyCode" readonly />
             <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
         </div>
-        @* <div class="col-md-3">
+        <div class="col-md-3">
             <label class="form-label">Search max results</label>
             <InputNumber class="form-control" @bind-Value="_model.MaxResults" />
             <ValidationMessage For="@(() => _model.MaxResults)" />
