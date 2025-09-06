@@ -146,7 +146,7 @@
                 <label class="form-check-label ms-2">Non-Stop only</label>
             </div>
         </div>
-        @* <div class="col-md-6">
+        <div class="col-md-6">
             <label class="form-label">Include airline codes</label>
             <InputText class="form-control bg-light" @bind-Value="IncludedCsv" readonly />
         </div>
@@ -164,7 +164,7 @@
             <InputNumber class="form-control bg-light" @bind-Value="_model.DefaultCurrencyCode" readonly />
             <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
         </div>
-        <div class="col-md-3">
+        @* <div class="col-md-3">
             <label class="form-label">Search max results</label>
             <InputNumber class="form-control" @bind-Value="_model.MaxResults" />
             <ValidationMessage For="@(() => _model.MaxResults)" />
