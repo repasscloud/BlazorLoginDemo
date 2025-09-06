@@ -51,17 +51,11 @@
             <ValidationMessage For="@(() => _model.AspNetUsersId)" />
         </div>
 
-        <div class="col-md-1 d-flex align-items-end justify-content-center">
+        @* <div class="col-md-1 d-flex align-items-end justify-content-center">
             <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
                 @(_model.IsActive ? "Active" : "Inactive")
             </span>
-        </div>
-
-        <div class="col-md-1 d-flex align-items-end justify-content-center">
-            <span class="badge @(_savedOK ? "bg-success" : "bg-danger")">
-                @(_savedOK ? "Saved" : "Unsaved")
-            </span>
-        </div>
+        </div> *@
     </div>
 
     <div class="row g-3 mb-4">
@@ -249,8 +243,6 @@
             <i class="bi bi-x-circle me-1"></i> Cancel
         </button>
     </div>
-
-    @* <ValidationDebugger /> *@
 </EditForm>
 
 @code {
@@ -280,8 +272,6 @@
     private string? _error;
     private bool _IsBookingTimeFromReadonly = false;
     private bool _IsBookingTimeToReadonly = false;
-
-    private bool _savedOK = false;
 
     private readonly string[] _cabins = new[] { "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST" };
     private readonly string[] _coverage = new[] { "MOST_SEGMENTS", "ALL_SEGMENTS" };
@@ -420,7 +410,6 @@
         finally
         {
             _busy = false;
-            _savedOK = true;
         }
     }
 
