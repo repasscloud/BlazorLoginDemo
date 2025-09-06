@@ -151,7 +151,7 @@
         </div>
         <div class="col-md-3">
             <label class="form-label">Max flight price</label>
-            <InputNumber class="form-control bg-light" @bind-Value="_modelDefaultCurrencyCode" readonly />
+            <InputNumber class="form-control bg-light" @bind-Value="_model.DefaultCurrencyCode" readonly />
             <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
         </div>
         <div class="col-md-3">
