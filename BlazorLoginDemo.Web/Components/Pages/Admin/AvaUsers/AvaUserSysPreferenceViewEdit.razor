@@ -4,6 +4,7 @@
 @using System.Text.RegularExpressions
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
+@using NanoidDotNet
 @using BlazorLoginDemo.Shared.Models.Kernel.User
 @using BlazorLoginDemo.Shared.Models.Static
 
@@ -226,7 +227,7 @@
 
     private AvaUserSysPreference _model = new AvaUserSysPreference
     {
-        AspNetUsersId = string.Empty,
+        AspNetUsersId = Nanoid.Generate(),
         Email = "test@test.com",
         FirstName = string.Empty,
         LastName = string.Empty,
@@ -240,6 +241,7 @@
         DefaultCurrencyCode = "AUD",
         AvaUserId = string.Empty
     };
+
     private bool _isNew;
     private bool _busy;
     private string _status = "Ready";
@@ -319,6 +321,9 @@
                 _model.AvaUserId = AvaUserId;
                 _model.AspNetUsersId = usr.AspNetUsersId;
                 _model.IsActive = usr.IsActive;
+                _model.FirstName = usr.FirsteName;
+                _model.MiddleName = usr.MiddleName ?? string.Emtpy;
+                _model.LastName = usr.LastName ?? string.Empty;
                 _model.Email = usr.Email;
                 _model.TravelPolicyId = usr.TravelPolicyId;
                 _model.ExpensePolicyId = string.Empty;
