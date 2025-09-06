@@ -2,6 +2,7 @@ using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Services.Interfaces.User;
 using Microsoft.EntityFrameworkCore;
 using BlazorLoginDemo.Shared.Data;
+using BlazorLoginDemo.Shared.Models.Kernel.User;
 
 namespace BlazorLoginDemo.Shared.Services.User;
 
@@ -106,23 +107,70 @@ public sealed class AvaUserService : IAvaUserService
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.AvaUsers.AsNoTracking().AnyAsync(u => u.Id == id, ct);
 
+    public async Task<bool> AssignTravelPolicyToUserAsync(
+        string id,
+        string travelPolicyId,
+        CancellationToken ct = default)
+    {
+        // read policy name only
+        var policy = await _db.TravelPolicies
+            .AsNoTracking()
+            .Where(p => p.Id == travelPolicyId)
+            .Select(p => new { p.Id, p.PolicyName })
+            .SingleOrDefaultAsync(ct);
+        if (policy is null) return false;
+
+        // user (tracked)
+        var usr = await _db.AvaUsers.FindAsync([id], ct);
+        if (usr is null) return false;
+
+        // 1) update AvaUser (force write)
+        usr.TravelPolicyId = travelPolicyId;
+        _db.Entry(usr).Property(x => x.TravelPolicyId).IsModified = true;
+        await _db.SaveChangesAsync(ct);
+
+        // 2) update SysPref only if it exists (force write)
+        if (!string.IsNullOrWhiteSpace(usr.AvaUserSysPreferenceId))
+        {
+            var usp = await _db.AvaUserSysPreferences.FindAsync([usr.AvaUserSysPreferenceId!], ct);
+            if (usp is not null)
+            {
+                usp.TravelPolicyId   = policy.Id;
+                usp.TravelPolicyName = policy.PolicyName;
+
+                _db.Entry(usp).Property(x => x.TravelPolicyId).IsModified   = true;
+                _db.Entry(usp).Property(x => x.TravelPolicyName).IsModified = true;
+
+                await _db.SaveChangesAsync(ct);
+            }
+        }
+
+        return true;
+    }
+
+
+
+
+
     public async Task<int> IngestUsersAsync(CancellationToken ct = default)
     {
         // 1) Find Identity users that don't have an AvaUser profile yet
         var missing = await (from u in _db.Users.AsNoTracking() // AspNetUsers via Identity
-                             join au in _db.AvaUsers.AsNoTracking()
-                                 on u.Id equals au.AspNetUsersId into aug
-                             from au in aug.DefaultIfEmpty()
-                             where au == null
-                             select new
-                             {
-                                 u.Id,
-                                 u.Email,
-                                 u.UserName,
-                                 // If you store human name in Identity:
-                                 u.DisplayName
-                             })
-                            .ToListAsync(ct);
+                                join au in _db.AvaUsers.AsNoTracking()
+                                    on u.Id equals au.AspNetUsersId into aug
+                                from au in aug.DefaultIfEmpty()
+                                where au == null
+                                select new
+                                {
+                                    u.Id,
+                                    u.Email,
+                                    u.UserName,
+                                    // If you store human name in Identity:
+                                    u.DisplayName,
+                                    u.FirstName,
+                                    u.LastName,
+                                })
+                                .ToListAsync(ct);
 
         if (missing.Count == 0) return 0;
 
@@ -133,15 +181,16 @@ public sealed class AvaUserService : IAvaUserService
         {
             foreach (var m in missing)
             {
+                
                 var (first, last) = SplitDisplayName(m.DisplayName);
-
                 _db.AvaUsers.Add(new AvaUser
                 {
                     // NOTE: set Id if your AvaUser key isn't DB-generated
                     AspNetUsersId = m.Id,
                     Email = m.Email ?? m.UserName ?? string.Empty,
-                    FirstName = first,
-                    LastName = last
+                    FirstName = m.FirstName ?? first,
+                    LastName = m.LastName ?? last,
+                    OriginLocationCode = "SYD"
                 });
             }
 
@@ -153,7 +202,16 @@ public sealed class AvaUserService : IAvaUserService
         }
 
     }
-    
+
+    public async Task<bool> AssignAvaClientToUserAsync(string id, string clientId, CancellationToken ct = default)
+    {
+        var usr = await _db.AvaUsers.FindAsync([id], ct);
+        if (usr == null) return false;
+
+        usr.AvaClientId = clientId;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
     private static (string First, string Last) SplitDisplayName(string? display)
     {
         if (string.IsNullOrWhiteSpace(display)) return (string.Empty, string.Empty);

@@ -104,6 +104,13 @@ public sealed class AvaClientService : IAvaClientService
             .ToListAsync(ct);
     }
 
+    public async Task<string> GetDefaultTravelPolicyIdAsync(string id, CancellationToken ct = default)
+        => (await _db.AvaClients
+            .AsNoTracking()
+            .Where(c => c.Id == id)
+            .Select(c => c.DefaultTravelPolicyId ?? string.Empty)
+            .FirstOrDefaultAsync(ct)) ?? string.Empty;
+
 
     // UPDATE (replace whole object)
     public async Task<AvaClient> UpdateAsync(AvaClient client, CancellationToken ct = default)

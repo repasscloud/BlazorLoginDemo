@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using BlazorLoginDemo.Shared.Models.Kernel.Client;
 using BlazorLoginDemo.Shared.Validation;
 using Microsoft.EntityFrameworkCore;
 using NanoidDotNet;
@@ -63,6 +62,9 @@ public class AvaUser
     public string DefaultCurrencyCode { get; set; } = "AUD";
     public int MaxFlightPrice { get; set; } = 0;
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ExpensePolicyId { get; set; }
+
     // travel policy - if this is not provided, it will find out if one should exist from
     // the AvaClientId (if provided) else from the email address (if domain exists)
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -81,7 +83,13 @@ public class AvaUser
 
     // this will only be filled in by the API, it's completely optional for the user to provide etc
     public string? ClientId { get; set; }
-    
+
+    // FK
+    public string? AvaUserSysPreferenceId { get; set; }
+
     // navigation for refresh tokens
     public List<RefreshToken> RefreshTokens { get; set; } = new();
+    
+    // multiple airline memberships per user
+    public ICollection<AvaUserLoyaltyAccount> LoyaltyAccounts { get; set; } = new List<AvaUserLoyaltyAccount>();
 }

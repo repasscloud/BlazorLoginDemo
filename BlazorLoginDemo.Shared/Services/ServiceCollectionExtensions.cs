@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAvaClientService, AvaClientService>();
         services.AddScoped<IAvaClientLicenseService, AvaClientLicenseService>();
         services.AddScoped<ILicenseAgreementService, LicenseAgreementService>();
+        services.AddScoped<IAvaUserSysPreferenceService, AvaUserSysPreferenceService>();
         return services;
     }
 

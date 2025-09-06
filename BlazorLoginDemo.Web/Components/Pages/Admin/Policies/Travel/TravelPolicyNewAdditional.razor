@@ -1,18 +1,18 @@
-@page "/admin/policies/travel/{TravelPolicyId}"
+@page "/admin/policies/travel/{ClientId?}/new/additional"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = BlazorLoginDemo.Shared.Auth.AppPolicies.GlobalPolicy.CanEditPolicies)]
 
+@using System.Globalization;
 @using BlazorLoginDemo.Shared.Models.Policies
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager Nav
 @inject BlazorLoginDemo.Shared.Services.Interfaces.Client.IAvaClientService AvaClientService
 @inject BlazorLoginDemo.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
-@inject IJSRuntime JS
 
-<h1 class="display-6 mb-3">Travel Policy</h1>
+<h1 class="display-6 mb-3">New Travel Policy</h1>
 
-@if (loadError is not null)
+@if (!string.IsNullOrWhiteSpace(loadError))
 {
     <div class="alert alert-danger"><strong>Couldn’t load:</strong> @loadError</div>
 }
@@ -48,17 +48,7 @@
                 <!-- Policy ID (read-only) -->
                 <div class="col-md-4">
                     <label class="form-label">Policy ID</label>
-                    <div class="input-group">
-                        <input class="form-control" value="@Model.Id" readonly />
-                        <button type="button" class="btn btn-outline-secondary"
-                                @onclick="CopyIdAsync" disabled="@(Model is null)">
-                            <i class="bi bi-copy"></i>
-                            <span class="visually-hidden">copy-id</span>
-                        </button>
-                    </div>
-                    
-                    
-                    
+                    <input class="form-control" value="@Model.Id" readonly />
                     @* 
                     <div class="form-text">Auto-generated NanoID (read-only).</div>
                     *@
@@ -277,17 +267,16 @@
     </div>
     <div class="d-flex gap-2 mt-4">
         <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check2-circle me-1"></i> Update Policy
+            <i class="bi bi-check2-circle me-1"></i> Save Policy
         </button>
         <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">
-            <i class="bi bi-x-circle me-1"></i> Cancel
+        Cancel
         </button>
     </div>
 </EditForm>
 
 @code {
-    [Parameter] public string TravelPolicyId { get; set; } = string.Empty;
-    private string? _returnPath;
+    [Parameter] public string? ClientId { get; set; }
 
     private bool _busy = true;
 
@@ -344,17 +333,6 @@
         ("NZD", "🇳🇿")
     ];
 
-    protected override void OnInitialized()
-    {
-        var uri = new Uri(Nav.Uri);
-        var queryParams = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
-
-        if (queryParams.TryGetValue("returnPath", out var rp))
-        {
-            _returnPath = rp.ToString();
-        }
-    }
-
     protected override async Task OnParametersSetAsync()
     {
         _busy = true;
@@ -362,23 +340,27 @@
         {
             await LoadOptionSourcesAsync();
 
-            if (!string.IsNullOrWhiteSpace(TravelPolicyId))
+            if (!string.IsNullOrWhiteSpace(ClientId))
             {
-                var travelPolicy = await TravelPolicyService.GetByIdAsync(TravelPolicyId);
+                var clientName = await AvaClientService.GetClientNameOnlyAsync(ClientId);
 
-                if (travelPolicy is null)
+                if (string.IsNullOrWhiteSpace(clientName))
                 {
                     Nav.NavigateTo("/admin/clients");
                     return;
                 }
-
-                Model = travelPolicy;
-
+                var defaultCurrencyCode = await AvaClientService.GetClientDefaultCurrencyAsync(ClientId);
+                if (string.IsNullOrWhiteSpace(defaultCurrencyCode))
+                {
+                    Nav.NavigateTo("/admin/clients");
+                    return;
+                }
+                Model = CreateTravelPolicy(ClientId, clientName, defaultCurrencyCode);
                 MapModelCollectionsToSelections();
             }
             else
             {
-                Nav.NavigateTo("/admin/clients");
+                Nav.NavigateTo($"/admin/policies/travel/{ClientId}/list");
                 return;
             }
         }
@@ -447,34 +429,26 @@
     private async Task SaveAsync()
     {
         successMessage = string.Empty;
+        loadError = null;
 
         MapSelectionsToModelCollections();
 
         try
         {
-            var result = await TravelPolicyService.UpdateAsync(Model);
-            
-            if (result is not null)
-            {
-                successMessage = "Travel Policy saved.";
-                StateHasChanged();
+            var clientOrWhateverThisReturns = await AvaClientService.GetByIdAsync(Model.AvaClientId);
 
-                if (!string.IsNullOrWhiteSpace(_returnPath))
-                {
-                    Nav.NavigateTo(_returnPath, forceLoad: true);
-                    return;
-                }
-                else
-                {
-                    Nav.NavigateTo($"/admin/clients/{Model.AvaClientId}", forceLoad: true);
-                    return;
-                }
-            }
-            else
-            {
-                loadError = $"Policy failed to save.";
-            }
-            
+            // If nothing returned OR DefaultTravelPolicyId is blank → create default, else normal create
+            var created = (clientOrWhateverThisReturns is null ||
+                        string.IsNullOrWhiteSpace(clientOrWhateverThisReturns.DefaultTravelPolicyId))
+                ? await TravelPolicyService.CreateDefaultAsync(Model)
+                : await TravelPolicyService.CreateAsync(Model);
+
+            if (created is null)
+                throw new InvalidOperationException("Policy failed to save.");
+
+            successMessage = "Travel Policy saved.";
+            await Task.Delay(1);
+            Nav.NavigateTo($"/admin/policies/travel/{ClientId}/list", forceLoad: true);
         }
         catch (Exception ex)
         {
@@ -482,19 +456,8 @@
         }
     }
 
-    private void Cancel()
-    {
-        if (!string.IsNullOrWhiteSpace(_returnPath))
-        {
-            Nav.NavigateTo(_returnPath, forceLoad: true);
-            return;
-        }
-        else
-        {
-            Nav.NavigateTo($"/admin/clients/{Model.AvaClientId}", forceLoad: true);
-            return;
-        }
-    }
+
+    private void Cancel() => Nav.NavigateTo($"/admin/policies/travel/{ClientId}/list");
 
     private void UppercaseCurrency(ChangeEventArgs e)
     {
@@ -525,26 +488,16 @@
         Id = Nanoid.Generate(
             alphabet: NanoidDotNet.Nanoid.Alphabets.LettersAndDigits.ToUpper(),
             size: 14),
-        PolicyName = $"{clientName} Corporate Default Travel Policy",
+        PolicyName = $"{clientName} Travel Policy {DateTime.UtcNow.ToString("yyyy-MM-dd HHmmss", CultureInfo.InvariantCulture)}",
         AvaClientId = clientId,
         DefaultCurrencyCode = defaultCurrency,
         MaxFlightPrice = 100m,
         DefaultFlightSeating = "ECONOMY",
-        MaxFlightSeating = "BUSINESS",
+        MaxFlightSeating = "ECONOMY",
         CabinClassCoverage = "MOST_SEGMENTS",
         NonStopFlight = false,
         EnableSaturdayFlightBookings = false,
         EnableSundayFlightBookings = true,
         DefaultCalendarDaysInAdvanceForFlightBooking = 7
     };
-
-    private async Task CopyIdAsync()
-    {
-        if (Model.Id is { Length: > 0 } id)
-        {
-            // Works in HTTPS (or localhost). Requires a user click (which you have).
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", id);
-            // to show a toast/alert here later
-        }
-    }
 }

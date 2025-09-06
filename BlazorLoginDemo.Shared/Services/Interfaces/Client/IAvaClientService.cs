@@ -10,6 +10,7 @@ public interface IAvaClientService
     Task<IReadOnlyList<AvaClient>> GetAllAsync(CancellationToken ct = default);
     Task<IReadOnlyList<AvaClient>> SearchClientAsync(string query, int take = 50, CancellationToken ct = default);
     Task<IReadOnlyList<AvaClient>> SearchClientByPageAsync(string query, int page = 0, int take = 50, CancellationToken ct = default);
+    Task<string> GetDefaultTravelPolicyIdAsync(string id, CancellationToken ct = default);
 
     // UPDATE (replace the whole object)
     Task<AvaClient> UpdateAsync(AvaClient client, CancellationToken ct = default);

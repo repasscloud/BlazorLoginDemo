@@ -3,36 +3,47 @@
 
 @inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
 
-<PageTitle>Manual User Resync</PageTitle>
+<PageTitle>[Admin] Data Resync</PageTitle>
 
-<div class="container py-4">
-    <h1>Manual User Resync</h1>
-    <p>
-        This page enables you to initiate a manual ingest of users into <code>AvaUsers</code>.
-        It will capture any accounts that have been created but not automatically synchronized.
-        Use this function to ensure all user records are fully up to date.
-    </p>
+<h1 class="display-6 mb-3">Manual Data Resync</h1>
 
-    <div class="mb-3">
-        <button class="btn btn-primary" @onclick="StartIngest" disabled="@_busy">
-            <i class="bi bi-person-down me-1"></i> @(_busy ? "Ingesting…" : "Start Ingest")
-        </button>
+<div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+    <div class="col">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">Resync Users</h5>
+                <p class="card-text">Syncs all users from the default table.</p>
+                <button class="btn btn-primary" @onclick="StartIngest" disabled="@_busy">
+                    <i class="bi bi-person-down me-1"></i> @(_busy ? "Ingesting…" : "Start Ingest")
+                </button>
+            </div>
+        </div>
     </div>
-
-    @if (_busy)
-    {
-        <div class="alert alert-info">
-            Ingest in progress… please wait.
+    <!-- Copy & paste this block for each new sync type -->
+    <div class="col">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">Resync Clients</h5>
+                <p class="card-text">Syncs client data into application tables.</p>
+                <button class="btn btn-primary">Run Sync</button>
+            </div>
         </div>
-    }
-
-    @if (_finished)
-    {
-        <div class="alert alert-success">
-            @_resultsCount results were ingested.
-        </div>
-    }
+    </div>
 </div>
+
+@if (_busy)
+{
+    <div class="alert alert-info">
+        Ingest in progress… please wait.
+    </div>
+}
+
+@if (_finished)
+{
+    <div class="alert alert-success">
+        @_resultsCount results were ingested.
+    </div>
+}
 
 @code {
     private bool _busy;

@@ -1,0 +1,458 @@
+@page "/admin/avausers/{AvaUserId?}/usersyspreference"
+@rendermode InteractiveServer
+
+@using System.Text.RegularExpressions
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using NanoidDotNet
+@using BlazorLoginDemo.Shared.Models.Kernel.User
+@using BlazorLoginDemo.Shared.Models.Static
+
+@inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserSysPreferenceService AvaUserSysPreferenceService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
+@inject BlazorLoginDemo.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>User System Preference</PageTitle>
+
+<h1 class="display-6 mb-3">User System Preference</h1>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger" role="alert">@_error</div>
+}
+
+<EditForm Model="_model" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="mb-3" />
+
+    <!-- Identity -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label class="form-label">User System Preference ID</label>
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.Id" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.Id)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Ava User ID</label>
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.AvaUserId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.AvaUserId)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">AspNetUsers ID</label>
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.AspNetUsersId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.AspNetUsersId)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+        </div>
+        @* <div class="col-md-1 d-flex align-items-end justify-content-center">
+            <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
+                @(_model.IsActive ? "Active" : "Inactive")
+            </span>
+        </div> *@
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label class="form-label">First Name</label>
+            <InputText class="form-control bg-light" @bind-Value="_model.FirstName" readonly />
+            <ValidationMessage For="@(() => _model.FirstName)" />
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Middle Name</label>
+            <InputText class="form-control bg-light" @bind-Value="_model.MiddleName" readonly />
+            <ValidationMessage For="@(() => _model.MiddleName)" />
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Last name</label>
+            <InputText class="form-control bg-light" @bind-Value="_model.LastName" readonly />
+            <ValidationMessage For="@(() => _model.LastName)" />
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Date of birth</label>
+            <InputDate class="form-control" @bind-Value="_model.DateOfBirth" />
+            <ValidationMessage For="@(() => _model.DateOfBirth)" />
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Gender</label>
+            <InputSelect class="form-select" @bind-Value="_model.Gender">
+                @foreach (var g in Enum.GetValues<GenderType>())
+                {
+                    <option value="@g">@g</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => _model.Gender)" />
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label class="form-label">Passport Country of Issue</label>
+            <InputSelect class="form-select" @bind-Value="_model.CountryOfIssue">
+                @foreach (var c in Enum.GetValues<PassportCountry>())
+                {
+                    <option value="@c">@c</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => _model.CountryOfIssue)" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Passport Expiry</label>
+            <InputDate class="form-control" @bind-Value="_model.PassportExpirationDate" />
+            <ValidationMessage For="@(() => _model.PassportExpirationDate)" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Home Airport (IATA)</label>
+            <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.OriginLocationCode" readonly />
+            <ValidationMessage For="@(() => _model.OriginLocationCode)" />
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label class="form-label">Default Cabin</label>
+            <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultFlightSeating" readonly />
+            <ValidationMessage For="@(() => _model.DefaultFlightSeating)" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Max Cabin</label>
+            <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.MaxFlightSeating" readonly />
+            <ValidationMessage For="@(() => _model.MaxFlightSeating)" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Max Flight Price</label>
+            <InputNumber class="form-control bg-light" @bind-Value="_model.MaxFlightPrice" readonly />
+            <ValidationMessage For="@(() => _model.MaxFlightPrice)" />
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check form-switch">
+                <InputCheckbox class="form-check-input bg-light" @bind-Value="_model.NonStopFlight" disabled />
+                <label class="form-check-label ms-2">Non-Stop only</label>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Include airline codes</label>
+            <InputText class="form-control bg-light" @bind-Value="IncludedCsv" readonly />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Exclude airline codes</label>
+            <InputText class="form-control bg-light" @bind-Value="ExcludedCsv" readonly />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Currency (ISO 4217)</label>
+            <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultCurrencyCode" @oninput="UppercaseCurrency" readonly />
+            <ValidationMessage For="@(() => _model.DefaultCurrencyCode)" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Max flight price</label>
+            <InputNumber class="form-control bg-light" @bind-Value="_model.MaxFlightPrice" readonly />
+            <ValidationMessage For="@(() => _model.MaxFlightPrice)" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Search max results</label>
+            <InputNumber class="form-control" @bind-Value="_model.MaxResults" />
+            <ValidationMessage For="@(() => _model.MaxResults)" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Booking Lead Days</label>
+            <InputNumber class="form-control bg-light" @bind-Value="_model.DefaultCalendarDaysInAdvanceForFlightBooking" readonly />
+            <ValidationMessage For="@(() => _model.DefaultCalendarDaysInAdvanceForFlightBooking)" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Bookable from (HH:mm)</label>
+            <InputText type="time"
+                class="form-control"
+                step="60"
+                @bind-Value="_model.FlightBookingTimeAvailableFrom"
+                readonly="@_IsBookingTimeFromReadonly" />
+            <ValidationMessage For="@(() => _model.FlightBookingTimeAvailableFrom)" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Bookable to (HH:mm)</label>
+            <InputText type="time"
+                class="form-control"
+                step="60"
+                @bind-Value="_model.FlightBookingTimeAvailableTo"
+                readonly="@_IsBookingTimeToReadonly" />
+            <ValidationMessage For="@(() => _model.FlightBookingTimeAvailableTo)" />
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check form-switch">
+                <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSaturdayFlightBookings" disabled />
+                <label class="form-check-label ms-2">Allow Sunday bookings</label>
+            </div>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check form-switch">
+                <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSundayFlightBookings" disabled />
+                <label class="form-check-label ms-2">Allow Sunday bookings</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label class="form-label">Travel Policy Name</label>
+            <InputText class="form-control bg-light" @bind-Value="_model.TravelPolicyName" readonly />
+            <ValidationMessage For="@(() => _model.TravelPolicyName)" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Travel Policy ID</label>
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.TravelPolicyId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.TravelPolicyId)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+            <ValidationMessage For="@(() => _model.TravelPolicyId)" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Expense Policy Name</label>
+            <InputText class="form-control bg-light" @bind-Value="_model.ExpensePolicyName" readonly />
+            <ValidationMessage For="@(() => _model.ExpensePolicyName)" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Expense Policy ID</label>
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.ExpensePolicyId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.ExpensePolicyId)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+            <ValidationMessage For="@(() => _model.ExpensePolicyId)" />
+        </div>
+    </div> 
+
+    <!-- Bottom actions -->
+    <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-primary" disabled="@_busy">
+            <i class="bi bi-check2-circle me-1"></i> Update Settings
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="@_busy">
+            <i class="bi bi-x-circle me-1"></i> Cancel
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public string? AvaUserId { get; set; }
+
+    private AvaUserSysPreference _model = new AvaUserSysPreference
+    {
+        AspNetUsersId = Nanoid.Generate(),
+        Email = "test@test.com",
+        FirstName = string.Empty,
+        LastName = string.Empty,
+        DateOfBirth = new DateOnly(1900, 1, 1),
+        Gender = BlazorLoginDemo.Shared.Models.Static.GenderType.Unspecified,
+        CountryOfIssue = BlazorLoginDemo.Shared.Models.Static.PassportCountry.AUS,
+        PassportExpirationDate = new DateOnly(1900, 1, 1),
+        DefaultFlightSeating = "ECONOMY",
+        MaxFlightSeating = "ECONOMY",
+        CabinClassCoverage = "MOST_SEGMENTS",
+        DefaultCurrencyCode = "AUD",
+        AvaUserId = string.Empty
+    };
+
+    private bool _isNew;
+    private bool _busy;
+    private string _status = "Ready";
+    private string _lastSaved = "—";
+    private string? _error;
+    private bool _IsBookingTimeFromReadonly = false;
+    private bool _IsBookingTimeToReadonly = false;
+
+    private readonly string[] _cabins = new[] { "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST" };
+    private readonly string[] _coverage = new[] { "MOST_SEGMENTS", "ALL_SEGMENTS" };
+
+    // CSV wrappers <-> string[] on the model
+    private string IncludedCsv
+    {
+        get => string.Join(",", _model.IncludedAirlineCodes ?? Array.Empty<string>());
+        set => _model.IncludedAirlineCodes = ParseCsv(value);
+    }
+    private string ExcludedCsv
+    {
+        get => string.Join(",", _model.ExcludedAirlineCodes ?? Array.Empty<string>());
+        set => _model.ExcludedAirlineCodes = ParseCsv(value);
+    }
+    private static string[] ParseCsv(string? s) =>
+        string.IsNullOrWhiteSpace(s)
+            ? Array.Empty<string>()
+            : s.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+               .Select(x => x.ToUpperInvariant())
+               .Distinct()
+               .ToArray();
+
+    // EXACT LOAD FLOW YOU SPECIFIED
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(AvaUserId))
+        {
+            var found = await AvaUserSysPreferenceService.GetByUserIdAsync(AvaUserId);
+            if (found is not null)
+            {
+                _model = found;
+
+                // set booking time values to read only (independently)
+                if (!string.IsNullOrWhiteSpace(_model.FlightBookingTimeAvailableFrom))
+                {
+                    _IsBookingTimeFromReadonly = true;
+                }
+                if (!string.IsNullOrWhiteSpace(_model.FlightBookingTimeAvailableTo))
+                {
+                    _IsBookingTimeToReadonly = true;
+                }
+
+                _isNew = false;
+                return;
+            }
+            else
+            {
+                // get the data from the user account
+                var usr = await AvaUserService.GetByIdAsync(AvaUserId);
+                if (usr is null)
+                {
+                    Nav.NavigateTo("/");
+                    return;
+                }
+
+                if (usr.TravelPolicyId is null)
+                {
+                    Nav.NavigateTo("/");
+                    return;
+                }
+
+                var travelPolicy = await TravelPolicyService.GetByIdAsync(usr.TravelPolicyId);
+                if (travelPolicy is null)
+                {
+                    Nav.NavigateTo("/");
+                    return;
+                }
+
+                _model.AvaUserId = AvaUserId;
+                _model.AspNetUsersId = usr.AspNetUsersId;
+                _model.IsActive = usr.IsActive;
+                _model.FirstName = usr.FirstName ?? "NULL";
+                _model.MiddleName = usr.MiddleName ?? string.Empty;
+                _model.LastName = usr.LastName ?? "NULL";
+                _model.Email = usr.Email;
+                _model.TravelPolicyName = travelPolicy.PolicyName;
+                _model.TravelPolicyId = usr.TravelPolicyId;
+                _model.ExpensePolicyId = string.Empty;
+                _model.OriginLocationCode = usr.OriginLocationCode;
+                _model.DefaultFlightSeating = travelPolicy.DefaultFlightSeating ?? "ECONOMY";
+                _model.MaxFlightSeating = travelPolicy.MaxFlightSeating ?? "ECONOMY";
+                _model.IncludedAirlineCodes = travelPolicy.IncludedAirlineCodes ?? Array.Empty<string>();
+                _model.ExcludedAirlineCodes = travelPolicy.ExcludedAirlineCodes ?? Array.Empty<string>();
+                _model.CabinClassCoverage = travelPolicy.CabinClassCoverage ?? "MOST_SEGMENTS";
+                _model.NonStopFlight = travelPolicy.NonStopFlight;
+                _model.DefaultCurrencyCode = travelPolicy.DefaultCurrencyCode;
+                _model.MaxFlightPrice = travelPolicy.MaxFlightPrice;
+                _model.MaxResults = 20;
+                _model.FlightBookingTimeAvailableFrom = travelPolicy.FlightBookingTimeAvailableFrom;
+                _model.FlightBookingTimeAvailableTo = travelPolicy.FlightBookingTimeAvailableTo;
+                _model.EnableSaturdayFlightBookings = travelPolicy.EnableSaturdayFlightBookings;
+                _model.EnableSundayFlightBookings = travelPolicy.EnableSundayFlightBookings;
+                _model.DefaultCalendarDaysInAdvanceForFlightBooking = travelPolicy.DefaultCalendarDaysInAdvanceForFlightBooking;
+                _model.AvaClientId = usr.AvaClientId;
+
+                // set booking time values to read only (independently)
+                if (!string.IsNullOrWhiteSpace(_model.FlightBookingTimeAvailableFrom))
+                {
+                    _IsBookingTimeFromReadonly = true;
+                }
+                if (!string.IsNullOrWhiteSpace(_model.FlightBookingTimeAvailableTo))
+                {
+                    _IsBookingTimeToReadonly = true;
+                }
+
+                _isNew = true;
+            }
+        }
+        else
+        {
+            // cannot load page if the value is not provided, send them back to home page - rewrite this later as an error
+            // TODO: create error page here
+            Nav.NavigateTo("/");
+            return;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true; _status = "Saving…";
+        try
+        {
+            if (_isNew)
+                _model = await AvaUserSysPreferenceService.CreateAsync(_model);
+            else
+                _model = await AvaUserSysPreferenceService.UpdateAsync(_model);
+
+            _isNew = false;
+            _status = "Saved";
+            _lastSaved = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        catch
+        {
+            _status = "Save failed";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_isNew) return;
+        _busy = true; _status = "Deleting…";
+        try
+        {
+            var ok = await AvaUserSysPreferenceService.DeleteAsync(_model.Id);
+            _status = ok ? "Deleted" : "Not found";
+            Back();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Back() => Nav.NavigateTo("/");
+
+    private void UppercaseIata(ChangeEventArgs _)
+    {
+        if (!string.IsNullOrEmpty(_model.OriginLocationCode))
+            _model.OriginLocationCode = _model.OriginLocationCode.ToUpperInvariant();
+    }
+    private void UppercaseCurrency(ChangeEventArgs _)
+    {
+        if (!string.IsNullOrEmpty(_model.DefaultCurrencyCode))
+            _model.DefaultCurrencyCode = _model.DefaultCurrencyCode.ToUpperInvariant();
+    }
+
+    private async Task CopyAsync(string? v)
+    {
+        if (string.IsNullOrWhiteSpace(v)) return;
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", v);
+    }
+
+    private void Cancel() => Nav.NavigateTo("/admin/users", forceLoad: true);
+}

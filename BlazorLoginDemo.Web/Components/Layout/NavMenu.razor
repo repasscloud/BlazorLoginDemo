@@ -71,15 +71,15 @@
             <!-- Children -->
             <div class="nav-submenu @(adminUsersOpen ? "show" : null)">
                 <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/avausers/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-people-nav-menu" aria-hidden="true"></span> Users
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
                     <NavLink class="nav-link" href="/admin/avausers/resync" Match="NavLinkMatch.Prefix">
                         <span class="bi bi-person-down-nav-menu" aria-hidden="true"></span> Resync Users
                     </NavLink>
                 </div>
-                @* <div class="nav-subitem">
-                    <NavLink class="nav-link" href="/admin/clients/new" Match="NavLinkMatch.Prefix">
-                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> New
-                    </NavLink>
-                </div> *@
             </div>
         </div>
 
@@ -99,7 +99,7 @@
             <!-- Children -->
             <div class="nav-submenu @(adminPoliciesOpen ? "show" : null)">
                 <div class="nav-subitem">
-                    <NavLink class="nav-link" href="/auth/login" Match="NavLinkMatch.Prefix">
+                    <NavLink class="nav-link" href="/admin/policies/search" Match="NavLinkMatch.Prefix">
                         <span class="bi bi-search-nav-menu" aria-hidden="true"></span> Search
                     </NavLink>
                 </div>
@@ -110,6 +110,56 @@
                 </div>
             </div>
         </div>
+
+
+        <!-- Travel Bookings -->
+        <div class="nav-item px-3">
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminTravelBookingsGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-luggage-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Travel Bookings</span>
+                </span>
+                <span class="caret @(adminTravelBookingsOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+            <!-- Children -->
+            <div class="nav-submenu @(adminTravelBookingsOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/policies/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-airplane-nav-menu" aria-hidden="true"></span> Flights
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-taxi-front-nav-menu" aria-hidden="true"></span> Taxi
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-train-front-nav-menu" aria-hidden="true"></span> Train
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-car-front-nav-menu" aria-hidden="true"></span> Hire Car
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-bus-front-nav-menu" aria-hidden="true"></span> Bus
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-simcard-nav-menu" aria-hidden="true"></span> SIM Service
+                    </NavLink>
+                </div>
+
+            </div>
+        </div>
+
+
 
         <!-- Administration -->
         <div class="nav-item px-3">
@@ -165,6 +215,16 @@
                 </div>
             </div>
         </div>
+
+        <AuthorizeView Policy=@AppPolicies.GlobalPolicy.CanManageUsers>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/admin/avausers/resync" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-arrow-repeat-nav-menu" aria-hidden="true"></span> Resync
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
         <AuthorizeView Policy=@AppPolicies.GlobalPolicy.CanManageUsers>
             <Authorized>
@@ -231,6 +291,8 @@
     private void ToggleAdminKeyGroup() => adminKeyOpen = !adminKeyOpen;
     private bool authOpen; // default: collapsed
     private void ToggleAuthGroup() => authOpen = !authOpen;
+    private bool adminTravelBookingsOpen;
+    private void ToggleAdminTravelBookingsGroup() => adminTravelBookingsOpen = !adminTravelBookingsOpen;
 
     protected override void OnInitialized()
     {
