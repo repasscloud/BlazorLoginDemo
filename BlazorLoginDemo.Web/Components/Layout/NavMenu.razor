@@ -111,6 +111,56 @@
             </div>
         </div>
 
+
+        <!-- Travel Bookings -->
+        <div class="nav-item px-3">
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminTravelBookingsGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-luggage-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Flights</span>
+                </span>
+                <span class="caret @(adminTravelBookingsOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+            <!-- Children -->
+            <div class="nav-submenu @(adminTravelBookingsOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/policies/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-airplan-nav-menu" aria-hidden="true"></span> Flights
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-taxi-front-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-train-front-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-car-front-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-bus-front-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-simcard-front-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+
+            </div>
+        </div>
+
+
+
         <!-- Administration -->
         <div class="nav-item px-3">
             <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
@@ -231,6 +281,8 @@
     private void ToggleAdminKeyGroup() => adminKeyOpen = !adminKeyOpen;
     private bool authOpen; // default: collapsed
     private void ToggleAuthGroup() => authOpen = !authOpen;
+    private void adminTravelBookingsOpen;
+    private void ToggleAdminTravelBookingsGroup() => adminTravelBookingsOpen = !adminTravelBookingsOpen;
 
     protected override void OnInitialized()
     {
