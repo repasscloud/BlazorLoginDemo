@@ -30,17 +30,21 @@
         <div class="col-md-4">
             <label class="form-label">Ava User ID</label>
             <div class="input-group">
-                <InputText class="form-control" @bind-Value="_model.Id" readonly />
+                <InputText class="form-control bg-light" @bind-Value="_model.Id" readonly />
                 <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.Id)">
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
         </div>
 
-        <div class="col-md-5">
+        <div class="col-md-4">
             <label class="form-label">AspNetUsers ID <span class="text-danger">*</span></label>
-            <InputText class="form-control" @bind-Value="_model.AspNetUsersId" readonly />
-            <ValidationMessage For="@(() => _model.AspNetUsersId)" />
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.AspNetUsersId" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy AspNetUsersID" @onclick="() => CopyAsync(_model.AspNetUsersId)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
         </div>
 
         <div class="col-md-3 d-flex align-items-end">
