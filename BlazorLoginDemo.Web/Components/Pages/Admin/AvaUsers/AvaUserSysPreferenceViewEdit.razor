@@ -184,7 +184,7 @@
             <ValidationMessage For="@(() => _model.FlightBookingTimeAvailableFrom)" />
         </div>
 
-        @* <div class="col-md-3">
+        <div class="col-md-3">
             <label class="form-label">Bookable to (HH:mm)</label>
             <InputText type="time"
                 class="form-control"
@@ -199,7 +199,7 @@
                 <label class="form-check-label ms-2">Allow Sunday bookings</label>
             </div>
         </div>
-        <div class="col-md-3 d-flex align-items-end">
+        @* <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
                 <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSundayFlightBookings" disabled />
                 <label class="form-check-label ms-2">Allow Sunday bookings</label>
