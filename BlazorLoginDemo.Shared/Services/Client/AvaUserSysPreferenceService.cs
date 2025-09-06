@@ -41,6 +41,13 @@ public sealed class AvaUserSysPreferenceService : IAvaUserSysPreferenceService
 
         await _db.AvaUserSysPreferences.AddAsync(preference, ct);
         await _db.SaveChangesAsync(ct);
+
+        // update the foreign key on the AvaUser object
+        var usr = await _db.AvaUsers.FirstOrDefaultAsync(x => x.Id == preference.AvaUserId);
+        if (usr is null) return preference;
+        usr.AvaUserSysPreferenceId = preference.Id;
+        await _db.SaveChangesAsync(ct);
+
         return preference;
     }
 
