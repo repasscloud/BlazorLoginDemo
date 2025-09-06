@@ -68,6 +68,10 @@ N="${SUFFIX#$LETTER}"                    # '11'
 # --minor : Y += 1, Z = 0, N = 0
 # --major : X += 1, Y = 0, Z = 0, N = 0
 case "$ACTION" in
+  --web)
+    echo "🔧 Bumping build number (N) only…"
+    N=$((N + 1))
+    ;;
   --build)
     echo "🔧 Bumping build number (N) only…"
     N=$((N + 1))
@@ -97,14 +101,18 @@ gsed -i -E "${LINE_NUMBER}s~(<code>)v[0-9]+\.[0-9]+\.[0-9]+-[abr][0-9]+(</code>)
 echo "✅ Updated version to: v${NEW_VER}"
 
 # # ── 🐳 0) Build only ────────────----------------──────────────────────────────
-# case "$ACTION" in
-#   --build)
-#     echo
-#     echo "🐳 0) Restart Blazor container"
-#     docker compose up -d blazor
-#     exit 0
-#     ;;
-# esac
+case "$ACTION" in
+  --web)
+    c_TIME=$(date +"%Y-%m-%d_%H-%M-%S")
+    git add .
+    git commit -m "$c_TIME"
+    docker compose up -d --build blazor
+    exit 0
+    ;;
+  *)
+    usage
+    ;;
+esac
 
 
 # ── 🐳 0) Stop all docker containers ──────────────────────────────────────────
