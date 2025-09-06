@@ -130,7 +130,7 @@
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultFlightSeating" readonly />
             <ValidationMessage For="@(() => _model.DefaultFlightSeating)" />
         </div>
-        @* <div class="col-md-3">
+        <div class="col-md-3">
             <label class="form-label">Max Cabin</label>
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.MaxFlightSeating" readonly />
             <ValidationMessage For="@(() => _model.MaxFlightSeating)" />
@@ -146,7 +146,7 @@
                 <label class="form-check-label ms-2">Non-Stop only</label>
             </div>
         </div>
-        <div class="col-md-6">
+        @* <div class="col-md-6">
             <label class="form-label">Include airline codes</label>
             <InputText class="form-control bg-light" @bind-Value="IncludedCsv" readonly />
         </div>
