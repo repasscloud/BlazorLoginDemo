@@ -421,4 +421,6 @@
         if (string.IsNullOrWhiteSpace(v)) return;
         await JS.InvokeVoidAsync("navigator.clipboard.writeText", v);
     }
+
+    private void Cancel() => Nav.NavigateTo("/admin/users", forceLoad: true);
 }
