@@ -30,6 +30,15 @@
     <!-- Identity -->
     <div class="row g-3 mb-4">
         <div class="col-md-4">
+            <label class="form-label">User System Preference ID</label>
+            <div class="input-group">
+                <InputText class="form-control bg-light" @bind-Value="_model.Id" readonly />
+                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.Id)">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-4">
             <label class="form-label">Ava User ID</label>
             <div class="input-group">
                 <InputText class="form-control bg-light" @bind-Value="_model.AvaUserId" readonly />
@@ -38,7 +47,6 @@
                 </button>
             </div>
         </div>
-
         <div class="col-md-4">
             <label class="form-label">AspNetUsers ID</label>
             <div class="input-group">
@@ -48,17 +56,6 @@
                 </button>
             </div>
         </div>
-
-        <div class="col-md-4">
-            <label class="form-label">User System Preference ID</label>
-            <div class="input-group">
-                <InputText class="form-control bg-light" @bind-Value="_model.Id" readonly />
-                <button type="button" class="btn btn-outline-secondary" title="Copy ID" @onclick="() => CopyAsync(_model.Id)">
-                    <i class="bi bi-clipboard"></i>
-                </button>
-            </div>
-        </div>
-
         @* <div class="col-md-1 d-flex align-items-end justify-content-center">
             <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
                 @(_model.IsActive ? "Active" : "Inactive")
