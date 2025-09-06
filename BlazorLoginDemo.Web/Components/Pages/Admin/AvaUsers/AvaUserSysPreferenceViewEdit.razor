@@ -321,9 +321,9 @@
                 _model.AvaUserId = AvaUserId;
                 _model.AspNetUsersId = usr.AspNetUsersId;
                 _model.IsActive = usr.IsActive;
-                _model.FirstName = usr.FirsteName;
-                _model.MiddleName = usr.MiddleName ?? string.Emtpy;
-                _model.LastName = usr.LastName ?? string.Empty;
+                _model.FirstName = usr.FirstName ?? "NULL";
+                _model.MiddleName = usr.MiddleName ?? string.Empty;
+                _model.LastName = usr.LastName ?? "NULL";
                 _model.Email = usr.Email;
                 _model.TravelPolicyId = usr.TravelPolicyId;
                 _model.ExpensePolicyId = string.Empty;
