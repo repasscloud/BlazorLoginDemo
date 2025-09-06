@@ -199,15 +199,15 @@
                 <label class="form-check-label ms-2">Allow Sunday bookings</label>
             </div>
         </div>
-        @* <div class="col-md-3 d-flex align-items-end">
+        <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
                 <InputCheckbox class="form-check-input" @bind-Value="_model.EnableSundayFlightBookings" disabled />
                 <label class="form-check-label ms-2">Allow Sunday bookings</label>
             </div>
-        </div> *@
+        </div>
     </div>
 
-    @* <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4">
         <div class="col-md-3">
             <label class="form-label">Travel Policy Name</label>
             <InputText class="form-control bg-light" @bind-Value="_model.TravelPolicyName" readonly />
@@ -238,7 +238,7 @@
             </div>
             <ValidationMessage For="@(() => _model.ExpensePolicyId)" />
         </div>
-    </div> *@
+    </div> 
 
     <!-- Bottom actions -->
     <div class="d-flex gap-2 mb-4">
