@@ -164,12 +164,12 @@
             <InputNumber class="form-control bg-light" @bind-Value="_model.MaxFlightPrice" readonly />
             <ValidationMessage For="@(() => _model.MaxFlightPrice)" />
         </div>
-        @* <div class="col-md-3">
+        <div class="col-md-3">
             <label class="form-label">Search max results</label>
             <InputNumber class="form-control" @bind-Value="_model.MaxResults" />
             <ValidationMessage For="@(() => _model.MaxResults)" />
         </div>
-        <div class="col-md-3">
+        @* <div class="col-md-3">
             <label class="form-label">Booking Lead Days</label>
             <InputNumber class="form-control bg-light" @bind-Value="_model.DefaultCalendarDaysInAdvanceForFlightBooking" readonly />
             <ValidationMessage For="@(() => _model.DefaultCalendarDaysInAdvanceForFlightBooking)" />
