@@ -191,7 +191,7 @@
             <label class="form-label">User System Preferences</label>
             <div class="input-group">
                 <InputText class="form-control" @bind-Value="_model.AvaUserSysPreferenceId" readonly />
-                <button type="button" class="btn btn-outline-secondary" title="Open AvaUserSysPreferenceId" @onclick="() => CopyAsync(_model.AvaUserSysPreferenceId)">
+                <button type="button" class="btn btn-outline-secondary" title="Open AvaUserSysPreferenceId" @onclick="OpenAvaUserSysPreferenceId">
                     <i class="bi bi-person-gear"></i>
                 </button>
             </div>
@@ -554,4 +554,10 @@
         }
     }
 #endregion TravelPolicyPickerModal
+
+    private async Task OpenAvaUserSysPreferenceId()
+    {
+        Nav.NavigateTo($"/admin/avausers/{Id}/usersyspreference");
+        return;
+    }
 }
