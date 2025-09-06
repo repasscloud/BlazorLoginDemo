@@ -51,14 +51,14 @@
             <ValidationMessage For="@(() => _model.AspNetUsersId)" />
         </div>
 
-        @* <div class="col-md-3 d-flex align-items-end justify-content-center">
+        <div class="col-md-3 d-flex align-items-end justify-content-center">
             <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
                 @(_model.IsActive ? "Active" : "Inactive")
             </span>
-        </div> *@
+        </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    @* <div class="row g-3 mb-4">
         <div class="col-md-4">
             <label class="form-label">First Name</label>
             <InputText class="form-control bg-light" @bind-Value="_model.FirstName" readonly />
@@ -143,12 +143,10 @@
         <div class="col-md-6">
             <label class="form-label">Include airline codes</label>
             <InputText class="form-control bg-light" @bind-Value="IncludedCsv" readonly />
-            @* <ValidationMessage For="@(() => _model.AvaUserId)" /> *@
         </div>
         <div class="col-md-6">
             <label class="form-label">Exclude airline codes</label>
             <InputText class="form-control bg-light" @bind-Value="ExcludedCsv" readonly />
-            @* <ValidationMessage For="@(() => _model.AvaUserId)" /> *@
         </div>
         <div class="col-md-3">
             <label class="form-label">Currency (ISO 4217)</label>
@@ -244,7 +242,7 @@
         <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="@_busy">
             <i class="bi bi-x-circle me-1"></i> Cancel
         </button>
-    </div>
+    </div> *@
 
     @* <ValidationDebugger /> *@
 </EditForm>
