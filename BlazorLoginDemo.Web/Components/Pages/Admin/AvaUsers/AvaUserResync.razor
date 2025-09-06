@@ -34,6 +34,111 @@
     }
 </div>
 
+<div class="row row-cols-1 row-cols-md-3 g-3">
+    <div class="col">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">Resync Users</h5>
+                <p class="card-text">Syncs all users from the default table.</p>
+                <button class="btn btn-primary">Run Sync</button>
+            </div>
+        </div>
+    </div>
+    <!-- Copy & paste this block for each new sync type -->
+    <div class="col">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">Resync Clients</h5>
+                <p class="card-text">Syncs client data into application tables.</p>
+                <button class="btn btn-primary">Run Sync</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<ul class="list-group">
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        Resync Users
+        <button class="btn btn-sm btn-outline-primary">Run</button>
+    </li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        Resync Clients
+        <button class="btn btn-sm btn-outline-primary">Run</button>
+    </li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        Resync Accounts
+        <button class="btn btn-sm btn-outline-primary">Run</button>
+    </li>
+</ul>
+
+
+
+<div class="d-grid gap-3 d-md-block">
+    <button class="btn btn-primary btn-lg">Resync Users</button>
+    <button class="btn btn-success btn-lg">Resync Clients</button>
+    <button class="btn btn-warning btn-lg">Resync Accounts</button>
+    <button class="btn btn-danger btn-lg">Resync Transactions</button>
+</div>
+
+
+
+
+<ul class="list-group">
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        Resync Users
+        <button class="btn btn-sm btn-outline-primary">Run</button>
+    </li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        Resync Clients
+        <button class="btn btn-sm btn-outline-primary">Run</button>
+    </li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        Resync Accounts
+        <button class="btn btn-sm btn-outline-primary">Run</button>
+    </li>
+</ul>
+
+
+
+<div class="d-grid gap-3 d-md-block">
+    <button class="btn btn-primary btn-lg">Resync Users</button>
+    <button class="btn btn-success btn-lg">Resync Clients</button>
+    <button class="btn btn-warning btn-lg">Resync Accounts</button>
+    <button class="btn btn-danger btn-lg">Resync Transactions</button>
+</div>
+
+
+
+<div class="d-grid gap-3 d-md-block">
+    <button class="btn btn-primary btn-lg">Resync Users</button>
+    <button class="btn btn-success btn-lg">Resync Clients</button>
+    <button class="btn btn-warning btn-lg">Resync Accounts</button>
+    <button class="btn btn-danger btn-lg">Resync Transactions</button>
+</div>
+
+
+
+<div class="accordion" id="syncAccordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingUsers">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUsers">
+                Resync Users
+            </button>
+        </h2>
+        <div id="collapseUsers" class="accordion-collapse collapse show" data-bs-parent="#syncAccordion">
+            <div class="accordion-body">
+                Syncs all users into the application tables.
+                <button class="btn btn-primary mt-2">Run Sync</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repeat for Clients, Accounts, etc. -->
+</div>
+
+
 @code {
     private bool _busy;
     private bool _finished;
