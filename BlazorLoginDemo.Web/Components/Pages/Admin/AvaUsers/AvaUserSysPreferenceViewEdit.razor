@@ -37,6 +37,7 @@
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
+            <ValidationMessage For="@(() => _model.AvaUserId)" />
         </div>
 
         <div class="col-md-4">
@@ -47,34 +48,33 @@
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
+            <ValidationMessage For="@(() => _model.AspNetUsersId)" />
         </div>
-
-        @* <div class="col-md-3 d-flex align-items-end justify-content-center">
-            <span class="badge @(_model.IsActive ? "bg-success" : "bg-danger")">
-                @(_model.IsActive ? "Active" : "Inactive")
-            </span>
-        </div> *@
     </div>
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <label class="form-label">First Name</label>
             <InputText class="form-control bg-light" @bind-Value="_model.FirstName" readonly />
+            <ValidationMessage For="@(() => _model.FirstName)" />
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Middle Name</label>
             <InputText class="form-control bg-light" @bind-Value="_model.MiddleName" readonly />
+            <ValidationMessage For="@(() => _model.MiddleName)" />
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Last name</label>
             <InputText class="form-control bg-light" @bind-Value="_model.LastName" readonly />
+            <ValidationMessage For="@(() => _model.LastName)" />
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Date of birth</label>
             <InputDate class="form-control" @bind-Value="_model.DateOfBirth" />
+            <ValidationMessage For="@(() => _model.DateOfBirth)" />
         </div>
 
         <div class="col-md-4">
@@ -85,6 +85,7 @@
                     <option value="@g">@g</option>
                 }
             </InputSelect>
+            <ValidationMessage For="@(() => _model.Gender)" />
         </div>
     </div>
 
