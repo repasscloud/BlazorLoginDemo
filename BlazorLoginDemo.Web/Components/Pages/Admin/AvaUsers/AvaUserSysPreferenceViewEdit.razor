@@ -125,7 +125,7 @@
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
+        @* <div class="col-md-3">
             <label class="form-label">Default Cabin</label>
             <InputText class="form-control text-uppercase bg-light" @bind-Value="_model.DefaultFlightSeating" readonly />
             <ValidationMessage For="@(() => _model.DefaultFlightSeating)" />
@@ -139,8 +139,8 @@
             <label class="form-label">Max Flight Price</label>
             <InputNumber class="form-control bg-light" @bind-Value="_model.MaxFlightPrice" readonly />
             <ValidationMessage For="@(() => _model.MaxFlightPrice)" />
-        </div>
-        @* <div class="col-md-3 d-flex align-items-end">
+        </div> *@
+        <div class="col-md-3 d-flex align-items-end">
             <div class="form-check form-switch">
                 <InputCheckbox class="form-check-input bg-light" @bind-Value="_model.NonStopFlight" disabled />
                 <label class="form-check-label ms-2">Non-Stop only</label>
@@ -181,7 +181,7 @@
                 step="60"
                 @bind-Value="_model.FlightBookingTimeAvailableFrom"
                 readonly="@_IsBookingTimeFromReadonly" />
-            <ValidationMessage For="@(() => _model.FlightBookingTimeAvailableFrom)" /> *@
+            <ValidationMessage For="@(() => _model.FlightBookingTimeAvailableFrom)" />
         </div>
 
         <div class="col-md-3">
