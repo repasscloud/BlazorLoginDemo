@@ -6,6 +6,8 @@ using BlazorLoginDemo.Shared.Models.Auth;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 using BlazorLoginDemo.Shared.Models.Kernel.User;
 using BlazorLoginDemo.Shared.Models.Kernel.Transactions;
+using BlazorLoginDemo.Shared.Models.Kernel.Travel;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -23,6 +25,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // Auth / Tokens
     // ---------------------------
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AmadeusOAuthToken> AmadeusOAuthTokens => Set<AmadeusOAuthToken>();
 
     // ---------------------------
     // Ava (Users, Clients, Licensing)
@@ -97,6 +100,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
              .WithMany(u => u.RefreshTokens)
              .HasForeignKey(x => x.AvaUserId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AmadeusOAuthToken>(t =>
+        {
+            t.ToTable("amadeus_oauth_tokens", "amadeus");
+            t.HasKey(x => x.Id);
         });
 
         // ===========================

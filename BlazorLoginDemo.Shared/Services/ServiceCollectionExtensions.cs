@@ -1,6 +1,8 @@
 using BlazorLoginDemo.Shared.Services.Client;
+using BlazorLoginDemo.Shared.Services.External;
 using BlazorLoginDemo.Shared.Services.Finance;
 using BlazorLoginDemo.Shared.Services.Interfaces.Client;
+using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Finance;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
 using BlazorLoginDemo.Shared.Services.Interfaces.User;
@@ -31,6 +33,13 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddAvaPolicyServices(this IServiceCollection services)
     {
         services.AddScoped<ITravelPolicyService, TravelPolicyService>();
+        return services;
+    }
+
+    // exclusive use by the .api project
+    public static IServiceCollection AddExternalLibService(this IServiceCollection services)
+    {
+        services.AddScoped<IAmadeusAuthService, AmadeusAuthService>();
         return services;
     }
 }

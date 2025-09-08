@@ -1,6 +1,6 @@
 using BlazorLoginDemo.Shared.Models.Static.Travel;
 
-namespace BlazorLoginDemo.Shared.Models.Kernel.Transactions;
+namespace BlazorLoginDemo.Shared.Models.Kernel.Travel;
 
 public sealed class Airline
 {

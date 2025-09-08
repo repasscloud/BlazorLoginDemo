@@ -85,6 +85,42 @@ services:
       # Persist ASP.NET DataProtection keys (avoid warnings + keep auth cookies valid across restarts)
       - dataprotection:/home/app/.aspnet/DataProtection-Keys
 
+  api:
+    pull_policy: build    # or: never
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      args:
+        CSPROJ_API: BlazorLoginDemo.Api/BlazorLoginDemo.Api.csproj
+        CSPROJ_SHARED: BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+        APP_DLL: BlazorLoginDemo.Api.dll
+    image: web-api:dev
+    container_name: api
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    environment:
+      - ASPNETCORE_URLS=${ASPNETCORE_URLS}
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=${DOTNET_SYSTEM_GLOBALIZATION_INVARIANT}
+      - ConnectionStrings__DefaultConnection=${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+      - MailerSend__ApiToken=${MAILERSEND__APITOKEN}
+      - MailerSend__FromEmail=${MAILERSEND__FROMEMAIL}
+      - MailerSend__FromName=${MAILERSEND__FROMNAME}
+      - AdminEmail=${ADMINEMAIL}
+      - AdminPassword=${ADMINPASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    # volumes:
+    #   # Persist ASP.NET DataProtection keys (avoid warnings + keep auth cookies valid across restarts)
+    #   - dataprotection:/home/app/.aspnet/DataProtection-Keys
+
   migrator:
     build:
       context: .
