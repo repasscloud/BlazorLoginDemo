@@ -262,14 +262,6 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         }
     }
 
-    private static readonly HashSet<string> AllowedTravelClasses = new()
-    {
-        "ECONOMY",
-        "PREMIUM_ECONOMY",
-        "BUSINESS",
-        "FIRST"
-    };
-
     // private static List<string> SplitCommaSeparatedString(string input)
     // {
     //     if (string.IsNullOrWhiteSpace(input))

@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddExternalLibService(this IServiceCollection services)
     {
         services.AddScoped<IAmadeusAuthService, AmadeusAuthService>();
+        services.AddScoped<IAmadeusFlightSearchService, AmadeusFlightSearchService>();
         return services;
     }
 }

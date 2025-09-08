@@ -8,6 +8,7 @@ using BlazorLoginDemo.Shared.Models.Kernel.User;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.Kernel.SysVar;
+using BlazorLoginDemo.Shared.Models.DTOs;
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -44,6 +45,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<LoyaltyProgram> LoyaltyPrograms => Set<LoyaltyProgram>();
     public DbSet<AvaUserLoyaltyAccount> UserLoyaltyAccounts => Set<AvaUserLoyaltyAccount>();
 
+    // ---------------------------
+    // Amadeus: Internal
+    // ---------------------------
+    public DbSet<FlightOfferSearchRequestDto> FlightOfferSearchRequestDtos => Set<FlightOfferSearchRequestDto>();
+    
     // ---------------------------
     // Finance
     // ---------------------------
@@ -210,6 +216,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(ac => ac.TravelPolicies)
             .HasForeignKey(tp => tp.AvaClientId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ===========================
+        // Amadeus: Internal / External
+        // ===========================
+
+        builder.Entity<FlightOfferSearchRequestDto>(e =>
+        {
+            e.HasKey(x => x.Id);
+        });
 
         // ===========================
         // Travel Policy / Geography

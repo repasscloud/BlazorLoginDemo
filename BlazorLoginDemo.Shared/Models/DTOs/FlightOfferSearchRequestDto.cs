@@ -7,6 +7,7 @@ namespace BlazorLoginDemo.Shared.Models.DTOs;
 
 public class FlightOfferSearchRequestDto
 {
+    [Key]
     [Required]
     [JsonPropertyName("id")]
     public required string Id { get; set; }
@@ -25,7 +26,7 @@ public class FlightOfferSearchRequestDto
 
     [JsonPropertyName("travelPolicyId")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    [RegularExpression(@"^[0-9A-F]{10}$", ErrorMessage = "TravelPolicyId must be exactly 10 uppercase hexadecimal characters (0-9, A-F).")]
+    // [RegularExpression(@"^[0-9A-F]{10}$", ErrorMessage = "TravelPolicyId must be exactly 10 uppercase hexadecimal characters (0-9, A-F).")]
     [DefaultValue(null)]
     public string? TravelPolicyId { get; set; }
 

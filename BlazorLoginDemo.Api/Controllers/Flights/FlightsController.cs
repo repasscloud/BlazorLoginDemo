@@ -1,5 +1,7 @@
 using BlazorLoginDemo.Shared.Data;
+using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
+using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlazorLoginDemo.Api.Controllers.Flights;
@@ -10,10 +12,66 @@ public class FlightsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly IAmadeusAuthService _authService;
+    private readonly IAmadeusFlightSearchService _flightSearchService;
+    private readonly ILoggerService _log;
 
-    public FlightsController(ApplicationDbContext db, IAmadeusAuthService authService)
+    public FlightsController(
+        ApplicationDbContext db,
+        IAmadeusAuthService authService,
+        IAmadeusFlightSearchService flightSearchService,
+        ILoggerService loggerService)
     {
         _db = db;
         _authService = authService;
+        _flightSearchService = flightSearchService;
+        _log = loggerService;
+    }
+
+    // POST: api/v1/flights/search
+    [HttpPost("search")]
+    public async Task<IActionResult> SearchFlights(FlightOfferSearchRequestDto criteria, CancellationToken ct = default)
+    {
+        // add .CreatedAt (controlled excplicity by API)
+        criteria.CreatedAt = DateTime.UtcNow;
+
+        // check that a record doesn't match criteria.Id already, else return error msg
+        var existing = await _db.FlightOfferSearchRequestDtos.FindAsync(criteria.Id);
+
+
+        if (existing is not null)
+        {
+            await _log.LogErrorAsync($"Table 'FlightOfferSearchRequestDto' has matching value for {criteria.Id}");
+            return BadRequest($"A record with Id = {criteria.Id} already exists.");
+        }
+
+        // save it to the db
+        await _log.LogDebugAsync($"Created record 'FlightOfferSearchReqeustDto'  with ID '{criteria.Id}'");
+        await _db.FlightOfferSearchRequestDtos.AddAsync(criteria, ct);
+
+        // TravelSearchRecord travelSearchRecord = new TravelSearchRecord
+        // {
+        //     Id = 0,
+        //     SearchId = criteria.Id,
+        //     TravelType = TravelComponentType.Flight,
+        //     FlightSubComponent = FlightSubComponentType.None,
+        //     HotelSubComponent = HotelSubComponentType.None,
+        //     CarSubComponent = CarSubComponentType.None,
+        //     RailSubComponent = RailSubComponentType.None,
+        //     TransferSubComponent = TransferSubComponentType.None,
+        //     ActivitySubComponent = ActivitySubComponentType.None,
+        //     CreatedAt = DateTime.UtcNow,
+        //     ExpiresAt = DateTime.UtcNow.AddDays(30),
+        //     Payload = string.Empty,
+        // };
+
+        if (criteria.IsOneWay)
+        {
+            var response = await _flightSearchService.GetFlightOffersAsync(criteria);
+            return Ok(response);
+        }
+        else
+        {
+            return Ok();
+        }
     }
 }
