@@ -131,7 +131,7 @@
                 <!-- Nonstop switch -->
                 <div class="col-12">
                     <div class="form-check form-switch">
-                        <InputCheckbox class="form-check-input" id="nonstop" @bind-Value="Model.NonStopFlight" />
+                        <InputCheckbox class="form-check-input" id="nonstop" @bind-Value="EnableNonStopFlightChecked" />
                         <label class="form-check-label" for="nonstop">Require non‑stop flights</label>
                     </div>
                 </div>
@@ -176,11 +176,11 @@
                 </div>
                 <div class="col-12">
                     <div class="form-check form-switch">
-                        <InputCheckbox class="form-check-input" id="sat" @bind-Value="Model.EnableSaturdayFlightBookings" />
+                        <InputCheckbox class="form-check-input" id="sat" @bind-Value="EnableSaturdayFlightBookingsChecked" />
                         <label class="form-check-label" for="sat">Allow Saturday bookings</label>
                     </div>
                     <div class="form-check form-switch">
-                        <InputCheckbox class="form-check-input" id="sun" @bind-Value="Model.EnableSundayFlightBookings" />
+                        <InputCheckbox class="form-check-input" id="sun" @bind-Value="EnableSundayFlightBookingsChecked" />
                         <label class="form-check-label" for="sun">Allow Sunday bookings</label>
                     </div>
                 </div>
@@ -499,4 +499,32 @@
         EnableSundayFlightBookings = true,
         DefaultCalendarDaysInAdvanceForFlightBooking = 7
     };
+
+    private bool EnableSaturdayFlightBookingsChecked
+    {
+        get => Model?.EnableSaturdayFlightBookings ?? false;  // null => false
+        set
+        {
+            if (Model is null) return;
+            Model.EnableSaturdayFlightBookings = value;  // bool -> bool?
+        }
+    }
+    private bool EnableSundayFlightBookingsChecked
+    {
+        get => Model?.EnableSundayFlightBookings ?? false;
+        set
+        {
+            if (Model is null) return;
+            Model.EnableSundayFlightBookings = value;
+        }
+    }
+    private bool EnableNonStopFlightChecked
+    {
+        get => Model?.NonStopFlight ?? false;
+        set
+        {
+            if (Model is null) return;
+            Model.NonStopFlight = value;
+        }
+    }
 }

@@ -1,4 +1,4 @@
-using BlazorLoginDemo.Shared.Models.Kernel.Transactions;
+using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 
 namespace BlazorLoginDemo.Shared.Models.User
 {

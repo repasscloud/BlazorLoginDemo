@@ -5,7 +5,10 @@ using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.Auth;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 using BlazorLoginDemo.Shared.Models.Kernel.User;
-using BlazorLoginDemo.Shared.Models.Kernel.Transactions;
+using BlazorLoginDemo.Shared.Models.Kernel.Travel;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
+using BlazorLoginDemo.Shared.Models.Kernel.SysVar;
+using BlazorLoginDemo.Shared.Models.DTOs;
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -18,11 +21,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupDomain> GroupDomains => Set<GroupDomain>();
+    public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
 
     // ---------------------------
     // Auth / Tokens
     // ---------------------------
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AmadeusOAuthToken> AmadeusOAuthTokens => Set<AmadeusOAuthToken>();
 
     // ---------------------------
     // Ava (Users, Clients, Licensing)
@@ -40,6 +45,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<LoyaltyProgram> LoyaltyPrograms => Set<LoyaltyProgram>();
     public DbSet<AvaUserLoyaltyAccount> UserLoyaltyAccounts => Set<AvaUserLoyaltyAccount>();
 
+    // ---------------------------
+    // Amadeus: Internal
+    // ---------------------------
+    public DbSet<FlightOfferSearchRequestDto> FlightOfferSearchRequestDtos => Set<FlightOfferSearchRequestDto>();
+    
     // ---------------------------
     // Finance
     // ---------------------------
@@ -76,6 +86,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.Domain).IsUnique();
         });
 
+        builder.Entity<AvaSystemLog>(e =>
+        {
+            e.ToTable("ava_system_logs", "avasyslog");
+            e.HasKey(x => x.Id);
+        });
+
         // ===========================
         // Auth / ApplicationUser
         // ===========================
@@ -97,6 +113,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
              .WithMany(u => u.RefreshTokens)
              .HasForeignKey(x => x.AvaUserId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AmadeusOAuthToken>(t =>
+        {
+            t.ToTable("amadeus_oauth_tokens", "amadeus");
+            t.HasKey(x => x.Id);
         });
 
         // ===========================
@@ -194,6 +216,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(ac => ac.TravelPolicies)
             .HasForeignKey(tp => tp.AvaClientId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ===========================
+        // Amadeus: Internal / External
+        // ===========================
+
+        builder.Entity<FlightOfferSearchRequestDto>(e =>
+        {
+            e.HasKey(x => x.Id);
+        });
 
         // ===========================
         // Travel Policy / Geography

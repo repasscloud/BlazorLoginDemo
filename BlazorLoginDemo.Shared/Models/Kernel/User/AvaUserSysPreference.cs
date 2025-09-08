@@ -70,7 +70,7 @@ public class AvaUserSysPreference
     [DefaultValue("MOST_SEGMENTS")]
     public string CabinClassCoverage { get; set; } = "MOST_SEGMENTS";
 
-    public bool NonStopFlight { get; set; } = false;
+    public bool? NonStopFlight { get; set; } = false;
     
     // financial considerations for bookings
     [Required]
@@ -144,10 +144,10 @@ public class AvaUserSysPreference
     // things that come from policy ONLY
     // allow bookings on weekends
     [DefaultValue(false)]
-    public bool EnableSaturdayFlightBookings { get; set; } = false;
+    public bool? EnableSaturdayFlightBookings { get; set; } = false;
 
     [DefaultValue(false)]
-    public bool EnableSundayFlightBookings { get; set; } = false;
+    public bool? EnableSundayFlightBookings { get; set; } = false;
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? DefaultCalendarDaysInAdvanceForFlightBooking { get; set; }

@@ -180,9 +180,14 @@ echo
 echo "🚀 7) Start Blazor app"
 docker compose up -d blazor
 
-# ── 📤 8) Commit & push version bump ──────────────────────────────────────────
+# ── 🚀 8) Start Api app ───────────────────────────────────────────────────
 echo
-echo "📤 8) Commit & push version bump to Git"
+echo "🚀 8) Start Api app"
+docker compose up -d api
+
+# ── 📤 9) Commit & push version bump ──────────────────────────────────────────
+echo
+echo "📤 9) Commit & push version bump to Git"
 git add .
 git commit -m "bump v${NEW_VER}"
 git push

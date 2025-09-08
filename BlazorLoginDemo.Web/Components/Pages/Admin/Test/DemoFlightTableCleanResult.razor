@@ -1,0 +1,281 @@
+@page "/demo/flights-table-clean"
+@rendermode InteractiveServer
+@using System.Globalization
+
+<PageTitle>Flights from SYD — Table View (Demo)</PageTitle>
+
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-table fs-4"></i>
+    <h1 class="h3 m-0">Flights from <strong>SYD</strong> — Table View</h1>
+    <span class="badge text-bg-secondary">Dummy data</span>
+</div>
+
+<div class="table-responsive shadow-sm rounded">
+    <table class="table align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="min-width:180px;">Carrier(s)</th>
+                <th style="min-width:240px;">Route</th>
+                <th style="min-width:110px;">Stops</th>
+                <th style="min-width:110px;">Duration</th>
+                <th class="text-end" style="min-width:140px;">Price</th>
+                <th class="text-end" style="min-width:160px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in Flights)
+            {
+                <tr>
+                    <td>
+                        <span class="badge rounded-pill text-bg-secondary">@string.Join(" + ", f.Carriers)</span>
+                        @if (f.IsSingleCarrier)
+                        {
+                            <span class="badge text-bg-success ms-1 lh-1"><i class="bi bi-check2-circle"></i> Single</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-light ms-1 lh-1">Mixed</span>
+                        }
+                    </td>
+                    <td>
+                        SYD → <strong>@f.Destination</strong>
+                        <div class="small text-muted">@f.Outbound.DepartLocal – @f.Outbound.ArriveLocal (local)</div>
+                    </td>
+                    <td>@((MarkupString)StopsBadge(f.Stops))</td>
+                    <td><i class="bi bi-clock"></i> @f.TotalDuration</td>
+                    <td class="text-end">
+                        <div class="fw-bold">@FormatPrice(f.Price, f.Currency)</div>
+                        <div class="small text-muted">incl. taxes &amp; fees</div>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group">
+                            <button class="btn btn-primary btn-sm">
+                                <i class="bi bi-check2-circle"></i> Select
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#row-details-@f.Id"
+                                    aria-expanded="false"
+                                    aria-controls="row-details-@f.Id">
+                                <i class="bi bi-chevron-down"></i> Details
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Details row -->
+                <tr class="collapse bg-body-secondary" id="row-details-@f.Id">
+                    <td colspan="6" class="p-0">
+                        <div class="p-3">
+                            <div class="row g-3">
+                                <div class="col-12 col-xl-8">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <div class="fw-semibold"><i class="bi bi-airplane"></i> Flight segments</div>
+                                        <span class="ms-2 small text-muted"><i class="bi bi-geo-alt"></i> SYD → @f.Destination</span>
+                                        <span class="small text-muted"><i class="bi bi-clock"></i> Total @f.TotalDuration</span>
+                                    </div>
+
+                                    @foreach (var s in f.Segments)
+                                    {
+                                        <div class="mb-2 p-2 border rounded bg-white">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <div class="fw-semibold">
+                                                        @s.Carrier @s.FlightNo
+                                                        <span class="text-muted">(@s.Cabin)</span>
+                                                    </div>
+                                                    <div class="text-muted small">
+                                                        @s.From → @s.To • @s.DepartLocal – @s.ArriveLocal • @s.Duration
+                                                    </div>
+                                                </div>
+                                                <div class="text-end small">
+                                                    <div><i class="bi bi-cup-hot"></i> @s.Meal</div>
+                                                    <div><i class="bi bi-bag"></i> @s.Baggage</div>
+                                                    @if (s.WiFi) { <div><i class="bi bi-wifi"></i> Wi-Fi</div> }
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 d-flex flex-wrap gap-1">
+                                                @foreach (var inc in s.Inclusions)
+                                                {
+                                                    <span class="badge text-bg-light border lh-1"><i class="@inc.Icon"></i> @inc.Label</span>
+                                                }
+                                                @foreach (var exc in s.Exclusions)
+                                                {
+                                                    <span class="badge text-bg-danger-subtle border border-danger text-danger lh-1"><i class="@exc.Icon"></i> @exc.Label</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        @if (s != f.Segments.Last())
+                                        {
+                                            <div class="d-flex align-items-center text-muted small my-2">
+                                                <i class="bi bi-stopwatch me-1"></i>
+                                                Layover @s.To: @f.LayoverAt(s.To)
+                                                <div class="flex-grow-1 ms-2" style="height:1px; background-color:var(--bs-border-color);"></div>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                                <div class="col-12 col-xl-4">
+                                    <div class="fw-semibold mb-2"><i class="bi bi-list-check"></i> Fare summary</div>
+                                    <div class="border rounded bg-white p-2">
+                                        <div class="fw-bold mb-2">@FormatPrice(f.Price, f.Currency)</div>
+                                        <div class="mb-2">
+                                            <div class="text-uppercase small text-muted mb-1">Overall inclusions</div>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach (var inc in f.Inclusions)
+                                                {
+                                                    <span class="badge text-bg-light border lh-1"><i class="@inc.Icon"></i> @inc.Label</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="text-uppercase small text-muted mb-1">Overall exclusions</div>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach (var exc in f.Exclusions)
+                                                {
+                                                    <span class="badge text-bg-danger-subtle border border-danger text-danger lh-1"><i class="@exc.Icon"></i> @exc.Label</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <hr />
+                                        <button class="btn btn-primary btn-sm w-100">
+                                            <i class="bi bi-check2-circle me-1"></i> Select this flight
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<FlightOption> Flights = new();
+
+    protected override void OnInitialized()
+    {
+        Flights = DemoData();
+    }
+
+    private static string FormatPrice(decimal amount, string currency) => $"{currency} {amount:N0}";
+
+    private string StopsBadge(int s) => s switch
+    {
+        0 => "<span class='badge text-bg-primary lh-1'><i class=\"bi bi-rocket-takeoff\"></i> Nonstop</span>",
+        1 => "<span class='badge text-bg-secondary lh-1'><i class=\"bi bi-geo\"></i> 1 stop</span>",
+        2 => "<span class='badge text-bg-secondary lh-1'><i class=\"bi bi-geo\"></i> 2 stops</span>",
+        _ => "<span class='badge text-bg-secondary lh-1'><i class=\"bi bi-geo\"></i> 3+ stops</span>"
+    };
+
+    // ----------------- Models -----------------
+    private class FlightOption
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
+        public List<string> Carriers { get; set; } = new();
+        public bool IsSingleCarrier => Carriers.Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1;
+        public string Destination { get; set; } = "";
+        public int Stops { get; set; }
+        public string TotalDuration { get; set; } = "";
+        public string Currency { get; set; } = "AUD";
+        public decimal Price { get; set; }
+        public Journey Outbound { get; set; } = new();
+        public List<Segment> Segments { get; set; } = new();
+        public List<Tag> Inclusions { get; set; } = new();
+        public List<Tag> Exclusions { get; set; } = new();
+
+        public string LayoverAt(string airport)
+        {
+            var mins = Math.Abs(airport.GetHashCode()) % 180 + 30; // 30–210
+            var h = mins / 60;
+            var m = mins % 60;
+            return $"{(h > 0 ? $"{h}h " : "")}{m}m";
+        }
+    }
+
+    private class Journey { public string DepartLocal { get; set; } = ""; public string ArriveLocal { get; set; } = ""; }
+    private class Segment
+    {
+        public string Carrier { get; set; } = "";
+        public string FlightNo { get; set; } = "";
+        public string From { get; set; } = "";
+        public string To { get; set; } = "";
+        public string DepartLocal { get; set; } = "";
+        public string ArriveLocal { get; set; } = "";
+        public string Duration { get; set; } = "";
+        public string Cabin { get; set; } = "";
+        public string Meal { get; set; } = "";
+        public string Baggage { get; set; } = "";
+        public bool WiFi { get; set; }
+        public List<Tag> Inclusions { get; set; } = new();
+        public List<Tag> Exclusions { get; set; } = new();
+    }
+    private class Tag { public string Label { get; set; } = ""; public string Icon { get; set; } = "bi bi-check"; }
+
+    // ----------------- Dummy Data -----------------
+    private List<FlightOption> DemoData()
+    {
+        return new List<FlightOption>
+        {
+            new FlightOption
+            {
+                Carriers = new() { "QF" },
+                Destination = "LAX",
+                Stops = 0,
+                TotalDuration = "13h 25m",
+                Currency = "AUD",
+                Price = 1799,
+                Outbound = new Journey { DepartLocal = "09:35", ArriveLocal = "06:00" },
+                Segments = new()
+                {
+                    new Segment
+                    {
+                        Carrier="QF", FlightNo="QF11", From="SYD", To="LAX",
+                        DepartLocal="09:35", ArriveLocal="06:00", Duration="13h 25m",
+                        Cabin="Economy", Meal="Meal", Baggage="23kg", WiFi=true,
+                        Inclusions = new() { new Tag{ Label="Meal", Icon="bi bi-cup-hot" }, new Tag{ Label="Wi-Fi", Icon="bi bi-wifi" } },
+                        Exclusions = new() { new Tag{ Label="No lounge", Icon="bi bi-slash-circle" } }
+                    }
+                },
+                Inclusions = new() { new Tag{ Label="23kg bag", Icon="bi bi-bag" } },
+                Exclusions = new() { new Tag{ Label="No refund", Icon="bi bi-x-octagon" } }
+            },
+            new FlightOption
+            {
+                Carriers = new() { "CX" },
+                Destination = "LHR",
+                Stops = 1,
+                TotalDuration = "24h 30m",
+                Currency = "AUD",
+                Price = 1560,
+                Outbound = new Journey { DepartLocal = "10:20", ArriveLocal = "05:50" },
+                Segments = new()
+                {
+                    new Segment
+                    {
+                        Carrier="CX", FlightNo="CX162", From="SYD", To="HKG",
+                        DepartLocal="10:20", ArriveLocal="17:20", Duration="9h 0m",
+                        Cabin="Economy", Meal="Meal", Baggage="23kg", WiFi=true,
+                        Inclusions = new() { new Tag{ Label="Meal", Icon="bi bi-cup-hot" } },
+                        Exclusions = new() { new Tag{ Label="No changes", Icon="bi bi-x-circle" } }
+                    },
+                    new Segment
+                    {
+                        Carrier="CX", FlightNo="CX251", From="HKG", To="LHR",
+                        DepartLocal="23:35", ArriveLocal="05:50", Duration="13h 15m",
+                        Cabin="Economy", Meal="Meal", Baggage="23kg", WiFi=true,
+                        Inclusions = new() { new Tag{ Label="Meal", Icon="bi bi-cup-hot" }, new Tag{ Label="Wi-Fi", Icon="bi bi-wifi" } },
+                        Exclusions = new() { new Tag{ Label="No lounge", Icon="bi bi-slash-circle" } }
+                    }
+                },
+                Inclusions = new() { new Tag{ Label="Bag included", Icon="bi bi-bag" } },
+                Exclusions = new() { new Tag{ Label="No refund", Icon="bi bi-x-octagon" } }
+            }
+        };
+    }
+}

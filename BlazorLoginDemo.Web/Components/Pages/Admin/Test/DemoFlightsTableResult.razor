@@ -1,0 +1,519 @@
+@page "/demo/flights-table"
+@rendermode InteractiveServer
+@using System.Globalization
+
+<PageTitle>SYD → World — Table View (Demo)</PageTitle>
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-table fs-4"></i>
+    <h1 class="h3 m-0">Flights from <span class="fw-bold">SYD</span> — Table View (Demo)</h1>
+    <span class="badge text-bg-secondary">Dummy data</span>
+    <span class="badge text-bg-success"><i class="bi bi-check-circle"></i> Best value</span>
+</div>
+
+<!-- Header toolbar (visual only) -->
+<div class="row g-2 align-items-center mb-3">
+    <div class="col-12 col-lg-7">
+        <div class="d-flex flex-wrap gap-2">
+            <div class="btn-group" role="group" aria-label="Stops filters">
+                <button class="btn btn-outline-primary btn-sm @(ActiveGroup==0?"active":"")" @onclick="() => ActiveGroup = 0">
+                    <i class="bi bi-rocket-takeoff"></i> Nonstop
+                    <span class="badge text-bg-light ms-1">@CountInGroup(0)</span>
+                </button>
+                <button class="btn btn-outline-primary btn-sm @(ActiveGroup==1?"active":"")" @onclick="() => ActiveGroup = 1">
+                    1 Stop <span class="badge text-bg-light ms-1">@CountInGroup(1)</span>
+                </button>
+                <button class="btn btn-outline-primary btn-sm @(ActiveGroup==2?"active":"")" @onclick="() => ActiveGroup = 2">
+                    2 Stops <span class="badge text-bg-light ms-1">@CountInGroup(2)</span>
+                </button>
+                <button class="btn btn-outline-primary btn-sm @(ActiveGroup==3?"active":"")" @onclick="() => ActiveGroup = 3">
+                    3+ Stops <span class="badge text-bg-light ms-1">@CountInGroup(3)</span>
+                </button>
+            </div>
+
+            <span class="vr mx-1 d-none d-md-inline"></span>
+
+<span class="badge text-bg-success">
+  <i class="bi bi-check-circle align-text-top"></i> Best value
+</span>
+
+<span class="badge text-bg-warning">
+  <i class="bi bi-award align-text-top"></i> Premium cabin
+</span>
+
+<span class="badge text-bg-info">
+  <i class="bi bi-bag align-text-top"></i> Bag included
+</span>
+
+<span class="badge text-bg-dark">
+  <i class="bi bi-wifi align-text-top"></i> Wi-Fi
+</span>
+
+        </div>
+    </div>
+    <div class="col-12 col-lg-5 text-lg-end">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Sort (visual only)">
+            <button class="btn btn-outline-secondary"><i class="bi bi-currency-dollar"></i> Price</button>
+            <button class="btn btn-outline-secondary"><i class="bi bi-clock"></i> Duration</button>
+            <button class="btn btn-outline-secondary"><i class="bi bi-geo-alt"></i> Stops</button>
+        </div>
+    </div>
+</div>
+
+<!-- TABLE VIEW (dedicated) -->
+<div class="table-responsive shadow-sm rounded">
+    <table class="table align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="min-width:180px;">Carrier(s)</th>
+                <th style="min-width:220px;">Route</th>
+                <th>Stops</th>
+                <th>Duration</th>
+                <th style="min-width:260px;">Inclusions</th>
+                <th style="min-width:260px;">Exclusions</th>
+                <th class="text-end" style="min-width:120px;">Price</th>
+                <th class="text-end" style="min-width:120px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in ActiveFlights)
+            {
+                <tr>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <div>
+                                <span class="badge rounded-pill text-bg-secondary">@string.Join(" + ", f.Carriers)</span>
+                                @if (f.IsSingleCarrier)
+                                {
+                                    <span class="badge text-bg-success ms-1"><i class="bi bi-check2-circle"></i> Single</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-light ms-1">Mixed</span>
+                                }
+                            </div>
+                            <div class="small text-muted mt-1">
+                                @if (f.Badges.Contains("Best value"))
+                                {
+                                    <span class="badge text-bg-success-subtle border border-success text-success me-1"><i class="bi bi-check-circle"></i> Best value</span>
+                                }
+                                @if (f.Badges.Contains("Premium"))
+                                {
+                                    <span class="badge text-bg-warning-subtle border border-warning text-warning"><i class="bi bi-award"></i> Premium</span>
+                                }
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        SYD → <strong>@f.Destination</strong>
+                        <div class="small text-muted">@f.Outbound.DepartLocal – @f.Outbound.ArriveLocal (local)</div>
+                    </td>
+                    <td>@((MarkupString)StopsBadge(f.Stops))</td>
+                    <td><i class="bi bi-clock"></i> @f.TotalDuration</td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var inc in f.Inclusions.Take(4))
+                            {
+                                <span class="badge text-bg-light border"><i class="@inc.Icon"></i> @inc.Label</span>
+                            }
+                            @if (f.Inclusions.Count > 4)
+                            {
+                                <span class="badge text-bg-light border">+@((f.Inclusions.Count - 4)) more</span>
+                            }
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var exc in f.Exclusions.Take(4))
+                            {
+                                <span class="badge text-bg-danger-subtle border border-danger text-danger"><i class="@exc.Icon"></i> @exc.Label</span>
+                            }
+                            @if (f.Exclusions.Count > 4)
+                            {
+                                <span class="badge text-bg-danger-subtle border border-danger text-danger">+@((f.Exclusions.Count - 4)) more</span>
+                            }
+                        </div>
+                    </td>
+                    <td class="text-end">
+                        <div class="fw-bold">@FormatPrice(f.Price, f.Currency)</div>
+                        <div class="small text-muted">incl. taxes & fees*</div>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group">
+                            <button class="btn btn-primary btn-sm">
+                                <i class="bi bi-check2-circle"></i> Select
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#row-details-@f.Id"
+                                    aria-expanded="false"
+                                    aria-controls="row-details-@f.Id">
+                                <i class="bi bi-chevron-down"></i> Details
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="collapse bg-body-secondary" id="row-details-@f.Id">
+                    <td colspan="8" class="p-0">
+                        <div class="p-3">
+                            <div class="row g-3">
+                                <div class="col-12 col-xl-8">
+                                    <div class="fw-semibold mb-2"><i class="bi bi-airplane"></i> Flight segments</div>
+                                    @foreach (var s in f.Segments)
+                                    {
+                                        <div class="p-2 border rounded mb-2 bg-white">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <div class="fw-semibold">
+                                                        @s.Carrier @s.FlightNo
+                                                        <span class="text-muted">(@s.Cabin)</span>
+                                                    </div>
+                                                    <div class="text-muted small">
+                                                        @s.From → @s.To • @s.DepartLocal – @s.ArriveLocal • @s.Duration
+                                                    </div>
+                                                </div>
+                                                <div class="text-end small">
+                                                    <div><i class="bi bi-cup-hot"></i> @s.Meal</div>
+                                                    <div><i class="bi bi-bag"></i> @s.Baggage</div>
+                                                    @if (s.WiFi) { <div><i class="bi bi-wifi"></i> Wi-Fi</div> }
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @if (s != f.Segments.Last())
+                                        {
+                                            <div class="text-muted small ms-1">
+                                                <i class="bi bi-stopwatch"></i> Layover @s.To: @f.LayoverAt(s.To)
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                                <div class="col-12 col-xl-4">
+                                    <div class="fw-semibold mb-2"><i class="bi bi-list-check"></i> Fare highlights</div>
+                                    <div class="border rounded bg-white p-2">
+                                        <div class="mb-2">
+                                            <div class="text-uppercase small text-muted mb-1">Inclusions</div>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach (var inc in f.Inclusions)
+                                                {
+                                                    <span class="badge text-bg-light border"><i class="@inc.Icon"></i> @inc.Label</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="text-uppercase small text-muted mb-1">Exclusions</div>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach (var exc in f.Exclusions)
+                                                {
+                                                    <span class="badge text-bg-danger-subtle border border-danger text-danger"><i class="@exc.Icon"></i> @exc.Label</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <hr />
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="fw-bold">@FormatPrice(f.Price, f.Currency)</div>
+                                            <button class="btn btn-primary btn-sm">
+                                                <i class="bi bi-check2-circle me-1"></i> Select this flight
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="text-muted small mt-3">
+    * Demonstration only. All values are illustrative.
+</div>
+
+
+@code {
+    // Active stop-group key: 0,1,2,3 (3 = 3+)
+    private int ActiveGroup = 0;
+
+    private List<FlightOption> AllFlights = new();
+
+    private List<FlightOption> ActiveFlights =>
+        AllFlights.Where(f => (f.Stops >= 3 ? 3 : f.Stops) == ActiveGroup).ToList();
+
+    private int CountInGroup(int g) => AllFlights.Count(f => (f.Stops >= 3 ? 3 : f.Stops) == g);
+
+    protected override void OnInitialized()
+    {
+        AllFlights = DemoData();
+        // Ensure each group has at least one for demo (optional)
+        if (!AllFlights.Any(f => f.Stops == 0)) ActiveGroup = AllFlights.FirstOrDefault()?.Stops ?? 0;
+    }
+
+    private static string FormatPrice(decimal amount, string currency) => $"{currency} {amount:N0}";
+
+    private static string StopsLabel(int s) => s switch
+    {
+        0 => "Nonstop",
+        1 => "1 stop",
+        2 => "2 stops",
+        _ => "3+ stops",
+    };
+
+    private string StopsBadge(int s) => s switch
+    {
+        0 => "<span class='badge text-bg-primary'><i class=\"bi bi-rocket-takeoff\"></i> Nonstop</span>",
+        1 => "<span class='badge text-bg-secondary'><i class=\"bi bi-geo\"></i> 1 stop</span>",
+        2 => "<span class='badge text-bg-secondary'><i class=\"bi bi-geo\"></i> 2 stops</span>",
+        _ => "<span class='badge text-bg-secondary'><i class=\"bi bi-geo\"></i> 3+ stops</span>"
+    };
+
+    // ----------------- Dummy Models -----------------
+    private class FlightOption
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
+        public List<string> Carriers { get; set; } = new();
+        public bool IsSingleCarrier => Carriers.Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1;
+        public string Destination { get; set; } = "LAX";
+        public int Stops { get; set; }
+        public string TotalDuration { get; set; } = "14h 35m";
+        public string Currency { get; set; } = "AUD";
+        public decimal Price { get; set; }
+        public Journey Outbound { get; set; } = new();
+        public List<Segment> Segments { get; set; } = new();
+        public List<Tag> Inclusions { get; set; } = new();
+        public List<Tag> Exclusions { get; set; } = new();
+        public List<string> Badges { get; set; } = new(); // e.g., Best value, Premium
+
+        public string LayoverAt(string airport)
+        {
+            var mins = Math.Abs(airport.GetHashCode()) % 180 + 30; // 30–210 min fake
+            var h = mins / 60;
+            var m = mins % 60;
+            return $"{(h > 0 ? $"{h}h " : "")}{m}m";
+        }
+    }
+
+    private class Journey
+    {
+        public string DepartLocal { get; set; } = "08:15";
+        public string ArriveLocal { get; set; } = "16:40";
+    }
+
+    private class Segment
+    {
+        public string Carrier { get; set; } = "QF";
+        public string FlightNo { get; set; } = "QF11";
+        public string From { get; set; } = "SYD";
+        public string To { get; set; } = "LAX";
+        public string DepartLocal { get; set; } = "08:15";
+        public string ArriveLocal { get; set; } = "06:10";
+        public string Duration { get; set; } = "13h 55m";
+        public string Cabin { get; set; } = "Economy";
+        public string Meal { get; set; } = "Meal";
+        public string Baggage { get; set; } = "23kg";
+        public bool WiFi { get; set; } = true;
+    }
+
+    private class Tag { public string Label { get; set; } = ""; public string Icon { get; set; } = "bi bi-check"; }
+
+    // ----------------- Dummy Data -----------------
+    private List<FlightOption> DemoData()
+    {
+        var list = new List<FlightOption>();
+
+        // Nonstop — Qantas to LAX with exclusions (incl. "No lounge", "No refund")
+        list.Add(new FlightOption
+        {
+            Carriers = new() { "QF" },
+            Destination = "LAX",
+            Stops = 0,
+            TotalDuration = "13h 25m",
+            Currency = "AUD",
+            Price = 1799,
+            Outbound = new Journey { DepartLocal = "09:35", ArriveLocal = "06:00" },
+            Segments = new()
+            {
+                new Segment{ Carrier="QF", FlightNo="QF11", From="SYD", To="LAX", DepartLocal="09:35", ArriveLocal="06:00", Duration="13h 25m", Cabin="Economy", Meal="Meal", Baggage="23kg", WiFi=true }
+            },
+            Inclusions = new()
+            {
+                new Tag{ Label="1x 23kg bag", Icon="bi bi-bag" },
+                new Tag{ Label="Meal", Icon="bi bi-cup-hot" },
+                new Tag{ Label="Wi-Fi", Icon="bi bi-wifi" },
+                new Tag{ Label="Seat select", Icon="bi bi-person-square" },
+            },
+            Exclusions = new()
+            {
+                new Tag{ Label="No lounge", Icon="bi bi-slash-circle" },
+                new Tag{ Label="No refund", Icon="bi bi-x-octagon" },
+            },
+            Badges = new() { "Best value" }
+        });
+
+        // Nonstop — Singapore to SIN (add "No refund (promo J)")
+        list.Add(new FlightOption
+        {
+            Carriers = new() { "SQ" },
+            Destination = "SIN",
+            Stops = 0,
+            TotalDuration = "8h 10m",
+            Currency = "AUD",
+            Price = 799,
+            Outbound = new Journey { DepartLocal = "07:10", ArriveLocal = "13:20" },
+            Segments = new()
+            {
+                new Segment{ Carrier="SQ", FlightNo="SQ212", From="SYD", To="SIN", DepartLocal="07:10", ArriveLocal="13:20", Duration="8h 10m", Cabin="Economy", Meal="Meal", Baggage="25kg", WiFi=true }
+            },
+            Inclusions = new()
+            {
+                new Tag{ Label="25kg bag", Icon="bi bi-bag" },
+                new Tag{ Label="Meal", Icon="bi bi-cup-hot" },
+                new Tag{ Label="Seat select", Icon="bi bi-person-square" },
+            },
+            Exclusions = new()
+            {
+                new Tag{ Label="No refund (promo J)", Icon="bi bi-x-octagon" },
+            }
+        });
+
+        // 1 stop — Cathay to LHR (explicit exclusions)
+        list.Add(new FlightOption
+        {
+            Carriers = new() { "CX" },
+            Destination = "LHR",
+            Stops = 1,
+            TotalDuration = "24h 30m",
+            Currency = "AUD",
+            Price = 1560,
+            Outbound = new Journey { DepartLocal = "10:20", ArriveLocal = "05:50" },
+            Segments = new()
+            {
+                new Segment{ Carrier="CX", FlightNo="CX162", From="SYD", To="HKG", DepartLocal="10:20", ArriveLocal="17:20", Duration="9h 0m", Cabin="Economy", Meal="Meal", Baggage="23kg", WiFi=true },
+                new Segment{ Carrier="CX", FlightNo="CX251", From="HKG", To="LHR", DepartLocal="23:35", ArriveLocal="05:50", Duration="13h 15m", Cabin="Economy", Meal="Meal", Baggage="23kg", WiFi=true }
+            },
+            Inclusions = new()
+            {
+                new Tag{ Label="1x 23kg bag", Icon="bi bi-bag" },
+                new Tag{ Label="Meals", Icon="bi bi-cup-hot" },
+            },
+            Exclusions = new()
+            {
+                new Tag{ Label="No changes", Icon="bi bi-x-circle" },
+                new Tag{ Label="No lounge", Icon="bi bi-slash-circle" },
+            }
+        });
+
+        // 1 stop — NZ/UA to JFK (mixed carriers, “No lounge”)
+        list.Add(new FlightOption
+        {
+            Carriers = new() { "NZ", "UA" },
+            Destination = "JFK",
+            Stops = 1,
+            TotalDuration = "21h 40m",
+            Currency = "AUD",
+            Price = 1885,
+            Outbound = new Journey { DepartLocal = "08:00", ArriveLocal = "18:40" },
+            Segments = new()
+            {
+                new Segment{ Carrier="NZ", FlightNo="NZ104", From="SYD", To="AKL", DepartLocal="08:00", ArriveLocal="13:00", Duration="3h 0m", Cabin="Economy", Meal="Snack", Baggage="23kg", WiFi=false },
+                new Segment{ Carrier="UA", FlightNo="UA6754", From="AKL", To="JFK", DepartLocal="16:20", ArriveLocal="18:40", Duration="17h 20m", Cabin="Economy", Meal="Meal", Baggage="23kg", WiFi=true }
+            },
+            Inclusions = new()
+            {
+                new Tag{ Label="Bag", Icon="bi bi-bag" },
+                new Tag{ Label="Meal", Icon="bi bi-cup-hot" },
+                new Tag{ Label="Seat select", Icon="bi bi-person-square" },
+            },
+            Exclusions = new()
+            {
+                new Tag{ Label="No lounge", Icon="bi bi-slash-circle" },
+            }
+        });
+
+        // 2 stops — EK/BA to CDG (add “Basic seat” exclusion)
+        list.Add(new FlightOption
+        {
+            Carriers = new() { "EK", "BA" },
+            Destination = "CDG",
+            Stops = 2,
+            TotalDuration = "28h 05m",
+            Currency = "AUD",
+            Price = 1399,
+            Outbound = new Journey { DepartLocal = "06:30", ArriveLocal = "07:15" },
+            Segments = new()
+            {
+                new Segment{ Carrier="EK", FlightNo="EK413", From="SYD", To="DXB", DepartLocal="06:30", ArriveLocal="14:00", Duration="14h 30m", Cabin="Economy", Meal="Meal", Baggage="25kg", WiFi=true },
+                new Segment{ Carrier="EK", FlightNo="EK7",   From="DXB", To="LHR", DepartLocal="16:00", ArriveLocal="20:15", Duration="8h 15m", Cabin="Economy", Meal="Meal", Baggage="25kg", WiFi=true },
+                new Segment{ Carrier="BA", FlightNo="BA330", From="LHR", To="CDG", DepartLocal="22:10", ArriveLocal="23:25", Duration="1h 15m", Cabin="Economy", Meal="Snack", Baggage="25kg", WiFi=false },
+            },
+            Inclusions = new()
+            {
+                new Tag{ Label="25kg bag", Icon="bi bi-bag" },
+                new Tag{ Label="Meals", Icon="bi bi-cup-hot" },
+            },
+            Exclusions = new()
+            {
+                new Tag{ Label="Basic seat", Icon="bi bi-dash-circle" },
+                new Tag{ Label="No refund", Icon="bi bi-x-octagon" },
+            }
+        });
+
+        // 3+ stops — VA/DL/AA to MIA (no checked bag note)
+        list.Add(new FlightOption
+        {
+            Carriers = new() { "VA", "DL", "AA" },
+            Destination = "MIA",
+            Stops = 3,
+            TotalDuration = "35h 40m",
+            Currency = "AUD",
+            Price = 1280,
+            Outbound = new Journey { DepartLocal = "21:50", ArriveLocal = "08:30" },
+            Segments = new()
+            {
+                new Segment{ Carrier="VA", FlightNo="VA7",   From="SYD", To="LAX", DepartLocal="21:50", ArriveLocal="19:20", Duration="13h 30m", Cabin="Economy", Meal="Meal", Baggage="23kg", WiFi=true },
+                new Segment{ Carrier="DL", FlightNo="DL456", From="LAX", To="DFW", DepartLocal="23:00", ArriveLocal="04:10", Duration="3h 10m", Cabin="Economy", Meal="Snack", Baggage="Carry-on", WiFi=true },
+                new Segment{ Carrier="AA", FlightNo="AA223", From="DFW", To="CLT", DepartLocal="06:00", ArriveLocal="08:00", Duration="2h 0m", Cabin="Economy", Meal="Snack", Baggage="Carry-on", WiFi=false },
+                new Segment{ Carrier="AA", FlightNo="AA561", From="CLT", To="MIA", DepartLocal="09:10", ArriveLocal="10:40", Duration="1h 30m", Cabin="Economy", Meal="None", Baggage="Carry-on", WiFi=false },
+            },
+            Inclusions = new()
+            {
+                new Tag{ Label="Meal (long-haul)", Icon="bi bi-cup-hot" },
+            },
+            Exclusions = new()
+            {
+                new Tag{ Label="No checked bag on some legs", Icon="bi bi-bag-x" },
+            }
+        });
+
+        // Nonstop Premium — QF to SFO
+        list.Add(new FlightOption
+        {
+            Carriers = new() { "QF" },
+            Destination = "SFO",
+            Stops = 0,
+            TotalDuration = "13h 10m",
+            Currency = "AUD",
+            Price = 5490,
+            Outbound = new Journey { DepartLocal = "17:25", ArriveLocal = "12:35" },
+            Segments = new()
+            {
+                new Segment{ Carrier="QF", FlightNo="QF73", From="SYD", To="SFO", DepartLocal="17:25", ArriveLocal="12:35", Duration="13h 10m", Cabin="Business", Meal="Premium meal", Baggage="40kg", WiFi=true }
+            },
+            Inclusions = new()
+            {
+                new Tag{ Label="Lounge", Icon="bi bi-cup-straw" },
+                new Tag{ Label="Flat bed", Icon="bi bi-layout-wtf" },
+                new Tag{ Label="2x bags", Icon="bi bi-bag-plus" },
+                new Tag{ Label="Priority", Icon="bi bi-lightning" },
+            },
+            Exclusions = new()
+            {
+                new Tag{ Label="No refund (promo J)", Icon="bi bi-x-octagon" },
+            },
+            Badges = new() { "Premium" }
+        });
+
+        return list;
+    }
+}
