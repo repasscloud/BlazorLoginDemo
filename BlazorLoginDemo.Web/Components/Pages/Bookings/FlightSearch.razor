@@ -1,6 +1,7 @@
 @page "/flights/search"
 @rendermode InteractiveServer
 @using System.ComponentModel.DataAnnotations
+@using BlazorLoginDemo.Web.Components.Shared
 @inject NavigationManager Nav
 
 <PageTitle>Flight Search</PageTitle>
@@ -92,10 +93,15 @@
                 <div class="row g-2 mt-2">
                     <div class="col-md-6">
                         <label class="form-label">Departure</label>
-                        <InputDate class="form-control"
+                        @* <InputDate class="form-control"
                             @bind-Value="_model.DepartureDate"
                             min="@MinDepartDateString"
-                            @onchange="OnDepartureChanged" />
+                            @onchange="OnDepartureChanged" /> *@
+                            <WeekdayDatePicker
+    @bind-Date="_model.DepartureDate"
+    Min="MinDepartDate"
+    DisableSaturday="true"
+    DisableSunday="true" />
                         <div class="form-text">
                             Earliest: @MinDepartDate:yyyy-MM-dd (@BookingDaysAdvanceMinDays day lead)
                         </div>
@@ -229,12 +235,22 @@
     }
 
     // --- Booking window / lead time ---
-    private const int BookingDaysAdvanceMinDays = 2; // ← change this as desired (e.g., 5)
+    private const int BookingDaysAdvanceMinDays = 12; // ← change this as desired (e.g., 5)
     private DateTime Today => DateTime.Today;
     private DateTime MinDepartDate => Today.AddDays(BookingDaysAdvanceMinDays);
 
     // yyyy-MM-dd for <input type="date" min="...">
     private string MinDepartDateString => MinDepartDate.ToString("yyyy-MM-dd");
+
+    private DateTime MinReturnBase
+{
+    get
+    {
+        var baseMin = MinDepartDate;
+        var dep = _model.DepartureDate?.Date ?? baseMin;
+        return dep > baseMin ? dep : baseMin;
+    }
+}
     private string MinReturnDateString
     {
         get
