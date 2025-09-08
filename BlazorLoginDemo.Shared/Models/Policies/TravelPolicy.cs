@@ -41,7 +41,7 @@ public class TravelPolicy
     [CoverageTypeValidation]
     [DefaultValue("MOST_SEGMENTS")]
     public string CabinClassCoverage { get; set; } = "MOST_SEGMENTS";
-    public bool NonStopFlight { get; set; } = false;
+    public bool? NonStopFlight { get; set; }
 
     // amadeus (and other system) specifics [meta]
     //public int MaxResults { get; set; } = 20;
@@ -55,14 +55,12 @@ public class TravelPolicy
     [RegularExpression(@"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$", ErrorMessage = "Time must be in the format hh:mm:ss.")]
     public string? FlightBookingTimeAvailableTo { get; set; }  // Local time. hh:mm:ss format, e.g 10:30:00
 
-    [DefaultValue(false)]
-    public bool EnableSaturdayFlightBookings { get; set; } = false;
+    public bool? EnableSaturdayFlightBookings { get; set; }
 
-    [DefaultValue(false)]
-    public bool EnableSundayFlightBookings { get; set; } = false;
+    public bool? EnableSundayFlightBookings { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int DefaultCalendarDaysInAdvanceForFlightBooking { get; set; } = 0;
+    public int? DefaultCalendarDaysInAdvanceForFlightBooking { get; set; }
 
     [JsonIgnore] // Prevent circular reference during serialization.
     public AvaClient? AvaClient { get; set; }

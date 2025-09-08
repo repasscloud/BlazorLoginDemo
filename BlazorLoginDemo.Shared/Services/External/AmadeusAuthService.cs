@@ -13,7 +13,11 @@ public class AmadeusAuthService : IAmadeusAuthService
     private readonly AmadeusOAuthClientSettings _settings;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public AmadeusAuthService(IHttpClientFactory httpClientFactory, ApplicationDbContext context, IOptions<AmadeusOAuthClientSettings> options, JsonSerializerOptions jsonOptions)
+    public AmadeusAuthService(
+        IHttpClientFactory httpClientFactory,
+        ApplicationDbContext context,
+        IOptions<AmadeusOAuthClientSettings> options,
+        JsonSerializerOptions jsonOptions)
     {
         _httpClientFactory = httpClientFactory;
         _context = context;

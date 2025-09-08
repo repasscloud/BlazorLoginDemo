@@ -1,8 +1,6 @@
 using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Services.Interfaces.User;
 using Microsoft.EntityFrameworkCore;
-using BlazorLoginDemo.Shared.Data;
-using BlazorLoginDemo.Shared.Models.Kernel.User;
 
 namespace BlazorLoginDemo.Shared.Services.User;
 

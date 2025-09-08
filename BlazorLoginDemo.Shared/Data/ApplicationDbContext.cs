@@ -5,9 +5,9 @@ using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.Auth;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 using BlazorLoginDemo.Shared.Models.Kernel.User;
-using BlazorLoginDemo.Shared.Models.Kernel.Transactions;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
+using BlazorLoginDemo.Shared.Models.Kernel.SysVar;
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -20,6 +20,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupDomain> GroupDomains => Set<GroupDomain>();
+    public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
 
     // ---------------------------
     // Auth / Tokens
@@ -77,6 +78,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<GroupDomain>(e =>
         {
             e.HasIndex(x => x.Domain).IsUnique();
+        });
+
+        builder.Entity<AvaSystemLog>(e =>
+        {
+            e.ToTable("ava_system_logs", "avasyslog");
+            e.HasKey(x => x.Id);
         });
 
         // ===========================
