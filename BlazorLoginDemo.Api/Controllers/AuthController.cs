@@ -1,10 +1,11 @@
 using BlazorLoginDemo.Shared.Data;
-using BlazorLoginDemo.Shared.Models.User;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using BlazorLoginDemo.Api.Auth;
+
+namespace BlazorLoginDemo.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

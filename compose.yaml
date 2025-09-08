@@ -109,6 +109,10 @@ services:
       - MailerSend__FromName=${MAILERSEND__FROMNAME}
       - AdminEmail=${ADMINEMAIL}
       - AdminPassword=${ADMINPASSWORD}
+      - AMADEUS__CLIENTID=${AMADEUS__CLIENTID}
+      - AMADEUS__CLIENTSECRET=${AMADEUS__CLIENTSECRET}
+      - AMADEUS__URL__APIENDPOINT=${AMADEUS__URL__APIENDPOINT}
+      - AMADEUS__URL__FLIGHTOFFER=${AMADEUS__URL__FLIGHTOFFER}
     depends_on:
       db:
         condition: service_healthy

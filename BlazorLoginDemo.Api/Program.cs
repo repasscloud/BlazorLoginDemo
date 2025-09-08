@@ -12,6 +12,7 @@ using BlazorLoginDemo.Shared.Logging;
 using BlazorLoginDemo.Shared.Services; // <-- for AddExternalLibService()
 
 using Serilog;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 
 public class Program
 {
@@ -33,6 +34,8 @@ public class Program
         // --------------------------
         builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
         var jwt = builder.Configuration.GetSection("Jwt");
+        builder.Services.Configure<AmadeusOAuthClientSettings>(
+            builder.Configuration.GetSection("Amadeus"));
 
         // --------------------------
         // Data (DbContext)

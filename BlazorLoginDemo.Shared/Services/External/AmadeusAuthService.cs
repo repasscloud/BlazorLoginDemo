@@ -34,7 +34,7 @@ public class AmadeusAuthService : IAmadeusAuthService
         {
             throw new Exception("");
         }
-        var url = _settings.ClientApiUrl ?? "https://test.api.amadeus.com/v1/security/oauth2/token";
+        var url = _settings.Url.ApiEndpoint ?? "https://test.api.amadeus.com/v1/security/oauth2/token";
 
         var requestData = new Dictionary<string, string>
         {
