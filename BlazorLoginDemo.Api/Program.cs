@@ -1,6 +1,4 @@
-// Program.cs (explicit Program.Main style, .NET 9)
 using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +7,7 @@ using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Api.Auth;
 using BlazorLoginDemo.Shared.Models.Auth;
 using BlazorLoginDemo.Shared.Logging;
-using BlazorLoginDemo.Shared.Services; // <-- for AddExternalLibService()
+using BlazorLoginDemo.Shared.Services;
 
 using Serilog;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
@@ -79,16 +77,12 @@ public class Program
         // --------------------------
         // HTTP + JSON for shared services
         // --------------------------
-        builder.Services.AddHttpClient(); // for IHttpClientFactory
-        builder.Services.AddSingleton(new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        // moved to 'infra used by shared services' in ServiceCollectionExtensions of AddExternalLibService
 
         // --------------------------
         // Shared external library services
         // --------------------------
-        builder.Services.AddExternalLibService(); // wires IAmadeusAuthService->AmadeusAuthService
+        builder.Services.AddApiLibServices(builder.Configuration); // wires IAmadeusAuthService->AmadeusAuthService
 
         // --------------------------
         // CORS

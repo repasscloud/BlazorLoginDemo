@@ -3,10 +3,11 @@ using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
+using BlazorLoginDemo.Shared.Security;
 
 namespace BlazorLoginDemo.Api.Controllers.Flights;
 
-[Microsoft.AspNetCore.Components.Route("api/vi/flights")]
+[Route("api/v1/flights")]
 [ApiController]
 public class FlightsController : ControllerBase
 {
@@ -27,8 +28,9 @@ public class FlightsController : ControllerBase
         _log = loggerService;
     }
 
-    // POST: api/v1/flights/search
-    [HttpPost("search")]
+    // POST: api/v1/flights/webapp/search
+    [ServiceFilter(typeof(RequireApiKeyFilter))]
+    [HttpPost("webapp/search")]
     public async Task<IActionResult> SearchFlights(FlightOfferSearchRequestDto criteria, CancellationToken ct = default)
     {
         // add .CreatedAt (controlled excplicity by API)

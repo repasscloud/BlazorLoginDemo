@@ -15,6 +15,7 @@ using BlazorLoginDemo.Web.Services;  // MailerSendEmailSender + MailerSendOption
 using BlazorLoginDemo.Shared.Startup;
 using BlazorLoginDemo.Web.Security;   // SeedData
 using BlazorLoginDemo.Shared.Auth;
+using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Services;
 using System.Collections.Specialized;
 
@@ -189,6 +190,7 @@ public class Program
         // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
         builder.Services.AddHttpClient();
+        builder.Services.AddAvaApiHttpClient(builder.Configuration);
         builder.Services.AddAvaClientServices();
         builder.Services.AddAvaFinanceServices();
         builder.Services.AddAvaPolicyServices();

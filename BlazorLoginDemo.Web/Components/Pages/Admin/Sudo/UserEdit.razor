@@ -1,4 +1,4 @@
-@page "/admin/users"
+@page "/sudo/users"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = BlazorLoginDemo.Shared.Auth.AppPolicies.GlobalPolicy.CanManageUsers)]
@@ -102,7 +102,7 @@
                     </div>
                 </div>
 
-                <div class="col-12">
+                @* <div class="col-12">
                     <label class="form-label">Roles</label>
                     <div class="d-flex gap-2 flex-wrap">
                         @foreach (var r in roles)
@@ -115,7 +115,30 @@
                             </div>
                         }
                     </div>
+                </div> *@
+                <!-- Roles -->
+                <div class="mb-3">
+                    <label class="form-label">Roles</label>
+
+                    <!-- Full-width grid: 1/2/3/4 columns responsive, no custom CSS -->
+                    <div class="container-fluid px-0">
+                        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-2">
+                            @foreach (var r in roles)
+                            {
+                                <div class="col">
+                                    <label class="form-check border rounded p-2 h-100 d-flex align-items-start gap-2">
+                                        <input class="form-check-input mt-1"
+                                            type="checkbox"
+                                            checked="@selectedRoles.Contains(r)"
+                                            @onchange="(ChangeEventArgs e) => ToggleRole(r, (bool?)e.Value == true)" />
+                                        <span class="form-check-label fw-semibold">@r</span>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 </div>
+
 
                 <div class="col-12 d-flex gap-2 mt-2">
                     <button class="btn btn-success" @onclick="Save">Save</button>

@@ -1,13 +1,315 @@
 ﻿@page "/auth"
-
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
-
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Http
 @attribute [Authorize]
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IServiceProvider Services
+@inject IHttpContextAccessor Http
 
 <PageTitle>Auth</PageTitle>
 
-<h1>You are authenticated</h1>
+<h1 class="mb-3">You are authenticated</h1>
 
 <AuthorizeView>
-    Hello @context.User.Identity?.Name!
+    <Authorized>
+        <div class="mb-2">
+            <strong>Hello @context.User.Identity?.Name</strong>
+        </div>
+
+        @if (_user is not null)
+        {
+            <div class="mb-3">
+                <div><strong>IsAuthenticated:</strong> @_user.Identity?.IsAuthenticated</div>
+                <div><strong>AuthenticationType:</strong> @_user.Identity?.AuthenticationType ?? "(null)"</div>
+                <div><strong>Identity Name:</strong> @_user.Identity?.Name ?? "(null)"</div>
+                <div><strong>Identities:</strong> @_identities.Count</div>
+            </div>
+
+            <h3 class="mt-4">Identities</h3>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>IsAuthenticated</th>
+                            <th>AuthType</th>
+                            <th>Name</th>
+                            <th>Label</th>
+                            <th>Claims Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < _identities.Count; i++)
+                        {
+                            var id = _identities[i];
+                            <tr>
+                                <td>@(i + 1)</td>
+                                <td>@id.IsAuthenticated</td>
+                                <td>@(id.AuthenticationType ?? "(null)")</td>
+                                <td>@(id.Name ?? "(null)")</td>
+                                <td>@(id.Label ?? "(null)")</td>
+                                <td>@id.ClaimsCount</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="mt-4">Roles</h3>
+            @if (_roles.Count == 0)
+            {
+                <div class="text-muted">No roles found.</div>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var r in _roles)
+                    {
+                        <li class="list-group-item">@r</li>
+                    }
+                </ul>
+            }
+
+            <h3 class="mt-4">Claims</h3>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Type</th>
+                            <th>Value</th>
+                            <th>Issuer</th>
+                            <th>Original Issuer</th>
+                            <th>ValueType</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < _claims.Count; i++)
+                        {
+                            var c = _claims[i];
+                            <tr>
+                                <td>@(i + 1)</td>
+                                <td><code>@c.Type</code></td>
+                                <td class="text-break">@c.Value</td>
+                                <td>@c.Issuer</td>
+                                <td>@c.OriginalIssuer</td>
+                                <td>@c.ValueType</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="mt-4">Tokens (if available)</h3>
+            @if (_tokens.Count == 0)
+            {
+                <div class="text-muted">No tokens accessible in this hosting mode / scheme.</div>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var kv in _tokens)
+                    {
+                        <li class="list-group-item">
+                            <strong>@kv.Key:</strong>
+                            <div class="small text-break">@kv.Value</div>
+                        </li>
+                    }
+                </ul>
+            }
+
+            <h3 class="mt-4">Authentication Schemes & Properties (Server-side)</h3>
+            @if (_schemeDumps.Count == 0)
+            {
+                <div class="text-muted">No per-scheme ticket/properties available (likely WASM or no IHttpContextAccessor).</div>
+            }
+            else
+            {
+                @foreach (var s in _schemeDumps)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>@s.SchemeName</strong>
+                            <span class="ms-2 badge bg-@(s.Succeeded ? "success" : "secondary")">@((s.Succeeded ? "Succeeded" : "No ticket"))</span>
+                        </div>
+                        <div class="card-body">
+                            <div><strong>Principal Name:</strong> @s.PrincipalName</div>
+                            <div><strong>IssuedUtc:</strong> @(s.IssuedUtc?.ToString("u") ?? "(null)")</div>
+                            <div><strong>ExpiresUtc:</strong> @(s.ExpiresUtc?.ToString("u") ?? "(null)")</div>
+                            <div><strong>AllowRefresh:</strong> @s.AllowRefresh</div>
+                            @if (s.Items.Count > 0)
+                            {
+                                <div class="mt-2"><strong>Properties.Items</strong></div>
+                                <ul class="list-group">
+                                    @foreach (var kv in s.Items)
+                                    {
+                                        <li class="list-group-item">
+                                            <code>@kv.Key</code> = <span class="text-break">@kv.Value</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning">Not authorized.</div>
+    </NotAuthorized>
 </AuthorizeView>
+
+@code
+{
+    private ClaimsPrincipal? _user;
+    private readonly List<IdentityRow> _identities = new();
+    private readonly List<ClaimRow> _claims = new();
+    private readonly List<string> _roles = new();
+    private readonly Dictionary<string, string> _tokens = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<SchemeDump> _schemeDumps = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _user = state.User;
+
+        if (_user?.Identity is not null)
+        {
+            foreach (var id in _user.Identities)
+            {
+                _identities.Add(new IdentityRow
+                {
+                    IsAuthenticated = id.IsAuthenticated,
+                    AuthenticationType = id.AuthenticationType,
+                    Name = id.Name,
+                    Label = (id as ClaimsIdentity)?.Label,
+                    ClaimsCount = id.Claims.Count()
+                });
+            }
+
+            var roleClaims = _user.Claims
+                .Where(c => c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "roles")
+                .SelectMany(c =>
+                {
+                    if (c.Value.StartsWith("[") && c.Value.Contains(','))
+                    {
+                        try
+                        {
+                            var parts = System.Text.Json.JsonSerializer.Deserialize<string[]>(c.Value);
+                            return parts ?? Array.Empty<string>();
+                        }
+                        catch { return new[] { c.Value }; }
+                    }
+                    return new[] { c.Value };
+                })
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            _roles.AddRange(roleClaims);
+
+            foreach (var c in _user.Claims)
+            {
+                _claims.Add(new ClaimRow
+                {
+                    Type = c.Type,
+                    Value = c.Value,
+                    Issuer = c.Issuer,
+                    OriginalIssuer = c.OriginalIssuer,
+                    ValueType = c.ValueType
+                });
+            }
+        }
+
+        // Server-only: tokens & per-scheme properties (if HttpContext exists)
+        try
+        {
+            var ctx = Http.HttpContext;
+            if (ctx is not null)
+            {
+                async Task TryGet(string key)
+                {
+                    var v = await ctx.GetTokenAsync(key);
+                    if (!string.IsNullOrWhiteSpace(v))
+                        _tokens[key] = v!;
+                }
+
+                await TryGet("access_token");
+                await TryGet("id_token");
+                await TryGet("refresh_token");
+
+                var schemeProv = Services.GetService<IAuthenticationSchemeProvider>();
+                var authSvc = Services.GetService<IAuthenticationService>();
+                if (schemeProv is not null && authSvc is not null)
+                {
+                    var schemes = await schemeProv.GetAllSchemesAsync();
+                    foreach (var s in schemes)
+                    {
+                        try
+                        {
+                            var res = await authSvc.AuthenticateAsync(ctx, s.Name);
+                            if (res?.Ticket is not null)
+                            {
+                                var props = res.Ticket.Properties;
+                                _schemeDumps.Add(new SchemeDump
+                                {
+                                    SchemeName = s.Name,
+                                    Succeeded = res.Succeeded,
+                                    PrincipalName = res.Principal?.Identity?.Name ?? "(null)",
+                                    IssuedUtc = props?.IssuedUtc,
+                                    ExpiresUtc = props?.ExpiresUtc,
+                                    AllowRefresh = props?.AllowRefresh,
+                                    Items = props?.Items?.ToDictionary(k => k.Key, v => v.Value) ?? new()
+                                });
+                            }
+                            else
+                            {
+                                _schemeDumps.Add(new SchemeDump
+                                {
+                                    SchemeName = s.Name,
+                                    Succeeded = false,
+                                    PrincipalName = "(no ticket)",
+                                    Items = new()
+                                });
+                            }
+                        }
+                        catch { /* ignore scheme failures */ }
+                    }
+                }
+            }
+        }
+        catch { /* ignore if not available (e.g., WASM) */ }
+    }
+
+    private sealed record IdentityRow
+    {
+        public bool IsAuthenticated { get; init; }
+        public string? AuthenticationType { get; init; }
+        public string? Name { get; init; }
+        public string? Label { get; init; }
+        public int ClaimsCount { get; init; }
+    }
+
+    private sealed record ClaimRow
+    {
+        public string Type { get; init; } = "";
+        public string Value { get; init; } = "";
+        public string Issuer { get; init; } = "";
+        public string OriginalIssuer { get; init; } = "";
+        public string ValueType { get; init; } = "";
+    }
+
+    private sealed record SchemeDump
+    {
+        public string SchemeName { get; init; } = "";
+        public bool Succeeded { get; init; }
+        public string PrincipalName { get; init; } = "";
+        public DateTimeOffset? IssuedUtc { get; init; }
+        public DateTimeOffset? ExpiresUtc { get; init; }
+        public bool? AllowRefresh { get; init; }
+        public Dictionary<string, string> Items { get; init; } = new();
+    }
+}
