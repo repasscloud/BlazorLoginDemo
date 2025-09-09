@@ -59,6 +59,40 @@ public sealed class KernelDataController : ControllerBase
         CancellationToken ct = default)
         => Ok(await _airportInfoService.SearchAsync(q, type, continent, country, skip, take, ct));
 
+    [HttpGet("airport-info/search-multi")]
+    public async Task<ActionResult<IReadOnlyList<AirportInfo>>> SearchMulti(
+        [FromQuery(Name = "q")] string? query,
+        [FromQuery(Name = "type")] List<AirportType>? types,
+        [FromQuery(Name = "continent")] List<AirportContinent>? continents,
+        [FromQuery(Name = "country")] List<Iso3166_Alpha2>? countries,
+        [FromQuery(Name = "hasIata")] bool? hasIata,                     // defaults to true
+        [FromQuery(Name = "hasMunicipality")] bool? hasMunicipality,     // defaults to true
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 50,
+        CancellationToken ct = default)
+    {
+        if (types is { Count: 0 }) types = null;
+        if (continents is { Count: 0 }) continents = null;
+        if (countries is { Count: 0 }) countries = null;
+
+        if (take <= 0) take = 50;
+        if (take > 500) take = 500;
+        if (skip < 0)  skip = 0;
+
+        var result = await _airportInfoService.SearchMultiAsync(
+            query,
+            types,
+            continents,
+            countries,
+            hasIata        ?? true,
+            hasMunicipality ?? true,
+            skip,
+            take,
+            ct);
+
+        return Ok(result);
+    }
+
     // ---------- CREATE ----------
     [HttpPost("airport-info")]
     public async Task<ActionResult<AirportInfo>> Create([FromBody] AirportInfo input, CancellationToken ct)

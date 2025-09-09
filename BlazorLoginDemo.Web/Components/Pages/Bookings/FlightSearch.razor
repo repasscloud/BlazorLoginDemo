@@ -278,13 +278,7 @@
     // --- Demo airport data & search ---
     private record Airport(string Code, string City, string Name);
 
-    private static readonly Airport[] Airports =
-    {
-        new("SYD","Sydney","Sydney Kingsford Smith"),
-        new("MEL","Melbourne","Melbourne Tullamarine"),
-        new("ADL","Adelaide","Adelaide Airport"),
-        new("BNE","Brisbane","Brisbane Airport")
-    };
+    private static readonly Airport[] Airports = Array.Empty<Airport>();
 
     private string _originQuery = "";
     private string _destQuery = "";
@@ -403,20 +397,6 @@
         Nav.NavigateTo(url);
     }
 
-    protected override void OnInitialized()
-    {
-        // Ensure default dates respect lead time
-        if (_model.DepartureDate is null || _model.DepartureDate < MinDepartDate)
-            _model.DepartureDate = MinDepartDate;
-
-        if (_model.TripType == TripType.Return)
-        {
-            var minReturn = (_model.DepartureDate ?? MinDepartDate);
-            if (_model.ReturnDate is null || _model.ReturnDate < minReturn)
-                _model.ReturnDate = minReturn.AddDays(1);
-        }
-    }
-
     private void OnDepartureChanged(ChangeEventArgs _)
     {
         // Re-clamp return date if needed
@@ -430,22 +410,36 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // --- merged from OnInitialized() ---
+        // Ensure default dates respect lead time
+        if (_model.DepartureDate is null || _model.DepartureDate < MinDepartDate)
+            _model.DepartureDate = MinDepartDate;
+
+        if (_model.TripType == TripType.Return)
+        {
+            var minReturn = _model.DepartureDate ?? MinDepartDate;
+            if (_model.ReturnDate is null || _model.ReturnDate < minReturn)
+                _model.ReturnDate = minReturn.AddDays(1);
+        }
+        // -----------------------------------
+
+        // --- original async auth/init ---
         var authState = await AuthStateTask;
         var user = authState.User;
 
         if (user.Identity is not null && user.Identity.IsAuthenticated)
         {
             _username = user.Identity.Name;
-            // now we have the username, identify if the user has a travel policy, or they can't book!
+
+            // must have a travel policy to proceed
             var avaUser = await AvaUserService.GetByEmailAsync(_username);
             if (string.IsNullOrWhiteSpace(avaUser.TravelPolicyId))
             {
                 Nav.NavigateTo("/user-has-no-assigned-travelpolicyid-error");
                 return;
             }
-            _travelPolicyId = avaUser.TravelPolicyId;
 
-            
+            _travelPolicyId = avaUser.TravelPolicyId;
         }
         else
         {
@@ -453,7 +447,11 @@
             Nav.NavigateTo("/");
             return;
         }
+
+        // --- load data from the API
+        var dto = await 
     }
+
 
     private void GoToPolicy(string? policyId)
     {

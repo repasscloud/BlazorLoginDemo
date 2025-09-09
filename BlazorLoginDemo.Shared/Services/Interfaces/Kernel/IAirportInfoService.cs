@@ -16,6 +16,16 @@ public interface IAirportInfoService
 
     // READ (collections)
     Task<IReadOnlyList<AirportInfo>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<AirportInfo>> SearchMultiAsync(
+        string? query = null,
+        IReadOnlyList<AirportType>? types = null,
+        IReadOnlyList<AirportContinent>? continents = null,
+        IReadOnlyList<Iso3166_Alpha2>? countries = null,
+        bool hasIata = true,          // flag (default true)
+        bool hasMunicipality = true,  // flag (default true)
+        int skip = 0,
+        int take = 50,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Flexible search: free-text over Name/Municipality/Ident/IATA

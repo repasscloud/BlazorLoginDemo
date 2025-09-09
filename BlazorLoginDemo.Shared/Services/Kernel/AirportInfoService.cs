@@ -96,6 +96,57 @@ public sealed class AirportInfoService : IAirportInfoService
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<AirportInfo>> SearchMultiAsync(
+        string? query = null,
+        IReadOnlyList<AirportType>? types = null,
+        IReadOnlyList<AirportContinent>? continents = null,
+        IReadOnlyList<Iso3166_Alpha2>? countries = null,
+        bool hasIata = true,
+        bool hasMunicipality = true,
+        int skip = 0,
+        int take = 50,
+        CancellationToken ct = default)
+    {
+        IQueryable<AirportInfo> q = _db.AirportInfos.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var qNorm = query.Trim();
+            q = q.Where(a =>
+                a.Ident == qNorm ||
+                a.GpsCode == qNorm ||
+                a.IataCode == qNorm ||
+                a.LocalCode == qNorm ||
+                EF.Functions.ILike(a.Name, $"%{qNorm}%"));
+        }
+
+        if (continents is { Count: > 0 })
+            q = q.Where(a => continents.Contains(a.Continent));
+
+        if (types is { Count: > 0 })
+            q = q.Where(a => types.Contains(a.Type));
+
+        if (countries is { Count: > 0 })
+            q = q.Where(a => countries.Contains(a.IsoCountry));
+
+        if (hasIata)
+            q = q.Where(a => a.IataCode != null && a.IataCode != "");
+
+        if (hasMunicipality)
+            q = q.Where(a => a.Municipality != null && a.Municipality != ""); // exclude null/empty
+
+        if (take <= 0) take = 50;
+        if (take > 500) take = 500;
+        if (skip < 0)  skip = 0;
+
+        q = q.OrderBy(a => a.Name)
+            .ThenBy(a => a.Ident)
+            .Skip(skip)
+            .Take(take);
+
+        return await q.ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<AirportInfo>> GetByCountry(Iso3166_Alpha2 isoCountry, CancellationToken ct = default)
         => await _db.Set<AirportInfo>().AsNoTracking()
             .Where(a => a.IsoCountry == isoCountry)
