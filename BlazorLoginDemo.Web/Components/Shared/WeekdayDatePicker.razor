@@ -1,0 +1,41 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JS
+
+<InputDate @ref="_inputRef"
+           TValue="DateTime?"
+           @bind-Value="Date"
+           id="@_inputId"
+           class="form-control"
+           min="@MinString" />
+
+<div id="@_msgId" class="form-text"></div>
+
+@code {
+    [Parameter] public DateTime? Date { get; set; }
+    [Parameter] public EventCallback<DateTime?> DateChanged { get; set; }  // picked up via @bind-Value
+    [Parameter] public DateTime? Min { get; set; }  // earliest selectable (today+N)
+    [Parameter] public bool DisableSaturday { get; set; } = true;
+    [Parameter] public bool DisableSunday   { get; set; } = true;
+
+    private string _inputId = $"wdp_{Guid.NewGuid():N}";
+    private string _msgId   = $"wdpmsg_{Guid.NewGuid():N}";
+    private InputDate<DateTime?>? _inputRef;
+
+    private string? MinString => Min?.ToString("yyyy-MM-dd");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await JS.InvokeVoidAsync(
+            "weekdayPicker.init",
+            _inputId,
+            new {
+                minDate = MinString ?? "",
+                disableSaturday = DisableSaturday,
+                disableSunday   = DisableSunday,
+                messageId = _msgId
+            }
+        );
+    }
+}
