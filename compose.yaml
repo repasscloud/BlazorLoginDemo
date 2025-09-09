@@ -74,6 +74,8 @@ services:
       - AdminEmail=${ADMINEMAIL}
       - AdminPassword=${ADMINPASSWORD}
       - API__BASEADDRESS=${API__BASEADDRESS}
+      - OUTBOUNDAPIKEYAUTH__HEADERNAME=${OUTBOUNDAPIKEYAUTH__HEADERNAME}
+      - OUTBOUNDAPIKEYAUTH__KEY=${OUTBOUNDAPIKEYAUTH__KEY}
     depends_on:
       db:
         condition: service_healthy

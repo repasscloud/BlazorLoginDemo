@@ -4,7 +4,11 @@
 @using System.ComponentModel.DataAnnotations
 @using BlazorLoginDemo.Web.Components.Shared
 @using BlazorLoginDemo.Shared.Models.Kernel.Travel
+@using BlazorLoginDemo.Shared.Models.User
 @using System.Net.Http.Json
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using Macross.Json.Extensions
 @attribute [Authorize]
 
 @inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
@@ -418,6 +422,100 @@
         }
     }
 
+@* protected override async Task OnInitializedAsync()
+{
+    try
+    {
+        // --- merged from OnInitialized() ---
+        if (_model.DepartureDate is null || _model.DepartureDate < MinDepartDate)
+            _model.DepartureDate = MinDepartDate;
+
+        if (_model.TripType == TripType.Return)
+        {
+            var minReturn = _model.DepartureDate ?? MinDepartDate;
+            if (_model.ReturnDate is null || _model.ReturnDate < minReturn)
+                _model.ReturnDate = minReturn.AddDays(1);
+        }
+        // -----------------------------------
+
+        // Auth
+        var authState = await AuthStateTask;
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            _username = "Anonymous";
+            Nav.NavigateTo("/", replace: true);
+            return;
+        }
+
+        _username = user.Identity?.Name ?? "Anonymous";
+
+        // AvaUser lookup (isolate its failures)
+        AvaUser? avaUser = null;
+        try
+        {
+            avaUser = await AvaUserService.GetByEmailAsync(_username);
+        }
+        catch
+        {
+            // API/user service unreachable or errored
+            Nav.NavigateTo("/service-unavailable", replace: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(avaUser?.TravelPolicyId))
+        {
+            Nav.NavigateTo("/user-has-no-assigned-travelpolicyid-error", replace: true);
+            return;
+        }
+
+        _travelPolicyId = avaUser.TravelPolicyId!;
+
+        // --- load data from the API ---
+        IReadOnlyList<AirportInfo>? dto;
+        try
+        {
+            var url = "api/v1/kerneldata/airport-info/search-multi?type=MediumAirport&type=LargeAirport&country=AU&hasIata=true&hasMunicipality=true&skip=0&take=500";
+            dto = await Api.GetFromJsonAsync<IReadOnlyList<AirportInfo>>(url);
+        }
+        catch
+        {
+            // Kernel data API down/unreachable
+            Nav.NavigateTo("/service-unavailable", replace: true);
+            return;
+        }
+
+        var mappedAirports = (dto ?? Array.Empty<AirportInfo>())
+            .Select(x => new Airport(
+                Code:  !string.IsNullOrWhiteSpace(x.IataCode)  ? x.IataCode.Trim().ToUpperInvariant()
+                     : !string.IsNullOrWhiteSpace(x.GpsCode)   ? x.GpsCode.Trim().ToUpperInvariant()
+                     : !string.IsNullOrWhiteSpace(x.LocalCode) ? x.LocalCode.Trim().ToUpperInvariant()
+                     : (x.Ident ?? string.Empty).Trim().ToUpperInvariant(),
+                City:  !string.IsNullOrWhiteSpace(x.Municipality) ? x.Municipality.Trim()
+                     : (x.Name ?? string.Empty).Trim(),
+                Name:  (x.Name ?? string.Empty).Trim()
+            ))
+            .Where(a => !string.IsNullOrEmpty(a.Code))
+            .DistinctBy(a => a.Code)
+            .OrderBy(a => a.City).ThenBy(a => a.Name)
+            .ToList();
+
+        _airports.Clear();
+        _airports.AddRange(mappedAirports);
+    }
+    catch (OperationCanceledException)
+    {
+        // optional: ignore if a CTS was used and canceled
+    }
+    catch
+    {
+        // unexpected
+        Nav.NavigateTo("/error", replace: true);
+    }
+} *@
+
+
     protected override async Task OnInitializedAsync()
     {
         // --- merged from OnInitialized() ---
@@ -459,8 +557,12 @@
         }
 
         // --- load data from the API
+        @* var jsonOpts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        jsonOpts.Converters.Add(new JsonStringEnumConverter());
+        jsonOpts.Converters.Add(new JsonStringEnumMemberConverter()); *@
         var url = "api/v1/kerneldata/airport-info/search-multi?type=MediumAirport&type=LargeAirport&country=AU&hasIata=true&hasMunicipality=true&skip=0&take=500";
-        var _dto = await Api.GetFromJsonAsync<IReadOnlyList<AirportInfo>>(url) ?? Array.Empty<AirportInfo>();
+        @* var _dto = await Api.GetFromJsonAsync<IReadOnlyList<AirportInfo>>(url, jsonOpts) ?? Array.Empty<AirportInfo>(); *@
+        var _dto = await Api.GetFromJsonAsync<IReadOnlyList<AirportInfo>>(url, JsonDefaults.WebEnums) ?? Array.Empty<AirportInfo>();
 
         var mappedAirports = _dto.Select(x => new Airport(
             Code:  !string.IsNullOrWhiteSpace(x.IataCode)  ? x.IataCode.Trim().ToUpperInvariant()

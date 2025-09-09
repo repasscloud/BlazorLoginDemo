@@ -1,5 +1,7 @@
 using System.IO;
 using System.Globalization;
+using System.Collections.Specialized;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -17,7 +19,6 @@ using BlazorLoginDemo.Web.Security;   // SeedData
 using BlazorLoginDemo.Shared.Auth;
 using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Services;
-using System.Collections.Specialized;
 
 using BlazorLoginDemo.Shared.Logging;
 using Serilog;
@@ -189,8 +190,12 @@ public class Program
 
         // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
+
+        // Http
         builder.Services.AddHttpClient();
         builder.Services.AddAvaApiHttpClient(builder.Configuration);
+
+        // Services
         builder.Services.AddAvaClientServices();
         builder.Services.AddAvaFinanceServices();
         builder.Services.AddAvaPolicyServices();
