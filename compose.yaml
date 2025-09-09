@@ -16,7 +16,7 @@ services:
       - APP_DB_PASSWORD=${APP_DB_PASSWORD}
     volumes:
       - ./.docker/db/init:/docker-entrypoint-initdb.d:ro
-      - demo_pgdata:/var/lib/postgresql/data
+      - postgresql-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "PGPASSWORD=${APP_DB_PASSWORD} psql -h 127.0.0.1 -U ${APP_DB_USER} -d ${APP_DB_NAME} -tAc 'select 1' >/dev/null || exit 1"]
       interval: 2s
@@ -83,7 +83,7 @@ services:
       retries: 10
     volumes:
       # Persist ASP.NET DataProtection keys (avoid warnings + keep auth cookies valid across restarts)
-      - dataprotection:/home/app/.aspnet/DataProtection-Keys
+      - web-dataprotection:/home/app/.aspnet/DataProtection-Keys
 
   api:
     pull_policy: build    # or: never
@@ -161,6 +161,6 @@ services:
     restart: "no"
 
 volumes:
-  demo_pgdata:
+  postgresql-data:
   pgadmin-data:
-  dataprotection:
+  web-dataprotection:

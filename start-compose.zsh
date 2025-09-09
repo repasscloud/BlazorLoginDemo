@@ -125,9 +125,9 @@ echo
 echo "🧹 1) Cleaning slate: removing Migrations, obj, bin, and blazorlogin* volumes"
 rm -rf BlazorLoginDemo.Web/Migrations BlazorLoginDemo.Web/bin BlazorLoginDemo.Web/obj || true
 
-vols="$(docker volume ls -q --filter name=blazorlogin || true)"
+vols="$(docker volume ls -q --filter name=blazorlogindemo_postgresql || true)"
 if [[ -z "$vols" ]]; then
-  echo "   (no blazorlogin* volumes)"
+  echo "   (no blazorlogindemo_postgresql* volumes)"
 else
   echo "$vols" | xargs -n1 docker volume rm -f
 fi
@@ -185,9 +185,14 @@ echo
 echo "🚀 8) Start Api app"
 docker compose up -d api
 
-# ── 📤 9) Commit & push version bump ──────────────────────────────────────────
+# ── 🌱 9) Seed the DB with additional data ──────────────────────────────────
 echo
-echo "📤 9) Commit & push version bump to Git"
+echo "🌱 9) Seed the DB with additional data"
+pwsh -File .scripts/import-airports.ps1 -CsvPath .scripts/data/airports.csv -Batch 500
+
+# ── 📤 10) Commit & push version bump ──────────────────────────────────────────
+echo
+echo "📤 10) Commit & push version bump to Git"
 git add .
 git commit -m "bump v${NEW_VER}"
 git push
