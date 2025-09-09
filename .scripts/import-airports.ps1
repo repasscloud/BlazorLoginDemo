@@ -24,7 +24,7 @@ function Convert-AirportType {
     switch (($Value ?? '').ToLower().Trim()) {
         "small_airport"  { return "SmallAirport" }
         "medium_airport" { return "MediumAirport" }
-        "large_airport"  { return "LargeAiport" }   # enum name in your model has this spelling
+        "large_airport"  { return "LargeAirport" }   # enum name in your model has this spelling
         "heliport"       { return "Heliport" }
         "seaplane_base"  { return "SeaplanePort" }
         "balloonport"    { return "BalloonPort" }
