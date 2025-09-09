@@ -278,6 +278,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<AirportInfo>(e =>
         {
             e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Ident).IsUnique();
         });
 
         // ===========================

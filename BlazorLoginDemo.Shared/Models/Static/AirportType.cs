@@ -6,24 +6,24 @@ public enum AirportType
 {
     Unknown = 0,
     
-    [EnumMember(Value = "small_airport")]
+    [EnumMember(Value = "SmallAirport")]
     SmallAirport = 20,
 
-    [EnumMember(Value = "medium_airport")]
+    [EnumMember(Value = "MediumAirport")]
     MediumAirport = 21,
 
-    [EnumMember(Value = "large_airport")]
-    LargeAiport = 22,
+    [EnumMember(Value = "LargeAirport")]
+    LargeAirport = 22,
 
-    [EnumMember(Value = "heliport")]
+    [EnumMember(Value = "Heliport")]
     Heliport = 30,
 
-    [EnumMember(Value = "seaplane_base")]
+    [EnumMember(Value = "SeaplaneBase")]
     SeaplanePort = 31,
 
-    [EnumMember(Value = "balloonport")]
+    [EnumMember(Value = "Balloonport")]
     BalloonPort = 32,
 
-    [EnumMember(Value = "closed")]
+    [EnumMember(Value = "Closed")]
     Closed = 99
 }
