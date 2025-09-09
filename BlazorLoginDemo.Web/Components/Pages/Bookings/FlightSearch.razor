@@ -1,7 +1,11 @@
 @page "/flights/search"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
 @using System.ComponentModel.DataAnnotations
 @using BlazorLoginDemo.Web.Components.Shared
+@attribute [Authorize]
+
+@inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
 @inject NavigationManager Nav
 
 <PageTitle>Flight Search</PageTitle>
@@ -10,7 +14,10 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
-        <button type="button" class="btn btn-outline-primary">View Travel Policy</button>
+        <button type="button" class="btn btn-outline-primary"
+                @onclick="@(() => GoToPolicy(_travelPolicyId))">
+            View Travel Policy
+        </button>
         <div class="btn-group" role="group" aria-label="Trip type">
             <input type="radio" class="btn-check" id="oneway" name="tripType" checked="@(_model.TripType == TripType.OneWay)" @onchange="@(_ => SetTripType(TripType.OneWay))">
             <label class="btn btn-outline-primary" for="oneway">One-way</label>
@@ -145,7 +152,6 @@
                         }
                         <option value="10+">10+</option>
                     </select>
-                    @* <div class="form-text">1–9 supported online. 10+ opens a prompt.</div> *@
                 </div>
             </div>
 
@@ -174,6 +180,11 @@
 </div>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+    private string? _username;
+    private string? _travelPolicyId;
+
     // --- Data model & enums ---
     public enum TripType { OneWay, Return }
     public enum CabinClass { ECONOMY, PREMIUM_ECONOMY, BUSINESS, FIRST }
@@ -244,14 +255,14 @@
     private string MinDepartDateString => MinDepartDate.ToString("yyyy-MM-dd");
 
     private DateTime MinReturnBase
-{
-    get
     {
-        var baseMin = MinDepartDate;
-        var dep = _model.DepartureDate?.Date ?? baseMin;
-        return dep > baseMin ? dep : baseMin;
+        get
+        {
+            var baseMin = MinDepartDate;
+            var dep = _model.DepartureDate?.Date ?? baseMin;
+            return dep > baseMin ? dep : baseMin;
+        }
     }
-}
     private string MinReturnDateString
     {
         get
@@ -414,6 +425,42 @@
             var minReturn = (_model.DepartureDate ?? MinDepartDate).Date;
             if (!_model.ReturnDate.HasValue || _model.ReturnDate.Value.Date < minReturn)
                 _model.ReturnDate = minReturn.AddDays(1);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateTask;
+        var user = authState.User;
+
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            _username = user.Identity.Name;
+            // now we have the username, identify if the user has a travel policy, or they can't book!
+            var avaUser = await AvaUserService.GetByEmailAsync(_username);
+            if (string.IsNullOrWhiteSpace(avaUser.TravelPolicyId))
+            {
+                Nav.NavigateTo("/user-has-no-assigned-travelpolicyid-error");
+                return;
+            }
+            _travelPolicyId = avaUser.TravelPolicyId;
+
+            
+        }
+        else
+        {
+            _username = "Anonymous";
+            Nav.NavigateTo("/");
+            return;
+        }
+    }
+
+    private void GoToPolicy(string? policyId)
+    {
+        if (!string.IsNullOrWhiteSpace(_travelPolicyId))
+        {
+            Nav.NavigateTo($"/admin/policies/travel/{_travelPolicyId}"); //?returnPath=/admin/policies/travel/juY9T9sIYx3Tbbylp4jCg/list");
+            return;
         }
     }
 }

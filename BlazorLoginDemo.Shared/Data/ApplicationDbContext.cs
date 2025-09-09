@@ -63,6 +63,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Continent> Continents => Set<Continent>();
     public DbSet<Country> Countries => Set<Country>();
     public DbSet<TravelPolicyDisabledCountry> TravelPolicyDisabledCountries => Set<TravelPolicyDisabledCountry>();
+    public DbSet<AirportInfo> AirportInfos => Set<AirportInfo>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -271,6 +272,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
              .HasColumnType("text[]")
              .IsRequired()
              .HasDefaultValueSql("'{}'::text[]");
+        });
+
+        // AirportInfo
+        builder.Entity<AirportInfo>(e =>
+        {
+            e.HasKey(x => x.Id);
         });
 
         // ===========================
