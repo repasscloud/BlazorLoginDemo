@@ -3,10 +3,13 @@
 @using Microsoft.AspNetCore.Authorization
 @using System.ComponentModel.DataAnnotations
 @using BlazorLoginDemo.Web.Components.Shared
+@using BlazorLoginDemo.Shared.Models.Kernel.Travel
+@using System.Net.Http.Json
 @attribute [Authorize]
 
 @inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
 @inject NavigationManager Nav
+@inject IHttpClientFactory HttpClientFactory
 
 <PageTitle>Flight Search</PageTitle>
 
@@ -185,6 +188,9 @@
     private string? _username;
     private string? _travelPolicyId;
 
+    private HttpClient Api => _api ??= HttpClientFactory.CreateClient("AvaApi");
+    private HttpClient? _api;
+
     // --- Data model & enums ---
     public enum TripType { OneWay, Return }
     public enum CabinClass { ECONOMY, PREMIUM_ECONOMY, BUSINESS, FIRST }
@@ -278,7 +284,9 @@
     // --- Demo airport data & search ---
     private record Airport(string Code, string City, string Name);
 
-    private static readonly Airport[] Airports = Array.Empty<Airport>();
+    @* private static readonly Airport[] Airports = Array.Empty<Airport>(); *@
+    private static readonly List<Airport> _airports = new();
+    private Airport[] Airports => _airports.ToArray();
 
     private string _originQuery = "";
     private string _destQuery = "";
@@ -291,14 +299,16 @@
     private IEnumerable<Airport> DestMatches =>
         FilterAirports(_destQuery).Where(a => a.Code != _model.Origin);
 
-    private static IEnumerable<Airport> FilterAirports(string q)
+    private IEnumerable<Airport> FilterAirports(string q)
     {
         if (string.IsNullOrWhiteSpace(q)) return Array.Empty<Airport>();
+        var src = Airports; // snapshot
         q = q.Trim();
-        return Airports.Where(a =>
-            a.Code.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || a.City.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || a.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
+
+        return src.Where(a =>
+            a.Code.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+            a.City.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+            a.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
     }
 
     private void PickOrigin(Airport a)
@@ -449,7 +459,26 @@
         }
 
         // --- load data from the API
-        var dto = await 
+        var url = "api/v1/kerneldata/airport-info/search-multi?type=MediumAirport&type=LargeAirport&country=AU&hasIata=true&hasMunicipality=true&skip=0&take=500";
+        var _dto = await Api.GetFromJsonAsync<IReadOnlyList<AirportInfo>>(url) ?? Array.Empty<AirportInfo>();
+
+        var mappedAirports = _dto.Select(x => new Airport(
+            Code:  !string.IsNullOrWhiteSpace(x.IataCode)  ? x.IataCode.Trim().ToUpperInvariant()
+                 : !string.IsNullOrWhiteSpace(x.GpsCode)   ? x.GpsCode.Trim().ToUpperInvariant()
+                 : !string.IsNullOrWhiteSpace(x.LocalCode) ? x.LocalCode.Trim().ToUpperInvariant()
+                 : (x.Ident ?? "").Trim().ToUpperInvariant(),
+            City:  !string.IsNullOrWhiteSpace(x.Municipality) ? x.Municipality.Trim()
+                 : (x.Name ?? "").Trim(),
+            Name:  (x.Name ?? "").Trim()
+        ))
+        .Where(a => !string.IsNullOrEmpty(a.Code))
+        .DistinctBy(a => a.Code)
+        .OrderBy(a => a.City).ThenBy(a => a.Name)
+        .ToList();
+
+        // <<< This is where your lines go
+        _airports.Clear();
+        _airports.AddRange(mappedAirports);
     }
 
 
