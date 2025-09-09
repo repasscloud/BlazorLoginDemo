@@ -6,170 +6,171 @@
 
 <PageTitle>Flight Search</PageTitle>
 
-<div class="container my-3">
-    <div class="card shadow-sm">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <span class="fw-semibold">Find Flights</span>
-            <div class="btn-group" role="group" aria-label="Trip type">
-                <input type="radio" class="btn-check" id="oneway" name="tripType" checked="@(_model.TripType == TripType.OneWay)" @onchange="@(_ => SetTripType(TripType.OneWay))">
-                <label class="btn btn-outline-primary" for="oneway">One-way</label>
+<h1 class="display-6 mb-3">Flight Search</h1>
 
-                <input type="radio" class="btn-check" id="return" name="tripType" checked="@(_model.TripType == TripType.Return)" @onchange="@(_ => SetTripType(TripType.Return))">
-                <label class="btn btn-outline-primary" for="return">Return</label>
+<div class="card mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <button type="button" class="btn btn-outline-primary">View Travel Policy</button>
+        <div class="btn-group" role="group" aria-label="Trip type">
+            <input type="radio" class="btn-check" id="oneway" name="tripType" checked="@(_model.TripType == TripType.OneWay)" @onchange="@(_ => SetTripType(TripType.OneWay))">
+            <label class="btn btn-outline-primary" for="oneway">One-way</label>
+
+            <input type="radio" class="btn-check" id="return" name="tripType" checked="@(_model.TripType == TripType.Return)" @onchange="@(_ => SetTripType(TripType.Return))">
+            <label class="btn btn-outline-primary" for="return">Return</label>
+        </div>
+    </div>
+
+    <EditForm Model="_model" OnValidSubmit="OnSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="card-body">
+            <!-- Origin / Destination -->
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Origin</label>
+                    <div class="position-relative">
+                        <input class="form-control"
+                                placeholder="Type code or city (e.g., SYD or Sydney)"
+                                @bind="_originQuery"
+                                @bind:event="oninput"
+                                @onfocus="() => _originOpen = true"
+                                @onblur="() => CloseDropdownSoon(nameof(_originOpen))" />
+                        @if (_originOpen && OriginMatches.Any())
+                        {
+                            <ul class="list-group position-absolute w-100" style="z-index: 1000;">
+                                @foreach (var a in OriginMatches)
+                                {
+                                    <li class="list-group-item list-group-item-action"
+                                        @onclick="(() => PickOrigin(a))">
+                                        <div class="d-flex justify-content-between">
+                                            <span>@a.Code — @a.City</span>
+                                            <small class="text-muted">@a.Name</small>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <div class="form-text">Selected: @(_model.Origin ?? "—")</div>
+                </div>
+
+                <div class="col-md-1 d-flex justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary" title="Swap" @onclick="Swap">
+                        <i class="bi bi-arrow-left-right"></i>
+                    </button>
+                </div>
+
+                <div class="col-md-5">
+                    <label class="form-label">Destination</label>
+                    <div class="position-relative">
+                        <input class="form-control"
+                                placeholder="Type code or city (e.g., MEL or Melbourne)"
+                                @bind="_destQuery"
+                                @bind:event="oninput"
+                                @onfocus="() => _destOpen = true"
+                                @onblur="() => CloseDropdownSoon(nameof(_destOpen))" />
+                        @if (_destOpen && DestMatches.Any())
+                        {
+                            <ul class="list-group position-absolute w-100" style="z-index: 1000;">
+                                @foreach (var a in DestMatches)
+                                {
+                                    <li class="list-group-item list-group-item-action"
+                                        @onclick="(() => PickDest(a))">
+                                        <div class="d-flex justify-content-between">
+                                            <span>@a.Code — @a.City</span>
+                                            <small class="text-muted">@a.Name</small>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <div class="form-text">Selected: @(_model.Destination ?? "—")</div>
+                </div>
+            </div>
+
+            <!-- Dates -->
+            <div class="row g-2 mt-2">
+                <div class="col-md-4">
+                    <label class="form-label">Departure</label>
+                    @* <InputDate class="form-control"
+                        @bind-Value="_model.DepartureDate"
+                        min="@MinDepartDateString"
+                        @onchange="OnDepartureChanged" /> *@
+                    <WeekdayDatePicker
+                        @bind-Date="_model.DepartureDate"
+                        Min="MinDepartDate"
+                        DisableSaturday="true"
+                        DisableSunday="true" />
+                    <div class="form-text">
+                        Earliest: @(MinDepartDate.ToString("yyyy-MM-dd")) (@BookingDaysAdvanceMinDays day lead)
+                    </div>
+                </div>
+                <div class="col-md-2" />
+                <div class="col-md-4">
+                    <label class="form-label">Return</label>
+                    <InputDate class="form-control"
+                        @bind-Value="_model.ReturnDate"
+                        disabled="@(_model.TripType == TripType.OneWay)"
+                        min="@MinReturnDateString" />
+                    @if (_model.TripType == TripType.OneWay)
+                    {
+                        <div class="form-text">Return date disabled for One-way.</div>
+                    }
+                    else
+                    {
+                        <div class="form-text">Return can’t be before @MinReturnDateString</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Cabin + Pax -->
+            <div class="row g-2 mt-2">
+                <div class="col-md-2">
+                    <label class="form-label">Cabin Class</label>
+                    <InputSelect class="form-select" @bind-Value="_model.Cabin">
+                        @foreach (var c in Enum.GetValues<CabinClass>())
+                        {
+                            <option value="@c">@c.ToString().Replace('_',' ')</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Passengers</label>
+                    <select class="form-select" @onchange="OnPassengersChanged">
+                        @for (var i = 1; i <= 9; i++)
+                        {
+                            <option value="@i" selected="@(i == _model.Passengers)">@i</option>
+                        }
+                        <option value="10+">10+</option>
+                    </select>
+                    @* <div class="form-text">1–9 supported online. 10+ opens a prompt.</div> *@
+                </div>
+            </div>
+
+            @if (_showGroupPrompt)
+            {
+                <div class="alert alert-warning mt-3 d-flex align-items-center" role="alert">
+                    <i class="bi bi-people-fill me-2"></i>
+                    <div>
+                        For groups of 10 or more, please contact your Account Manager to complete the booking.
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" @onclick="() => _showGroupPrompt = false">Got it</button>
+                </div>
+            }
+
+            <!-- Actions -->
+            <div class="d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Search flights
+                </button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="ResetForm">
+                    Reset
+                </button>
             </div>
         </div>
-
-        <EditForm Model="_model" OnValidSubmit="OnSubmit">
-            <DataAnnotationsValidator />
-            <ValidationSummary />
-
-            <div class="card-body">
-                <!-- Origin / Destination -->
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-5">
-                        <label class="form-label">Origin</label>
-                        <div class="position-relative">
-                            <input class="form-control"
-                                   placeholder="Type code or city (e.g., SYD or Sydney)"
-                                   @bind="_originQuery"
-                                   @bind:event="oninput"
-                                   @onfocus="() => _originOpen = true"
-                                   @onblur="() => CloseDropdownSoon(nameof(_originOpen))" />
-                            @if (_originOpen && OriginMatches.Any())
-                            {
-                                <ul class="list-group position-absolute w-100" style="z-index: 1000;">
-                                    @foreach (var a in OriginMatches)
-                                    {
-                                        <li class="list-group-item list-group-item-action"
-                                            @onclick="(() => PickOrigin(a))">
-                                            <div class="d-flex justify-content-between">
-                                                <span>@a.Code — @a.City</span>
-                                                <small class="text-muted">@a.Name</small>
-                                            </div>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                        </div>
-                        <div class="form-text">Selected: @(_model.Origin ?? "—")</div>
-                    </div>
-
-                    <div class="col-md-1 d-flex justify-content-center">
-                        <button type="button" class="btn btn-outline-secondary" title="Swap" @onclick="Swap">
-                            <i class="bi bi-arrow-left-right"></i>
-                        </button>
-                    </div>
-
-                    <div class="col-md-5">
-                        <label class="form-label">Destination</label>
-                        <div class="position-relative">
-                            <input class="form-control"
-                                   placeholder="Type code or city (e.g., MEL or Melbourne)"
-                                   @bind="_destQuery"
-                                   @bind:event="oninput"
-                                   @onfocus="() => _destOpen = true"
-                                   @onblur="() => CloseDropdownSoon(nameof(_destOpen))" />
-                            @if (_destOpen && DestMatches.Any())
-                            {
-                                <ul class="list-group position-absolute w-100" style="z-index: 1000;">
-                                    @foreach (var a in DestMatches)
-                                    {
-                                        <li class="list-group-item list-group-item-action"
-                                            @onclick="(() => PickDest(a))">
-                                            <div class="d-flex justify-content-between">
-                                                <span>@a.Code — @a.City</span>
-                                                <small class="text-muted">@a.Name</small>
-                                            </div>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                        </div>
-                        <div class="form-text">Selected: @(_model.Destination ?? "—")</div>
-                    </div>
-                </div>
-
-                <!-- Dates -->
-                <div class="row g-2 mt-2">
-                    <div class="col-md-6">
-                        <label class="form-label">Departure</label>
-                        @* <InputDate class="form-control"
-                            @bind-Value="_model.DepartureDate"
-                            min="@MinDepartDateString"
-                            @onchange="OnDepartureChanged" /> *@
-                            <WeekdayDatePicker
-    @bind-Date="_model.DepartureDate"
-    Min="MinDepartDate"
-    DisableSaturday="true"
-    DisableSunday="true" />
-                        <div class="form-text">
-                            Earliest: @MinDepartDate:yyyy-MM-dd (@BookingDaysAdvanceMinDays day lead)
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Return</label>
-                        <InputDate class="form-control"
-                            @bind-Value="_model.ReturnDate"
-                            disabled="@(_model.TripType == TripType.OneWay)"
-                            min="@MinReturnDateString" />
-                        @if (_model.TripType == TripType.OneWay)
-                        {
-                            <div class="form-text">Return date disabled for One-way.</div>
-                        }
-                        else
-                        {
-                            <div class="form-text">Return can’t be before departure; earliest: @MinReturnDateString</div>
-                        }
-                    </div>
-                </div>
-
-                <!-- Cabin + Pax -->
-                <div class="row g-2 mt-2">
-                    <div class="col-md-6">
-                        <label class="form-label">Cabin Class</label>
-                        <InputSelect class="form-select" @bind-Value="_model.Cabin">
-                            @foreach (var c in Enum.GetValues<CabinClass>())
-                            {
-                                <option value="@c">@c.ToString().Replace('_',' ')</option>
-                            }
-                        </InputSelect>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Passengers</label>
-                        <select class="form-select" @onchange="OnPassengersChanged">
-                            @for (var i = 1; i <= 9; i++)
-                            {
-                                <option value="@i" selected="@(i == _model.Passengers)">@i</option>
-                            }
-                            <option value="10+">10+</option>
-                        </select>
-                        <div class="form-text">1–9 supported online. 10+ opens a prompt.</div>
-                    </div>
-                </div>
-
-                @if (_showGroupPrompt)
-                {
-                    <div class="alert alert-warning mt-3 d-flex align-items-center" role="alert">
-                        <i class="bi bi-people-fill me-2"></i>
-                        <div>
-                            For groups of 10 or more, please contact your Account Manager to complete the booking.
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" @onclick="() => _showGroupPrompt = false">Got it</button>
-                    </div>
-                }
-
-                <!-- Actions -->
-                <div class="d-flex gap-2 mt-3">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-search"></i> Search flights
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" @onclick="ResetForm">
-                        Reset
-                    </button>
-                </div>
-            </div>
-        </EditForm>
-    </div>
+    </EditForm>
 </div>
 
 @code {
