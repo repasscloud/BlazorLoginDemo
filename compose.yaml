@@ -44,7 +44,7 @@ services:
       - ./.docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
       - ./.docker/pgadmin/pgpass:/var/lib/pgadmin/pgpass:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost/misc/ping || exit 1"]
+      test: ["CMD-SHELL", "wget -nv -O - http://localhost/misc/ping || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -73,6 +73,7 @@ services:
       - MailerSend__FromName=${MAILERSEND__FROMNAME}
       - AdminEmail=${ADMINEMAIL}
       - AdminPassword=${ADMINPASSWORD}
+      - API__BASEADDRESS=${API__BASEADDRESS}
     depends_on:
       db:
         condition: service_healthy
@@ -124,12 +125,11 @@ services:
       - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__7=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__7}
       - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__8=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__8}
       - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__9=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__9}
-
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8090/api/v1/healthz/check || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/healthz/check || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 10
