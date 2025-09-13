@@ -11,6 +11,8 @@
 @using System.Globalization
 @using System.Linq
 @using Macross.Json.Extensions
+@using BlazorLoginDemo.Web.Helpers
+@using BlazorLoginDemo.Shared.Models.DTOs
 @attribute [Authorize]
 
 @inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
@@ -37,7 +39,7 @@
         </div>
     </div>
 
-    <EditForm Model="_model" OnValidSubmit="OnSubmit">
+    <EditForm Model="_model" OnValidSubmit="@OnSubmitAsync">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
@@ -142,13 +144,12 @@
             <div class="row g-2 mt-2">
                 <div class="col-md-2">
                     <label class="form-label">Cabin Class</label>
-<InputSelect class="form-select" @bind-Value="_model.Cabin">
-    @foreach (var c in _allowedCabins)
-    {
-        <option value="@c">@c.Replace('_',' ')</option>
-    }
-</InputSelect>
-
+                    <InputSelect class="form-select" @bind-Value="_model.Cabin">
+                        @foreach (var c in _allowedCabins)
+                        {
+                            <option value="@c">@c.Replace('_',' ')</option>
+                        }
+                    </InputSelect>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Passengers</label>
@@ -200,10 +201,12 @@
     [CascadingParameter]
     private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     private string _username = string.Empty;
-    private string? _travelPolicyId;
+    private string _customerId = string.Empty;
+    private string _clientId = string.Empty;
+    private string _travelPolicyId = string.Empty;
     private TravelPolicy? _travelPolicy;
 
-    private HttpClient Api => _api ??= HttpClientFactory.CreateClient("AvaApi");
+    private HttpClient Api => _api ??= HttpClientFactory.CreateClient(name: "AvaApi");
     private HttpClient? _api;
 
     // --- Data model & enums ---
@@ -252,12 +255,12 @@
 
         [Required]
         [DataType(DataType.Date)]
-        public DateTime? DepartureDate { get; set; } = DateTime.Today.AddDays(7);
+        public DateTime? DepartureDate { get; set; } = DateTime.Today.AddDays(value: 7);
 
         [DataType(DataType.Date)]
         public DateTime? ReturnDate { get; set; }
 
-        [Range(1, 9)]
+        [Range(minimum: 1, maximum: 9)]
         public int Passengers { get; set; } = 1;
 
         [Required]
@@ -268,32 +271,32 @@
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            var today = DateTime.Today;
+            DateTime today = DateTime.Today;
 
             if (!DepartureDate.HasValue)
             {
-                yield return new ValidationResult("Departure date is required.", new[] { nameof(DepartureDate) });
+                yield return new ValidationResult(errorMessage: "Departure date is required.", new[] { nameof(DepartureDate) });
             }
             else
             {
                 // Enforce lead time and no past dates
                 var minDepart = today.AddDays(BookingDaysAdvanceMinDays);
                 if (DepartureDate.Value.Date < minDepart)
-                    yield return new ValidationResult($"Earliest departure is {minDepart:yyyy-MM-dd}.", new[] { nameof(DepartureDate) });
+                    yield return new ValidationResult(errorMessage: $"Earliest departure is {minDepart:yyyy-MM-dd}.", new[] { nameof(DepartureDate) });
             }
 
             if (TripType == TripType.Return)
             {
                 if (!ReturnDate.HasValue)
                 {
-                    yield return new ValidationResult("Return date is required for return trips.", new[] { nameof(ReturnDate) });
+                    yield return new ValidationResult(errorMessage: "Return date is required for return trips.", new[] { nameof(ReturnDate) });
                 }
                 else
                 {
                     // Return cannot be before depart; also respect lead time
                     var minReturn = (DepartureDate ?? today.AddDays(BookingDaysAdvanceMinDays)).Date;
                     if (ReturnDate.Value.Date < minReturn)
-                        yield return new ValidationResult($"Return date can’t be before {minReturn:yyyy-MM-dd}.", new[] { nameof(ReturnDate) });
+                        yield return new ValidationResult(errorMessage: $"Return date can’t be before {minReturn:yyyy-MM-dd}.", new[] { nameof(ReturnDate) });
                 }
             }
         }
@@ -305,14 +308,14 @@
     private DateTime MinDepartDate => Today.AddDays(BookingDaysAdvanceMinDays);
 
     // yyyy-MM-dd for <input type="date" min="...">
-    private string MinDepartDateString => MinDepartDate.ToString("yyyy-MM-dd");
+    private string MinDepartDateString => MinDepartDate.ToString(format: "yyyy-MM-dd");
 
     private DateTime MinReturnBase
     {
         get
         {
-            var baseMin = MinDepartDate;
-            var dep = _model.DepartureDate?.Date ?? baseMin;
+            DateTime baseMin = MinDepartDate;
+            DateTime dep = _model.DepartureDate?.Date ?? baseMin;
             return dep > baseMin ? dep : baseMin;
         }
     }
@@ -320,9 +323,9 @@
     {
         get
         {
-            var baseMin = MinDepartDate;
-            var dep = _model.DepartureDate ?? baseMin;
-            var min = dep > baseMin ? dep : baseMin;
+            DateTime baseMin = MinDepartDate;
+            DateTime dep = _model.DepartureDate ?? baseMin;
+            DateTime min = dep > baseMin ? dep : baseMin;
             return min.ToString("yyyy-MM-dd");
         }
     }
@@ -330,7 +333,7 @@
     // --- Airport data & search ---
     private record Airport(string Code, string City, string Name);
 
-    private static readonly List<Airport> _airports = new();
+    private static readonly List<Airport> _airports = new List<Airport>();
     private Airport[] Airports => _airports.ToArray();
 
     private string _originQuery = "";
@@ -347,7 +350,7 @@
     private IEnumerable<Airport> FilterAirports(string q)
     {
         if (string.IsNullOrWhiteSpace(q)) return Array.Empty<Airport>();
-        var src = Airports;  // snapshot
+        Airport[]? src = Airports;  // snapshot
         q = q.Trim();
 
         return src.Where(a =>
@@ -373,7 +376,7 @@
     private async Task CloseDropdownSoon(string which)
     {
         // Small delay to allow click selection before blur closes the menu
-        await Task.Delay(150);
+        await Task.Delay(millisecondsDelay: 150);
         if (which == nameof(_originOpen)) _originOpen = false;
         if (which == nameof(_destOpen)) _destOpen = false;
         StateHasChanged();
@@ -383,14 +386,14 @@
     {
         (_model.Origin, _model.Destination) = (_model.Destination, _model.Origin);
         // refresh visible queries
-        var o = Airports.FirstOrDefault(a => a.Code == _model.Origin);
-        var d = Airports.FirstOrDefault(a => a.Code == _model.Destination);
+        Airport? o = Airports.FirstOrDefault(a => a.Code == _model.Origin);
+        Airport? d = Airports.FirstOrDefault(a => a.Code == _model.Destination);
         _originQuery = o is null ? "" : $"{o.Code} — {o.City}";
         _destQuery = d is null ? "" : $"{d.Code} — {d.City}";
     }
 
     // --- Form state ---
-    private FlightSearchModel _model = new();
+    private FlightSearchModel _model = new FlightSearchModel();
     private bool _showGroupPrompt;
     private bool _showDatePrompt;
 
@@ -408,7 +411,7 @@
         }
         else
         {
-            var minReturn = (_model.DepartureDate ?? MinDepartDate).Date;
+            DateTime minReturn = (_model.DepartureDate ?? MinDepartDate).Date;
             if (!_model.ReturnDate.HasValue || _model.ReturnDate.Value.Date < minReturn)
                 _model.ReturnDate = minReturn.AddDays(1);
         }
@@ -416,16 +419,16 @@
 
     private void OnPassengersChanged(ChangeEventArgs e)
     {
-        var val = Convert.ToString(e.Value);
+        string? val = Convert.ToString(e.Value);
         if (string.Equals(val, "10+", StringComparison.OrdinalIgnoreCase))
         {
             _showGroupPrompt = true;
             // keep Passengers at 9 (max online) so the form stays valid
             _model.Passengers = 9;
         }
-        else if (int.TryParse(val, out var pax))
+        else if (int.TryParse(val, out int pax))
         {
-            _model.Passengers = Math.Clamp(pax, 1, 9);
+            _model.Passengers = Math.Clamp(pax, min: 1, max: 9);
         }
     }
 
@@ -444,14 +447,18 @@
         _showDatePrompt = false;
     }
 
-    private void OnSubmit()
+    private async Task OnSubmitAsync()
     {
-        // You can push these as query params to your results page.
-        // Example: Nav.NavigateTo($"/flights/results?trip={_model.TripType}&orig={_model.Origin}&dest={_model.Destination}&out={_model.DepartureDate:yyyy-MM-dd}&ret={_model.ReturnDate:yyyy-MM-dd}&cabin={_model.Cabin}&pax={_model.Passengers}");
-        // For now, navigate to your existing demo results page or keep this placeholder:
-        var ret = _model.TripType == TripType.Return ? $"&ret={_model.ReturnDate:yyyy-MM-dd}" : "";
-        var url = $"/flights/results?trip={_model.TripType}&orig={_model.Origin}&dest={_model.Destination}&out={_model.DepartureDate:yyyy-MM-dd}{ret}&cabin={_model.Cabin}&pax={_model.Passengers}";
-        Nav.NavigateTo(url);
+        FlightOfferSearchRequestDto? json = await ConvertFlightSearchModelToFlightOfferSearchRequestDto(
+            input: _model,
+            clientId: _clientId,
+            customerId: _customerId,
+            travelPolicyId: _travelPolicyId
+        );
+
+        JsonFileWriter.WriteToJsonFile(json, fileName: "flight-search.json");
+        HttpResponseMessage? response = await Api.PostAsJsonAsync("api/v1/flights/webapp/search", json);
+        Nav.NavigateTo(uri: "/demo/flights-table-clean");
     }
 
     private void OnDepartureChanged(ChangeEventArgs _)
@@ -481,8 +488,8 @@
         // -----------------------------------
 
         // --- original async auth/init ---
-        var authState = await AuthStateTask;
-        var user = authState.User;
+        AuthenticationState? authState = await AuthStateTask;
+        System.Security.Claims.ClaimsPrincipal? user = authState.User;
 
         if (user.Identity is not null && user.Identity.IsAuthenticated)
         {
@@ -495,30 +502,39 @@
             }
 
             // must have a travel policy to proceed
-            var avaUser = await AvaUserService.GetByEmailAsync(_username);
+            AvaUser? avaUser = await AvaUserService.GetByEmailAsync(_username);
             if (string.IsNullOrWhiteSpace(avaUser?.TravelPolicyId))
             {
-                Nav.NavigateTo("/user-has-no-assigned-travelpolicyid-error");
+                Nav.NavigateTo(uri: "/user-has-no-assigned-travelpolicyid-error");
                 return;
             }
 
             _travelPolicyId = avaUser.TravelPolicyId;
             _travelPolicy = await TravelPolicyService.GetByIdAsync(_travelPolicyId);
 
+            _customerId = avaUser.Id;
+            _clientId = avaUser.AvaClientId ?? string.Empty;
+
+            if (string.IsNullOrEmpty(_clientId))
+            {
+                Nav.NavigateTo(uri: "/user-has-no-assigned-clientid-error");
+                return;
+            }
+
             ApplyPolicyCabins();
         }
         else
         {
             _username = "Anonymous";
-            Nav.NavigateTo("/");
+            Nav.NavigateTo(uri: "/");
             return;
         }
 
         // --- load data from the API
-        var url = "api/v1/kerneldata/airport-info/search-multi?type=MediumAirport&type=LargeAirport&country=AU&hasIata=true&hasMunicipality=true&skip=0&take=500";
-        var _dto = await Api.GetFromJsonAsync<IReadOnlyList<AirportInfo>>(url, JsonDefaults.WebEnums) ?? Array.Empty<AirportInfo>();
+        string? url = "api/v1/kerneldata/airport-info/search-multi?type=MediumAirport&type=LargeAirport&country=AU&hasIata=true&hasMunicipality=true&skip=0&take=500";
+        IReadOnlyList<AirportInfo>? _dto = await Api.GetFromJsonAsync<IReadOnlyList<AirportInfo>>(url, JsonDefaults.WebEnums) ?? Array.Empty<AirportInfo>();
 
-        var mappedAirports = _dto.Select(x => new Airport(
+        List<Airport>? mappedAirports = _dto.Select(x => new Airport(
             Code:  !string.IsNullOrWhiteSpace(x.IataCode)  ? x.IataCode.Trim().ToUpperInvariant()
                  : !string.IsNullOrWhiteSpace(x.GpsCode)   ? x.GpsCode.Trim().ToUpperInvariant()
                  : !string.IsNullOrWhiteSpace(x.LocalCode) ? x.LocalCode.Trim().ToUpperInvariant()
@@ -540,8 +556,27 @@
     {
         if (!string.IsNullOrWhiteSpace(_travelPolicyId))
         {
-            Nav.NavigateTo($"/admin/policies/travel/{_travelPolicyId}"); //?returnPath=/admin/policies/travel/juY9T9sIYx3Tbbylp4jCg/list");
+            Nav.NavigateTo($"/policies/travel/view/{_travelPolicyId}"); //?returnPath=/admin/policies/travel/juY9T9sIYx3Tbbylp4jCg/list");
             return;
         }
+    }
+
+    private async Task<FlightOfferSearchRequestDto> ConvertFlightSearchModelToFlightOfferSearchRequestDto(FlightSearchModel input, string clientId, string customerId, string travelPolicyId)
+    {
+        return new FlightOfferSearchRequestDto
+        {
+            Id = await Nanoid.GenerateAsync(),
+            CreatedAt = DateTime.UtcNow,
+            ClientId = clientId,
+            CustomerId = customerId,
+            TravelPolicyId = travelPolicyId,
+            OriginLocationCode = input?.Origin ?? string.Empty,
+            DestinationLocationCode = input?.Destination ?? string.Empty,
+            IsOneWay = input?.TripType == TripType.OneWay ? true : false,
+            DepartureDate = input?.DepartureDate?.ToString(format: "yyyy-MM-dd") ?? DateTime.UtcNow.ToString(format: "yyyy-MM-dd"),
+            DepartureDateReturn = input?.ReturnDate?.ToString(format: "yyyy-MM-dd") ?? null,
+            Adults = input?.Passengers ?? 1,
+            CabinClass = input?.Cabin ?? "ECONOMY"
+        };
     }
 }

@@ -55,7 +55,7 @@ public class FlightOfferSearchRequestDto
     public string? DepartureDateReturn { get; set; }
 
     [JsonPropertyName("adults")]
-    [Range(1, 9, ErrorMessage = "Adults must be a single digit between 1 and 9.")]
+    [Range(minimum: 1, maximum: 9, ErrorMessage = "Adults must be a single digit between 1 and 9.")]
     public required int Adults { get; set; }
 
     [JsonPropertyName("cabinClass")]

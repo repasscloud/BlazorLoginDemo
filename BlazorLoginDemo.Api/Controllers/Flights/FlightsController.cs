@@ -29,7 +29,7 @@ public class FlightsController : ControllerBase
     }
 
     // POST: api/v1/flights/webapp/search
-    [ServiceFilter(typeof(RequireApiKeyFilter))]
+    // [ServiceFilter(typeof(RequireApiKeyFilter))]
     [HttpPost("webapp/search")]
     public async Task<IActionResult> SearchFlights(FlightOfferSearchRequestDto criteria, CancellationToken ct = default)
     {
@@ -39,7 +39,6 @@ public class FlightsController : ControllerBase
         // check that a record doesn't match criteria.Id already, else return error msg
         var existing = await _db.FlightOfferSearchRequestDtos.FindAsync(criteria.Id);
 
-
         if (existing is not null)
         {
             await _log.LogErrorAsync($"Table 'FlightOfferSearchRequestDto' has matching value for {criteria.Id}");
@@ -47,7 +46,7 @@ public class FlightsController : ControllerBase
         }
 
         // save it to the db
-        await _log.LogDebugAsync($"Created record 'FlightOfferSearchReqeustDto'  with ID '{criteria.Id}'");
+        await _log.LogDebugAsync($"Created record 'FlightOfferSearchReqeustDto' with ID '{criteria.Id}'");
         await _db.FlightOfferSearchRequestDtos.AddAsync(criteria, ct);
 
         // TravelSearchRecord travelSearchRecord = new TravelSearchRecord

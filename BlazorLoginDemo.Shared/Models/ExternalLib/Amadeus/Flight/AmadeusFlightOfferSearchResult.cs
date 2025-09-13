@@ -4,7 +4,7 @@ using BlazorLoginDemo.Shared.Validation;
 
 namespace BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
 
-public class AmadeusFlightOfferSearchResult
+public sealed class AmadeusFlightOfferSearchResult
 {
     // this was added for debug purposes
     [JsonPropertyName("ErrorMessage")]

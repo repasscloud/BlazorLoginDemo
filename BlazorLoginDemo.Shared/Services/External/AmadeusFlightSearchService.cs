@@ -4,11 +4,14 @@ using System.Text.Json;
 using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
 using BlazorLoginDemo.Shared.Models.Kernel.User;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.VisualBasic;
+using NanoidDotNet;
 
 namespace BlazorLoginDemo.Shared.Services.External;
 
@@ -37,7 +40,7 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         _jsonOptions = jsonOptions;
     }
 
-    public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersAsync(FlightOfferSearchRequestDto dto)
+    public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersAsync(FlightOfferSearchRequestDto dto, CancellationToken ct = default)
     {
         await _loggerService.LogInfoAsync($"FlightOfferService received request from API with ID: {dto.Id}");
 
@@ -187,31 +190,35 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
 
         _filters.CabinRestrictions = _cabinRestrictions;
 
-        // create the .CarrrierRestriction object (this gets added at the end of the region)
-        CarrierRestriction _carrierRestriction = new CarrierRestriction();
+        // .CarrierRestriction overhaul (issues/13)
+        // Get effective lists (policy first, then user prefs if present/non-empty)
+        var included = _travelPolicyInterResult?.IncludedAirlineCodes
+            ?? (_userSysPreferences?.IncludedAirlineCodes?.Any() == true
+                ? _userSysPreferences.IncludedAirlineCodes.ToList()
+                : null);
 
-        // do not edit the .BlacklistedInEUAllowed value (bool), it's set in the class
+        var excluded = _travelPolicyInterResult?.ExcludedAirlineCodes
+            ?? (_userSysPreferences?.ExcludedAirlineCodes?.Any() == true
+                ? _userSysPreferences.ExcludedAirlineCodes.ToList()
+                : null);
 
-        // carrier excluded codes excludes, but carrier included restricts, so included is counted first then skip
-        // else use excluded second
-        if (_travelPolicyInterResult?.IncludedAirlineCodes is not null)
+        // Build restriction: if both exist, prefer EXCLUDED; if none, do nothing
+        CarrierRestriction? carrierRestrictions = null;
+
+        if (excluded is { Count: > 0 })
         {
-            _carrierRestriction.IncludedCarrierCodes = _travelPolicyInterResult.IncludedAirlineCodes;
+            carrierRestrictions = new CarrierRestriction { ExcludedCarrierCodes = excluded };
         }
-        else if (_travelPolicyInterResult?.ExcludedAirlineCodes is not null)
+        else if (included is { Count: > 0 })
         {
-            _carrierRestriction.ExcludedCarrierCodes = _travelPolicyInterResult.ExcludedAirlineCodes;
-        }
-        else if (_userSysPreferences?.IncludedAirlineCodes is not null)
-        {
-            _carrierRestriction.IncludedCarrierCodes = _userSysPreferences.IncludedAirlineCodes.ToList();
-        }
-        else if (_userSysPreferences?.ExcludedAirlineCodes is not null)
-        {
-            _carrierRestriction.ExcludedCarrierCodes = _userSysPreferences.ExcludedAirlineCodes.ToList();
+            carrierRestrictions = new CarrierRestriction { IncludedCarrierCodes = included };
         }
 
-        _filters.CarrierRestrictions = _carrierRestriction;
+        if (carrierRestrictions is not null)
+        {
+            // Leave .BlacklistedInEUAllowed as-is (default in class)
+            _filters.CarrierRestrictions = carrierRestrictions;
+        }
         
         _searchCriteria.Filters = _filters;
 
@@ -253,7 +260,24 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         if (response.IsSuccessStatusCode)
         {
             var result = await response.Content.ReadFromJsonAsync<AmadeusFlightOfferSearchResult>();
-            return result ?? throw new InvalidOperationException("Deserialization returned null.");
+
+            if (result is null)
+                throw new InvalidOperationException("Deserialization returned null.");
+
+            // save the record to db, as the FLightOfferSearchResultRecord
+            FlightOfferSearchResultRecord record = new FlightOfferSearchResultRecord
+            {
+                Id = await Nanoid.GenerateAsync(),
+                MetaCount = result.Meta.Count,
+                FlightOfferSearchRequestDtoId = dto.Id,
+                ClientId = dto.ClientId,
+                AvaUserId = dto.CustomerId,  // no fucking idea why this is still being called "CustomerId"?
+                Source = SearchResultSource.Amadeus,
+                AmadeusPayload = result
+            };
+
+            await _db.FlightOfferSearchResultRecords.AddAsync(record, ct);
+            return result;
         }
 
         else

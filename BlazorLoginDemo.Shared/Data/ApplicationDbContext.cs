@@ -9,6 +9,8 @@ using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.Kernel.SysVar;
 using BlazorLoginDemo.Shared.Models.DTOs;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
+using System.Security.Cryptography.X509Certificates;
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -49,6 +51,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // Amadeus: Internal
     // ---------------------------
     public DbSet<FlightOfferSearchRequestDto> FlightOfferSearchRequestDtos => Set<FlightOfferSearchRequestDto>();
+
+    // ---------------------------
+    // Search Results
+    // ---------------------------
+    public DbSet<FlightOfferSearchResultRecord> FlightOfferSearchResultRecords => Set<FlightOfferSearchResultRecord>();
     
     // ---------------------------
     // Finance
@@ -225,6 +232,28 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<FlightOfferSearchRequestDto>(e =>
         {
             e.HasKey(x => x.Id);
+        });
+
+        // ===========================
+        // Search Results
+        // ===========================
+
+        builder.Entity<FlightOfferSearchResultRecord>(e =>
+        {
+            e.ToTable("flight_offer_search_result_records", "ava");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.CreatedAt)
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+
+            e.Property(x => x.AmadeusPayload)
+                .HasColumnType("jsonb");
+
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.AvaUserId);
+            e.HasIndex(x => x.ClientId);
+            e.HasIndex(x => x.FlightOfferSearchRequestDtoId);
         });
 
         // ===========================
