@@ -37,7 +37,7 @@ public class Program
 
         // Add services to the container.
         builder.Services.AddRazorComponents()
-            .AddInteractiveServerComponents(); // .NET 8 Interactive Server
+            .AddInteractiveServerComponents(); // .NET 9 Interactive Server
 
         builder.Services.AddCascadingAuthenticationState();
         builder.Services.AddScoped<IdentityUserAccessor>();
