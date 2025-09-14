@@ -14,8 +14,8 @@ public class AirportInfo
     [DefaultValue(AirportType.Unknown)]
     public AirportType Type { get; set; } = AirportType.Unknown;
     public string Name { get; set; } = default!;
-    public long LatitudeDeg { get; set; }
-    public long LongitudeDeg { get; set; }
+    public double LatitudeDeg { get; set; }
+    public double LongitudeDeg { get; set; }
     public int ElevationFt { get; set; }
 
     [DefaultValue(AirportContinent.Unknown)]

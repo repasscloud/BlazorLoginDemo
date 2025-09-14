@@ -8,6 +8,7 @@ using BlazorLoginDemo.Shared.Services.Interfaces.Client;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Finance;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
+using BlazorLoginDemo.Shared.Services.Interfaces.Policies;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
 using BlazorLoginDemo.Shared.Services.Interfaces.User;
 using BlazorLoginDemo.Shared.Services.Kernel;
@@ -63,6 +64,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddAvaPolicyServices(this IServiceCollection services)
     {
         services.AddScoped<ITravelPolicyService, TravelPolicyService>();
+        services.AddScoped<IRegionService, RegionService>();
+        services.AddScoped<IContinentService, ContinentService>();
+        services.AddScoped<ICountryService, CountryService>();
+        services.AddScoped<IAirportInfoService, AirportInfoService>();
         return services;
     }
 
@@ -99,6 +104,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILoggerService, LoggerService>();
         services.AddScoped<IAmadeusAuthService, AmadeusAuthService>();
         services.AddScoped<IAmadeusFlightSearchService, AmadeusFlightSearchService>();
+        services.AddScoped<IAirportInfoService, AirportInfoService>();
         services.AddScoped<RequireApiKeyFilter>();
         return services;
     }

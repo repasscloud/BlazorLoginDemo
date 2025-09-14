@@ -11,6 +11,7 @@ using BlazorLoginDemo.Shared.Services;
 
 using Serilog;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
+using System.Text.Json.Serialization;
 
 public class Program
 {
@@ -128,7 +129,11 @@ public class Program
         // --------------------------
         // MVC / Controllers
         // --------------------------
-        builder.Services.AddControllers();
+        builder.Services.AddControllers()
+            .AddJsonOptions(o =>
+            {
+                o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            });
 
         // --------------------------
         // App-specific services

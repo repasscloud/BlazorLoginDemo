@@ -5,5 +5,5 @@ namespace BlazorLoginDemo.Shared.Services.Interfaces.External;
 
 public interface IAmadeusFlightSearchService
 {
-    Task<AmadeusFlightOfferSearchResult> GetFlightOffersAsync(FlightOfferSearchRequestDto dto);
+    Task<AmadeusFlightOfferSearchResult> GetFlightOffersAsync(FlightOfferSearchRequestDto dto, CancellationToken ct = default);
 }

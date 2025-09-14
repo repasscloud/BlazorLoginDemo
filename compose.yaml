@@ -16,7 +16,7 @@ services:
       - APP_DB_PASSWORD=${APP_DB_PASSWORD}
     volumes:
       - ./.docker/db/init:/docker-entrypoint-initdb.d:ro
-      - demo_pgdata:/var/lib/postgresql/data
+      - postgresql-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "PGPASSWORD=${APP_DB_PASSWORD} psql -h 127.0.0.1 -U ${APP_DB_USER} -d ${APP_DB_NAME} -tAc 'select 1' >/dev/null || exit 1"]
       interval: 2s
@@ -44,7 +44,7 @@ services:
       - ./.docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
       - ./.docker/pgadmin/pgpass:/var/lib/pgadmin/pgpass:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost/misc/ping || exit 1"]
+      test: ["CMD-SHELL", "wget -nv -O - http://localhost/misc/ping || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -73,6 +73,9 @@ services:
       - MailerSend__FromName=${MAILERSEND__FROMNAME}
       - AdminEmail=${ADMINEMAIL}
       - AdminPassword=${ADMINPASSWORD}
+      - API__BASEADDRESS=${API__BASEADDRESS}
+      - OUTBOUNDAPIKEYAUTH__HEADERNAME=${OUTBOUNDAPIKEYAUTH__HEADERNAME}
+      - OUTBOUNDAPIKEYAUTH__KEY=${OUTBOUNDAPIKEYAUTH__KEY}
     depends_on:
       db:
         condition: service_healthy
@@ -83,7 +86,7 @@ services:
       retries: 10
     volumes:
       # Persist ASP.NET DataProtection keys (avoid warnings + keep auth cookies valid across restarts)
-      - dataprotection:/home/app/.aspnet/DataProtection-Keys
+      - web-dataprotection:/home/app/.aspnet/DataProtection-Keys
 
   api:
     pull_policy: build    # or: never
@@ -124,12 +127,11 @@ services:
       - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__7=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__7}
       - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__8=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__8}
       - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__9=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__9}
-
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8090/api/v1/healthz/check || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/healthz/check || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -161,6 +163,6 @@ services:
     restart: "no"
 
 volumes:
-  demo_pgdata:
+  postgresql-data:
   pgadmin-data:
-  dataprotection:
+  web-dataprotection:

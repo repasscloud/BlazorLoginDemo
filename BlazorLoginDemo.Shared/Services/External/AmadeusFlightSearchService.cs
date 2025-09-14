@@ -4,18 +4,21 @@ using System.Text.Json;
 using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
 using BlazorLoginDemo.Shared.Models.Kernel.User;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.VisualBasic;
+using NanoidDotNet;
 
 namespace BlazorLoginDemo.Shared.Services.External;
 
 public class AmadeusFlightSearchService : IAmadeusFlightSearchService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ApplicationDbContext _context;
+    private readonly ApplicationDbContext _db;
     private readonly AmadeusOAuthClientSettings _settings;
     private readonly IAmadeusAuthService _authService;
     private readonly ILoggerService _loggerService;
@@ -23,30 +26,30 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
 
     public AmadeusFlightSearchService(
         IHttpClientFactory httpClientFactory,
-        ApplicationDbContext context,
+        ApplicationDbContext db,
         IOptions<AmadeusOAuthClientSettings> options,
         IAmadeusAuthService authService,
         ILoggerService loggerService,
         JsonSerializerOptions jsonOptions)
     {
         _httpClientFactory = httpClientFactory;
-        _context = context;
+        _db = db;
         _settings = options.Value;
         _authService = authService;
         _loggerService = loggerService;
         _jsonOptions = jsonOptions;
     }
 
-    public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersAsync(FlightOfferSearchRequestDto dto)
+    public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersAsync(FlightOfferSearchRequestDto dto, CancellationToken ct = default)
     {
-        await _loggerService.LogInfoAsync($"FlightOfferService received reqeust from API with ID: {dto.Id}");
+        await _loggerService.LogInfoAsync($"FlightOfferService received request from API with ID: {dto.Id}");
 
         // find the travel policy (if it exists) for the user account, and load it into memory
         TravelPolicyBookingContextDto? _travelPolicyInterResult = null;
         if (!string.IsNullOrEmpty(dto.TravelPolicyId))
         {
             //_travelPolicyInterResult = await _avaApiService.GetTravelPolicyInterResultByIdAsync(dto.TravelPolicyId, "")!;
-            _travelPolicyInterResult = await _context.TravelPolicies
+            _travelPolicyInterResult = await _db.TravelPolicies
                 .Where(c => c.Id == dto.TravelPolicyId)
                 .Select(tp => new TravelPolicyBookingContextDto
                 {
@@ -60,15 +63,22 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
                     CabinClassCoverage = tp.CabinClassCoverage,
                     FlightBookingTimeAvailableFrom = tp.FlightBookingTimeAvailableFrom,
                     FlightBookingTimeAvailableTo = tp.FlightBookingTimeAvailableTo,
-                    IncludedAirlineCodes = tp.IncludedAirlineCodes.ToList(),
-                    ExcludedAirlineCodes = tp.ExcludedAirlineCodes.ToList(),
+                    IncludedAirlineCodes = (tp.IncludedAirlineCodes != null && tp.IncludedAirlineCodes.Length > 0)
+                        ? tp.IncludedAirlineCodes.ToList()
+                        : null,
+                    ExcludedAirlineCodes = (tp.ExcludedAirlineCodes != null && tp.ExcludedAirlineCodes.Length > 0)
+                        ? tp.ExcludedAirlineCodes.ToList()
+                        : null,
                 })
                 .FirstOrDefaultAsync();
         }
 
-        // find the user preference service now too (everyone has one of these)
-        AvaUserSysPreference? _userSysPreferences = await _context.AvaUserSysPreferences
-            .Where(x => x.AspNetUsersId == dto.CustomerId)
+        // find the user preference service now too (everyone has one of these*)
+        // * - no they don't!
+        // also, we don't use the .AspNetUsersId, we use the AvaUserId
+        // (which is called customerId in this particular record, not sure why?)
+        AvaUserSysPreference? _userSysPreferences = await _db.AvaUserSysPreferences
+            .Where(x => x.AvaUserId == dto.CustomerId)
             .FirstOrDefaultAsync();
         
         // set the currency code
@@ -113,7 +123,6 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             }
         }
 
-
         // list of travellers
         List<Traveler> _travelersList = new List<Traveler>();
         
@@ -144,13 +153,10 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             _searchCriteria.MaxFlightOffers = 20;
         }
 
-        
-
         // create the default FlightFilters object (it's got null initialization, so it's OK)
         FlightFilters _filters = new FlightFilters();
         // flight filters is made up of List<CabinRestriction>? and CarrierRestriction?, so
         // those will be created next, starting with CabinRestrictions
-
 
         // create the .CabinRestrictions object (it will be appended to .Filters at the end of this region)
         List<CabinRestriction> _cabinRestrictions = new List<CabinRestriction>();
@@ -184,31 +190,35 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
 
         _filters.CabinRestrictions = _cabinRestrictions;
 
-        // create the .CarrrierRestriction object (this gets added at the end of the region)
-        CarrierRestriction _carrierRestriction = new CarrierRestriction();
+        // .CarrierRestriction overhaul (issues/13)
+        // Get effective lists (policy first, then user prefs if present/non-empty)
+        var included = _travelPolicyInterResult?.IncludedAirlineCodes
+            ?? (_userSysPreferences?.IncludedAirlineCodes?.Any() == true
+                ? _userSysPreferences.IncludedAirlineCodes.ToList()
+                : null);
 
-        // do not edit the .BlacklistedInEUAllowed value (bool), it's set in the class
+        var excluded = _travelPolicyInterResult?.ExcludedAirlineCodes
+            ?? (_userSysPreferences?.ExcludedAirlineCodes?.Any() == true
+                ? _userSysPreferences.ExcludedAirlineCodes.ToList()
+                : null);
 
-        // carrier excluded codes excludes, but carrier included restricts, so included is counted first then skip
-        // else use excluded second
-        if (_travelPolicyInterResult?.IncludedAirlineCodes is not null)
+        // Build restriction: if both exist, prefer EXCLUDED; if none, do nothing
+        CarrierRestriction? carrierRestrictions = null;
+
+        if (excluded is { Count: > 0 })
         {
-            _carrierRestriction.IncludedCarrierCodes = _travelPolicyInterResult.IncludedAirlineCodes;
+            carrierRestrictions = new CarrierRestriction { ExcludedCarrierCodes = excluded };
         }
-        else if (_travelPolicyInterResult?.ExcludedAirlineCodes is not null)
+        else if (included is { Count: > 0 })
         {
-            _carrierRestriction.ExcludedCarrierCodes = _travelPolicyInterResult.ExcludedAirlineCodes;
-        }
-        else if (_userSysPreferences?.IncludedAirlineCodes is not null)
-        {
-            _carrierRestriction.IncludedCarrierCodes = _userSysPreferences.IncludedAirlineCodes.ToList();
-        }
-        else if (_userSysPreferences?.ExcludedAirlineCodes is not null)
-        {
-            _carrierRestriction.ExcludedCarrierCodes = _userSysPreferences.ExcludedAirlineCodes.ToList();
+            carrierRestrictions = new CarrierRestriction { IncludedCarrierCodes = included };
         }
 
-        _filters.CarrierRestrictions = _carrierRestriction;
+        if (carrierRestrictions is not null)
+        {
+            // Leave .BlacklistedInEUAllowed as-is (default in class)
+            _filters.CarrierRestrictions = carrierRestrictions;
+        }
         
         _searchCriteria.Filters = _filters;
 
@@ -250,7 +260,24 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         if (response.IsSuccessStatusCode)
         {
             var result = await response.Content.ReadFromJsonAsync<AmadeusFlightOfferSearchResult>();
-            return result ?? throw new InvalidOperationException("Deserialization returned null.");
+
+            if (result is null)
+                throw new InvalidOperationException("Deserialization returned null.");
+
+            // save the record to db, as the FLightOfferSearchResultRecord
+            FlightOfferSearchResultRecord record = new FlightOfferSearchResultRecord
+            {
+                Id = await Nanoid.GenerateAsync(),
+                MetaCount = result.Meta.Count,
+                FlightOfferSearchRequestDtoId = dto.Id,
+                ClientId = dto.ClientId,
+                AvaUserId = dto.CustomerId,  // no fucking idea why this is still being called "CustomerId"?
+                Source = SearchResultSource.Amadeus,
+                AmadeusPayload = result
+            };
+
+            await _db.FlightOfferSearchResultRecords.AddAsync(record, ct);
+            return result;
         }
 
         else
