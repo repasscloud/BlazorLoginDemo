@@ -8,9 +8,13 @@ public sealed class Organization
 {
     [Key]
     public string Id { get; set; } = Nanoid.Generate();
-    [Required] public required string Name { get; set; }
+    
+    [Required]
+    [MaxLength(128)]
+    public required string Name { get; set; }
     public OrganizationType Type { get; set; }
     public string? ParentOrganizationId { get; set; }
+    public Organization? Parent { get; set; }
     public ICollection<Organization> Children { get; set; } = new List<Organization>();
     public bool IsActive { get; set; } = true;
     public ICollection<OrganizationDomain> Domains { get; set; } = new List<OrganizationDomain>();

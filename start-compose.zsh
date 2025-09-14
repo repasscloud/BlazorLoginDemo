@@ -167,10 +167,10 @@ docker compose up -d pgadmin
 # ── 🌱 6) Seed the DB with additional SQL (after migrations) ─────────────────
 echo
 echo "🌱 6) Seed the DB with additional SQL (after migrations)"
-docker cp .docker/db/sql/01_seed_identity.sql "$pgContainerName":/seed_identity.sql
-docker exec -i "$pgContainerName" \
-  psql "postgresql://$dbUser:$dbPass@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
-  -v ON_ERROR_STOP=1 -f /seed_identity.sql
+# docker cp .docker/db/sql/01_seed_identity.sql "$pgContainerName":/seed_identity.sql
+# docker exec -i "$pgContainerName" \
+#   psql "postgresql://$dbUser:$dbPass@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
+#   -v ON_ERROR_STOP=1 -f /seed_identity.sql
 docker cp .docker/db/sql/01_seed_serilog.sql "$pgContainerName":/seed_serilog.sql
 docker exec -i "$pgContainerName" \
   psql "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:$dbPort/$dbName?sslmode=disable" \

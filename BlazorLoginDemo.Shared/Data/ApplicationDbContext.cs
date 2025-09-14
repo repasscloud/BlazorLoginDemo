@@ -11,6 +11,7 @@ using BlazorLoginDemo.Shared.Models.Kernel.SysVar;
 using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
 using System.Security.Cryptography.X509Certificates;
+using BlazorLoginDemo.Shared.Models.Kernel.Platform;
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -21,10 +22,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     // Core / Groups
     // ---------------------------
-    // public DbSet<Group> Groups => Set<Group>();  // removed for issue 15
-    // public DbSet<GroupDomain> GroupDomains => Set<GroupDomain>();  // removed for issue 15
     public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
-
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrganizationDomain> OrganizationDomains => Set<OrganizationDomain>();
+    
     // ---------------------------
     // Auth / Tokens
     // ---------------------------
@@ -79,27 +80,28 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         // Core / Groups
         // ===========================
-        // removed for issue 15
-        // builder.Entity<Group>(e =>
-        // {
-        //     e.HasIndex(x => x.Name).IsUnique();
-
-        //     e.HasMany(x => x.Domains)
-        //      .WithOne(x => x.Group)
-        //      .HasForeignKey(x => x.GroupId)
-        //      .OnDelete(DeleteBehavior.Cascade);
-        // });
-
-        // removed for issue 15
-        // builder.Entity<GroupDomain>(e =>
-        // {
-        //     e.HasIndex(x => x.Domain).IsUnique();
-        // });
-
         builder.Entity<AvaSystemLog>(e =>
         {
             e.ToTable("ava_system_logs", "avasyslog");
             e.HasKey(x => x.Id);
+        });
+
+        builder.Entity<Organization>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.Parent)
+                .WithMany(x => x.Children)
+                .HasForeignKey(x => x.ParentOrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.Type, x.ParentOrganizationId });
+            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+        });
+
+        builder.Entity<OrganizationDomain>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Domain).IsUnique();
+            e.Property(x => x.Domain).HasMaxLength(190).IsRequired();
         });
 
         // ===========================
@@ -107,11 +109,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<ApplicationUser>(e =>
         {
-            // removed for issue 15
-            // e.HasOne(u => u.Group)
-            //  .WithMany()
-            //  .HasForeignKey(u => u.GroupId);
-
+            e.HasOne(u => u.Organization)
+                .WithMany()
+                .HasForeignKey(u => u.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
             e.Property(u => u.DisplayName).HasMaxLength(128);
             e.Property(u => u.Department).HasMaxLength(128);
         });

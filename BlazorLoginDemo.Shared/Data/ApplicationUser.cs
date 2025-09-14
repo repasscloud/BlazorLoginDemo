@@ -1,3 +1,5 @@
+using BlazorLoginDemo.Shared.Models.Kernel.Platform;
+using BlazorLoginDemo.Shared.Models.Static.Platform;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 
@@ -15,15 +17,24 @@ public class ApplicationUser : IdentityUser
     public bool IsActive { get; set; } = true;
     public DateTimeOffset? LastSeenUtc { get; set; }
 
-    // removed for issue 15
-    // // NEW: DB-backed group
-    // public Guid? GroupId { get; set; }
-    // public Group? Group { get; set; }
+    // new tenant anchor
+    public string? OrganizationId { get; set; }
+    public Organization? Organization { get; set; }
+    public UserCategoryType UserCategory { get; set; }
 
     // Personal data
     [PersonalData, MaxLength(16)]
     public string? PreferredCulture { get; set; } = "en-AU"; // e.g. "en", "en-AU", "es"
 
     public BlazorLoginDemo.Shared.Models.User.AvaUser? Profile { get; set; }
-}
 
+    // convenience
+    public string? TmcId => Organization?.Type switch
+    {
+        OrganizationType.Tmc => Organization.Id,
+        OrganizationType.Client => Organization.ParentOrganizationId,
+        _ => null
+    };
+
+    public string? ClientId => Organization?.Type == OrganizationType.Client ? Organization.Id : null;
+}
