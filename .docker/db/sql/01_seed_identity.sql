@@ -38,44 +38,50 @@ FROM (VALUES
 ) AS r(name)
 ON CONFLICT ("NormalizedName") DO NOTHING;
 
--- 2) Catch-all GroupX (upsert on Name)
-INSERT INTO "Groups" ("Id","Name","IsCatchAll","IsActive","CreatedUtc")
-VALUES (gen_random_uuid(), 'GroupX', TRUE, TRUE, now())
-ON CONFLICT ("Name") DO NOTHING;
-
-
--- 3) Admin user (admin@example.com) and assign SuperAdmin role
+-- 2) Admin user (admin@example.com) and assign SuperAdmin role
 DO $$
 DECLARE
   v_user_id  text;
   v_role_id  text;
-  --v_group_id uuid;
 BEGIN
-  --SELECT "Id" INTO v_group_id FROM "Groups" WHERE "Name"='GroupX' LIMIT 1;
+  -- make sure pgcrypto is available for gen_random_uuid()
+  PERFORM 1 FROM pg_extension WHERE extname = 'pgcrypto';
+  IF NOT FOUND THEN
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+  END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM "AspNetUsers" WHERE "NormalizedEmail"='ADMIN@EXAMPLE.COM') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM "AspNetUsers"
+    WHERE "NormalizedEmail" = 'ADMIN@EXAMPLE.COM'
+  ) THEN
     v_user_id := gen_random_uuid()::text;
 
     INSERT INTO "AspNetUsers" (
-      "Id","UserName","NormalizedUserName","Email","NormalizedEmail","EmailConfirmed",
+      "Id",
+      "UserName","NormalizedUserName",
+      "Email","NormalizedEmail","EmailConfirmed",
       "PasswordHash","SecurityStamp","ConcurrencyStamp",
       "PhoneNumberConfirmed","TwoFactorEnabled","LockoutEnabled","AccessFailedCount",
-      "DisplayName","FirstName", "LastName", "Department","IsActive","LastSeenUtc"
-    ) VALUES (
+      "DisplayName","FirstName","LastName","Department","IsActive","LastSeenUtc",
+      "UserCategory"
+    )
+    VALUES (
       v_user_id,
       'admin@example.com','ADMIN@EXAMPLE.COM',
-      'admin@example.com','ADMIN@EXAMPLE.COM',
-      TRUE,
+      'admin@example.com','ADMIN@EXAMPLE.COM', TRUE,
       'AQAAAAIAAYagAAAAEBE3ewtQgCa2KtXOdZWOXqPTJJ20RKzi0d5luHfed9lucXiJ4aJ6XO8tSvb4FROWYg==',
       gen_random_uuid()::text,
       gen_random_uuid()::text,
       FALSE, FALSE, FALSE, 0,
-      'Administrator', 'BuiltIn', 'Administrator',
-      NULL, TRUE, NULL
-      --, v_group_id
+      'Administrator','BuiltIn','Administrator', NULL, TRUE, NULL,
+      0   -- 👈 hard-coded UserCategory = 0
     );
 
-    SELECT "Id" INTO v_role_id FROM "AspNetRoles" WHERE "NormalizedName"='SUPERADMIN' LIMIT 1;
+    SELECT "Id" INTO v_role_id
+    FROM "AspNetRoles"
+    WHERE "NormalizedName" = 'SUPERADMIN'
+    LIMIT 1;
+
     IF v_role_id IS NOT NULL THEN
       INSERT INTO "AspNetUserRoles" ("UserId","RoleId")
       VALUES (v_user_id, v_role_id)

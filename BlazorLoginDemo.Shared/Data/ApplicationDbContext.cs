@@ -88,6 +88,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<Organization>(e =>
         {
+            e.ToTable("organizations", "ava");
             e.HasKey(x => x.Id);
             e.HasOne(x => x.Parent)
                 .WithMany(x => x.Children)
@@ -99,6 +100,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<OrganizationDomain>(e =>
         {
+            e.ToTable("organization_domain", "ava");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Domain).IsUnique();
             e.Property(x => x.Domain).HasMaxLength(190).IsRequired();
@@ -109,6 +111,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<ApplicationUser>(e =>
         {
+            // e.ToTable("application_users", "ava");
             e.HasOne(u => u.Organization)
                 .WithMany()
                 .HasForeignKey(u => u.OrganizationId)
@@ -118,14 +121,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(u => u.Department).HasMaxLength(128);
         });
 
-        builder.Entity<RefreshToken>(b =>
+        builder.Entity<RefreshToken>(e =>
         {
-            b.HasIndex(x => x.Token).IsUnique();
+            e.ToTable("refresh_tokens", "ava");
+            e.HasIndex(x => x.Token).IsUnique();
 
-            b.HasOne(x => x.AvaUser)
-             .WithMany(u => u.RefreshTokens)
-             .HasForeignKey(x => x.AvaUserId)
-             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.AvaUser)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(x => x.AvaUserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<AmadeusOAuthToken>(t =>
@@ -150,14 +154,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.Email).IsUnique();
 
             e.Property(p => p.IncludedAirlineCodes)
-             .HasColumnType("text[]")
-             .IsRequired()
-             .HasDefaultValueSql("'{}'::text[]");
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
 
             e.Property(p => p.ExcludedAirlineCodes)
-             .HasColumnType("text[]")
-             .IsRequired()
-             .HasDefaultValueSql("'{}'::text[]");
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
         });
 
         builder.Entity<AvaUser>(e =>
@@ -172,18 +176,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             // 1:1 AvaUser (FK) -> ApplicationUser (PK)
             e.HasOne<ApplicationUser>()
-             .WithOne(u => u.Profile)
-             .HasForeignKey<AvaUser>(x => x.AspNetUsersId)
-             .OnDelete(DeleteBehavior.Cascade);
+                .WithOne(u => u.Profile)
+                .HasForeignKey<AvaUser>(x => x.AspNetUsersId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Optional 1:1 AvaUser ↔ AvaUserSysPreference (nullable FK on AvaUser)
             e.Property(x => x.AvaUserSysPreferenceId).IsRequired(false);
 
             e.HasOne<AvaUserSysPreference>()
-             .WithOne()
-             .HasForeignKey<AvaUser>(x => x.AvaUserSysPreferenceId)
-             .HasPrincipalKey<AvaUserSysPreference>(p => p.Id)
-             .OnDelete(DeleteBehavior.SetNull);
+                .WithOne()
+                .HasForeignKey<AvaUser>(x => x.AvaUserSysPreferenceId)
+                .HasPrincipalKey<AvaUserSysPreference>(p => p.Id)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // Unique index over nullable FK (filter for SQL Server to allow many NULLs)
             e.HasIndex(x => x.AvaUserSysPreferenceId).IsUnique()
@@ -198,6 +202,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<LicenseAgreement>(e =>
         {
+            e.ToTable("license_agreements", "ava");
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasMaxLength(14);
 
@@ -207,28 +212,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<AvaClient>(e =>
         {
+            e.ToTable("ava_clients", "ava");
             e.Property(x => x.LicenseAgreementId).HasMaxLength(14);
             e.HasIndex(x => x.LicenseAgreementId).IsUnique();
 
             e.HasOne<LicenseAgreement>()
-             .WithOne()
-             .HasForeignKey<AvaClient>(c => c.LicenseAgreementId)
-             .OnDelete(DeleteBehavior.SetNull)
-             .HasConstraintName("FK_AvaClient_LicenseAgreement");
+                .WithOne()
+                .HasForeignKey<AvaClient>(c => c.LicenseAgreementId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_AvaClient_LicenseAgreement");
 
             // DefaultTravelPolicy (1 AvaClient -> optional 1 TravelPolicy as default)
             e.HasOne(ac => ac.DefaultTravelPolicy)
-             .WithMany()
-             .HasForeignKey(ac => ac.DefaultTravelPolicyId)
-             .OnDelete(DeleteBehavior.Restrict);
+                .WithMany()
+                .HasForeignKey(ac => ac.DefaultTravelPolicyId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // AvaClient (1) -> (many) TravelPolicies
-        builder.Entity<TravelPolicy>()
-            .HasOne(tp => tp.AvaClient)
-            .WithMany(ac => ac.TravelPolicies)
-            .HasForeignKey(tp => tp.AvaClientId)
+        builder.Entity<TravelPolicy>(e =>
+        {
+            e.ToTable("travel_policies", "ava");
+
+            e.HasKey(x => x.Id);
+
+            e.HasOne(x => x.AvaClient)
+            .WithMany(x => x.TravelPolicies)
+            .HasForeignKey(x => x.AvaClientId)
             .OnDelete(DeleteBehavior.Cascade);
+
+            // (Nice to have) index the FK for joins
+            e.HasIndex(x => x.AvaClientId);
+        });
+
 
         // ===========================
         // Amadeus: Internal / External
@@ -236,6 +252,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<FlightOfferSearchRequestDto>(e =>
         {
+            e.ToTable("flight_offer_search_request_dtos", "ava");
             e.HasKey(x => x.Id);
         });
 
@@ -264,53 +281,94 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         // Travel Policy / Geography
         // ===========================
-        builder.Entity<TravelPolicy>()
-            .HasMany(tp => tp.Regions)
-            .WithMany();
-
-        builder.Entity<TravelPolicy>()
-            .HasMany(tp => tp.Continents)
-            .WithMany();
-
-        builder.Entity<TravelPolicy>()
-            .HasMany(tp => tp.Countries)
-            .WithMany();
-
-        // Explicit composite key for disabled countries (junction)
-        builder.Entity<TravelPolicyDisabledCountry>()
-            .HasKey(tpdc => new { tpdc.TravelPolicyId, tpdc.CountryId });
-
-        // Region (1) -> (many) Continents
-        builder.Entity<Continent>()
-            .HasOne(c => c.Region)
-            .WithMany(r => r.Continents)
-            .HasForeignKey(c => c.RegionId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Continent (1) -> (many) Countries
-        builder.Entity<Country>()
-            .HasOne(c => c.Continent)
-            .WithMany(ct => ct.Countries)
-            .HasForeignKey(c => c.ContinentId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // TravelPolicy arrays (PostgreSQL)
+        // TravelPolicy (merged block)
         builder.Entity<TravelPolicy>(e =>
         {
+            e.ToTable("travel_policies", "ava");
+            e.HasKey(x => x.Id);
+
+            // Many-to-manys with explicit junction table names
+            e.HasMany(x => x.Regions)
+                .WithMany()
+                .UsingEntity(j => j.ToTable("travel_policy_regions", "ava"));
+
+            e.HasMany(x => x.Continents)
+                .WithMany()
+                .UsingEntity(j => j.ToTable("travel_policy_continents", "ava"));
+
+            e.HasMany(x => x.Countries)
+                .WithMany()
+                .UsingEntity(j => j.ToTable("travel_policy_countries", "ava"));
+
+            // PostgreSQL text[] columns + empty-array defaults
             e.Property(p => p.IncludedAirlineCodes)
-             .HasColumnType("text[]")
-             .IsRequired()
-             .HasDefaultValueSql("'{}'::text[]");
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
 
             e.Property(p => p.ExcludedAirlineCodes)
-             .HasColumnType("text[]")
-             .IsRequired()
-             .HasDefaultValueSql("'{}'::text[]");
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
+        });
+
+        // Explicit composite key for disabled countries (junction with payload)
+        builder.Entity<TravelPolicyDisabledCountry>(e =>
+        {
+            e.ToTable("travel_policy_disabled_countries", "ava");
+            e.HasKey(x => new { x.TravelPolicyId, x.CountryId });
+
+            e.HasOne(x => x.TravelPolicy)
+                .WithMany(tp => tp.DisabledCountries) // ensure navigation exists on TravelPolicy
+                .HasForeignKey(x => x.TravelPolicyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Country)
+                .WithMany()
+                .HasForeignKey(x => x.CountryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Optional: handy for lookups
+            e.HasIndex(x => x.CountryId);
+        });
+
+        // Region (1) -> (many) Continents
+        builder.Entity<Continent>(e =>
+        {
+            e.ToTable("continents", "ava");
+            e.HasKey(x => x.Id);
+
+            e.HasOne(x => x.Region)
+                .WithMany(r => r.Continents)
+                .HasForeignKey(x => x.RegionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => x.RegionId);
+        });
+
+        // Continent (1) -> (many) Countries
+        builder.Entity<Country>(e =>
+        {
+            e.ToTable("countries", "ava");
+            e.HasKey(x => x.Id);
+
+            e.HasOne(x => x.Continent)
+                .WithMany(ct => ct.Countries)
+                .HasForeignKey(x => x.ContinentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => x.ContinentId);
+        });
+
+        builder.Entity<Region>(e =>
+        {
+            e.ToTable("regions", "ava");
         });
 
         // AirportInfo
         builder.Entity<AirportInfo>(e =>
         {
+            e.ToTable("airport_infos", "ava");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Ident).IsUnique();
         });
@@ -337,9 +395,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.Name).HasMaxLength(128).IsRequired();
 
             e.HasOne(x => x.Airline)
-             .WithMany(a => a.Programs)
-             .HasForeignKey(x => x.AirlineId)
-             .OnDelete(DeleteBehavior.Restrict);
+                .WithMany(a => a.Programs)
+                .HasForeignKey(x => x.AirlineId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ===========================

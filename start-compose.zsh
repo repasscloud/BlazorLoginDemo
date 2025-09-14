@@ -117,7 +117,7 @@ esac
 # ── 🐳 0) Stop all docker containers ──────────────────────────────────────────
 echo
 echo "🐳 0) Stop all docker containers"
-docker compose down -v --rmi all --remove-orphans
+docker compose down -v --remove-orphans # --rmi all 
 
 # ── 🧹 1) Clean slate: migrations, obj, bin, and blazorlogin* volumes ────────
 echo
@@ -133,9 +133,17 @@ else
   echo "$vols" | xargs -n1 docker volume rm -f
 fi
 
-# ── 🐳 2) Start DB only ───────────────────────────────────────────────────────
+# ── 🐳 2a) Pull containers ───────────────────────────────────────────────────────
 echo
-echo "🐳 2) Starting DB only"
+echo "🐳 2a) Pull containers"
+docker pull postgres:15
+docker pull dpage/pgadmin4
+docker pull mcr.microsoft.com/dotnet/sdk:9.0
+docker pull mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim
+
+# ── 🐳 2b) Start DB only ───────────────────────────────────────────────────────
+echo
+echo "🐳 2b) Starting DB only"
 docker compose up -d db
 
 # ── ⏳ 3) Wait for Postgres to be healthy ─────────────────────────────────────
@@ -167,10 +175,10 @@ docker compose up -d pgadmin
 # ── 🌱 6) Seed the DB with additional SQL (after migrations) ─────────────────
 echo
 echo "🌱 6) Seed the DB with additional SQL (after migrations)"
-# docker cp .docker/db/sql/01_seed_identity.sql "$pgContainerName":/seed_identity.sql
-# docker exec -i "$pgContainerName" \
-#   psql "postgresql://$dbUser:$dbPass@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
-#   -v ON_ERROR_STOP=1 -f /seed_identity.sql
+docker cp .docker/db/sql/01_seed_identity.sql "$pgContainerName":/seed_identity.sql
+docker exec -i "$pgContainerName" \
+  psql "postgresql://$dbUser:$dbPass@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
+  -v ON_ERROR_STOP=1 -f /seed_identity.sql
 docker cp .docker/db/sql/01_seed_serilog.sql "$pgContainerName":/seed_serilog.sql
 docker exec -i "$pgContainerName" \
   psql "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
