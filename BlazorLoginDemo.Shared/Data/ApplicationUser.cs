@@ -15,9 +15,10 @@ public class ApplicationUser : IdentityUser
     public bool IsActive { get; set; } = true;
     public DateTimeOffset? LastSeenUtc { get; set; }
 
-    // NEW: DB-backed group
-    public Guid? GroupId { get; set; }
-    public Group? Group { get; set; }
+    // removed for issue 15
+    // // NEW: DB-backed group
+    // public Guid? GroupId { get; set; }
+    // public Group? Group { get; set; }
 
     // Personal data
     [PersonalData, MaxLength(16)]

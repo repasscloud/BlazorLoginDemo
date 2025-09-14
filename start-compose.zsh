@@ -109,9 +109,8 @@ case "$ACTION" in
     docker compose up -d --build blazor
     exit 0
     ;;
-  # *)
-  #   usage
-  #   ;;
+  *)
+      ;;
 esac
 
 
@@ -123,7 +122,9 @@ docker compose down -v --rmi all --remove-orphans
 # ── 🧹 1) Clean slate: migrations, obj, bin, and blazorlogin* volumes ────────
 echo
 echo "🧹 1) Cleaning slate: removing Migrations, obj, bin, and blazorlogin* volumes"
-rm -rf BlazorLoginDemo.Web/Migrations BlazorLoginDemo.Web/bin BlazorLoginDemo.Web/obj || true
+rm -rf BlazorLoginDemo.Web/bin BlazorLoginDemo.Web/obj BlazorLoginDemo.Web/Migrations || true
+rm -rf BlazorLoginDemo.Api/bin BlazorLoginDemo.Api/obj || true
+rm -rf BlazorLoginDemo.Shared/bin BlazorLoginDemo.Shared/obj || true
 
 vols="$(docker volume ls -q --filter name=blazorlogindemo_postgresql || true)"
 if [[ -z "$vols" ]]; then

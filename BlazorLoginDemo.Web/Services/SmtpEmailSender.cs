@@ -3,7 +3,6 @@ using MailKit.Security;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Options;
 using MimeKit;
-using BlazorLoginDemo.Web.Data; // ApplicationUser
 using Microsoft.AspNetCore.Identity;
 
 namespace BlazorLoginDemo.Web.Services;

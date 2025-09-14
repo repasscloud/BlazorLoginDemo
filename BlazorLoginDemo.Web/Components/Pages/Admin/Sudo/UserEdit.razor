@@ -1,4 +1,4 @@
-@page "/sudo/users"
+@* @page "/sudo/users"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Policy = BlazorLoginDemo.Shared.Auth.AppPolicies.GlobalPolicy.CanManageUsers)]
@@ -102,20 +102,6 @@
                     </div>
                 </div>
 
-                @* <div class="col-12">
-                    <label class="form-label">Roles</label>
-                    <div class="d-flex gap-2 flex-wrap">
-                        @foreach (var r in roles)
-                        {
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox"
-                                    checked="@selectedRoles.Contains(r)"
-                                @onchange="(ChangeEventArgs e) => ToggleRole(r, (bool?)e.Value == true)" />
-                                <label class="form-check-label">@r</label>
-                            </div>
-                        }
-                    </div>
-                </div> *@
                 <!-- Roles -->
                 <div class="mb-3">
                     <label class="form-label">Roles</label>
@@ -363,4 +349,4 @@
         infoMessage = $"Admin ready: {email}";
         StateHasChanged();
     }
-}
+} *@

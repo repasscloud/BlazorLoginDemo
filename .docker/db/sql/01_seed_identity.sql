@@ -49,9 +49,9 @@ DO $$
 DECLARE
   v_user_id  text;
   v_role_id  text;
-  v_group_id uuid;
+  --v_group_id uuid;
 BEGIN
-  SELECT "Id" INTO v_group_id FROM "Groups" WHERE "Name"='GroupX' LIMIT 1;
+  --SELECT "Id" INTO v_group_id FROM "Groups" WHERE "Name"='GroupX' LIMIT 1;
 
   IF NOT EXISTS (SELECT 1 FROM "AspNetUsers" WHERE "NormalizedEmail"='ADMIN@EXAMPLE.COM') THEN
     v_user_id := gen_random_uuid()::text;
@@ -60,7 +60,7 @@ BEGIN
       "Id","UserName","NormalizedUserName","Email","NormalizedEmail","EmailConfirmed",
       "PasswordHash","SecurityStamp","ConcurrencyStamp",
       "PhoneNumberConfirmed","TwoFactorEnabled","LockoutEnabled","AccessFailedCount",
-      "DisplayName","FirstName", "LastName", "Department","IsActive","LastSeenUtc","GroupId"
+      "DisplayName","FirstName", "LastName", "Department","IsActive","LastSeenUtc"
     ) VALUES (
       v_user_id,
       'admin@example.com','ADMIN@EXAMPLE.COM',
@@ -71,7 +71,8 @@ BEGIN
       gen_random_uuid()::text,
       FALSE, FALSE, FALSE, 0,
       'Administrator', 'BuiltIn', 'Administrator',
-      NULL, TRUE, NULL, v_group_id
+      NULL, TRUE, NULL
+      --, v_group_id
     );
 
     SELECT "Id" INTO v_role_id FROM "AspNetRoles" WHERE "NormalizedName"='SUPERADMIN' LIMIT 1;

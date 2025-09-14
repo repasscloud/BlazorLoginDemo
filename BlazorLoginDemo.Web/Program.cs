@@ -12,7 +12,6 @@ using Microsoft.Extensions.Options;
 
 using BlazorLoginDemo.Web.Components;
 using BlazorLoginDemo.Web.Components.Account;
-using BlazorLoginDemo.Web.Data;      // ApplicationUser, UserGroup
 using BlazorLoginDemo.Web.Services;  // MailerSendEmailSender + MailerSendOptions
 using BlazorLoginDemo.Shared.Startup;
 using BlazorLoginDemo.Web.Security;   // SeedData
@@ -181,12 +180,14 @@ public class Program
                 npg.EnableRetryOnFailure(5, TimeSpan.FromSeconds(2), null);
                 npg.CommandTimeout(30);
             });
-            options.AddInterceptors(sp.GetRequiredService<UserGroupAssignmentInterceptor>());
+            // removed for issue 15
+            // options.AddInterceptors(sp.GetRequiredService<UserGroupAssignmentInterceptor>());
         });
 
-        // Group resolver + assignment
-        builder.Services.AddScoped<BlazorLoginDemo.Shared.Services.Interfaces.IGroupResolver, GroupResolver>();
-        builder.Services.AddScoped<BlazorLoginDemo.Shared.Data.UserGroupAssignmentInterceptor>();
+        // removed for issue 15
+        // // Group resolver + assignment
+        // builder.Services.AddScoped<BlazorLoginDemo.Shared.Services.Interfaces.IGroupResolver, GroupResolver>();
+        // builder.Services.AddScoped<BlazorLoginDemo.Shared.Data.UserGroupAssignmentInterceptor>();
 
         // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));

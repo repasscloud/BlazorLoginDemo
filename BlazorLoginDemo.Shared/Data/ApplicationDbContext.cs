@@ -21,8 +21,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     // Core / Groups
     // ---------------------------
-    public DbSet<Group> Groups => Set<Group>();
-    public DbSet<GroupDomain> GroupDomains => Set<GroupDomain>();
+    // public DbSet<Group> Groups => Set<Group>();  // removed for issue 15
+    // public DbSet<GroupDomain> GroupDomains => Set<GroupDomain>();  // removed for issue 15
     public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
 
     // ---------------------------
@@ -79,20 +79,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         // Core / Groups
         // ===========================
-        builder.Entity<Group>(e =>
-        {
-            e.HasIndex(x => x.Name).IsUnique();
+        // removed for issue 15
+        // builder.Entity<Group>(e =>
+        // {
+        //     e.HasIndex(x => x.Name).IsUnique();
 
-            e.HasMany(x => x.Domains)
-             .WithOne(x => x.Group)
-             .HasForeignKey(x => x.GroupId)
-             .OnDelete(DeleteBehavior.Cascade);
-        });
+        //     e.HasMany(x => x.Domains)
+        //      .WithOne(x => x.Group)
+        //      .HasForeignKey(x => x.GroupId)
+        //      .OnDelete(DeleteBehavior.Cascade);
+        // });
 
-        builder.Entity<GroupDomain>(e =>
-        {
-            e.HasIndex(x => x.Domain).IsUnique();
-        });
+        // removed for issue 15
+        // builder.Entity<GroupDomain>(e =>
+        // {
+        //     e.HasIndex(x => x.Domain).IsUnique();
+        // });
 
         builder.Entity<AvaSystemLog>(e =>
         {
@@ -105,9 +107,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<ApplicationUser>(e =>
         {
-            e.HasOne(u => u.Group)
-             .WithMany()
-             .HasForeignKey(u => u.GroupId);
+            // removed for issue 15
+            // e.HasOne(u => u.Group)
+            //  .WithMany()
+            //  .HasForeignKey(u => u.GroupId);
 
             e.Property(u => u.DisplayName).HasMaxLength(128);
             e.Property(u => u.Department).HasMaxLength(128);

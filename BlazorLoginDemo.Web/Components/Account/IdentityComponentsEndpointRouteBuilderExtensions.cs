@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using BlazorLoginDemo.Web.Components.Account.Pages;
 using BlazorLoginDemo.Web.Components.Account.Pages.Manage;
-using BlazorLoginDemo.Web.Data;
 
 namespace Microsoft.AspNetCore.Routing;
 

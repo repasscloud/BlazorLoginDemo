@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Identity;
-using BlazorLoginDemo.Web.Data;
 
 namespace BlazorLoginDemo.Web.Components.Account;
 

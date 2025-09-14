@@ -37,11 +37,11 @@ public static class SeedData
         }
 
         // 2) Ensure catch-all group exists (GroupX)
-        if (!await db.Groups.AnyAsync(g => g.IsCatchAll))
-        {
-            db.Groups.Add(new Group { Name = "GroupX", IsCatchAll = true, IsActive = true });
-            await db.SaveChangesAsync();
-        }
+        // if (!await db.Groups.AnyAsync(g => g.IsCatchAll))
+        // {
+        //     db.Groups.Add(new Group { Name = "GroupX", IsCatchAll = true, IsActive = true });
+        //     await db.SaveChangesAsync();
+        // }
 
         // 3) Seed initial admin user from config
         var adminEmail    = config["AdminEmail"];
@@ -63,9 +63,9 @@ public static class SeedData
             };
 
             // Optional: put the admin into the catch-all group
-            var catchAll = await db.Groups.FirstOrDefaultAsync(g => g.IsCatchAll);
-            if (catchAll != null)
-                adminUser.GroupId = catchAll.Id;   // requires you've switched to DB-backed GroupId
+            // var catchAll = await db.Groups.FirstOrDefaultAsync(g => g.IsCatchAll);
+            // if (catchAll != null)
+            //     adminUser.GroupId = catchAll.Id;   // requires you've switched to DB-backed GroupId
 
             var create = await userManager.CreateAsync(adminUser, adminPassword);
             if (!create.Succeeded)
