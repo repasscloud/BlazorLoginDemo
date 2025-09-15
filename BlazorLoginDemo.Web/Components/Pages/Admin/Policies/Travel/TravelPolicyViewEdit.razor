@@ -1,7 +1,6 @@
 @page "/admin/policies/travel/{TravelPolicyId}"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize(Policy = BlazorLoginDemo.Shared.Auth.AppPolicies.GlobalPolicy.CanEditPolicies)]
 
 @using BlazorLoginDemo.Shared.Models.Policies
 @using System.ComponentModel.DataAnnotations

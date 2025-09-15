@@ -5,40 +5,63 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 INSERT INTO "AspNetRoles" ("Id","Name","NormalizedName","ConcurrencyStamp")
 SELECT gen_random_uuid()::text, r.name, upper(r.name), gen_random_uuid()::text
 FROM (VALUES
-  ('SuperAdmin'),
-  ('Auditor'),
-  ('UserAdmin'),
-  ('PolicyAdmin'),
-  ('FinanceAdmin'),
-  ('FinanceEditor'),
-  ('FinanceViewer'),
-  ('SecurityAdmin'),
-  ('IntegrationAdmin'),
-  ('SalesRep'),
-  ('SalesManager'),
-  ('SalesAdmin'),
-  ('SupportViewer'),
-  ('SupportAgent'),
-  ('SupportFinance'),
-  ('SupportAdmin'),
-  ('ReportsViewer'),
-  ('DataExporter'),
-  ('Requestor'),
-  ('ReadOnly'),
-  ('OrgAdmin'),
-  ('OrgUserAdmin'),
-  ('OrgPolicyAdmin'),
-  ('OrgFinanceAdmin'),
-  ('OrgBookingsManager'),
-  ('OrgApproverL1'),
-  ('OrgApproverL2'),
-  ('OrgApproverL3'),
-  ('OrgReportsViewer'),
-  ('OrgDataExporter')
+  ('Sudo'),
+  ('Platform.SuperAdmin'),
+  ('Platform.SuperUser'),
+  ('Platform.Admin'),
+  ('Platform.Support.Admin'),
+  ('Platform.Support.Agent'),
+  ('Platform.Support.Viewer'),
+  ('Platform.Support.Finance'),
+  ('Platform.UserAdmin'),
+  ('Platform.OrgAdmin'),
+  ('Platform.PolicyAdmin'),
+  ('Platform.SecurityAdmin'),
+  ('Platform.IntegrationAdmin'),
+  ('Platform.Finance.Admin'),
+  ('Platform.Finance.Editor'),
+  ('Platform.Finance.Viewer'),
+  ('Platform.Sales.Rep'),
+  ('Platform.Sales.Manager'),
+  ('Platform.Sales.Admin'),
+  ('Platform.ReportsViewer'),
+  ('Platform.DataExporter'),
+  ('Platform.Auditor'),
+  ('Platform.ReadOnly'),
+  ('Tmc.Admin'),
+  ('Tmc.UserAdmin'),
+  ('Tmc.PolicyAdmin'),
+  ('Tmc.SecurityAdmin'),
+  ('Tmc.IntegrationAdmin'),
+  ('Tmc.Finance.Admin'),
+  ('Tmc.Finance.Editor'),
+  ('Tmc.Finance.Viewer'),
+  ('Tmc.BookingsManager'),
+  ('Tmc.TravelAgent'),
+  ('Tmc.ReportsViewer'),
+  ('Tmc.DataExporter'),
+  ('Tmc.Auditor'),
+  ('Tmc.ReadOnly'),
+  ('Client.Admin'),
+  ('Client.UserAdmin'),
+  ('Client.PolicyAdmin'),
+  ('Client.SecurityAdmin'),
+  ('Client.IntegrationAdmin'),
+  ('Client.Finance.Admin'),
+  ('Client.Finance.Editor'),
+  ('Client.Finance.Viewer'),
+  ('Client.Approver.L1'),
+  ('Client.Approver.L2'),
+  ('Client.Approver.L3'),
+  ('Client.ReportsViewer'),
+  ('Client.DataExporter'),
+  ('Client.Auditor'),
+  ('Client.ReadOnly'),
+  ('Client.Requestor')
 ) AS r(name)
 ON CONFLICT ("NormalizedName") DO NOTHING;
 
--- 2) Admin user (admin@example.com) and assign SuperAdmin role
+-- 2) Admin user (sudo@localhost.com) and assign SuperAdmin role
 DO $$
 DECLARE
   v_user_id  text;
@@ -52,7 +75,7 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM "AspNetUsers"
-    WHERE "NormalizedEmail" = 'ADMIN@EXAMPLE.COM'
+    WHERE "NormalizedEmail" = 'SUDO@LOCALHOST.COM'
   ) THEN
     v_user_id := gen_random_uuid()::text;
 
@@ -67,19 +90,19 @@ BEGIN
     )
     VALUES (
       v_user_id,
-      'admin@example.com','ADMIN@EXAMPLE.COM',
-      'admin@example.com','ADMIN@EXAMPLE.COM', TRUE,
+      'sudo@localhost.com','SUDO@LOCALHOST.COM',
+      'sudo@localhost.com','SUDO@LOCALHOST.COM', TRUE,
       'AQAAAAIAAYagAAAAEBE3ewtQgCa2KtXOdZWOXqPTJJ20RKzi0d5luHfed9lucXiJ4aJ6XO8tSvb4FROWYg==',
       gen_random_uuid()::text,
       gen_random_uuid()::text,
       FALSE, FALSE, FALSE, 0,
-      'Administrator','BuiltIn','Administrator', NULL, TRUE, NULL,
+      'sudo','Sudo','Administrator', NULL, TRUE, NULL,
       0   -- 👈 hard-coded UserCategory = 0
     );
 
     SELECT "Id" INTO v_role_id
     FROM "AspNetRoles"
-    WHERE "NormalizedName" = 'SUPERADMIN'
+    WHERE "NormalizedName" = 'SUDO'
     LIMIT 1;
 
     IF v_role_id IS NOT NULL THEN

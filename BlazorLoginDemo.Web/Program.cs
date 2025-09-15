@@ -1,8 +1,3 @@
-using System.IO;
-using System.Globalization;
-using System.Collections.Specialized;
-using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -13,10 +8,8 @@ using Microsoft.Extensions.Options;
 using BlazorLoginDemo.Web.Components;
 using BlazorLoginDemo.Web.Components.Account;
 using BlazorLoginDemo.Web.Services;  // MailerSendEmailSender + MailerSendOptions
-using BlazorLoginDemo.Shared.Startup;
-using BlazorLoginDemo.Web.Security;   // SeedData
+using BlazorLoginDemo.Web.Security;  // SeedData
 using BlazorLoginDemo.Shared.Auth;
-using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Services;
 
 using BlazorLoginDemo.Shared.Logging;
@@ -81,89 +74,62 @@ public class Program
         // Authorization policies
         builder.Services.AddAuthorization(options =>
         {
-            // ── GLOBAL POLICIES ──────────────────────────────────────────────────────
-            options.AddPolicy(AppPolicies.GlobalPolicy.AdminsOnly,
-                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.UserAdmin, AppRoles.GlobalRole.PolicyAdmin, AppRoles.GlobalRole.FinanceAdmin));
+            // Sudo always allowed via [Authorize(Roles=AppRoles.Sudo)] if you want.
 
-            // Keep your legacy “member/manager/admin” if still used:
-            options.AddPolicy(AppPolicies.GlobalPolicy.RequireMemberOrAbove,
-                p => p.RequireRole("Member", "Manager", "Admin"));
+            // Platform
+            options.AddPolicy(AppPolicies.PlatformPolicy.AdminArea, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Platform.SuperAdmin, AppRoles.Platform.Admin, AppRoles.Platform.SuperUser));
+            options.AddPolicy(AppPolicies.PlatformPolicy.SupportArea, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Platform.Support.Admin, AppRoles.Platform.Support.Agent, AppRoles.Platform.Support.Viewer, AppRoles.Platform.Support.Finance));
+            options.AddPolicy(AppPolicies.PlatformPolicy.FinanceWrite, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Platform.Finance.Admin, AppRoles.Platform.Finance.Editor));
+            options.AddPolicy(AppPolicies.PlatformPolicy.FinanceRead, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Platform.Finance.Admin, AppRoles.Platform.Finance.Editor, AppRoles.Platform.Finance.Viewer));
+            options.AddPolicy(AppPolicies.PlatformPolicy.SalesArea, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Platform.Sales.Admin, AppRoles.Platform.Sales.Manager, AppRoles.Platform.Sales.Rep));
+            options.AddPolicy(AppPolicies.PlatformPolicy.ReportsRead, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Platform.ReportsViewer, AppRoles.Platform.DataExporter, AppRoles.Platform.Auditor, AppRoles.Platform.ReadOnly));
+            options.AddPolicy(AppPolicies.PlatformPolicy.DataExport, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Platform.DataExporter));
 
-            options.AddPolicy(AppPolicies.GlobalPolicy.ManagersOnly,
-                p => p.RequireRole("Manager", "Admin"));
+            options.AddPolicy("Platform:ManageUsers", p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Platform.UserAdmin, AppRoles.Platform.SuperAdmin, AppRoles.Platform.Admin));
 
-            options.AddPolicy(AppPolicies.GlobalPolicy.CanManageUsers,
-                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.UserAdmin));
+            // TMC
+            options.AddPolicy(AppPolicies.TmcPolicy.AdminArea, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Tmc.Admin, AppRoles.Tmc.UserAdmin, AppRoles.Tmc.PolicyAdmin, AppRoles.Tmc.SecurityAdmin, AppRoles.Tmc.IntegrationAdmin));
+            options.AddPolicy(AppPolicies.TmcPolicy.FinanceWrite, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Tmc.Finance.Admin, AppRoles.Tmc.Finance.Editor));
+            options.AddPolicy(AppPolicies.TmcPolicy.FinanceRead, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Tmc.Finance.Admin, AppRoles.Tmc.Finance.Editor, AppRoles.Tmc.Finance.Viewer, AppRoles.Tmc.ReadOnly));
+            options.AddPolicy(AppPolicies.TmcPolicy.BookingsOps, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Tmc.BookingsManager, AppRoles.Tmc.TravelAgent));
+            options.AddPolicy(AppPolicies.TmcPolicy.ReportsRead, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Tmc.ReportsViewer, AppRoles.Tmc.DataExporter, AppRoles.Tmc.Auditor, AppRoles.Tmc.ReadOnly));
+            options.AddPolicy(AppPolicies.TmcPolicy.DataExport, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Tmc.DataExporter));
 
-            options.AddPolicy(AppPolicies.GlobalPolicy.CanEditPolicies,
-                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.PolicyAdmin));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.CanEditFinancials,
-                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.FinanceAdmin, AppRoles.GlobalRole.FinanceEditor));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.FinanceRead,
-                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.FinanceAdmin, AppRoles.GlobalRole.FinanceEditor, AppRoles.GlobalRole.FinanceViewer, AppRoles.GlobalRole.SupportFinance));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.CanEnableDisableUser,
-                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.UserAdmin));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.SupportArea,
-                p => p.RequireRole(AppRoles.GlobalRole.SupportViewer, AppRoles.GlobalRole.SupportAgent, AppRoles.GlobalRole.SupportFinance, AppRoles.GlobalRole.SupportAdmin, AppRoles.GlobalRole.SuperAdmin));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.CanManageGroups,
-                p => p.RequireRole(AppRoles.GlobalRole.SuperAdmin, AppRoles.GlobalRole.SupportAdmin));
-
-            // Sales / Licensing
-            options.AddPolicy(AppPolicies.GlobalPolicy.SalesArea,
-                p => p.RequireRole(AppRoles.GlobalRole.SalesRep, AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.CanCreateCustomers,
-                p => p.RequireRole(AppRoles.GlobalRole.SalesRep, AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.LicenseRead,
-                p => p.RequireRole(AppRoles.GlobalRole.SalesRep, AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.FinanceViewer, AppRoles.GlobalRole.SupportFinance, AppRoles.GlobalRole.SuperAdmin));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.CanManageLicenses,
-                p => p.RequireRole(AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.CanAmendLicenses,
-                p => p.RequireRole(AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
-
-            options.AddPolicy(AppPolicies.GlobalPolicy.CanApproveDiscounts,
-                p => p.RequireRole(AppRoles.GlobalRole.SalesManager, AppRoles.GlobalRole.SalesAdmin, AppRoles.GlobalRole.SuperAdmin));
-
-            // ── ORG-SCOPED POLICIES (tenant matching via OrgRoleRequirement) ────────
-            options.AddPolicy(AppPolicies.OrgPolicy.Admin,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.Admin)));
-
-            options.AddPolicy(AppPolicies.OrgPolicy.UserAdmin,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.UserAdmin, AppRoles.OrgRole.Admin)));
-
-            options.AddPolicy(AppPolicies.OrgPolicy.PolicyAdmin,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.PolicyAdmin, AppRoles.OrgRole.Admin)));
-
-            options.AddPolicy(AppPolicies.OrgPolicy.FinanceAdmin,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.FinanceAdmin, AppRoles.OrgRole.Admin)));
-
-            options.AddPolicy(AppPolicies.OrgPolicy.BookingsManager,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.BookingsManager, AppRoles.OrgRole.Admin)));
-
-            options.AddPolicy(AppPolicies.OrgPolicy.ReportsViewer,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.ReportsViewer, AppRoles.OrgRole.Admin)));
-
-            options.AddPolicy(AppPolicies.OrgPolicy.DataExporter,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.DataExporter, AppRoles.OrgRole.Admin)));
-
-            // Approvals ladder per org
-            options.AddPolicy(AppPolicies.OrgPolicy.ApproverL1OrAbove,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.ApproverL1, AppRoles.OrgRole.ApproverL2, AppRoles.OrgRole.ApproverL3, AppRoles.OrgRole.Admin)));
-
-            options.AddPolicy(AppPolicies.OrgPolicy.ApproverL2OrAbove,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.ApproverL2, AppRoles.OrgRole.ApproverL3, AppRoles.OrgRole.Admin)));
-
-            options.AddPolicy(AppPolicies.OrgPolicy.ApproverL3OrAbove,
-                p => p.Requirements.Add(new OrgRoleRequirement(AppRoles.OrgRole.ApproverL3, AppRoles.OrgRole.Admin)));
+            // Client
+            options.AddPolicy(AppPolicies.ClientPolicy.AdminArea, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Client.Admin, AppRoles.Client.UserAdmin, AppRoles.Client.PolicyAdmin, AppRoles.Client.SecurityAdmin, AppRoles.Client.IntegrationAdmin));
+            options.AddPolicy(AppPolicies.ClientPolicy.FinanceWrite, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Client.Finance.Admin, AppRoles.Client.Finance.Editor));
+            options.AddPolicy(AppPolicies.ClientPolicy.FinanceRead, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Client.Finance.Admin, AppRoles.Client.Finance.Editor, AppRoles.Client.Finance.Viewer, AppRoles.Client.ReadOnly));
+            options.AddPolicy(AppPolicies.ClientPolicy.ApproverL1Plus, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Client.Approver.L1, AppRoles.Client.Approver.L2, AppRoles.Client.Approver.L3));
+            options.AddPolicy(AppPolicies.ClientPolicy.ApproverL2Plus, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Client.Approver.L2, AppRoles.Client.Approver.L3));
+            options.AddPolicy(AppPolicies.ClientPolicy.ApproverL3Only, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Client.Approver.L3));
+            options.AddPolicy(AppPolicies.ClientPolicy.ReportsRead, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Client.ReportsViewer, AppRoles.Client.DataExporter, AppRoles.Client.Auditor, AppRoles.Client.ReadOnly));
+            options.AddPolicy(AppPolicies.ClientPolicy.DataExport, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Client.DataExporter));
+            options.AddPolicy(AppPolicies.ClientPolicy.Requestor, p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Client.Requestor));
         });
+
 
         // Cookie options
         builder.Services.ConfigureApplicationCookie(opts =>
@@ -180,14 +146,7 @@ public class Program
                 npg.EnableRetryOnFailure(5, TimeSpan.FromSeconds(2), null);
                 npg.CommandTimeout(30);
             });
-            // removed for issue 15
-            // options.AddInterceptors(sp.GetRequiredService<UserGroupAssignmentInterceptor>());
         });
-
-        // removed for issue 15
-        // // Group resolver + assignment
-        // builder.Services.AddScoped<BlazorLoginDemo.Shared.Services.Interfaces.IGroupResolver, GroupResolver>();
-        // builder.Services.AddScoped<BlazorLoginDemo.Shared.Data.UserGroupAssignmentInterceptor>();
 
         // Email Sender (MailerSend)
         builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));

@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using BlazorLoginDemo.Shared.Data;
-using BlazorLoginDemo.Shared.Auth;
+using BlazorLoginDemo.Shared.Auth; // AppClaimTypes
 
 namespace BlazorLoginDemo.Web.Security
 {
-    // Emits org + category + convenience scope claims at sign-in
+    // emits org + category + convenience scope claims at sign-in
     public sealed class AppClaimsFactory
         : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>
     {
@@ -25,14 +25,16 @@ namespace BlazorLoginDemo.Web.Security
 
         protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
         {
-            // Start with base: name, sub, roles, etc.
+            // start with base: name, sub, roles, etc.
             var id = await base.GenerateClaimsAsync(user);
 
-            // Make sure Organization nav is populated (depending on how you load users)
-            if (user.Organization == null && user.OrganizationId != null)
+            // make sure Organization nav is populated (depends on how load users)
+            if (user.Organization == null && !string.IsNullOrEmpty(user.OrganizationId))
             {
+                // minimal re-query with the nav you need
                 user = await _db.Users
                     .Include(u => u.Organization)
+                    .AsNoTracking()
                     .FirstAsync(u => u.Id == user.Id);
             }
 
@@ -40,26 +42,21 @@ namespace BlazorLoginDemo.Web.Security
             id.AddClaim(new Claim(AppClaimTypes.UserCategory, user.UserCategory.ToString()));
 
             // org_id + org_type (if any)
-            if (user.OrganizationId is string orgId)
+            if (!string.IsNullOrEmpty(user.OrganizationId))
             {
-                id.AddClaim(new Claim(AppClaimTypes.OrgId, orgId.ToString()));
-
+                id.AddClaim(new Claim(AppClaimTypes.OrgId, user.OrganizationId));
                 if (user.Organization is not null)
                 {
                     id.AddClaim(new Claim(AppClaimTypes.OrgType, user.Organization.Type.ToString()));
                 }
             }
 
-            // tmc_id / client_id convenience scope
-            if (user.TmcId is string tmcId)
-            {
-                id.AddClaim(new Claim(AppClaimTypes.TmcId, tmcId.ToString()));
-            }
+            // tmc_id / client_id convenience scope (strings in the model)
+            if (!string.IsNullOrEmpty(user.TmcId))
+                id.AddClaim(new Claim(AppClaimTypes.TmcId, user.TmcId));
 
-            if (user.ClientId is string clientId)
-            {
-                id.AddClaim(new Claim(AppClaimTypes.ClientId, clientId.ToString()));
-            }
+            if (!string.IsNullOrEmpty(user.ClientId))
+                id.AddClaim(new Claim(AppClaimTypes.ClientId, user.ClientId));
 
             return id;
         }
