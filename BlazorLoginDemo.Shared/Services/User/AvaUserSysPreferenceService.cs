@@ -48,6 +48,9 @@ public sealed class AvaUserSysPreferenceService : IAvaUserSysPreferenceService
         usr.AvaUserSysPreferenceId = preference.Id;
         await _db.SaveChangesAsync(ct);
 
+        // detach the instance so it isn't left tracked by this DbContext
+        _db.Entry(preference).State = EntityState.Detached;
+
         return preference;
     }
 
@@ -80,10 +83,21 @@ public sealed class AvaUserSysPreferenceService : IAvaUserSysPreferenceService
         if (string.IsNullOrWhiteSpace(preference.Id))
             throw new ArgumentException("Id must be provided for update.", nameof(preference));
 
-        _db.Attach(preference);
-        _db.Entry(preference).State = EntityState.Modified;
+        var set = _db.AvaUserSysPreferences;
+
+        // Load the entity tracked by THIS DbContext (or track it now)
+        var existing = await set.FirstOrDefaultAsync(x => x.Id == preference.Id, ct)
+            ?? throw new InvalidOperationException($"Preferences '{preference.Id}' not found.");
+
+        // Copy scalars from incoming model into the tracked entity
+        _db.Entry(existing).CurrentValues.SetValues(preference);
+
+        // Copy collections/owned props explicitly (so EF sees changes)
+        existing.IncludedAirlineCodes = preference.IncludedAirlineCodes;
+        existing.ExcludedAirlineCodes = preference.ExcludedAirlineCodes;
+
         await _db.SaveChangesAsync(ct);
-        return preference;
+        return existing;
     }
 
     // DELETE
