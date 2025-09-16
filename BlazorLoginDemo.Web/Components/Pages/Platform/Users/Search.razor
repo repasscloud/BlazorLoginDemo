@@ -1,0 +1,222 @@
+@page "/platform/users/search"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+
+@using System.ComponentModel.DataAnnotations
+@using BlazorLoginDemo.Shared.Services.Interfaces.User
+@inject IAdminUserService AdminUserService
+@inject NavigationManager Nav
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-xxl-8 col-xl-9 col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5 class="mb-0">Search Users</h5>
+                        <small class="text-muted">Find a user to edit. Click <em>Edit</em> to open <code>/platform/users/edit/&lt;id&gt;</code>.</small>
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="RefreshAsync" disabled="@isLoading">
+                    <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i> Refresh
+                    </button>
+                </div>
+                <EditForm Model="@vm" OnValidSubmit="@OnSearchSubmit" FormName="UserSearch">
+                    <DataAnnotationsValidator />
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-lg-8">
+                                <label for="query" class="form-label">Search</label>
+                                <!-- Query -->
+                                <InputText id="query"
+           class="form-control"
+           @bind-Value="vm.Query"
+           @oninput="OnQueryInput"
+           placeholder="Search by name or email…"
+           disabled="@isLoading" />
+
+                                <ValidationMessage For="@(() => vm.Query)" class="text-danger" />
+                            </div>
+                            <div class="col-lg-2">
+                                <div class="form-check mt-4">
+                                    <!-- Include inactive -->
+                                    <InputCheckbox id="incInactive"
+               class="form-check-input"
+               @bind-Value="vm.IncludeInactive"
+               @onchange="OnIncludeInactiveChange" />
+
+                                    <label class="form-check-label" for="incInactive">Include inactive</label>
+                                </div>
+                            </div>
+                            <div class="col-lg-2 d-grid">
+                                <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                <i class="bi bi-search me-1" aria-hidden="true"></i> Search
+                                </button>
+                            </div>
+                        </div>
+                        @if (isLoading)
+                        {
+                        <div class="d-flex justify-content-center py-5">
+                            <div class="spinner-border" role="status" aria-hidden="true"></div>
+                            <span class="visually-hidden">Loading…</span>
+                        </div>
+                        }
+                        else if (filtered.Count == 0)
+                        {
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-people fs-1 d-block mb-2" aria-hidden="true"></i>
+                            <div>No users match your search.</div>
+                        </div>
+                        }
+                        else
+                        {
+                        <div class="table-responsive mt-3">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 28%">Name</th>
+                                        <th style="width: 28%">Email</th>
+                                        <th style="width: 20%">Organization</th>
+                                        <th style="width: 12%">Active</th>
+                                        <th style="width: 12%" class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var u in filtered)
+                                    {
+                                    var display = !string.IsNullOrWhiteSpace(u.Identity.DisplayName)
+                                    ? u.Identity.DisplayName
+                                    : $"{u.Profile.FirstName} {u.Profile.LastName}".Trim();
+                                    <tr>
+                                        <td>
+                                            <div class="fw-medium">@display</div>
+                                            @if (!string.IsNullOrWhiteSpace(u.Profile.LastName) || !string.IsNullOrWhiteSpace(u.Profile.FirstName))
+                                            {
+                                            <small class="text-muted">@u.Profile.FirstName @u.Profile.LastName</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(u.Identity.Email))
+                                            {
+                                            <a href="mailto:@u.Identity.Email">@u.Identity.Email</a>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">@(!string.IsNullOrWhiteSpace(u.Identity.OrganizationId) ? u.Identity.OrganizationId : "—")</span>
+                                        </td>
+                                        <td>
+                                            @if (u.Identity.IsActive)
+                                            {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                            }
+                                            else
+                                            {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                title="Edit user"
+                                                @onclick="() => GoEdit(u.UserId)">
+                                            <i class="bi bi-pencil-square me-1" aria-hidden="true"></i> Edit
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        }
+                    </div>
+                </EditForm>
+                <div class="card-footer text-muted small">
+                    Showing @filtered.Count of @all.Count users
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private SearchVm vm = new SearchVm();
+    private bool isLoading = true;
+
+    private List<IAdminUserService.ProvisionedUser> all = new List<IAdminUserService.ProvisionedUser>();
+    private List<IAdminUserService.ProvisionedUser> filtered = new List<IAdminUserService.ProvisionedUser>();
+    private void OnQueryInput(ChangeEventArgs _) => ApplyFilter();
+
+    private void OnQueryChanged(string? _) => ApplyFilter();
+    private void OnIncludeInactiveChanged(bool _) => ApplyFilter();
+    private void OnIncludeInactiveChange(ChangeEventArgs _) => ApplyFilter();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            // TEMP: client-side filtering over all users.
+            // Later you can replace with a service: AdminUserService.SearchAsync(vm.Query, vm.IncludeInactive, ...)
+            var list = await AdminUserService.GetAllAsync();
+            all = list.ToList();
+            ApplyFilter();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        string? q = (vm.Query ?? string.Empty).Trim();
+        bool hasQuery = q.Length > 0;
+
+        filtered = all
+        .Where(u =>
+        {
+            if (!vm.IncludeInactive && !u.Identity.IsActive) return false;
+
+            if (!hasQuery) return true;
+
+            // Search fields: DisplayName, First/Last, Email
+            var display = u.Identity.DisplayName ?? string.Empty;
+            var first = u.Profile.FirstName ?? string.Empty;
+            var last = u.Profile.LastName ?? string.Empty;
+            var email = u.Identity.Email ?? string.Empty;
+
+            return display.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || first.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || last.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || email.Contains(q, StringComparison.OrdinalIgnoreCase);
+        })
+        .OrderBy(u => u.Identity.Email, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+    }
+
+    private Task OnSearchSubmit()  // submit button / Enter key
+    {
+        ApplyFilter();
+        return Task.CompletedTask;
+    }
+
+    private Task RefreshAsync() => LoadAsync();
+
+    private void GoEdit(string userId)
+    {
+        // Route to your edit page; you can receive {id} as a route parameter there.
+        Nav.NavigateTo($"/platform/users/edit/{userId}");
+    }
+
+    private sealed class SearchVm
+    {
+        [MaxLength(200)]
+        public string? Query { get; set; }
+
+        public bool IncludeInactive { get; set; } = false;
+    }
+}
