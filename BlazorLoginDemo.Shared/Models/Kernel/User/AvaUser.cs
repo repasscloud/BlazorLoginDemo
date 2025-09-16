@@ -89,7 +89,15 @@ public class AvaUser
 
     // navigation for refresh tokens
     public List<RefreshToken> RefreshTokens { get; set; } = new();
-    
+
     // multiple airline memberships per user
     public ICollection<AvaUserLoyaltyAccount> LoyaltyAccounts { get; set; } = new List<AvaUserLoyaltyAccount>();
+
+    public string? ManagerAvaUserId { get; set; }
+
+    [JsonIgnore]
+    public AvaUser? Manager { get; set; }
+
+    [JsonIgnore]
+    public ICollection<AvaUser> DirectReports { get; set; } = new List<AvaUser>();
 }

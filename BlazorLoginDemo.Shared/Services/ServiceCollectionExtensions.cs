@@ -44,6 +44,12 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddAvaPlatformServices(this IServiceCollection services)
+    {
+        services.AddScoped<IAdminUserService, AdminUserService>();
+        return services;
+    }
     
     public static IServiceCollection AddAvaClientServices(this IServiceCollection services)
     {

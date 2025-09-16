@@ -111,14 +111,20 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<ApplicationUser>(e =>
         {
-            // e.ToTable("application_users", "ava");
+            e.HasOne(u => u.Profile)
+                .WithOne()
+                .HasForeignKey<AvaUser>(p => p.AspNetUsersId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             e.HasOne(u => u.Organization)
                 .WithMany()
                 .HasForeignKey(u => u.OrganizationId)
                 .OnDelete(DeleteBehavior.Restrict);
-            
+
             e.Property(u => u.DisplayName).HasMaxLength(128);
             e.Property(u => u.Department).HasMaxLength(128);
+            
+            e.HasIndex(u => u.OrganizationId);
         });
 
         builder.Entity<RefreshToken>(e =>
@@ -173,6 +179,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             // enforce email uniqueness
             e.HasIndex(x => x.Email).IsUnique();
+
+            // many reports, one manager
+            e.HasOne(u => u.Manager)
+                .WithMany(m => m.DirectReports)
+                .HasForeignKey(u => u.ManagerAvaUserId)
+                .OnDelete(DeleteBehavior.Restrict);  // prevent cascasding deltes up the chain
+
+            e.HasIndex(u => u.ManagerAvaUserId);  // handy for listing/queries
 
             // 1:1 AvaUser (FK) -> ApplicationUser (PK)
             e.HasOne<ApplicationUser>()

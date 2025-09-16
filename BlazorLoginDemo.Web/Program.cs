@@ -156,6 +156,7 @@ public class Program
         builder.Services.AddAvaApiHttpClient(builder.Configuration);
 
         // Services
+        builder.Services.AddAvaPlatformServices();
         builder.Services.AddAvaClientServices();
         builder.Services.AddAvaFinanceServices();
         builder.Services.AddAvaPolicyServices();
