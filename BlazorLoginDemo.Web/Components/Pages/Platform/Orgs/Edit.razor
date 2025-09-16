@@ -70,14 +70,20 @@
                                     <button type="button"
                                             class="btn btn-outline-secondary"
                                             title="Select Parent"
-                                            @onclick="OpenParentPickerAsync"
+                                            @onclick="OpenParentPicker"
                                             disabled="@isBusy">
                                         <i class="bi bi-diagram-2"></i>
                                     </button>
                                 </div>
-                                @if (!string.IsNullOrWhiteSpace(info))
+                                @if (!string.IsNullOrWhiteSpace(parentDisplay))
                                 {
-                                    <div class="form-text">@info</div>
+                                    <div class="form-text">
+                                        Selected: <code>@parentDisplay</code>
+                                        <button type="button" class="btn btn-link btn-sm p-0 ms-2"
+                                                @onclick="@(() => { vm.ParentOrganizationId = null; parentDisplay = null; })">
+                                            Clear
+                                        </button>
+                                    </div>
                                 }
                             </div>
 
@@ -140,16 +146,18 @@
     </div>
 </div>
 
+@* Simple boolean-toggled modal (no JS interop), same style as user modal *@
 @if (showParentPicker)
 {
     <div class="modal fade show" style="display:block;" tabindex="-1" aria-modal="true" role="dialog">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Select Parent Organization</h5>
+                    <h5 class="modal-title mb-0">Select Parent Organization</h5>
                     <button type="button" class="btn-close" @onclick="CloseParentPicker" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+
                     @if (!string.IsNullOrWhiteSpace(pickerError))
                     {
                         <div class="alert alert-danger d-flex align-items-center" role="alert">
@@ -158,10 +166,13 @@
                         </div>
                     }
 
-                    <EditForm Model="@this" OnValidSubmit="@SearchParentsAsync">
-                        <div class="input-group mb-3">
-                            <input class="form-control" @bind="pickerQuery" placeholder="Search by name or domain…" />
-                            <button class="btn btn-primary" type="submit" disabled="@pickerBusy">
+                    <div class="row g-2 align-items-end mb-2">
+                        <div class="col-md-8">
+                            <label class="form-label" for="pickerQuery">Search (name or domain)</label>
+                            <input id="pickerQuery" class="form-control" @bind="pickerQuery" placeholder="Start typing…" />
+                        </div>
+                        <div class="col-md-4 d-grid">
+                            <button type="button" class="btn btn-primary" @onclick="SearchParentsAsync" disabled="@pickerBusy">
                                 @if (pickerBusy)
                                 {
                                     <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -169,10 +180,14 @@
                                 Search
                             </button>
                         </div>
-                    </EditForm>
+                    </div>
 
                     <div class="list-group">
-                        @if (pickerResults.Count == 0)
+                        @if (pickerBusy && pickerResults.Count == 0)
+                        {
+                            <div class="text-muted small">Searching…</div>
+                        }
+                        else if (pickerResults.Count == 0)
                         {
                             <div class="text-muted small">No results.</div>
                         }
@@ -180,16 +195,19 @@
                         {
                             @foreach (var r in pickerResults)
                             {
+                                var ds = (r.Org.Domains?.Select(x => x.Domain).OrderBy(x => x).ToArray()) ?? Array.Empty<string>();
                                 <button type="button"
-                                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                                        class="list-group-item list-group-item-action"
                                         @onclick="() => PickParent(r.Org.Id, r.Org.Name)">
-                                    <div>
-                                        <div class="fw-semibold">@r.Org.Name</div>
-                                        <div class="text-muted small">
-                                            <code>@r.Org.Id</code> · @r.Org.Type · @(r.Org.IsActive ? "Active" : "Inactive")
-                                        </div>
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">@r.Org.Name</h6>
+                                        <small class="text-muted">@r.Org.Type @((r.Org.IsActive ? "· Active" : "· Inactive"))</small>
                                     </div>
-                                    <i class="bi bi-check2-circle"></i>
+                                    <small class="text-muted"><code>@r.Org.Id</code></small><br />
+                                    @if (ds.Length > 0)
+                                    {
+                                        <small class="text-muted">Domains: @string.Join(", ", ds)</small>
+                                    }
                                 </button>
                             }
                         }
@@ -204,16 +222,22 @@
     <div class="modal-backdrop fade show"></div>
 }
 
-
 @code {
     [Parameter] public string id { get; set; } = default!;
 
     private EditVm vm = new();
     private bool isBusy;
     private string? error;
-    private string? info;
     private string? success;
     private string? newDomain;
+    private string? parentDisplay;
+
+    // Parent picker state (simple modal)
+    private bool showParentPicker;
+    private bool pickerBusy;
+    private string? pickerError;
+    private string? pickerQuery;
+    private List<IAdminOrgService.OrgAggregate> pickerResults = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -244,6 +268,8 @@
                 IsActive = agg.Org.IsActive,
                 Domains = (agg.Org.Domains?.Select(d => d.Domain).OrderBy(x => x).ToList()) ?? new List<string>()
             };
+
+            parentDisplay = string.IsNullOrWhiteSpace(vm.ParentOrganizationId) ? null : vm.ParentOrganizationId;
         }
         catch (Exception ex)
         {
@@ -278,7 +304,6 @@
 
             var updated = await OrgService.UpdateAsync(req);
             success = $"Saved. Org Id: {updated.Org.Id}";
-
             await LoadAsync();
         }
         catch (Exception ex)
@@ -303,7 +328,6 @@
         newDomain = string.Empty;
     }
 
-    // IMPORTANT: delete by domain value, not index
     private async Task RemoveDomainAsync(string domain)
     {
         try
@@ -313,12 +337,9 @@
             success = null;
 
             await OrgService.RemoveDomainAsync(vm.OrgId, domain);
-
-            // Refresh from source of truth
             await LoadAsync();
 
             success = $"Removed domain '{domain}'.";
-            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -329,6 +350,62 @@
         {
             isBusy = false;
         }
+    }
+
+    // Modal open: show results immediately (no pre-fill with current org name)
+    private async Task OpenParentPicker()
+    {
+        pickerQuery = null;
+        pickerError = null;
+        showParentPicker = true;
+        await SearchParentsAsync();
+    }
+
+    private void CloseParentPicker()
+    {
+        showParentPicker = false;
+    }
+
+    private async Task SearchParentsAsync()
+    {
+        try
+        {
+            pickerBusy = true;
+            pickerError = null;
+
+            var list = await OrgService.SearchAsync(
+                nameContains: pickerQuery,
+                type: null,
+                isActive: true,
+                parentOrgId: null,
+                domainContains: pickerQuery
+            );
+
+            // Exclude the current org so it cannot be its own parent
+            pickerResults = list
+                .Where(x => x.Org.Id != vm.OrgId)
+                .OrderBy(x => x.Org.Name)
+                .ThenBy(x => x.Org.Id)
+                .Take(100)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            pickerError = ex.GetBaseException().Message;
+            pickerResults.Clear();
+        }
+        finally
+        {
+            pickerBusy = false;
+        }
+    }
+
+    private void PickParent(string parentId, string parentName)
+    {
+        vm.ParentOrganizationId = parentId;
+        parentDisplay = $"{parentName} ({parentId})";
+        CloseParentPicker();
+        StateHasChanged();
     }
 
     private void BackToList() => Nav.NavigateTo("/platform/orgs");
@@ -351,65 +428,4 @@
 
         public List<string> Domains { get; set; } = new();
     }
-
-// --- Parent picker (Edit) ---
-private bool showParentPicker;
-private bool pickerBusy;
-private string? pickerError;
-private string? pickerQuery;
-private List<IAdminOrgService.OrgAggregate> pickerResults = new();
-
-private async Task OpenParentPickerAsync()
-{
-    pickerQuery = vm.Name; // optional seeding
-    await SearchParentsAsync();
-    showParentPicker = true;
-}
-
-private void CloseParentPicker()
-{
-    showParentPicker = false;
-}
-
-private async Task SearchParentsAsync()
-{
-    try
-    {
-        pickerBusy = true;
-        pickerError = null;
-
-        var list = await OrgService.SearchAsync(
-            nameContains: pickerQuery,
-            type: null,
-            isActive: true,
-            parentOrgId: null,
-            domainContains: pickerQuery
-        );
-
-        // Exclude the current org so it can’t be its own parent
-        pickerResults = list
-            .Where(x => x.Org.Id != vm.OrgId)
-            .OrderBy(o => o.Org.Name)
-            .ThenBy(o => o.Org.Id)
-            .Take(100)
-            .ToList();
-    }
-    catch (Exception ex)
-    {
-        pickerError = ex.GetBaseException().Message;
-    }
-    finally
-    {
-        pickerBusy = false;
-    }
-}
-
-private void PickParent(string parentId, string parentName)
-{
-    vm.ParentOrganizationId = parentId;
-    info = $"Selected parent: {parentName} ({parentId})";
-    CloseParentPicker();
-    StateHasChanged();
-}
-
 }
