@@ -1,0 +1,236 @@
+@page "/platform/orgs/create"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using BlazorLoginDemo.Shared.Models.Static.Platform
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@inject IAdminOrgService OrgService
+@inject NavigationManager Nav
+@inject ILogger<Create> Log
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-7 col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Create Organization</h5>
+                    <small class="text-muted">Add a new Organization with optional parent and domains.</small>
+                </div>
+
+                <EditForm Model="@vm" OnValidSubmit="@HandleCreateAsync">
+                    <DataAnnotationsValidator />
+
+                    <div class="card-body">
+
+                        @if (!string.IsNullOrWhiteSpace(successId))
+                        {
+                            <!-- Success alert -->
+                            <div class="alert alert-success d-flex align-items-center" role="alert">
+                                <i class="bi bi-check-circle-fill fs-5 me-2" aria-hidden="true"></i>
+                                <div>
+                                    Organization created successfully.<br />
+                                    <small class="text-muted">New Organization Id: <code>@successId</code></small>
+                                </div>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(error))
+                        {
+                            <!-- Error alert -->
+                            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                                <i class="bi bi-x-circle-fill fs-5 me-2" aria-hidden="true"></i>
+                                <div>@error</div>
+                            </div>
+                        }
+
+                        <ValidationSummary class="alert alert-warning mb-4" />
+
+                        <div class="row g-3">
+                            <!-- Name -->
+                            <div class="col-md-6">
+                                <label for="orgName" class="form-label">Name</label>
+                                <InputText id="orgName" class="form-control" @bind-Value="vm.Name" disabled="@isSubmitting" />
+                                <ValidationMessage For="@(() => vm.Name)" class="text-danger" />
+                                <div class="form-text">Required. Max 128 characters.</div>
+                            </div>
+
+                            <!-- Type -->
+                            <div class="col-md-6">
+                                <label for="orgType" class="form-label">Type</label>
+                                <InputSelect id="orgType" class="form-select" @bind-Value="vm.Type" disabled="@isSubmitting">
+                                    @foreach (var t in Enum.GetValues<OrganizationType>())
+                                    {
+                                        <option value="@t">@t</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => vm.Type)" class="text-danger" />
+                            </div>
+
+                            <!-- Parent -->
+                            <div class="col-md-8">
+                                <label for="parentId" class="form-label">Parent Organization Id (optional)</label>
+                                <div class="input-group">
+                                    <InputText id="parentId" class="form-control" @bind-Value="vm.ParentOrganizationId" placeholder="Org Id" disabled="@isSubmitting" />
+                                    <button type="button"
+                                            class="btn btn-outline-secondary"
+                                            title="Select Parent"
+                                            @onclick="OpenParentPicker"
+                                            disabled="@isSubmitting">
+                                        <i class="bi bi-diagram-2"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Hook this to your existing modal picker.</div>
+                            </div>
+
+                            <!-- Active -->
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-check">
+                                    <InputCheckbox id="isActive" class="form-check-input" @bind-Value="vm.IsActive" disabled="@isSubmitting" />
+                                    <label for="isActive" class="form-check-label">Is Active</label>
+                                </div>
+                            </div>
+
+                            <!-- Domains -->
+                            <div class="col-12">
+                                <label class="form-label">Domains</label>
+                                <div class="input-group mb-2">
+                                    <input class="form-control" @bind="newDomain" placeholder="example.com" disabled="@isSubmitting" />
+                                    <button type="button" class="btn btn-outline-primary" @onclick="AddDomain" disabled="@isSubmitting">Add</button>
+                                </div>
+
+                                @if (vm.Domains.Count == 0)
+                                {
+                                    <div class="text-muted">No domains added yet.</div>
+                                }
+                                else
+                                {
+                                    <ul class="list-group">
+                                        @for (int i = 0; i < vm.Domains.Count; i++)
+                                        {
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>@vm.Domains[i]</span>
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-danger"
+                                                        @onclick="() => RemoveDomain(i)"
+                                                        disabled="@isSubmitting">
+                                                    Remove
+                                                </button>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="@isSubmitting">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Creating…</span>
+                            }
+                            else
+                            {
+                                <span>Create organization</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreateOrgVm vm = new();
+    private bool isSubmitting = false;
+    private string? successId;
+    private string? error;
+    private string? info;
+    private string? newDomain;
+
+    private async Task HandleCreateAsync()
+    {
+        try
+        {
+            isSubmitting = true;
+            successId = null;
+            error = null;
+
+            var req = new IAdminOrgService.CreateOrgRequest(
+                Name: vm.Name.Trim(),
+                Type: vm.Type,
+                ParentOrganizationId: string.IsNullOrWhiteSpace(vm.ParentOrganizationId) ? null : vm.ParentOrganizationId.Trim(),
+                IsActive: vm.IsActive,
+                Domains: vm.Domains.ToList()
+            );
+
+            var result = await OrgService.CreateOrgAsync(req);
+            if (!result.Ok)
+            {
+                throw new InvalidOperationException(result.Error ?? "Create failed.");
+            }
+
+            successId = result.OrganizationId;
+
+            // Navigate to edit/details if you prefer:
+            // Nav.NavigateTo($"/platform/orgs/{successId}/edit");
+        }
+        catch (Exception ex)
+        {
+            Log.LogError(ex, "Create submit error");
+            error = ex.GetBaseException().Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void AddDomain()
+    {
+        if (string.IsNullOrWhiteSpace(newDomain))
+            return;
+
+        var d = newDomain.Trim().ToLowerInvariant();
+        if (!vm.Domains.Contains(d, StringComparer.OrdinalIgnoreCase))
+            vm.Domains.Add(d);
+
+        newDomain = string.Empty;
+    }
+
+    private void RemoveDomain(int index)
+    {
+        if (index >= 0 && index < vm.Domains.Count)
+            vm.Domains.RemoveAt(index);
+    }
+
+    private void Cancel() => Nav.NavigateTo("/platform/orgs");
+
+    private Task OpenParentPicker()
+    {
+        // Placeholder – wire up to your existing modal system.
+        info = "Parent picker modal coming next.";
+        return Task.CompletedTask;
+    }
+
+    public sealed class CreateOrgVm
+    {
+        [Required, MaxLength(128)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public OrganizationType Type { get; set; } = OrganizationType.Client;
+
+        public string? ParentOrganizationId { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        [MinLength(0)]
+        public List<string> Domains { get; set; } = new();
+    }
+}

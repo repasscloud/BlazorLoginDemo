@@ -8,10 +8,12 @@ using BlazorLoginDemo.Shared.Services.Interfaces.Client;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Finance;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
+using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policies;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
 using BlazorLoginDemo.Shared.Services.Interfaces.User;
 using BlazorLoginDemo.Shared.Services.Kernel;
+using BlazorLoginDemo.Shared.Services.Platform;
 using BlazorLoginDemo.Shared.Services.Policies;
 using BlazorLoginDemo.Shared.Services.User;
 using Microsoft.Extensions.Configuration;
@@ -48,6 +50,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddAvaPlatformServices(this IServiceCollection services)
     {
         services.AddScoped<IAdminUserService, AdminUserService>();
+        services.AddScoped<IAdminOrgService, AdminOrgService>();
         return services;
     }
     
