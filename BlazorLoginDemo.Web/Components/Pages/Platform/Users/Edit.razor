@@ -60,9 +60,12 @@
               </small>
             </div>
             <div>
-              <button class="btn btn-outline-secondary btn-sm" @onclick="BackToSearch">
+                <button class="btn btn-outline-danger" @onclick="OpenDelete" disabled="@isBusyDelete">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            <button class="btn btn-outline-secondary" @onclick="BackToSearch">
                 <i class="bi bi-arrow-left me-1"></i> Back to Search
-              </button>
+            </button>
             </div>
           </div>
 
@@ -436,9 +439,60 @@
   </Footer>
 </Modal>
 
+@if (showDelete)
+{
+    <div class="modal fade show"
+         style="display:block;"
+         tabindex="-1"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="deleteUserTitle">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="deleteUserTitle" class="modal-title mb-0">Delete User</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDelete" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(deleteError))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <i class="bi bi-x-circle-fill fs-5 me-2"></i>
+                            <div>@deleteError</div>
+                        </div>
+                    }
+
+                    <p class="mb-3">
+                        This will permanently delete the Identity user and linked platform data.
+                    </p>
+                    <ul class="mb-0 small text-muted">
+                        <li>AspNetUsers (and claims / roles / logins / tokens)</li>
+                        <li>AvaUser</li>
+                        <li>AvaUserSysPreference</li>
+                    </ul>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" @onclick="CloseDelete" disabled="@isBusyDelete">Cancel</button>
+                    <button class="btn btn-danger" @onclick="ConfirmDeleteAsync" disabled="@isBusyDelete">
+                        @if (isBusyDelete)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Delete user
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+
 
 @code {
-    [Parameter] public string? Id { get; set; }
+    [Parameter] public string Id { get; set; } = default!;
 
     private bool loading = true;
     private string? error;
@@ -446,7 +500,7 @@
     private string saveAlertClass = "alert-success";
     private string saveIconClass = "bi bi-check-circle-fill";
     private string activeTab = "account";
-
+    
     private IAdminUserService.ProvisionedUser? user;
     private AvaUserSysPreference? pref;
 
@@ -819,110 +873,154 @@
     }
 
 #region ManagerPickerModal
-private BlazorLoginDemo.Web.Components.Modal? _managerPicker;
+    private BlazorLoginDemo.Web.Components.Modal? _managerPicker;
 
-// Backing list of all users (Identity + AvaUser profile)
-private IReadOnlyList<IAdminUserService.ProvisionedUser> _mgrAll = Array.Empty<IAdminUserService.ProvisionedUser>();
-private string _mgrSearch = string.Empty;
-private bool _mgrLoading;
+    // Backing list of all users (Identity + AvaUser profile)
+    private IReadOnlyList<IAdminUserService.ProvisionedUser> _mgrAll = Array.Empty<IAdminUserService.ProvisionedUser>();
+    private string _mgrSearch = string.Empty;
+    private bool _mgrLoading;
 
-private IEnumerable<IAdminUserService.ProvisionedUser> _mgrFiltered =>
-    string.IsNullOrWhiteSpace(_mgrSearch)
-        ? _mgrAll
-        : _mgrAll.Where(u =>
-        {
-            var last  = u.Profile.LastName ?? string.Empty;
-            var first = u.Profile.FirstName ?? string.Empty;
-            var disp  = u.Identity.DisplayName ?? string.Empty;
-            var email = u.Identity.Email ?? string.Empty;
+    private IEnumerable<IAdminUserService.ProvisionedUser> _mgrFiltered =>
+        string.IsNullOrWhiteSpace(_mgrSearch)
+            ? _mgrAll
+            : _mgrAll.Where(u =>
+            {
+                var last  = u.Profile.LastName ?? string.Empty;
+                var first = u.Profile.FirstName ?? string.Empty;
+                var disp  = u.Identity.DisplayName ?? string.Empty;
+                var email = u.Identity.Email ?? string.Empty;
 
-            return last.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
-                || first.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
-                || disp.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
-                || email.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
-                || (u.Profile.Id?.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase) ?? false);
-        })
-        // Don’t allow choosing yourself as your own manager
-        .Where(u => u.UserId != user?.UserId);
+                return last.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
+                    || first.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
+                    || disp.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
+                    || email.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
+                    || (u.Profile.Id?.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase) ?? false);
+            })
+            // Don’t allow choosing yourself as your own manager
+            .Where(u => u.UserId != user?.UserId);
 
-private async Task OpenManagerPicker()
-{
-    // lazy-load
-    if (_mgrAll.Count == 0)
+    private async Task OpenManagerPicker()
     {
-        _mgrLoading = true;
-        StateHasChanged();
+        // lazy-load
+        if (_mgrAll.Count == 0)
+        {
+            _mgrLoading = true;
+            StateHasChanged();
 
-        var list = await AdminUserService.GetAllAsync();
-        _mgrAll = list ?? Array.Empty<IAdminUserService.ProvisionedUser>();
+            var list = await AdminUserService.GetAllAsync();
+            _mgrAll = list ?? Array.Empty<IAdminUserService.ProvisionedUser>();
 
-        _mgrLoading = false;
-        _mgrSearch = string.Empty;
+            _mgrLoading = false;
+            _mgrSearch = string.Empty;
+        }
+
+        await _managerPicker!.Show();
     }
 
-    await _managerPicker!.Show();
-}
+    private async Task OnManagerSelected(string managerAvaUserId, string? label, ApplicationUser identity)
+    {
+        if (user is null) return;
 
-private async Task OnManagerSelected(string managerAvaUserId, string? label, ApplicationUser identity)
-{
-    if (user is null) return;
+        // write to service immediately
+        var updateReq = new IAdminUserService.UpdateUserRequest(
+            UserId: user.UserId,
+            FirstName: null,
+            MiddleName: null,
+            LastName: null,
+            DisplayName: null,
+            OrganizationId: null,
+            IsActive: null,
+            ManagerAvaUserId: managerAvaUserId
+        );
 
-    // write to service immediately
-    var updateReq = new IAdminUserService.UpdateUserRequest(
-        UserId: user.UserId,
-        FirstName: null,
-        MiddleName: null,
-        LastName: null,
-        DisplayName: null,
-        OrganizationId: null,
-        IsActive: null,
-        ManagerAvaUserId: managerAvaUserId
-    );
+        var updated = await AdminUserService.UpdateAsync(updateReq);
 
-    var updated = await AdminUserService.UpdateAsync(updateReq);
+        // refresh local state (Account tab VM)
+        accountVm.ManagerAvaUserId = managerAvaUserId;
+        accountVm.ManagerDisplay   = BuildManagerDisplay(updated.Profile, updated.Identity);
 
-    // refresh local state (Account tab VM)
-    accountVm.ManagerAvaUserId = managerAvaUserId;
-    accountVm.ManagerDisplay   = BuildManagerDisplay(updated.Profile, updated.Identity);
+        // keep top-level user in sync
+        user = updated;
 
-    // keep top-level user in sync
-    user = updated;
+        await _managerPicker!.Hide();
 
-    await _managerPicker!.Hide();
+        saveAlertClass = "alert-success";
+        saveIconClass  = "bi bi-check-circle-fill";
+        saveMessage    = "Manager updated.";
+    }
 
-    saveAlertClass = "alert-success";
-    saveIconClass  = "bi bi-check-circle-fill";
-    saveMessage    = "Manager updated.";
-}
+    private void ClearManager()
+    {
+        // clear in the VM; the real update is persisted on 'Save Account'
+        accountVm.ManagerAvaUserId = null;
+        accountVm.ManagerDisplay   = string.Empty;
+    }
 
-private void ClearManager()
-{
-    // clear in the VM; the real update is persisted on 'Save Account'
-    accountVm.ManagerAvaUserId = null;
-    accountVm.ManagerDisplay   = string.Empty;
-}
+    private static string BuildManagerDisplay(AvaUser u, ApplicationUser id)
+    {
+        var l = u.LastName ?? string.Empty;
+        var f = u.FirstName ?? string.Empty;
 
-private static string BuildManagerDisplay(AvaUser u, ApplicationUser id)
-{
-    var l = u.LastName ?? string.Empty;
-    var f = u.FirstName ?? string.Empty;
+        var label = string.Join(", ", new[] { l, f }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        if (!string.IsNullOrWhiteSpace(label))
+            return label;
 
-    var label = string.Join(", ", new[] { l, f }.Where(s => !string.IsNullOrWhiteSpace(s)));
-    if (!string.IsNullOrWhiteSpace(label))
-        return label;
-
-    // fallbacks
-    return !string.IsNullOrWhiteSpace(id.DisplayName)
-        ? id.DisplayName!
-        : (id.Email ?? "(unknown)");
-}
+        // fallbacks
+        return !string.IsNullOrWhiteSpace(id.DisplayName)
+            ? id.DisplayName!
+            : (id.Email ?? "(unknown)");
+    }
 #endregion
 
 
 
 
+    // Delete modal state
+    private bool showDelete;
+    private string? deleteError;
+    private bool isBusyDelete;
 
+    private void OpenDelete()
+    {
+        deleteError = null;
+        showDelete = true;
+    }
+
+    private void CloseDelete()
+    {
+        showDelete = false;
+    }
+
+private async Task ConfirmDeleteAsync()
+{
+    try
+    {
+        isBusyDelete = true;
+        deleteError = null;
+
+        // Pick the one that matches what {Id} represents on this page:
+        var res = await AdminUserService.DeleteByAvaUserIdAsync(Id);
+        // var res = await this.IAdminUserService.DeleteByAspNetUserIdAsync(Id);
+
+        if (!res.Ok)
+        {
+            deleteError = res.Error ?? "Delete failed.";
+            return;
+        }
+
+        Nav.NavigateTo("/platform/users");
+    }
+    catch (Exception ex)
+    {
+        deleteError = ex.GetBaseException().Message;
+    }
+    finally
+    {
+        isBusyDelete = false;
+        showDelete = false;
+    }
 }
 
 
 
+}

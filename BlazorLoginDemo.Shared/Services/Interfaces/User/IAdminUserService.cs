@@ -45,6 +45,10 @@ public interface IAdminUserService
     // DELETE
     Task<bool> DeleteAsync(string id, CancellationToken ct = default);
 
+    public sealed record DeleteUserResult(bool Ok, string? Error);
+    Task<DeleteUserResult> DeleteByAspNetUserIdAsync(string aspNetUserId, CancellationToken ct = default);
+    Task<DeleteUserResult> DeleteByAvaUserIdAsync(string avaUserId, CancellationToken ct = default);
+
     // UTIL
     Task<bool> ExistsAsync(string id, CancellationToken ct = default);
 }

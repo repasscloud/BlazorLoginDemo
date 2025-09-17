@@ -1,7 +1,9 @@
+using BlazorLoginDemo.Shared.Models.Kernel.User;
 using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Services.Interfaces.User;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BlazorLoginDemo.Shared.Services.User;
 
@@ -10,15 +12,18 @@ internal sealed class AdminUserService : IAdminUserService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly ApplicationDbContext _db;
+    private readonly ILogger<AdminUserService> _log;
 
     public AdminUserService(
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        ILogger<AdminUserService> log)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _db = db;
+        _log = log;
     }
 
     // --- CREATE (rich/typed) ---
@@ -204,6 +209,110 @@ internal sealed class AdminUserService : IAdminUserService
 
         var result = await _userManager.DeleteAsync(user);
         return result.Succeeded;
+    }
+
+    public async Task<IAdminUserService.DeleteUserResult> DeleteByAspNetUserIdAsync(string aspNetUserId, CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(aspNetUserId))
+                return new(false, "User Id is required.");
+
+            // 1) Load Identity user + child rows (typical Identity tables)
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.Id == aspNetUserId, ct);
+
+            if (user is null)
+                return new(true, null); // already gone
+
+            var claims  = await _db.UserClaims.Where(x => x.UserId == aspNetUserId).ToListAsync(ct);
+            var roles   = await _db.UserRoles.Where(x => x.UserId == aspNetUserId).ToListAsync(ct);
+            var logins  = await _db.UserLogins.Where(x => x.UserId == aspNetUserId).ToListAsync(ct);
+            var tokens  = await _db.UserTokens.Where(x => x.UserId == aspNetUserId).ToListAsync(ct);
+
+            // 2) Load your domain entities tied to this user
+            //    Assumes AvaUser has a FK like IdentityUserId (adjust if named differently).
+            var avaUser = await _db.Set<AvaUser>()
+                .FirstOrDefaultAsync(x => x.AspNetUsersId == aspNetUserId, ct);
+
+            if (avaUser is not null)
+            {
+                var prefs = await _db.Set<AvaUserSysPreference>()
+                    .Where(p => p.AvaUserId == avaUser.Id)
+                    .ToListAsync(ct);
+
+                _db.Set<AvaUserSysPreference>().RemoveRange(prefs);
+                _db.Set<AvaUser>().Remove(avaUser);
+            }
+
+            // 3) Remove Identity child rows then the user
+            _db.UserClaims.RemoveRange(claims);
+            _db.UserRoles.RemoveRange(roles);
+            _db.UserLogins.RemoveRange(logins);
+            _db.UserTokens.RemoveRange(tokens);
+            _db.Users.Remove(user);
+
+            await _db.SaveChangesAsync(ct);
+            return new(true, null);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "DeleteByAspNetUserIdAsync failed for {UserId}", aspNetUserId);
+            return new(false, ex.GetBaseException().Message);
+        }
+    }
+
+    public async Task<IAdminUserService.DeleteUserResult> DeleteByAvaUserIdAsync(string avaUserId, CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(avaUserId))
+                return new(false, "AvaUser Id is required.");
+
+            // 1) Load AvaUser + prefs
+            var avaUser = await _db.Set<AvaUser>()
+                .FirstOrDefaultAsync(x => x.Id == avaUserId, ct);
+
+            if (avaUser is null)
+                return new(true, null); // already gone
+
+            var prefs = await _db.Set<AvaUserSysPreference>()
+                .Where(p => p.AvaUserId == avaUser.Id)
+                .ToListAsync(ct);
+
+            // 2) Optionally load Identity user via FK (adjust property name if needed)
+            IdentityUser? user = null;
+            if (!string.IsNullOrWhiteSpace(avaUser.AspNetUsersId))
+            {
+                var uid = avaUser.AspNetUsersId!;
+                user = await _db.Users.FirstOrDefaultAsync(u => u.Id == uid, ct);
+
+                var claims  = await _db.UserClaims.Where(x => x.UserId == uid).ToListAsync(ct);
+                var roles   = await _db.UserRoles.Where(x => x.UserId == uid).ToListAsync(ct);
+                var logins  = await _db.UserLogins.Where(x => x.UserId == uid).ToListAsync(ct);
+                var tokens  = await _db.UserTokens.Where(x => x.UserId == uid).ToListAsync(ct);
+
+                _db.UserClaims.RemoveRange(claims);
+                _db.UserRoles.RemoveRange(roles);
+                _db.UserLogins.RemoveRange(logins);
+                _db.UserTokens.RemoveRange(tokens);
+
+                if (user is not null)
+                    _db.Users.Remove((ApplicationUser)user);
+            }
+
+            // 3) Remove domain rows
+            _db.Set<AvaUserSysPreference>().RemoveRange(prefs);
+            _db.Set<AvaUser>().Remove(avaUser);
+
+            await _db.SaveChangesAsync(ct);
+            return new(true, null);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "DeleteByAvaUserIdAsync failed for {AvaUserId}", avaUserId);
+            return new(false, ex.GetBaseException().Message);
+        }
     }
 
     // --- UTIL ---

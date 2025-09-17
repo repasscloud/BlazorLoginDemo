@@ -257,20 +257,34 @@ public class Program
         {
             await next();
 
-            if (ctx.Response.StatusCode == 404
+            if (ctx.Response.StatusCode == StatusCodes.Status404NotFound
+                && !ctx.Response.HasStarted                                     // don't touch responses that already started
                 && !Path.HasExtension(ctx.Request.Path.Value ?? string.Empty)
                 && !ctx.Request.Path.StartsWithSegments("/api")
                 && !ctx.Request.Path.StartsWithSegments("/_framework")
                 && !ctx.Request.Path.StartsWithSegments("/_content")
                 && !ctx.Request.Path.StartsWithSegments("/css")
                 && !ctx.Request.Path.StartsWithSegments("/js")
-                && !ctx.Request.Path.StartsWithSegments("/images"))
+                && !ctx.Request.Path.StartsWithSegments("/images")
+                && !ctx.Items.ContainsKey("__spa404_reran"))                     // avoid re-exec loops
             {
-                // Preserve 404 status for crawlers/SEO, but re-run pipeline at '/'
-                ctx.Response.Clear();
-                ctx.Response.StatusCode = 404;
+                ctx.Items["__spa404_reran"] = true;
+
+                // Preserve 404 for crawlers/SEO, but re-execute the pipeline at '/'
+                var originalPath = ctx.Request.Path;
                 ctx.Request.Path = "/";
-                await next();
+
+                // Set 404 before re-exec so the final response keeps it unless overwritten before writing
+                ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+
+                try
+                {
+                    await next();                                                // run the rest of the pipeline once more
+                }
+                finally
+                {
+                    ctx.Request.Path = originalPath;                             // restore path (optional)
+                }
             }
         });
 
