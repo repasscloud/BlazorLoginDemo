@@ -145,6 +145,80 @@
     </div>
 </div>
 
+@if (showParentPicker)
+{
+    <div class="modal fade show" style="display:block;" tabindex="-1" aria-modal="true" role="dialog">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title mb-0">Select Parent Organization</h5>
+                    <button type="button" class="btn-close" @onclick="CloseParentPicker" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(pickerError))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <i class="bi bi-x-circle-fill fs-5 me-2"></i>
+                            <div>@pickerError</div>
+                        </div>
+                    }
+
+                    <div class="row g-2 align-items-end mb-2">
+                        <div class="col-md-8">
+                            <label class="form-label" for="pickerQuery">Search (name or domain)</label>
+                            <input id="pickerQuery" class="form-control" @bind="pickerQuery" placeholder="Start typing…" />
+                        </div>
+                        <div class="col-md-4 d-grid">
+                            <button type="button" class="btn btn-primary" @onclick="SearchParentsAsync" disabled="@pickerBusy">
+                                @if (pickerBusy)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                }
+                                Search
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="list-group">
+                        @if (pickerBusy && pickerResults.Count == 0)
+                        {
+                            <div class="text-muted small">Searching…</div>
+                        }
+                        else if (pickerResults.Count == 0)
+                        {
+                            <div class="text-muted small">No results.</div>
+                        }
+                        else
+                        {
+                            @foreach (var r in pickerResults)
+                            {
+                                var ds = (r.Org.Domains?.Select(x => x.Domain).OrderBy(x => x).ToArray()) ?? Array.Empty<string>();
+                                <button type="button"
+                                        class="list-group-item list-group-item-action"
+                                        @onclick="() => PickParent(r.Org.Id, r.Org.Name)">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">@r.Org.Name</h6>
+                                        <small class="text-muted">@r.Org.Type @((r.Org.IsActive ? "· Active" : "· Inactive"))</small>
+                                    </div>
+                                    <small class="text-muted"><code>@r.Org.Id</code></small><br />
+                                    @if (ds.Length > 0)
+                                    {
+                                        <small class="text-muted">Domains: @string.Join(", ", ds)</small>
+                                    }
+                                </button>
+                            }
+                        }
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-end gap-2">
+                    <button class="btn btn-outline-secondary" @onclick="CloseParentPicker">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
 @code {
     private CreateOrgVm vm = new();
     private bool isSubmitting = false;
@@ -211,13 +285,6 @@
 
     private void Cancel() => Nav.NavigateTo("/platform/orgs");
 
-    private Task OpenParentPicker()
-    {
-        // Placeholder – wire up to your existing modal system.
-        info = "Parent picker modal coming next.";
-        return Task.CompletedTask;
-    }
-
     public sealed class CreateOrgVm
     {
         [Required, MaxLength(128)]
@@ -232,5 +299,66 @@
 
         [MinLength(0)]
         public List<string> Domains { get; set; } = new();
+    }
+
+    // --- Parent picker state (Create) ---
+    private bool showParentPicker;
+    private bool pickerBusy;
+    private string? pickerError;
+    private string? pickerQuery;
+    private List<IAdminOrgService.OrgAggregate> pickerResults = new();
+    private string? parentLabel; // optional helper under the input
+
+    private async Task OpenParentPicker()
+    {
+        pickerQuery = null;           // do NOT seed with current org name
+        pickerError = null;
+        showParentPicker = true;
+        await SearchParentsAsync();   // show initial results immediately
+    }
+
+    private void CloseParentPicker()
+    {
+        showParentPicker = false;
+    }
+
+    private async Task SearchParentsAsync()
+    {
+        try
+        {
+            pickerBusy = true;
+            pickerError = null;
+
+            var list = await OrgService.SearchAsync(
+                nameContains: pickerQuery,
+                type: null,
+                isActive: true,        // usually you only want active parents
+                parentOrgId: null,
+                domainContains: pickerQuery
+            );
+
+            pickerResults = list
+                .OrderBy(x => x.Org.Name)
+                .ThenBy(x => x.Org.Id)
+                .Take(100)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            pickerError = ex.GetBaseException().Message;
+            pickerResults.Clear();
+        }
+        finally
+        {
+            pickerBusy = false;
+        }
+    }
+
+    private void PickParent(string id, string name)
+    {
+        vm.ParentOrganizationId = id;
+        parentLabel = $"{name} ({id})";
+        CloseParentPicker();
+        StateHasChanged();
     }
 }
