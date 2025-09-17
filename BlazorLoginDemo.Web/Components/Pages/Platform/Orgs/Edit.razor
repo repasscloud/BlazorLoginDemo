@@ -80,7 +80,7 @@
                                     <div class="form-text">
                                         Selected: <code>@parentDisplay</code>
                                         <button type="button" class="btn btn-link btn-sm p-0 ms-2"
-                                                @onclick="@(() => { vm.ParentOrganizationId = null; parentDisplay = null; })">
+                                                @onclick="@(() => { vm.ParentOrganizationId = string.Empty; parentDisplay = null; })">
                                             Clear
                                         </button>
                                     </div>
@@ -294,7 +294,9 @@
                 OrgId: vm.OrgId,
                 Name: vm.Name?.Trim(),
                 Type: vm.Type,
-                ParentOrganizationId: string.IsNullOrWhiteSpace(vm.ParentOrganizationId) ? null : vm.ParentOrganizationId.Trim(),
+                // null  => don't change
+                // ""    => clear parent
+                ParentOrganizationId: vm.ParentOrganizationId is null ? null : vm.ParentOrganizationId.Trim(),
                 IsActive: vm.IsActive,
                 DomainsReplace: vm.Domains.Select(d => d.Trim().ToLowerInvariant())
                                           .Where(d => !string.IsNullOrWhiteSpace(d))
