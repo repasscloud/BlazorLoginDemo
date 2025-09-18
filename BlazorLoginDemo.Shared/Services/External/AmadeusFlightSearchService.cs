@@ -1,16 +1,15 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
-using BlazorLoginDemo.Shared.Models.Kernel.User;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Microsoft.VisualBasic;
 using NanoidDotNet;
 
 namespace BlazorLoginDemo.Shared.Services.External;
@@ -44,18 +43,18 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
     {
         await _loggerService.LogInfoAsync($"FlightOfferService received request from API with ID: {dto.Id}");
 
-        // find the travel policy (if it exists) for the user account, and load it into memory
-        TravelPolicyBookingContextDto? _travelPolicyInterResult = null;
+        // 1) Load Travel Policy (optional)
+        TravelPolicyBookingContextDto? policyCtx = null;
         if (!string.IsNullOrEmpty(dto.TravelPolicyId))
         {
-            //_travelPolicyInterResult = await _avaApiService.GetTravelPolicyInterResultByIdAsync(dto.TravelPolicyId, "")!;
-            _travelPolicyInterResult = await _db.TravelPolicies
-                .Where(c => c.Id == dto.TravelPolicyId)
+            policyCtx = await _db.TravelPolicies
+                .AsNoTracking()
+                .Where(tp => tp.Id == dto.TravelPolicyId)
                 .Select(tp => new TravelPolicyBookingContextDto
                 {
                     Id = tp.Id,
                     PolicyName = tp.PolicyName,
-                    AvaClientId = tp.AvaClientId,
+                    // OrganizationUnifiedId is the new owner; the booking context does not need it here
                     Currency = tp.DefaultCurrencyCode,
                     MaxFlightPrice = tp.MaxFlightPrice,
                     DefaultFlightSeating = tp.DefaultFlightSeating,
@@ -70,176 +69,119 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
                         ? tp.ExcludedAirlineCodes.ToList()
                         : null,
                 })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(ct);
         }
 
-        // find the user preference service now too (everyone has one of these*)
-        // * - no they don't!
-        // also, we don't use the .AspNetUsersId, we use the AvaUserId
-        // (which is called customerId in this particular record, not sure why?)
-        AvaUserSysPreference? _userSysPreferences = await _db.AvaUserSysPreferences
-            .Where(x => x.AvaUserId == dto.CustomerId)
-            .FirstOrDefaultAsync();
-        
-        // set the currency code
-        string _currencyCode = _travelPolicyInterResult?.Currency ?? _userSysPreferences?.DefaultCurrencyCode ?? "AUD";
+        // 2) Load the ApplicationUser (new unified user profile)
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == dto.CustomerId, ct);
 
-        // list of flights to be added to search to amadeus (and other providers)
-        List<OriginDestination> _originDestinationList = new List<OriginDestination>();
-        
-        // first flight
-        OriginDestination _originDestination1 = new OriginDestination
+        // 3) Currency selection: Policy -> User -> AUD
+        string currencyCode = policyCtx?.Currency ?? user?.DefaultCurrencyCode ?? "AUD";
+
+        // 4) Build origin/destination legs (one-way / return)
+        var originDestinations = new List<OriginDestination>();
+
+        var leg1 = new OriginDestination
         {
             Id = "1",
             OriginLocationCode = dto.OriginLocationCode,
             DestinationLocationCode = dto.DestinationLocationCode,
-            DateTimeRange = new DepartureDateTimeRange 
+            DateTimeRange = new DepartureDateTimeRange
             {
                 Date = dto.DepartureDate,
-                Time = _travelPolicyInterResult?.FlightBookingTimeAvailableFrom 
-                    ?? _userSysPreferences?.FlightBookingTimeAvailableFrom,
-            },
-        };
-        _originDestinationList.Add(_originDestination1);
-
-        // does second flight exist?
-        if (!dto.IsOneWay)
-        {
-            if (dto.DepartureDateReturn is not null)
-            {
-                OriginDestination _originDestination2 = new OriginDestination
-                {
-                    Id = "2",
-                    OriginLocationCode = dto.DestinationLocationCode,
-                    DestinationLocationCode = dto.OriginLocationCode,
-                    DateTimeRange = new DepartureDateTimeRange
-                    {
-                        Date = dto.DepartureDateReturn,
-                        Time = _travelPolicyInterResult?.FlightBookingTimeAvailableFrom 
-                            ?? _userSysPreferences?.FlightBookingTimeAvailableFrom,
-                    }
-                };
-                _originDestinationList.Add(_originDestination2);
+                Time = policyCtx?.FlightBookingTimeAvailableFrom ?? user?.FlightBookingTimeAvailableFrom,
             }
+        };
+        originDestinations.Add(leg1);
+
+        if (!dto.IsOneWay && dto.DepartureDateReturn is not null)
+        {
+            var leg2 = new OriginDestination
+            {
+                Id = "2",
+                OriginLocationCode = dto.DestinationLocationCode,
+                DestinationLocationCode = dto.OriginLocationCode,
+                DateTimeRange = new DepartureDateTimeRange
+                {
+                    Date = dto.DepartureDateReturn,
+                    Time = policyCtx?.FlightBookingTimeAvailableFrom ?? user?.FlightBookingTimeAvailableFrom,
+                }
+            };
+            originDestinations.Add(leg2);
         }
 
-        // list of travellers
-        List<Traveler> _travelersList = new List<Traveler>();
-        
-        // create travellers
+        // 5) Travelers
+        var travelers = new List<Traveler>();
         foreach (var i in Enumerable.Range(1, dto.Adults))
         {
-            Traveler _traveler = new Traveler
+            travelers.Add(new Traveler
             {
                 Id = i.ToString(),
                 TravelerType = "ADULT",
                 FareOptions = [ "STANDARD" ]
-            };
-
-            _travelersList.Add(_traveler);
+            });
         }
 
-        // create SearchCriteria
-        SearchCriteria _searchCriteria = new SearchCriteria();
+        // 6) Search criteria (max offers, filters)
+        var searchCriteria = new SearchCriteria();
 
-        // add the max flight offers value (if not null) and set the value else ignore, it will default to 10 results
-        // nothing needs to be added, it gets added in this region
-        if (_userSysPreferences?.MaxResults == 0 || _userSysPreferences?.MaxResults == 250)
-        {
-            _searchCriteria.MaxFlightOffers = 250;
-        }
-        if (_userSysPreferences?.MaxResults > 0 || _userSysPreferences?.MaxResults < 250)
-        {
-            _searchCriteria.MaxFlightOffers = 20;
-        }
-
-        // create the default FlightFilters object (it's got null initialization, so it's OK)
-        FlightFilters _filters = new FlightFilters();
-        // flight filters is made up of List<CabinRestriction>? and CarrierRestriction?, so
-        // those will be created next, starting with CabinRestrictions
-
-        // create the .CabinRestrictions object (it will be appended to .Filters at the end of this region)
-        List<CabinRestriction> _cabinRestrictions = new List<CabinRestriction>();
-
-        // when adding to .CabinRestrictions, we need to know if there's a return
-        // trip or oneway, so check if the return date exists, then create the
-        // required item as an object, add it to a temp list, and add that list
-        // to the searchCriteria object too
-        if (dto.DepartureDateReturn is not null)
-        {
-            CabinRestriction _cabinRestrictionAllFlights = new CabinRestriction
-            {
-                Cabin = _travelPolicyInterResult?.DefaultFlightSeating ?? dto.CabinClass,
-                Coverage = _travelPolicyInterResult?.CabinClassCoverage ?? _userSysPreferences?.CabinClassCoverage ?? "MOST_SEGMENTS",
-                OriginDestinationIds = [ "1", "2" ]
-            };
-
-            _cabinRestrictions.Add(_cabinRestrictionAllFlights);
-        }
+        // Max results: respect user's MaxResults when provided (1..250), else default 20
+        if (user?.MaxResults is int mr && mr > 0)
+            searchCriteria.MaxFlightOffers = Math.Min(mr, 250);
         else
+            searchCriteria.MaxFlightOffers = 20;
+
+        var filters = new FlightFilters();
+
+        // Cabin restrictions (cover one-way vs return)
+        var coverage = policyCtx?.CabinClassCoverage ?? user?.CabinClassCoverage ?? "MOST_SEGMENTS";
+        var cabin = policyCtx?.DefaultFlightSeating ?? dto.CabinClass; // keep request cabin as fallback
+
+        var cabinRestrictions = new List<CabinRestriction>
         {
-            CabinRestriction _cabinRestrictionAllFlights = new CabinRestriction
+            new CabinRestriction
             {
-                Cabin = _travelPolicyInterResult?.DefaultFlightSeating ?? dto.CabinClass,
-                Coverage = _travelPolicyInterResult?.CabinClassCoverage ?? _userSysPreferences?.CabinClassCoverage ?? "MOST_SEGMENTS",
-                OriginDestinationIds = [ "1" ]
-            };
+                Cabin = cabin,
+                Coverage = coverage,
+                OriginDestinationIds = dto.DepartureDateReturn is null ? [ "1" ] : [ "1", "2" ]
+            }
+        };
+        filters.CabinRestrictions = cabinRestrictions;
 
-            _cabinRestrictions.Add(_cabinRestrictionAllFlights);
-        }
+        // Carrier restrictions: prefer EXCLUDED when both present; else INCLUDED; else none
+        var included = policyCtx?.IncludedAirlineCodes
+            ?? (user?.IncludedAirlineCodes?.Any() == true ? user.IncludedAirlineCodes.ToList() : null);
 
-        _filters.CabinRestrictions = _cabinRestrictions;
+        var excluded = policyCtx?.ExcludedAirlineCodes
+            ?? (user?.ExcludedAirlineCodes?.Any() == true ? user.ExcludedAirlineCodes.ToList() : null);
 
-        // .CarrierRestriction overhaul (issues/13)
-        // Get effective lists (policy first, then user prefs if present/non-empty)
-        var included = _travelPolicyInterResult?.IncludedAirlineCodes
-            ?? (_userSysPreferences?.IncludedAirlineCodes?.Any() == true
-                ? _userSysPreferences.IncludedAirlineCodes.ToList()
-                : null);
-
-        var excluded = _travelPolicyInterResult?.ExcludedAirlineCodes
-            ?? (_userSysPreferences?.ExcludedAirlineCodes?.Any() == true
-                ? _userSysPreferences.ExcludedAirlineCodes.ToList()
-                : null);
-
-        // Build restriction: if both exist, prefer EXCLUDED; if none, do nothing
         CarrierRestriction? carrierRestrictions = null;
-
         if (excluded is { Count: > 0 })
-        {
             carrierRestrictions = new CarrierRestriction { ExcludedCarrierCodes = excluded };
-        }
         else if (included is { Count: > 0 })
-        {
             carrierRestrictions = new CarrierRestriction { IncludedCarrierCodes = included };
-        }
 
         if (carrierRestrictions is not null)
-        {
-            // Leave .BlacklistedInEUAllowed as-is (default in class)
-            _filters.CarrierRestrictions = carrierRestrictions;
-        }
-        
-        _searchCriteria.Filters = _filters;
+            filters.CarrierRestrictions = carrierRestrictions;
 
-        // create the flight offer search (Amadeus)
-        AmadeusFlightOfferSearch flightOfferSearch = new()
+        searchCriteria.Filters = filters;
+
+        // 7) Build request
+        var flightOfferSearch = new AmadeusFlightOfferSearch
         {
-            CurrencyCode = _currencyCode,
-            OriginDestinations = _originDestinationList,
-            Travelers = _travelersList ,
-            SearchCriteria = _searchCriteria
+            CurrencyCode = currencyCode,
+            OriginDestinations = originDestinations,
+            Travelers = travelers,
+            SearchCriteria = searchCriteria
         };
 
-        //-->START DEBUG
-        // this whole section is just debug code
+        // DEBUG persist
         string debugJsonX = $@"/app/searchRequestDTO_debugJsonX_{dto.Id}.json";
         await _loggerService.LogInfoAsync($"Saving results of {dto.Id} to {debugJsonX}");
         var xJson = JsonSerializer.Serialize(flightOfferSearch, _jsonOptions);
-        await File.WriteAllTextAsync(debugJsonX, xJson);
-        //-->END DEBUG
+        await File.WriteAllTextAsync(debugJsonX, xJson, ct);
 
-        // get the token information
+        // 8) Auth
         var token = await _authService.GetTokenInformationAsync();
         if (string.IsNullOrEmpty(token))
         {
@@ -247,57 +189,42 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             throw new Exception("Unable to retrieve valid OAuth token.");
         }
 
-        // create instance of HTTP client (from the factory)
+        // 9) HTTP post
         var httpClient = _httpClientFactory.CreateClient();
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // get URL from appsettings to use
-        string _flightOfferUrl = _settings.Url.FlightOffer
+        string flightOfferUrl = _settings.Url.FlightOffer
             ?? throw new ArgumentNullException("Amadeus:Url:FlightOffer is missing in configuration.");
 
-        var response = await httpClient.PostAsJsonAsync(_flightOfferUrl, flightOfferSearch, _jsonOptions);
+        var response = await httpClient.PostAsJsonAsync(flightOfferUrl, flightOfferSearch, _jsonOptions, ct);
 
         if (response.IsSuccessStatusCode)
         {
-            var result = await response.Content.ReadFromJsonAsync<AmadeusFlightOfferSearchResult>();
-
+            var result = await response.Content.ReadFromJsonAsync<AmadeusFlightOfferSearchResult>(cancellationToken: ct);
             if (result is null)
                 throw new InvalidOperationException("Deserialization returned null.");
 
-            // save the record to db, as the FLightOfferSearchResultRecord
-            FlightOfferSearchResultRecord record = new FlightOfferSearchResultRecord
+            // 10) Persist a record of the search
+            var record = new FlightOfferSearchResultRecord
             {
                 Id = await Nanoid.GenerateAsync(),
                 MetaCount = result.Meta.Count,
                 FlightOfferSearchRequestDtoId = dto.Id,
-                ClientId = dto.ClientId,
-                AvaUserId = dto.CustomerId,  // no fucking idea why this is still being called "CustomerId"?
+                ClientId = dto.ClientId,                // unchanged field in your record model
+                AvaUserId = dto.CustomerId,             // now stores ApplicationUser.Id
                 Source = SearchResultSource.Amadeus,
                 AmadeusPayload = result
             };
 
             await _db.FlightOfferSearchResultRecords.AddAsync(record, ct);
+            await _db.SaveChangesAsync(ct);
             return result;
         }
-
         else
         {
-            Console.WriteLine($"Error: {response.StatusCode}");
-            string errorBody = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"Error Response: {errorBody}");
+            string errorBody = await response.Content.ReadAsStringAsync(ct);
+            await _loggerService.LogErrorAsync($"Amadeus error {response.StatusCode}: {errorBody}");
             throw new InvalidOperationException($"Error '{response.StatusCode}' Response: {errorBody}");
         }
     }
-
-    // private static List<string> SplitCommaSeparatedString(string input)
-    // {
-    //     if (string.IsNullOrWhiteSpace(input))
-    //     {
-    //         return new List<string>();
-    //     }
-
-    //     return input.Split(',', StringSplitOptions.RemoveEmptyEntries)
-    //         .Select(s => s.Trim())
-    //         .ToList();
-    // }
 }

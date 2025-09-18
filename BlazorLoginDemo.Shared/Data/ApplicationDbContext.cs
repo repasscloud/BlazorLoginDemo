@@ -1,17 +1,18 @@
+// ApplicationDbContext.cs (overhauled)
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-using BlazorLoginDemo.Shared.Models.User;
-using BlazorLoginDemo.Shared.Models.Auth;
-using BlazorLoginDemo.Shared.Models.Kernel.Billing;
-using BlazorLoginDemo.Shared.Models.Kernel.User;
-using BlazorLoginDemo.Shared.Models.Kernel.Travel;
-using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
-using BlazorLoginDemo.Shared.Models.Kernel.SysVar;
-using BlazorLoginDemo.Shared.Models.DTOs;
+using BlazorLoginDemo.Shared.Data;                           // ApplicationUser
+using BlazorLoginDemo.Shared.Models.Auth;                   // RefreshToken
+using BlazorLoginDemo.Shared.Models.Kernel.Travel;          // TravelPolicy, Region, Continent, Country, etc.
+using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;    // AmadeusOAuthToken
 using BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
-using System.Security.Cryptography.X509Certificates;
-using BlazorLoginDemo.Shared.Models.Kernel.Platform;
+using BlazorLoginDemo.Shared.Models.Kernel.SysVar;          // AvaSystemLog
+using BlazorLoginDemo.Shared.Models.Kernel.Platform;        // OrganizationUnified, OrganizationDomainUnified
+using BlazorLoginDemo.Shared.Models.Kernel.Billing;         // LicenseAgreementUnified
+using BlazorLoginDemo.Shared.Models.Policies;               // ExpensePolicy
+using BlazorLoginDemo.Shared.Models.User;
+using BlazorLoginDemo.Shared.Models.DTOs;                   // AvaUserLoyaltyAccount (legacy shape retained)
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -20,12 +21,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
     // ---------------------------
-    // Core / Groups
+    // Core / Logs
     // ---------------------------
     public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
-    public DbSet<Organization> Organizations => Set<Organization>();
-    public DbSet<OrganizationDomain> OrganizationDomains => Set<OrganizationDomain>();
-    
+
+    // ---------------------------
+    // Org / Tenancy (Unified)
+    // ---------------------------
+    public DbSet<OrganizationUnified> Organizations => Set<OrganizationUnified>();
+    public DbSet<OrganizationDomainUnified> OrganizationDomains => Set<OrganizationDomainUnified>();
+
     // ---------------------------
     // Auth / Tokens
     // ---------------------------
@@ -33,38 +38,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AmadeusOAuthToken> AmadeusOAuthTokens => Set<AmadeusOAuthToken>();
 
     // ---------------------------
-    // Ava (Users, Clients, Licensing)
+    // Billing / Policies (Unified)
     // ---------------------------
-    public DbSet<AvaUser> AvaUsers => Set<AvaUser>();
-    public DbSet<AvaUserSysPreference> AvaUserSysPreferences => Set<AvaUserSysPreference>();
-    public DbSet<AvaClient> AvaClients => Set<AvaClient>();
-    public DbSet<AvaClientLicense> AvaClientLicenses => Set<AvaClientLicense>();
-    public DbSet<LicenseAgreement> LicenseAgreements => Set<LicenseAgreement>();
+    public DbSet<LicenseAgreementUnified> LicenseAgreements => Set<LicenseAgreementUnified>();
+    public DbSet<ExpensePolicy> ExpensePolicies => Set<ExpensePolicy>();
 
     // ---------------------------
-    // Ava Travel: Airlines / Loyalty
-    // ---------------------------
-    public DbSet<Airline> Airlines => Set<Airline>();
-    public DbSet<LoyaltyProgram> LoyaltyPrograms => Set<LoyaltyProgram>();
-    public DbSet<AvaUserLoyaltyAccount> UserLoyaltyAccounts => Set<AvaUserLoyaltyAccount>();
-
-    // ---------------------------
-    // Amadeus: Internal
-    // ---------------------------
-    public DbSet<FlightOfferSearchRequestDto> FlightOfferSearchRequestDtos => Set<FlightOfferSearchRequestDto>();
-
-    // ---------------------------
-    // Search Results
-    // ---------------------------
-    public DbSet<FlightOfferSearchResultRecord> FlightOfferSearchResultRecords => Set<FlightOfferSearchResultRecord>();
-    
-    // ---------------------------
-    // Finance
-    // ---------------------------
-    public DbSet<LateFeeConfig> LateFeeConfigs => Set<LateFeeConfig>();
-
-    // ---------------------------
-    // Travel Policy / Geography
+    // Travel / Geography
     // ---------------------------
     public DbSet<TravelPolicy> TravelPolicies => Set<TravelPolicy>();
     public DbSet<Region> Regions => Set<Region>();
@@ -73,12 +53,25 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TravelPolicyDisabledCountry> TravelPolicyDisabledCountries => Set<TravelPolicyDisabledCountry>();
     public DbSet<AirportInfo> AirportInfos => Set<AirportInfo>();
 
+    // ---------------------------
+    // Search / Results
+    // ---------------------------
+    public DbSet<FlightOfferSearchRequestDto> FlightOfferSearchRequestDtos => Set<FlightOfferSearchRequestDto>();
+    public DbSet<FlightOfferSearchResultRecord> FlightOfferSearchResultRecords => Set<FlightOfferSearchResultRecord>();
+
+    // ---------------------------
+    // Ref data: Airlines / Loyalty
+    // ---------------------------
+    public DbSet<Airline> Airlines => Set<Airline>();
+    public DbSet<LoyaltyProgram> LoyaltyPrograms => Set<LoyaltyProgram>();
+    public DbSet<AvaUserLoyaltyAccount> UserLoyaltyAccounts => Set<AvaUserLoyaltyAccount>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
         // ===========================
-        // Core / Groups
+        // Core / Logs
         // ===========================
         builder.Entity<AvaSystemLog>(e =>
         {
@@ -86,56 +79,52 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasKey(x => x.Id);
         });
 
-        builder.Entity<Organization>(e =>
-        {
-            e.ToTable("organizations", "ava");
-            e.HasKey(x => x.Id);
-            e.HasOne(x => x.Parent)
-                .WithMany(x => x.Children)
-                .HasForeignKey(x => x.ParentOrganizationId)
-                .OnDelete(DeleteBehavior.Restrict);
-            e.HasIndex(x => new { x.Type, x.ParentOrganizationId });
-            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
-        });
-
-        builder.Entity<OrganizationDomain>(e =>
-        {
-            e.ToTable("organization_domain", "ava");
-            e.HasKey(x => x.Id);
-            e.HasIndex(x => x.Domain).IsUnique();
-            e.Property(x => x.Domain).HasMaxLength(190).IsRequired();
-        });
-
         // ===========================
-        // Auth / ApplicationUser
+        // ApplicationUser (overhauled)
         // ===========================
         builder.Entity<ApplicationUser>(e =>
         {
-            e.HasOne(u => u.Profile)
-                .WithOne()
-                .HasForeignKey<AvaUser>(p => p.AspNetUsersId)
-                .OnDelete(DeleteBehavior.Cascade);
-
+            // Org anchor -> OrganizationUnified
             e.HasOne(u => u.Organization)
-                .WithMany()
+                .WithMany() // just to have a backref target; doesn't create FK
                 .HasForeignKey(u => u.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // self-ref manager
+            e.HasOne(u => u.Manager)
+                .WithMany(m => m!.DirectReports)
+                .HasForeignKey(u => u.ManagerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             e.Property(u => u.DisplayName).HasMaxLength(128);
             e.Property(u => u.Department).HasMaxLength(128);
-            
             e.HasIndex(u => u.OrganizationId);
-        });
 
+            // Map text[] arrays for airline codes (PostgreSQL)
+            e.Property(u => u.IncludedAirlineCodes)
+                .HasColumnType("text[]")
+                .HasDefaultValueSql("'{}'::text[]")
+                .IsRequired();
+
+            e.Property(u => u.ExcludedAirlineCodes)
+                .HasColumnType("text[]")
+                .HasDefaultValueSql("'{}'::text[]")
+                .IsRequired();
+        }); // :contentReference[oaicite:10]{index=10}
+
+        // RefreshToken -> ApplicationUser (shadow FK)
         builder.Entity<RefreshToken>(e =>
         {
             e.ToTable("refresh_tokens", "ava");
+            e.HasKey(x => x.Id);
             e.HasIndex(x => x.Token).IsUnique();
 
-            e.HasOne(x => x.AvaUser)
-                .WithMany(u => u.RefreshTokens)
-                .HasForeignKey(x => x.AvaUserId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // Use a shadow FK named "ApplicationUserId" to avoid touching the token class now
+            e.Property<string>("ApplicationUserId");
+            e.HasOne<ApplicationUser>()
+             .WithMany(u => u.RefreshTokens)
+             .HasForeignKey("ApplicationUserId")
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<AmadeusOAuthToken>(t =>
@@ -145,195 +134,163 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         });
 
         // ===========================
-        // Ava Users & Sys Preferences
+        // Organization (Unified)
         // ===========================
-        builder.Entity<AvaUserSysPreference>(e =>
+        builder.Entity<OrganizationUnified>(e =>
         {
-            e.ToTable("ava_user_sys_preferences", "ava");
+            e.ToTable("organizations", "ava");
             e.HasKey(x => x.Id);
 
-            e.Property(x => x.FirstName).IsRequired();
-            e.Property(x => x.LastName).IsRequired();
-            e.Property(x => x.Email).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
 
-            // enforce uniqueness of Email inside prefs table
-            e.HasIndex(x => x.Email).IsUnique();
+            e.HasOne(x => x.Parent)
+                .WithMany(x => x.Children)
+                .HasForeignKey(x => x.ParentOrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            e.Property(p => p.IncludedAirlineCodes)
-                .HasColumnType("text[]")
-                .IsRequired()
-                .HasDefaultValueSql("'{}'::text[]");
+            e.HasIndex(x => new { x.Type, x.ParentOrganizationId });
+        }); // :contentReference[oaicite:11]{index=11}
 
-            e.Property(p => p.ExcludedAirlineCodes)
-                .HasColumnType("text[]")
-                .IsRequired()
-                .HasDefaultValueSql("'{}'::text[]");
-        });
-
-        builder.Entity<AvaUser>(e =>
+        builder.Entity<OrganizationDomainUnified>(e =>
         {
-            e.ToTable("ava_users", "ava");
-
+            e.ToTable("organization_domains", "ava");
             e.HasKey(x => x.Id);
-            e.Property(x => x.AspNetUsersId).IsRequired();
+            e.Property(x => x.Domain).HasMaxLength(190).IsRequired();
+            e.HasIndex(x => x.Domain).IsUnique();
 
-            // enforce email uniqueness
-            e.HasIndex(x => x.Email).IsUnique();
-
-            // many reports, one manager
-            e.HasOne(u => u.Manager)
-                .WithMany(m => m.DirectReports)
-                .HasForeignKey(u => u.ManagerAvaUserId)
-                .OnDelete(DeleteBehavior.Restrict);  // prevent cascasding deltes up the chain
-
-            e.HasIndex(u => u.ManagerAvaUserId);  // handy for listing/queries
-
-            // 1:1 AvaUser (FK) -> ApplicationUser (PK)
-            e.HasOne<ApplicationUser>()
-                .WithOne(u => u.Profile)
-                .HasForeignKey<AvaUser>(x => x.AspNetUsersId)
+            e.HasOne(d => d.Organization)
+                .WithMany(o => o.Domains)
+                .HasForeignKey(d => d.OrganizationUnifiedId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            // Optional 1:1 AvaUser ↔ AvaUserSysPreference (nullable FK on AvaUser)
-            e.Property(x => x.AvaUserSysPreferenceId).IsRequired(false);
-
-            e.HasOne<AvaUserSysPreference>()
-                .WithOne()
-                .HasForeignKey<AvaUser>(x => x.AvaUserSysPreferenceId)
-                .HasPrincipalKey<AvaUserSysPreference>(p => p.Id)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            // Unique index over nullable FK (filter for SQL Server to allow many NULLs)
-            e.HasIndex(x => x.AvaUserSysPreferenceId).IsUnique()
-#if SQLSERVER
-                .HasFilter("[AvaUserSysPreferenceId] IS NOT NULL")
-#endif
-                ;
-        });
+        }); // :contentReference[oaicite:12]{index=12}
 
         // ===========================
-        // Ava Clients & Licensing
+        // LicenseAgreementUnified (+ owned subtypes)
         // ===========================
-        builder.Entity<LicenseAgreement>(e =>
+        builder.Entity<LicenseAgreementUnified>(e =>
         {
             e.ToTable("license_agreements", "ava");
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasMaxLength(14);
 
-            e.Property(x => x.AvaClientId).IsRequired();
-            e.HasIndex(x => x.AvaClientId).IsUnique();
-        });
+            // Owning org (1:1 per org)
+            e.HasOne(x => x.Organization)
+             .WithOne(o => o.LicenseAgreement)
+             .HasForeignKey<OrganizationUnified>(o => o.LicenseAgreementId)
+             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.Entity<AvaClient>(e =>
+            // Issuer org (many agreements can be issued by one org)
+            e.HasOne(x => x.CreatedByOrganization)
+             .WithMany()
+             .HasForeignKey(x => x.CreatedByOrganizationUnifiedId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // Owned: DiscountA
+            e.OwnsOne(x => x.DiscountA, d =>
+            {
+                d.Property(p => p.Amount).HasColumnName("DiscountA_Amount");
+                d.Property(p => p.Scope).HasColumnName("DiscountA_Scope");
+                d.Property(p => p.ExpiresOnUtc).HasColumnName("DiscountA_ExpiresOnUtc");
+            });
+
+            // Owned: DiscountB
+            e.OwnsOne(x => x.DiscountB, d =>
+            {
+                d.Property(p => p.Percent).HasColumnName("DiscountB_Percent");
+                d.Property(p => p.Scope).HasColumnName("DiscountB_Scope");
+                d.Property(p => p.ExpiresOnUtc).HasColumnName("DiscountB_ExpiresOnUtc");
+            });
+
+            // Owned: LateFees
+            e.OwnsOne(x => x.LateFees, lf =>
+            {
+                lf.Property(p => p.GracePeriodDays).HasColumnName("Late_GracePeriodDays");
+                lf.Property(p => p.UseFixedAmount).HasColumnName("Late_UseFixedAmount");
+                lf.Property(p => p.FixedAmount).HasColumnName("Late_FixedAmount");
+                lf.Property(p => p.PercentOfInvoice).HasColumnName("Late_PercentOfInvoice");
+                lf.Property(p => p.MaxLateFeeCap).HasColumnName("Late_MaxLateFeeCap");
+                lf.Property(p => p.Terms).HasColumnName("Late_PaymentTerms");
+            });
+        }); // :contentReference[oaicite:13]{index=13}
+
+        // ===========================
+        // ExpensePolicy (new)
+        // ===========================
+        builder.Entity<ExpensePolicy>(e =>
         {
-            e.ToTable("ava_clients", "ava");
-            e.Property(x => x.LicenseAgreementId).HasMaxLength(14);
-            e.HasIndex(x => x.LicenseAgreementId).IsUnique();
+            e.ToTable("expense_policies", "ava");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+            e.Property(x => x.DefaultCurrency).HasMaxLength(3);
 
-            e.HasOne<LicenseAgreement>()
-                .WithOne()
-                .HasForeignKey<AvaClient>(c => c.LicenseAgreementId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK_AvaClient_LicenseAgreement");
+            e.HasOne(x => x.Organization)
+             .WithMany(o => o.ExpensePolicies)
+             .HasForeignKey(x => x.OrganizationUnifiedId)
+             .OnDelete(DeleteBehavior.Cascade);
+        }); // :contentReference[oaicite:14]{index=14}
 
-            // DefaultTravelPolicy (1 AvaClient -> optional 1 TravelPolicy as default)
-            e.HasOne(ac => ac.DefaultTravelPolicy)
-                .WithMany()
-                .HasForeignKey(ac => ac.DefaultTravelPolicyId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        // AvaClient (1) -> (many) TravelPolicies
+        // ===========================
+        // TravelPolicy (attach to Org via many-to-many for now)
+        // ===========================
         builder.Entity<TravelPolicy>(e =>
         {
             e.ToTable("travel_policies", "ava");
-
             e.HasKey(x => x.Id);
 
-            e.HasOne(x => x.AvaClient)
-            .WithMany(x => x.TravelPolicies)
-            .HasForeignKey(x => x.AvaClientId)
+            // NEW: owner org 1..* TravelPolicies
+            e.HasOne(tp => tp.Organization)
+            .WithMany(o => o.TravelPolicies)
+            .HasForeignKey(tp => tp.OrganizationUnifiedId)
             .OnDelete(DeleteBehavior.Cascade);
 
-            // (Nice to have) index the FK for joins
-            e.HasIndex(x => x.AvaClientId);
-        });
-
-
-        // ===========================
-        // Amadeus: Internal / External
-        // ===========================
-
-        builder.Entity<FlightOfferSearchRequestDto>(e =>
-        {
-            e.ToTable("flight_offer_search_request_dtos", "ava");
-            e.HasKey(x => x.Id);
-        });
-
-        // ===========================
-        // Search Results
-        // ===========================
-
-        builder.Entity<FlightOfferSearchResultRecord>(e =>
-        {
-            e.ToTable("flight_offer_search_result_records", "ava");
-            e.HasKey(x => x.Id);
-
-            e.Property(x => x.CreatedAt)
-                .HasColumnType("timestamp with time zone")
-                .IsRequired();
-
-            e.Property(x => x.AmadeusPayload)
-                .HasColumnType("jsonb");
-
-            e.HasIndex(x => x.CreatedAt);
-            e.HasIndex(x => x.AvaUserId);
-            e.HasIndex(x => x.ClientId);
-            e.HasIndex(x => x.FlightOfferSearchRequestDtoId);
-        });
-
-        // ===========================
-        // Travel Policy / Geography
-        // ===========================
-        // TravelPolicy (merged block)
-        builder.Entity<TravelPolicy>(e =>
-        {
-            e.ToTable("travel_policies", "ava");
-            e.HasKey(x => x.Id);
-
-            // Many-to-manys with explicit junction table names
+            // existing many-to-many selectors
             e.HasMany(x => x.Regions)
-                .WithMany()
-                .UsingEntity(j => j.ToTable("travel_policy_regions", "ava"));
+            .WithMany()
+            .UsingEntity(j => j.ToTable("travel_policy_regions", "ava"));
 
             e.HasMany(x => x.Continents)
-                .WithMany()
-                .UsingEntity(j => j.ToTable("travel_policy_continents", "ava"));
+            .WithMany()
+            .UsingEntity(j => j.ToTable("travel_policy_continents", "ava"));
 
             e.HasMany(x => x.Countries)
-                .WithMany()
-                .UsingEntity(j => j.ToTable("travel_policy_countries", "ava"));
+            .WithMany()
+            .UsingEntity(j => j.ToTable("travel_policy_countries", "ava"));
 
-            // PostgreSQL text[] columns + empty-array defaults
+            // arrays
             e.Property(p => p.IncludedAirlineCodes)
-                .HasColumnType("text[]")
-                .IsRequired()
-                .HasDefaultValueSql("'{}'::text[]");
-
+            .HasColumnType("text[]").IsRequired()
+            .HasDefaultValueSql("'{}'::text[]");
             e.Property(p => p.ExcludedAirlineCodes)
-                .HasColumnType("text[]")
-                .IsRequired()
-                .HasDefaultValueSql("'{}'::text[]");
+            .HasColumnType("text[]").IsRequired()
+            .HasDefaultValueSql("'{}'::text[]");
         });
 
-        // Explicit composite key for disabled countries (junction with payload)
+        // Disabled countries (your composite PK is fine)
         builder.Entity<TravelPolicyDisabledCountry>(e =>
         {
             e.ToTable("travel_policy_disabled_countries", "ava");
             e.HasKey(x => new { x.TravelPolicyId, x.CountryId });
 
             e.HasOne(x => x.TravelPolicy)
-                .WithMany(tp => tp.DisabledCountries) // ensure navigation exists on TravelPolicy
+            .WithMany(tp => tp.DisabledCountries)
+            .HasForeignKey(x => x.TravelPolicyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Country)
+            .WithMany()
+            .HasForeignKey(x => x.CountryId)
+            .OnDelete(DeleteBehavior.Restrict);
+        });
+
+
+        // Disabled country junction
+        builder.Entity<TravelPolicyDisabledCountry>(e =>
+        {
+            e.ToTable("travel_policy_disabled_countries", "ava");
+            e.HasKey(x => new { x.TravelPolicyId, x.CountryId });
+
+            e.HasOne(x => x.TravelPolicy)
+                .WithMany(tp => tp.DisabledCountries)
                 .HasForeignKey(x => x.TravelPolicyId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -342,11 +299,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(x => x.CountryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Optional: handy for lookups
             e.HasIndex(x => x.CountryId);
         });
 
-        // Region (1) -> (many) Continents
+        // Geography hierarchy
         builder.Entity<Continent>(e =>
         {
             e.ToTable("continents", "ava");
@@ -360,7 +316,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.RegionId);
         });
 
-        // Continent (1) -> (many) Countries
         builder.Entity<Country>(e =>
         {
             e.ToTable("countries", "ava");
@@ -377,9 +332,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Region>(e =>
         {
             e.ToTable("regions", "ava");
+            e.HasKey(x => x.Id);
         });
 
-        // AirportInfo
         builder.Entity<AirportInfo>(e =>
         {
             e.ToTable("airport_infos", "ava");
@@ -388,7 +343,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         });
 
         // ===========================
-        // Airlines / Loyalty (ref data)
+        // Airlines / Loyalty (ref + user data)
         // ===========================
         builder.Entity<Airline>(e =>
         {
@@ -414,31 +369,55 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // ===========================
-        // User Loyalty Accounts (user data)
-        // ===========================
+        // Rehome AvaUserLoyaltyAccount to ApplicationUser (shadow FK) and ignore legacy nav
         builder.Entity<AvaUserLoyaltyAccount>(e =>
         {
             e.ToTable("user_loyalty_accounts", "ava");
             e.HasKey(x => x.Id);
 
-            // One user can have many accounts (multi-program support).
-            // Use WithMany() to avoid requiring a nav on AvaUser.
-            e.HasOne(x => x.AvaUser)
-             .WithMany()
-             .HasForeignKey(x => x.AvaUserId)
+            // Ignore legacy nav to AvaUser so we can attach to ApplicationUser immediately
+            e.Ignore(x => x.AvaUser);
+            e.Ignore(x => x.AvaUserId);
+
+            e.Property<string>("ApplicationUserId");
+            e.HasOne<ApplicationUser>()
+             .WithMany(u => u.LoyaltyAccounts)
+             .HasForeignKey("ApplicationUserId")
              .OnDelete(DeleteBehavior.Cascade);
 
-            // Each account belongs to exactly one LoyaltyProgram.
             e.HasOne(x => x.Program)
-             .WithMany() // no back-collection on LoyaltyProgram required
+             .WithMany()
              .HasForeignKey(x => x.LoyaltyProgramId)
              .OnDelete(DeleteBehavior.Restrict);
 
-            // Prevent duplicates of the same program per user.
-            e.HasIndex(x => new { x.AvaUserId, x.LoyaltyProgramId }).IsUnique();
-
+            e.HasIndex("ApplicationUserId", nameof(AvaUserLoyaltyAccount.LoyaltyProgramId)).IsUnique();
             e.Property(x => x.MembershipNumber).HasMaxLength(64).IsRequired();
+        });
+
+        // ===========================
+        // Search Results
+        // ===========================
+        builder.Entity<FlightOfferSearchRequestDto>(e =>
+        {
+            e.ToTable("flight_offer_search_request_dtos", "ava");
+            e.HasKey(x => x.Id);
+        });
+
+        builder.Entity<FlightOfferSearchResultRecord>(e =>
+        {
+            e.ToTable("flight_offer_search_result_records", "ava");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.CreatedAt)
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+
+            e.Property(x => x.AmadeusPayload).HasColumnType("jsonb");
+
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.AvaUserId);
+            e.HasIndex(x => x.ClientId);
+            e.HasIndex(x => x.FlightOfferSearchRequestDtoId);
         });
     }
 }

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 
 public interface ILoggerService

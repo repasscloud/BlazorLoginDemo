@@ -111,5 +111,5 @@ public class LicenseAgreement
     public decimal TravelPerItemFee { get; set; } = 0m;
     public ServiceFeeType TravelFeeType { get; set; } = ServiceFeeType.None;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime LastUpdatedAt { get; set;} = DateTime.UtcNow;
+    public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
 }

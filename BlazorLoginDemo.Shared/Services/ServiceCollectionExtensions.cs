@@ -1,21 +1,16 @@
 using System.Text.Json;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Security;
-using BlazorLoginDemo.Shared.Services.Client;
 using BlazorLoginDemo.Shared.Services.External;
-using BlazorLoginDemo.Shared.Services.Finance;
-using BlazorLoginDemo.Shared.Services.Interfaces.Client;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
-using BlazorLoginDemo.Shared.Services.Interfaces.Finance;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policies;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
-using BlazorLoginDemo.Shared.Services.Interfaces.User;
 using BlazorLoginDemo.Shared.Services.Kernel;
 using BlazorLoginDemo.Shared.Services.Platform;
 using BlazorLoginDemo.Shared.Services.Policies;
-using BlazorLoginDemo.Shared.Services.User;
+using BlazorLoginDemo.Shared.Services.Policy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -47,26 +42,20 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddAvaPlatformServices(this IServiceCollection services)
+    public static IServiceCollection PlatformServices(this IServiceCollection services)
     {
-        services.AddScoped<IAdminUserService, AdminUserService>();
-        services.AddScoped<IAdminOrgService, AdminOrgService>();
+        services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
+        services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
         return services;
     }
     
     public static IServiceCollection AddAvaClientServices(this IServiceCollection services)
     {
-        services.AddScoped<IAvaUserService, AvaUserService>();
-        services.AddScoped<IAvaClientService, AvaClientService>();
-        services.AddScoped<IAvaClientLicenseService, AvaClientLicenseService>();
-        services.AddScoped<ILicenseAgreementService, LicenseAgreementService>();
-        services.AddScoped<IAvaUserSysPreferenceService, AvaUserSysPreferenceService>();
         return services;
     }
 
     public static IServiceCollection AddAvaFinanceServices(this IServiceCollection services)
     {
-        services.AddScoped<ILateFeeConfigService, LateFeeConfigService>();
         return services;
     }
 
