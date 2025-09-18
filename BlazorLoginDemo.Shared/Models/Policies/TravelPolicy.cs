@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using BlazorLoginDemo.Shared.Models.Kernel.Platform;
 using BlazorLoginDemo.Shared.Validation;
 using NanoidDotNet;
 
@@ -13,7 +14,7 @@ public class TravelPolicy
     [MaxLength(14)]
     public string Id { get; set; } = Nanoid.Generate(alphabet: Nanoid.Alphabets.LettersAndDigits.ToUpper(), size: 14);
     public required string PolicyName { get; set; }
-    public string AvaClientId { get; set; } = default!;
+    public required string OrganizationUnifiedId { get; set; }
 
     // financial details
     [Required]
@@ -63,7 +64,7 @@ public class TravelPolicy
     public int? DefaultCalendarDaysInAdvanceForFlightBooking { get; set; }
 
     [JsonIgnore] // Prevent circular reference during serialization.
-    public AvaClient? AvaClient { get; set; }
+    public OrganizationUnified Organization { get; set; } = default!;
 
     // Allowed destinations (can be entire regions, continents, or specific countries)
     public ICollection<Region> Regions { get; set; } = new List<Region>();
