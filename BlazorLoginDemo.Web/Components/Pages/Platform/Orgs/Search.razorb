@@ -1,0 +1,346 @@
+@page "/platform/orgs/search"
+@page "/platform/orgs"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+@using BlazorLoginDemo.Shared.Models.Static.Platform
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@inject IAdminOrgService OrgService
+@inject NavigationManager Nav
+@inject ILogger<Search> Log
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-10 col-lg-11">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Organizations</h5>
+                    <small class="text-muted">Search, filter, and manage organizations.</small>
+                </div>
+
+                <div class="card-body">
+                    @if (!string.IsNullOrWhiteSpace(error))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <i class="bi bi-x-circle-fill fs-5 me-2" aria-hidden="true"></i>
+                            <div>@error</div>
+                        </div>
+                    }
+
+                    <!-- Filters -->
+                    <EditForm Model="@this" OnValidSubmit="@ApplyFiltersAsync">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label for="fName" class="form-label">Name contains</label>
+                                <InputText id="fName" class="form-control" @bind-Value="filterName" />
+                            </div>
+
+                            <div class="col-md-3">
+                                <label for="fType" class="form-label">Type</label>
+                                <InputSelect id="fType" class="form-select" @bind-Value="filterType">
+                                    <option value="">(Any)</option>
+                                    @foreach (var t in Enum.GetValues<OrganizationType>())
+                                    {
+                                        <option value="@t">@t</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label for="fActive" class="form-label">Active</label>
+                                <InputSelect id="fActive" class="form-select" @bind-Value="filterActive">
+                                    <option value="">(Any)</option>
+                                    <option value="true">Active</option>
+                                    <option value="false">Inactive</option>
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label for="fDomain" class="form-label">Domain contains</label>
+                                <InputText id="fDomain" class="form-control" @bind-Value="filterDomain" placeholder="example.com" />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="fParent" class="form-label">Parent Org Id</label>
+                                <InputText id="fParent" class="form-control" @bind-Value="filterParentId" />
+                            </div>
+
+                            <div class="col-md-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-primary w-100" disabled="@isBusy">
+                                    @if (isBusy)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Searching…</span>
+                                    }
+                                    else { <span>Search</span> }
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary w-100" @onclick="ResetFilters" disabled="@isBusy">Reset</button>
+                            </div>
+                        </div>
+                    </EditForm>
+
+                    <hr class="my-3" />
+
+                    <!-- Results header / actions -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="text-muted">
+                            Showing @pageRows.Count of @totalCount result(s)
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-success" @onclick="@CreateNew" disabled="@isBusy">
+                                <i class="bi bi-plus-lg me-1"></i> New Organization
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results table -->
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 24rem;">Name</th>
+                                    <th>Type</th>
+                                    <th>Active</th>
+                                    <th>Parent</th>
+                                    <th>Domains</th>
+                                    <th style="width: 10rem;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (pageRows.Count == 0)
+                                {
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            No organizations found. Try adjusting your filters.
+                                        </td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var r in pageRows)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold">@r.Org.Name</div>
+                                                <div class="text-muted small"><code>@r.Org.Id</code></div>
+                                            </td>
+                                            <td>@r.Org.Type</td>
+                                            <td>
+                                                @if (r.Org.IsActive)
+                                                {
+                                                    <span class="badge bg-success">Active</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrWhiteSpace(r.Org.ParentOrganizationId))
+                                                {
+                                                    <code>@r.Org.ParentOrganizationId</code>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var domains = (r.Domains ?? Array.Empty<string>()).ToArray();
+                                                    var joined = string.Join(", ", domains);
+                                                }
+                                                @if (domains.Length == 0)
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                                else
+                                                {
+                                                    <div class="text-truncate" style="max-width: 24rem;" title="@joined">
+                                                        @joined
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td class="text-nowrap">
+                                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="@(() => Edit(r.Org.Id))">
+                                                    <i class="bi bi-pencil"></i> Edit
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => View(r.Org.Id))">
+                                                    <i class="bi bi-box-arrow-up-right"></i> View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pager -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="text-muted">Page size</label>
+                            <select class="form-select form-select-sm" style="width: auto;" @onchange="ChangePageSize">
+                                @foreach (var s in pageSizes)
+                                {
+                                    <option value="@s" selected="@(s == pageSize)">@s</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="PrevPage" disabled="@isBusy || pageIndex == 1">Prev</button>
+                            <button class="btn btn-sm btn-outline-secondary" disabled>@pageIndex / @totalPages</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="NextPage" disabled="@isBusy || pageIndex >= totalPages">Next</button>
+                        </div>
+                    </div>
+                </div> <!-- /card-body -->
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // ----------------------------
+    // Filters
+    // ----------------------------
+    private string? filterName;
+    private OrganizationType? filterType;
+    private bool? filterActive;
+    private string? filterParentId;
+    private string? filterDomain;
+
+    // ----------------------------
+    // Data / Paging
+    // ----------------------------
+    private readonly int[] pageSizes = new[] { 10, 25, 50, 100 };
+    private int pageIndex = 1;
+    private int pageSize = 25;
+    private int totalCount;
+    private int totalPages => Math.Max(1, (int)Math.Ceiling((double)totalCount / pageSize));
+
+    private List<IAdminOrgService.OrgAggregate> results = new();
+    private List<Row> pageRows = new();
+
+    private bool isBusy;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        pageIndex = 1; // reset to first page when filters change
+        await LoadAsync();
+    }
+
+    private void ResetFilters()
+    {
+        filterName = null;
+        filterType = null;
+        filterActive = null;
+        filterParentId = null;
+        filterDomain = null;
+        pageIndex = 1;
+        _ = LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            isBusy = true;
+            error = null;
+
+            // Service-backed search (no EF in the page)
+            var list = await OrgService.SearchAsync(
+                nameContains: filterName,
+                type: filterType,
+                isActive: filterActive,
+                parentOrgId: filterParentId,
+                domainContains: filterDomain);
+
+            // Materialize and project to display rows
+            results = list.OrderBy(o => o.Org.Name)
+                          .ThenBy(o => o.Org.Id)
+                          .ToList();
+
+            totalCount = results.Count;
+            ApplyPaging();
+        }
+        catch (Exception ex)
+        {
+            Log.LogError(ex, "Org search failed");
+            error = ex.GetBaseException().Message;
+            results.Clear();
+            totalCount = 0;
+            pageRows.Clear();
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private void ApplyPaging()
+    {
+        var skip = (pageIndex - 1) * pageSize;
+        var page = results.Skip(skip).Take(pageSize);
+
+        pageRows = page.Select(o => new Row
+        {
+            Org = o.Org,
+            Domains = (o.Org.Domains?.Select(d => d.Domain).OrderBy(x => x).ToArray()) ?? Array.Empty<string>()
+        }).ToList();
+    }
+
+    // ----------------------------
+    // Pager handlers
+    // ----------------------------
+    private async Task NextPage()
+    {
+        if (pageIndex < totalPages)
+        {
+            pageIndex++;
+            ApplyPaging();
+            await Task.CompletedTask;
+        }
+    }
+
+    private async Task PrevPage()
+    {
+        if (pageIndex > 1)
+        {
+            pageIndex--;
+            ApplyPaging();
+            await Task.CompletedTask;
+        }
+    }
+
+    private async Task ChangePageSize(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var newSize) && newSize > 0)
+        {
+            pageSize = newSize;
+            pageIndex = 1;
+            ApplyPaging();
+            await Task.CompletedTask;
+        }
+    }
+
+    // ----------------------------
+    // Row actions
+    // ----------------------------
+    private void CreateNew() => Nav.NavigateTo("/platform/orgs/create");
+    private void Edit(string id) => Nav.NavigateTo($"/platform/orgs/{id}/edit");
+    private void View(string id) => Nav.NavigateTo($"/platform/orgs/{id}");
+
+    // ----------------------------
+    // DTO used for the table
+    // ----------------------------
+    private sealed class Row
+    {
+        public BlazorLoginDemo.Shared.Models.Kernel.Platform.Organization Org { get; set; } = default!;
+        public string[] Domains { get; set; } = Array.Empty<string>();
+    }
+}

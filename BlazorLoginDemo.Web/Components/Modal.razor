@@ -1,0 +1,32 @@
+@inject IJSRuntime JS
+
+<div class="modal fade" id="@Id" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog @DialogClass">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">@Title</h5>
+        <button type="button" class="btn-close" @onclick="Hide" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        @ChildContent
+      </div>
+      @if (Footer is not null)
+      {
+        <div class="modal-footer">
+          @Footer
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "modal-" + Guid.NewGuid().ToString("N");
+    [Parameter] public string Title { get; set; } = "Modal";
+    [Parameter] public string DialogClass { get; set; } = "modal-lg";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    public async Task Show() => await JS.InvokeVoidAsync("modalInterop.show", Id);
+    public async Task Hide() => await JS.InvokeVoidAsync("modalInterop.hide", Id);
+}

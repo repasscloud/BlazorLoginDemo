@@ -1,0 +1,264 @@
+@page "/platform/users/create"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@using BlazorLoginDemo.Shared.Models.Kernel.Platform
+@inject IAdminUserServiceUnified UserSvc
+@inject IAdminOrgServiceUnified OrgSvc
+@inject NavigationManager Nav
+
+<!-- Clean, focused layout that uses the *Unified* admin services -->
+<div class="container-lg py-4">
+  <!-- Title Row -->
+  <div class="d-flex align-items-start justify-content-between mb-3">
+    <div>
+      <h1 class="h4 mb-1">Create Platform User</h1>
+      <p class="text-muted mb-0">Identity + Profile + Org link. Minimal, predictable, fast.</p>
+    </div>
+    <div>
+      <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="GoBack" disabled="@isSubmitting">
+        <i class="bi bi-arrow-left"></i> Back
+      </button>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <EditForm Model="@vm" OnValidSubmit="@HandleCreateAsync">
+      <DataAnnotationsValidator />
+
+      <div class="card-header border-0 pb-0">
+        @if (!string.IsNullOrWhiteSpace(successId))
+        {
+          <div class="alert alert-success d-flex align-items-center mb-3">
+            <i class="bi bi-check-circle-fill fs-5 me-2"></i>
+            <div>
+              User created successfully. <small class="text-muted">Id: <code>@successId</code></small>
+            </div>
+          </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+          <div class="alert alert-danger d-flex align-items-center mb-3">
+            <i class="bi bi-x-circle-fill fs-5 me-2"></i>
+            <div>@error</div>
+          </div>
+        }
+        <ValidationSummary class="alert alert-warning mb-0" />
+      </div>
+
+      <div class="card-body">
+        <!-- Identity -->
+        <div class="mb-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="email" class="form-label">Email</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <InputText id="email" class="form-control" @bind-Value="vm.Email" type="email" autocomplete="email" disabled="@isSubmitting" />
+              </div>
+              <ValidationMessage For="@(() => vm.Email)" class="text-danger" />
+            </div>
+            <div class="col-12">
+              <label for="password" class="form-label">Password</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-key"></i></span>
+                <InputText id="password" class="form-control" @bind-Value="vm.Password" type="@passwordInputType" autocomplete="new-password" disabled="@isSubmitting" />
+                <button type="button" class="btn btn-outline-secondary" @onclick="TogglePassword" title="Show/Hide">
+                  <i class="bi @(passwordInputType == "password" ? "bi-eye" : "bi-eye-slash")"></i>
+                </button>
+              </div>
+              <div class="form-text">Minimum 8 characters.</div>
+              <ValidationMessage For="@(() => vm.Password)" class="text-danger" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Profile -->
+        <div class="mb-4">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="firstName" class="form-label">First name</label>
+              <InputText id="firstName" class="form-control" @bind-Value="vm.FirstName" disabled="@isSubmitting" />
+            </div>
+            <div class="col-md-4">
+              <label for="middleName" class="form-label">Middle name</label>
+              <InputText id="middleName" class="form-control" @bind-Value="vm.MiddleName" disabled="@isSubmitting" />
+            </div>
+            <div class="col-md-4">
+              <label for="lastName" class="form-label">Last name</label>
+              <InputText id="lastName" class="form-control" @bind-Value="vm.LastName" disabled="@isSubmitting" />
+            </div>
+            <div class="col-md-6">
+              <label for="displayName" class="form-label">Display name</label>
+              <InputText id="displayName" class="form-control" @bind-Value="vm.DisplayName" disabled="@isSubmitting" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Organization & Access -->
+        <div class="mb-2">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="orgId" class="form-label">Organization</label>
+              @if (orgOptions.Count == 0)
+              {
+                <div class="form-text">Type to search organizations…</div>
+              }
+              <InputSelect id="orgId" class="form-select" @bind-Value="vm.OrganizationId" disabled="@isSubmitting">
+                <option value="">(None)</option>
+                @foreach (var o in orgOptions)
+                {
+                  <option value="@o.Id">@o.Label</option>
+                }
+              </InputSelect>
+            </div>
+            <div class="col-md-6">
+              <label for="role" class="form-label">Role (optional)</label>
+              <InputText id="role" class="form-control" @bind-Value="vm.RoleName" placeholder="e.g., Platform.Admin" disabled="@isSubmitting" />
+              <div class="form-text">Leave blank for default platform access.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="manager" class="form-label">Manager (optional)</label>
+              <InputSelect id="manager" class="form-select" @bind-Value="vm.ManagerUserId" disabled="@isSubmitting">
+                <option value="">(None)</option>
+                @foreach (var m in managerOptions)
+                {
+                  <option value="@m.Id">@m.Label</option>
+                }
+              </InputSelect>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-footer d-flex justify-content-between align-items-center">
+        <div class="text-muted small">Provide Identity fields at minimum; others are optional.</div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary" @onclick="GoBack" disabled="@isSubmitting">Cancel</button>
+          <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+            @if (isSubmitting) { <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true">Creating…</span> } else { <span>Create user</span> }
+          </button>
+        </div>
+      </div>
+    </EditForm>
+  </div>
+</div>
+
+@code {
+  // State
+  private CreateUserVm vm = new();
+  private string? error;
+  private string? successId;
+  private bool isSubmitting;
+  private string passwordInputType = "password";
+
+  private readonly List<SelectOption> orgOptions = new();
+  private readonly List<SelectOption> managerOptions = new();
+
+  protected override async Task OnInitializedAsync()
+  {
+    // Preload a small, safe baseline list (fast page open). You can replace with search-on-type later.
+    await LoadOrgsAsync();
+    await LoadManagersAsync();
+  }
+
+  private async Task LoadOrgsAsync()
+  {
+    try
+    {
+      var results = await OrgSvc.SearchAsync(isActive: true);
+      orgOptions.Clear();
+      foreach (var r in results)
+      {
+        orgOptions.Add(new SelectOption(r.Org.Id, r.Org.Name));
+      }
+    }
+    catch { /* keep empty list */ }
+  }
+
+  private async Task LoadManagersAsync()
+  {
+    try
+    {
+      var results = await UserSvc.SearchAsync(isActive: true);
+      managerOptions.Clear();
+      foreach (var r in results)
+      {
+        var name = string.IsNullOrWhiteSpace(r.User.DisplayName)
+          ? $"{r.User.FirstName} {r.User.LastName}".Trim()
+          : r.User.DisplayName;
+        var email = string.IsNullOrWhiteSpace(r.User.Email) ? string.Empty : $" <{r.User.Email}>";
+        managerOptions.Add(new SelectOption(r.UserId, $"{name}{email}".Trim()));
+      }
+      managerOptions.Sort((a,b) => string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase));
+    }
+    catch { /* keep empty list */ }
+  }
+
+  private void TogglePassword() => passwordInputType = passwordInputType == "password" ? "text" : "password";
+
+  private async Task HandleCreateAsync()
+  {
+    error = null;
+    successId = null;
+    isSubmitting = true;
+
+    try
+    {
+      var req = new IAdminUserServiceUnified.CreateUserRequest(
+        Email: vm.Email!,
+        Password: vm.Password!,
+        FirstName: vm.FirstName,
+        MiddleName: vm.MiddleName,
+        LastName: vm.LastName,
+        DisplayName: vm.DisplayName,
+        OrganizationId: string.IsNullOrWhiteSpace(vm.OrganizationId) ? null : vm.OrganizationId,
+        RoleName: string.IsNullOrWhiteSpace(vm.RoleName) ? null : vm.RoleName,
+        ManagerUserId: string.IsNullOrWhiteSpace(vm.ManagerUserId) ? null : vm.ManagerUserId
+      );
+
+      var result = await UserSvc.CreateUserAsync(req);
+      if (result.Ok && !string.IsNullOrWhiteSpace(result.UserId))
+      {
+        successId = result.UserId;
+      }
+      else
+      {
+        error = string.IsNullOrWhiteSpace(result.Error) ? "Failed to create user." : result.Error;
+      }
+    }
+    catch (Exception ex)
+    {
+      error = ex.GetBaseException().Message;
+    }
+    finally
+    {
+      isSubmitting = false;
+    }
+  }
+
+  private void GoBack() => Nav.NavigateTo("/platform/users");
+
+  private sealed record SelectOption(string Id, string Label);
+
+  private sealed class CreateUserVm
+  {
+    [Required, EmailAddress]
+    public string? Email { get; set; }
+
+    [Required, MinLength(8)]
+    public string? Password { get; set; }
+
+    public string? FirstName { get; set; }
+    public string? MiddleName { get; set; }
+    public string? LastName { get; set; }
+    public string? DisplayName { get; set; }
+
+    public string? OrganizationId { get; set; }
+    public string? RoleName { get; set; }
+    public string? ManagerUserId { get; set; }
+  }
+}

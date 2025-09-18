@@ -1,0 +1,140 @@
+@page "/platform/orgs/{id}"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@inject IAdminOrgService OrgService
+@inject NavigationManager Nav
+@inject ILogger<View> Log
+
+@code {
+    [Parameter] public string id { get; set; } = default!;
+
+    private IAdminOrgService.OrgAggregate? data;
+    private bool isBusy;
+    private string? error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            isBusy = true;
+            error = null;
+            data = await OrgService.GetByIdAsync(id);
+            if (data is null)
+                error = $"Organization '{id}' not found.";
+        }
+        catch (Exception ex)
+        {
+            Log.LogError(ex, "Load org failed");
+            error = ex.GetBaseException().Message;
+            data = null;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private void BackToList() => Nav.NavigateTo("/platform/orgs/search");
+    private void Edit() => Nav.NavigateTo($"/platform/orgs/{id}/edit");
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-9">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">Organization</h5>
+                        <small class="text-muted">View details and domains.</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary" @onclick="BackToList">Back</button>
+                        <button class="btn btn-primary" @onclick="Edit" disabled="@isBusy">
+                            <i class="bi bi-pencil me-1"></i>Edit
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    @if (!string.IsNullOrWhiteSpace(error))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <i class="bi bi-x-circle-fill fs-5 me-2"></i>
+                            <div>@error</div>
+                        </div>
+                    }
+                    else if (isBusy || data is null)
+                    {
+                        <div class="text-muted">Loading…</div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <div class="fw-semibold">Name</div>
+                            <div>@data.Org.Name</div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="fw-semibold">Type</div>
+                                <div>@data.Org.Type</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fw-semibold">Status</div>
+                                @if (data.Org.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fw-semibold">Parent Org Id</div>
+                                @if (!string.IsNullOrWhiteSpace(data.Org.ParentOrganizationId))
+                                {
+                                    <code>@data.Org.ParentOrganizationId</code>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <div>
+                            <div class="fw-semibold mb-2">Domains</div>
+                            @if (data.Org.Domains is null || data.Org.Domains.Count == 0)
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                            else
+                            {
+                                <ul class="list-group">
+                                    @foreach (var d in data.Org.Domains.OrderBy(x => x.Domain))
+                                    {
+                                        <li class="list-group-item">@d.Domain</li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+
+                        <hr />
+                        <div class="text-muted small">
+                            <div><span class="fw-semibold">Id:</span> <code>@data.Org.Id</code></div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,344 @@
+﻿@implements IDisposable
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Routing
+@using BlazorLoginDemo.Shared.Auth
+
+@inject NavigationManager NavigationManager
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">BlazorLoginDemo.Web</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/auth">
+                <span class="bi bi-lock-nav-menu" aria-hidden="true"></span> Auth Required
+            </NavLink>
+        </div>
+
+        <!-- Admin Clients -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminClientsGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-building-gear-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Clients</span>
+                </span>
+                <span class="caret @(adminClientsOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminClientsOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/clients" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-card-list-nav-menu" aria-hidden="true"></span> Clients
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/clients/new" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Users -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminUsersGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Users</span>
+                </span>
+                <span class="caret @(adminUsersOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminUsersOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/avausers/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-people-nav-menu" aria-hidden="true"></span> Users
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/avausers/resync" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-down-nav-menu" aria-hidden="true"></span> Resync Users
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Policies -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminPoliciesGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-file-earmark-lock-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Policies</span>
+                </span>
+                <span class="caret @(adminPoliciesOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminPoliciesOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/policies/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-search-nav-menu" aria-hidden="true"></span> Search
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-file-earmark-plus-nav-menu" aria-hidden="true"></span> New
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Travel Bookings -->
+        <div class="nav-item px-3">
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminTravelBookingsGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-luggage-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Travel Bookings</span>
+                </span>
+                <span class="caret @(adminTravelBookingsOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+            <!-- Children -->
+            <div class="nav-submenu @(adminTravelBookingsOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/flights/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-airplane-nav-menu" aria-hidden="true"></span> Flights
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-taxi-front-nav-menu" aria-hidden="true"></span> Taxi
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-train-front-nav-menu" aria-hidden="true"></span> Train
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-car-front-nav-menu" aria-hidden="true"></span> Hire Car
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-bus-front-nav-menu" aria-hidden="true"></span> Bus
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-simcard-nav-menu" aria-hidden="true"></span> SIM Service
+                    </NavLink>
+                </div>
+
+            </div>
+        </div>
+
+
+
+        <!-- Administration -->
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAdminKeyGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-key-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">Administration</span>
+                </span>
+                <span class="caret @(adminKeyOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(adminKeyOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/license/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-file-earmark-pdf-nav-menu" aria-hidden="true"></span> Licensing
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/admin/finance/latefeeconfig/search" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-hourglass-bottom-nav-menu" aria-hidden="true"></span> Late Fee Config
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-item px-3">
+            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleAuthGroup">
+                <span>
+                    <span class="bi bi-lock-nav-menu" aria-hidden="true"></span>
+                    Auth Required
+                </span>
+                <span class="caret @(authOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+
+            <!-- Children -->
+            <div class="nav-submenu @(authOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/login" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/auth/profile" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span> Profile
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+
+        <AuthorizeView Roles="@($"{AppRoles.Sudo},{AppRoles.Platform.UserAdmin},{AppRoles.Platform.SuperAdmin},{AppRoles.Platform.Admin}")">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/admin/avausers/resync" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-arrow-repeat-nav-menu" aria-hidden="true"></span> Resync
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="@($"{AppRoles.Sudo},{AppRoles.Platform.UserAdmin},{AppRoles.Platform.SuperAdmin},{AppRoles.Platform.Admin}")">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/admin/users" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-file-earmark-text-nav-menu" aria-hidden="true"></span> Travel Policies
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="@($"{AppRoles.Sudo},{AppRoles.Platform.UserAdmin},{AppRoles.Platform.SuperAdmin},{AppRoles.Platform.Admin}")">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/admin/users" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span> Admin
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/Account/Manage">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <form method="post" action="/auth/logout" class="d-inline">
+                        <AntiforgeryToken />
+                        <button type="submit" class="btn btn-link nav-link p-0 align-baseline">
+                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
+                        </button>
+                    </form>
+
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/Account/Register">
+                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/Account/Login">
+                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        <!-- Sudo -->
+        <div class="nav-item px-3">
+            <button type="button"
+                    class="nav-link d-flex justify-content-between align-items-center w-100"
+                    @onclick="ToggleSudoGroup">
+                <span class="d-inline-flex align-items-center">
+                    <span class="bi bi-cpu-nav-menu" aria-hidden="true"></span>
+                    <span class="ms-1">sudo</span>
+                </span>
+                <span class="caret @(sudoGroupOpen ? "open" : null)" aria-hidden="true">▸</span>
+            </button>
+            <!-- Children -->
+            <div class="nav-submenu @(sudoGroupOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/sudo/users" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span> User Mgmt
+                    </NavLink>
+                </div>
+            </div>
+            <div class="nav-submenu @(sudoGroupOpen ? "show" : null)">
+                <div class="nav-subitem">
+                    <NavLink class="nav-link" href="/sudo/groups" Match="NavLinkMatch.Prefix">
+                        <span class="bi bi-people-nav-menu" aria-hidden="true"></span> Group Assign
+                    </NavLink>
+                </div>
+            </div>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private string? currentUrl;
+    private bool adminClientsOpen;
+    private void ToggleAdminClientsGroup() => adminClientsOpen = !adminClientsOpen;
+    private bool adminPoliciesOpen;
+    private void ToggleAdminPoliciesGroup() => adminPoliciesOpen = !adminPoliciesOpen;
+    private bool adminUsersOpen;
+    private void ToggleAdminUsersGroup() => adminUsersOpen = !adminUsersOpen;
+    private bool adminKeyOpen;
+    private void ToggleAdminKeyGroup() => adminKeyOpen = !adminKeyOpen;
+    private bool authOpen; // default: collapsed
+    private void ToggleAuthGroup() => authOpen = !authOpen;
+    private bool adminTravelBookingsOpen;
+    private void ToggleAdminTravelBookingsGroup() => adminTravelBookingsOpen = !adminTravelBookingsOpen;
+
+    private bool sudoGroupOpen;
+    private void ToggleSudoGroup() => sudoGroupOpen = !sudoGroupOpen;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

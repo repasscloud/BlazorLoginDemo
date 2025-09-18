@@ -1,0 +1,1026 @@
+@page "/platform/users/edit/{id}"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using BlazorLoginDemo.Shared.Services.Interfaces.User
+@using BlazorLoginDemo.Shared.Models.User
+@using BlazorLoginDemo.Shared.Models.Kernel.User
+@using BlazorLoginDemo.Shared.Models.Static
+
+@inject IAdminUserService AdminUserService
+@inject IAvaUserService AvaUserService
+@inject IAvaUserSysPreferenceService PrefService
+@inject NavigationManager Nav
+
+<h1 class="visually-hidden">Edit User</h1>
+
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-xxl-8 col-xl-9 col-lg-10">
+
+      @if (loading)
+      {
+        <div class="card">
+          <div class="card-body text-center py-5">
+            <div class="spinner-border" role="status" aria-hidden="true"></div>
+            <div class="mt-2 text-muted">Loading user…</div>
+          </div>
+        </div>
+      }
+      else if (!string.IsNullOrWhiteSpace(error))
+      {
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-x-circle-fill me-2" aria-hidden="true"></i>@error
+        </div>
+      }
+      else if (user is null)
+      {
+        <div class="alert alert-warning" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>User not found.
+        </div>
+      }
+      else
+      {
+        <div class="card shadow-sm">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <div>
+              <h5 class="mb-0">Edit User</h5>
+              <small class="text-muted">
+                @DisplayNameOrEmail
+                @if (user.Identity.IsActive)
+                {
+                  <span class="badge bg-success-subtle text-success border border-success-subtle ms-2">Active</span>
+                }
+                else
+                {
+                  <span class="badge bg-secondary ms-2">Inactive</span>
+                }
+              </small>
+            </div>
+            <div>
+                <button class="btn btn-outline-danger" @onclick="OpenDelete" disabled="@isBusyDelete">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            <button class="btn btn-outline-secondary" @onclick="BackToSearch">
+                <i class="bi bi-arrow-left me-1"></i> Back to Search
+            </button>
+            </div>
+          </div>
+
+          <div class="card-body">
+            @if (!string.IsNullOrWhiteSpace(saveMessage))
+            {
+              <div class="alert @saveAlertClass d-flex align-items-center" role="alert">
+                <i class="@saveIconClass me-2" aria-hidden="true"></i>
+                <div>@saveMessage</div>
+              </div>
+            }
+
+            <ul class="nav nav-tabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "account" ? "active" : null)"
+                        type="button" role="tab"
+                        @onclick="@(() => SwitchTab("account"))">
+                  <i class="bi bi-person-gear me-1"></i> Account
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "prefs" ? "active" : null)"
+                        type="button" role="tab"
+                        @onclick="@(() => SwitchTab("prefs"))">
+                  <i class="bi bi-sliders me-1"></i> Preferences
+                </button>
+              </li>
+            </ul>
+
+            <div class="tab-content pt-3">
+              <!-- ACCOUNT TAB -->
+              <div class="tab-pane fade @(activeTab == "account" ? "show active" : null)" role="tabpanel" tabindex="0">
+
+                <EditForm Model="@accountVm" OnValidSubmit="@SaveAccountAsync" FormName="EditUserAccount">
+                  <DataAnnotationsValidator />
+                  <ValidationSummary class="alert alert-warning" />
+
+                  <div class="row g-3">
+                    <!-- Email (read-only; identity) -->
+                    <div class="col-md-6">
+                      <label class="form-label">Email</label>
+                      <InputText class="form-control" @bind-Value="accountVm.Email" readonly />
+                    </div>
+
+                    <!-- Display name -->
+                    <div class="col-md-6">
+                      <label class="form-label">Display name</label>
+                      <InputText class="form-control" @bind-Value="accountVm.DisplayName" />
+                    </div>
+
+                    <!-- First / Middle / Last (canonical: AvaUser names; editable here; mirrored into AvaUser & Pref) -->
+                    <div class="col-md-4">
+                      <label class="form-label">First name</label>
+                      <InputText class="form-control" @bind-Value="accountVm.FirstName" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Middle name</label>
+                      <InputText class="form-control" @bind-Value="accountVm.MiddleName" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Last name</label>
+                      <InputText class="form-control" @bind-Value="accountVm.LastName" />
+                    </div>
+
+                    <!-- Organization -->
+                    <div class="col-md-6">
+                      <label class="form-label">Organization Id</label>
+                      <InputText class="form-control" @bind-Value="accountVm.OrganizationId" />
+                    </div>
+
+                    <!-- Manager -->
+                    <div class="col-md-6">
+                        <label class="form-label">Manager</label>
+                        <div class="input-group">
+                            <!-- Shows "Surname, FirstName" (or blank) -->
+                            <InputText class="form-control" @bind-Value="accountVm.ManagerDisplay" readonly />
+                            <button type="button"
+                                    class="btn btn-outline-secondary"
+                                    title="Select manager"
+                                    @onclick="OpenManagerPicker">
+                            <i class="bi bi-person-gear"></i>
+                            </button>
+                            @if (!string.IsNullOrWhiteSpace(accountVm.ManagerAvaUserId))
+                            {
+                            <button type="button"
+                                    class="btn btn-outline-danger"
+                                    title="Clear manager"
+                                    @onclick="ClearManager">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                            }
+                        </div>
+                        <!-- keep the ID off-screen but available if you like -->
+                        <input type="hidden" value="@accountVm.ManagerAvaUserId" />
+                    </div>
+
+
+                    <!-- Active -->
+                    <div class="col-12">
+                      <div class="form-check">
+                        <InputCheckbox id="isActive" class="form-check-input" @bind-Value="accountVm.IsActive" />
+                        <label for="isActive" class="form-check-label">Active</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex justify-content-end mt-3">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-save me-1"></i> Save Account
+                    </button>
+                  </div>
+                </EditForm>
+              </div>
+
+              <!-- PREFERENCES TAB -->
+              <div class="tab-pane fade @(activeTab == "prefs" ? "show active" : null)" role="tabpanel" tabindex="0">
+
+                @if (pref is null)
+                {
+                  <div class="alert alert-info d-flex align-items-center" role="alert">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <div>No preferences exist for this user yet.</div>
+                  </div>
+                  <button class="btn btn-outline-primary" @onclick="CreatePreferencesAsync">
+                    <i class="bi bi-plus-circle me-1"></i> Create Preferences
+                  </button>
+                }
+                else
+                {
+                  <EditForm Model="@prefVm" OnValidSubmit="@SavePreferencesAsync" FormName="EditUserPreferences">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-warning" />
+
+                    @if (!string.IsNullOrWhiteSpace(pref.TravelPolicyId))
+                    {
+                      <div class="alert alert-secondary" role="alert">
+                        <i class="bi bi-shield-lock-fill me-2"></i>
+                        Some fields are read-only because a Travel Policy applies
+                        <span class="text-muted">
+                          (@(pref.TravelPolicyName ?? pref.TravelPolicyId)).
+                        </span>
+                      </div>
+                    }
+
+                    <div class="row g-3">
+
+                      <!-- Legal identity (canonical in Prefs) -->
+                      <div class="col-12">
+                        <h6 class="border-bottom pb-2">Identity</h6>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">First name</label>
+                        <InputText class="form-control" @bind-Value="prefVm.FirstName" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Middle name</label>
+                        <InputText class="form-control" @bind-Value="prefVm.MiddleName" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Last name</label>
+                        <InputText class="form-control" @bind-Value="prefVm.LastName" />
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Date of birth</label>
+                        <InputDate TValue="DateOnly" class="form-control" @bind-Value="prefVm.DateOfBirth" />
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Gender</label>
+                        <InputSelect TValue="GenderType" class="form-select" @bind-Value="prefVm.Gender">
+                            @foreach (var g in Enum.GetValues<GenderType>()) { <option value="@g">@g</option> }
+                        </InputSelect>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Passport country</label>
+                        <InputSelect TValue="PassportCountry" class="form-select" @bind-Value="prefVm.CountryOfIssue">
+                            @foreach (var c in Enum.GetValues<PassportCountry>()) { <option value="@c">@c</option> }
+                        </InputSelect>
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label">Passport expiry</label>
+                        <InputDate TValue="DateOnly" class="form-control" @bind-Value="prefVm.PassportExpirationDate" />
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label">Origin location (IATA)</label>
+                        <InputText class="form-control" @bind-Value="prefVm.OriginLocationCode" />
+                      </div>
+
+                      <!-- Flight defaults -->
+                      <div class="col-12 pt-2">
+                        <h6 class="border-bottom pb-2">Flight Defaults</h6>
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label">Default cabin</label>
+                        <InputText class="form-control" @bind-Value="prefVm.DefaultFlightSeating" />
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label">Max cabin</label>
+                        <InputText class="form-control" @bind-Value="prefVm.MaxFlightSeating" />
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label">Included airline codes (CSV)</label>
+                        <InputText class="form-control" @bind-Value="prefVm.IncludedAirlineCodesCsv" />
+                        <div class="form-text">e.g. QF,VA,JQ</div>
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label">Excluded airline codes (CSV)</label>
+                        <InputText class="form-control" @bind-Value="prefVm.ExcludedAirlineCodesCsv" />
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label">Cabin class coverage</label>
+                        <InputText class="form-control" @bind-Value="prefVm.CabinClassCoverage" />
+                      </div>
+
+                      <div class="col-md-6">
+                        <div class="form-check mt-4">
+                          <InputCheckbox class="form-check-input"
+                                         @bind-Value="prefVm.NonStopFlight"
+                                         disabled="@IsPolicyLocked" />
+                          <label class="form-check-label">Non-stop flights only</label>
+                        </div>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Currency (ISO 4217)</label>
+                        <InputText class="form-control" @bind-Value="prefVm.DefaultCurrencyCode" />
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Max flight price</label>
+                        <InputNumber class="form-control" @bind-Value="prefVm.MaxFlightPrice" />
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Max search results</label>
+                        <InputNumber class="form-control" @bind-Value="prefVm.MaxResults" />
+                      </div>
+
+                      <!-- Booking windows -->
+                      <div class="col-12 pt-2">
+                        <h6 class="border-bottom pb-2">Booking Window</h6>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Available from (hh:mm:ss)</label>
+                        <InputText class="form-control" @bind-Value="prefVm.FlightBookingTimeAvailableFrom" />
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Available to (hh:mm:ss)</label>
+                        <InputText class="form-control" @bind-Value="prefVm.FlightBookingTimeAvailableTo" />
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Days in advance (policy)</label>
+                        <InputNumber class="form-control"
+                                     @bind-Value="prefVm.DefaultCalendarDaysInAdvanceForFlightBooking"
+                                     disabled="@IsPolicyLocked" />
+                      </div>
+
+                      <!-- Weekend booking (policy) -->
+                      <div class="col-md-6">
+                        <div class="form-check">
+                          <InputCheckbox class="form-check-input"
+                                         @bind-Value="prefVm.EnableSaturdayFlightBookings"
+                                         disabled="@IsPolicyLocked" />
+                          <label class="form-check-label">Allow Saturday bookings</label>
+                        </div>
+                      </div>
+
+                      <div class="col-md-6">
+                        <div class="form-check">
+                          <InputCheckbox class="form-check-input"
+                                         @bind-Value="prefVm.EnableSundayFlightBookings"
+                                         disabled="@IsPolicyLocked" />
+                          <label class="form-check-label">Allow Sunday bookings</label>
+                        </div>
+                      </div>
+
+                      <!-- Travel Policy (display only here) -->
+                      <div class="col-12">
+                        <label class="form-label">Travel Policy</label>
+                        <div class="form-control-plaintext">
+                          @(pref.TravelPolicyName ?? pref.TravelPolicyId ?? "—")
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3">
+                      <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i> Save Preferences
+                      </button>
+                    </div>
+                  </EditForm>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="card-footer text-muted small">
+            Id: <code>@user!.UserId</code>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<Modal @ref="_managerPicker"
+       Id="managerPicker"
+       Title="Select a manager"
+       DialogClass="modal-dialog-scrollable modal-lg">
+  <ChildContent>
+    <div class="p-2 border-bottom bg-light">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input class="form-control" placeholder="Search by name or email…"
+               @bind="_mgrSearch" @bind:event="oninput" />
+      </div>
+    </div>
+
+    @if (_mgrLoading)
+    {
+      <div class="p-3 text-muted small">Loading users…</div>
+    }
+    else if (!_mgrFiltered.Any())
+    {
+      <div class="p-3 text-muted small">No matches.</div>
+    }
+    else
+    {
+      <ul class="list-group list-group-flush">
+        @foreach (var m in _mgrFiltered)
+        {
+          var full = (m.Profile.LastName, m.Profile.FirstName);
+          var label = string.Join(", ",
+              new[] { m.Profile.LastName, m.Profile.FirstName }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="me-3">
+              <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(label) ? label : (m.Identity.DisplayName ?? "(no name)"))</div>
+              <div class="text-muted small">
+                @m.Identity.Email
+                <span class="mx-1">•</span>
+                AvaUserId: <code>@m.Profile.Id</code>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-outline-primary"
+                    @onclick="() => OnManagerSelected(m.Profile.Id, label, m.Identity)">
+              Select as Manager
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </ChildContent>
+  <Footer>
+    <div class="me-auto text-muted small">@_mgrFiltered.Count() shown</div>
+    <button class="btn btn-light" @onclick="_managerPicker!.Hide">Close</button>
+  </Footer>
+</Modal>
+
+@if (showDelete)
+{
+    <div class="modal fade show"
+         style="display:block;"
+         tabindex="-1"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="deleteUserTitle">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="deleteUserTitle" class="modal-title mb-0">Delete User</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDelete" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(deleteError))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <i class="bi bi-x-circle-fill fs-5 me-2"></i>
+                            <div>@deleteError</div>
+                        </div>
+                    }
+
+                    <p class="mb-3">
+                        This will permanently delete the Identity user and linked platform data.
+                    </p>
+                    <ul class="mb-0 small text-muted">
+                        <li>AspNetUsers (and claims / roles / logins / tokens)</li>
+                        <li>AvaUser</li>
+                        <li>AvaUserSysPreference</li>
+                    </ul>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" @onclick="CloseDelete" disabled="@isBusyDelete">Cancel</button>
+                    <button class="btn btn-danger" @onclick="ConfirmDeleteAsync" disabled="@isBusyDelete">
+                        @if (isBusyDelete)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Delete user
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+
+
+@code {
+    [Parameter] public string Id { get; set; } = default!;
+
+    private bool loading = true;
+    private string? error;
+    private string? saveMessage;
+    private string saveAlertClass = "alert-success";
+    private string saveIconClass = "bi bi-check-circle-fill";
+    private string activeTab = "account";
+    
+    private IAdminUserService.ProvisionedUser? user;
+    private AvaUserSysPreference? pref;
+
+    // ViewModels to avoid directly binding your EF entities
+    private AccountVm accountVm = new AccountVm();
+    private PreferenceVm prefVm = new PreferenceVm();
+
+    private string DisplayNameOrEmail =>
+        !string.IsNullOrWhiteSpace(user?.Identity.DisplayName)
+            ? user!.Identity.DisplayName!
+            : (user?.Identity.Email ?? "(unknown)");
+
+    private bool IsPolicyLocked => pref is not null && !string.IsNullOrWhiteSpace(pref.TravelPolicyId);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        saveMessage = null;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(Id))
+            {
+                error = "Missing user id.";
+                return;
+            }
+
+            user = await AdminUserService.GetByIdAsync(Id);
+            if (user is null)
+            {
+                error = $"User '{Id}' not found.";
+                return;
+            }
+
+            // Load or create preferences (lazy)
+            pref = await PrefService.GetByUserIdAsync(user.Profile.Id);
+            if (pref is not null)
+            {
+                MapPrefToVm(pref, prefVm);
+            }
+
+            // Map account VM from Identity + AvaUser
+            accountVm = new AccountVm
+            {
+                UserId          = user.UserId,
+                Email           = user.Identity.Email ?? "",
+                DisplayName     = user.Identity.DisplayName,
+                FirstName       = user.Profile.FirstName,
+                MiddleName      = user.Profile.MiddleName,
+                LastName        = user.Profile.LastName,
+                OrganizationId  = user.Identity.OrganizationId,
+                IsActive        = user.Identity.IsActive,
+                ManagerAvaUserId= user.Profile.ManagerAvaUserId
+            };
+
+            if (!string.IsNullOrWhiteSpace(accountVm.ManagerAvaUserId))
+            {
+                // quick lookup by AvaUserId (we only need names)
+                var mgr = await AvaUserService.GetByIdAsync(accountVm.ManagerAvaUserId);
+                if (mgr is not null)
+                    accountVm.ManagerDisplay = string.Join(", ",
+                        new[] { mgr.LastName, mgr.FirstName }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                else
+                    accountVm.ManagerDisplay = string.Empty;
+            }
+            else
+            {
+                accountVm.ManagerDisplay = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.GetBaseException().Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void SwitchTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    private async Task SaveAccountAsync()
+    {
+        saveMessage = null;
+
+        try
+        {
+            // Update Identity + AvaUser via Admin service
+            var updateReq = new IAdminUserService.UpdateUserRequest(
+                UserId: accountVm.UserId!,
+                FirstName: accountVm.FirstName,
+                MiddleName: accountVm.MiddleName,
+                LastName: accountVm.LastName,
+                DisplayName: accountVm.DisplayName,
+                OrganizationId: accountVm.OrganizationId,
+                IsActive: accountVm.IsActive,
+                ManagerAvaUserId: accountVm.ManagerAvaUserId
+            );
+
+            var updated = await AdminUserService.UpdateAsync(updateReq);
+            await ReloadPrefsAsync();
+
+            // Keep local state in sync
+            user = updated;
+            saveAlertClass = "alert-success";
+            saveIconClass = "bi bi-check-circle-fill";
+            saveMessage = "Account saved.";
+        }
+        catch (Exception ex)
+        {
+            saveAlertClass = "alert-danger";
+            saveIconClass = "bi bi-x-circle-fill";
+            saveMessage = ex.GetBaseException().Message;
+        }
+    }
+
+    private async Task CreatePreferencesAsync()
+    {
+        if (user is null) return;
+
+        try
+        {
+            // 🔒 Guard: don't create if prefs already exist
+            if (await PrefService.GetByUserIdAsync(user.Profile.Id) is not null)
+            {
+                saveAlertClass = "alert-info";
+                saveIconClass  = "bi bi-info-circle-fill";
+                saveMessage    = "Preferences already exist for this user.";
+                await ReloadPrefsAsync();
+                return;
+            }
+            
+            await PrefService.CreateAsync(new AvaUserSysPreference
+            {
+                AspNetUsersId        = user.Identity.Id,
+                Email                = user.Identity.Email ?? "",
+                FirstName            = user.Profile.FirstName,
+                MiddleName           = user.Profile.MiddleName,
+                LastName             = user.Profile.LastName,
+                DateOfBirth          = new DateOnly(1900,1,1),
+                Gender               = GenderType.Unspecified,
+                CountryOfIssue       = PassportCountry.AUS,
+                PassportExpirationDate = new DateOnly(1900,1,1),
+                OriginLocationCode   = user.Profile.OriginLocationCode,
+                DefaultFlightSeating = user.Profile.DefaultFlightSeating,
+                MaxFlightSeating     = user.Profile.MaxFlightSeating,
+                IncludedAirlineCodes = Array.Empty<string>(),
+                ExcludedAirlineCodes = Array.Empty<string>(),
+                CabinClassCoverage   = "MOST_SEGMENTS",
+                NonStopFlight        = user.Profile.NonStopFlight,
+                DefaultCurrencyCode  = user.Profile.DefaultCurrencyCode,
+                MaxFlightPrice       = user.Profile.MaxFlightPrice,
+                MaxResults           = 20,
+                AvaUserId            = user.Profile.Id,
+                AvaClientId          = user.Profile.AvaClientId
+            });
+
+            await ReloadPrefsAsync();
+
+            // Re-fetch a DETACHED instance and bind it
+            @* pref = await PrefService.GetByUserIdAsync(user.Profile.Id); *@
+            @* if (pref is null) throw new InvalidOperationException("Failed to load preferences after creation."); *@
+
+            @* MapPrefToVm(pref, prefVm); *@
+            saveAlertClass = "alert-success";
+            saveIconClass  = "bi bi-check-circle-fill";
+            saveMessage    = "Preferences created.";
+        }
+        catch (Exception ex)
+        {
+            saveAlertClass = "alert-danger";
+            saveIconClass = "bi bi-x-circle-fill";
+            saveMessage = ex.GetBaseException().Message;
+        }
+    }
+
+    private async Task SavePreferencesAsync()
+    {
+        if (pref is null || user is null) return;
+
+        saveMessage = null;
+
+        try
+        {
+            // map VM back into entity (respect policy locks)
+            MapVmToPref(prefVm, pref, IsPolicyLocked);
+
+            // Save pref
+            pref = await PrefService.UpdateAsync(pref);
+
+            await ReloadPrefsAsync();
+
+            // Keep AvaUser in sync for duplicated fields (historical duplication)
+            var au = await AvaUserService.GetByIdAsync(user.Profile.Id);
+            if (au is not null)
+            {
+                au.FirstName = pref.FirstName;
+                au.MiddleName = pref.MiddleName;
+                au.LastName = pref.LastName;
+                au.OriginLocationCode = pref.OriginLocationCode;
+                au.DefaultFlightSeating = pref.DefaultFlightSeating;
+                au.MaxFlightSeating = pref.MaxFlightSeating;
+                au.NonStopFlight = pref.NonStopFlight ?? au.NonStopFlight;
+                au.DefaultCurrencyCode = pref.DefaultCurrencyCode ?? au.DefaultCurrencyCode;
+                au.MaxFlightPrice = (int)Math.Round((decimal)pref.MaxFlightPrice);
+
+                await AvaUserService.UpdateAsync(au);
+            }
+
+            // Refresh UI VM
+            //MapPrefToVm(pref, prefVm);
+
+            saveAlertClass = "alert-success";
+            saveIconClass = "bi bi-check-circle-fill";
+            saveMessage = "Preferences saved.";
+        }
+        catch (Exception ex)
+        {
+            saveAlertClass = "alert-danger";
+            saveIconClass = "bi bi-x-circle-fill";
+            saveMessage = ex.GetBaseException().Message;
+        }
+    }
+
+    private void MapPrefToVm(AvaUserSysPreference p, PreferenceVm vm)
+    {
+        vm.Email = p.Email;
+        vm.FirstName = p.FirstName;
+        vm.MiddleName = p.MiddleName;
+        vm.LastName = p.LastName;
+        vm.DateOfBirth = p.DateOfBirth;
+        vm.Gender = p.Gender;
+        vm.CountryOfIssue = p.CountryOfIssue;
+        vm.PassportExpirationDate = p.PassportExpirationDate;
+
+        vm.OriginLocationCode = p.OriginLocationCode;
+        vm.DefaultFlightSeating = p.DefaultFlightSeating;
+        vm.MaxFlightSeating = p.MaxFlightSeating;
+        vm.IncludedAirlineCodesCsv = string.Join(',', p.IncludedAirlineCodes ?? Array.Empty<string>());
+        vm.ExcludedAirlineCodesCsv = string.Join(',', p.ExcludedAirlineCodes ?? Array.Empty<string>());
+        vm.CabinClassCoverage = p.CabinClassCoverage;
+        vm.NonStopFlight = p.NonStopFlight ?? false;
+
+        vm.DefaultCurrencyCode = p.DefaultCurrencyCode;
+        vm.MaxFlightPrice = p.MaxFlightPrice;
+        vm.MaxResults = p.MaxResults;
+
+        vm.FlightBookingTimeAvailableFrom = p.FlightBookingTimeAvailableFrom;
+        vm.FlightBookingTimeAvailableTo = p.FlightBookingTimeAvailableTo;
+
+        vm.EnableSaturdayFlightBookings = p.EnableSaturdayFlightBookings ?? false;
+        vm.EnableSundayFlightBookings = p.EnableSundayFlightBookings ?? false;
+        vm.DefaultCalendarDaysInAdvanceForFlightBooking = p.DefaultCalendarDaysInAdvanceForFlightBooking;
+    }
+
+    private void MapVmToPref(PreferenceVm vm, AvaUserSysPreference p, bool policyLocked)
+    {
+        p.Email = vm.Email ?? p.Email;
+        p.FirstName = vm.FirstName ?? p.FirstName;
+        p.MiddleName = vm.MiddleName;
+        p.LastName = vm.LastName ?? p.LastName;
+        p.DateOfBirth = vm.DateOfBirth;
+        p.Gender = vm.Gender;
+        p.CountryOfIssue = vm.CountryOfIssue;
+        p.PassportExpirationDate = vm.PassportExpirationDate;
+
+        p.OriginLocationCode = vm.OriginLocationCode;
+        p.DefaultFlightSeating = vm.DefaultFlightSeating ?? p.DefaultFlightSeating;
+        p.MaxFlightSeating = vm.MaxFlightSeating ?? p.MaxFlightSeating;
+
+        p.IncludedAirlineCodes = (vm.IncludedAirlineCodesCsv ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        p.ExcludedAirlineCodes = (vm.ExcludedAirlineCodesCsv ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        p.CabinClassCoverage = vm.CabinClassCoverage ?? p.CabinClassCoverage;
+        p.NonStopFlight = vm.NonStopFlight;
+
+        p.DefaultCurrencyCode = vm.DefaultCurrencyCode ?? p.DefaultCurrencyCode;
+        p.MaxFlightPrice = vm.MaxFlightPrice;
+        p.MaxResults = vm.MaxResults;
+
+        p.FlightBookingTimeAvailableFrom = vm.FlightBookingTimeAvailableFrom;
+        p.FlightBookingTimeAvailableTo = vm.FlightBookingTimeAvailableTo;
+
+        if (!policyLocked)
+        {
+            p.EnableSaturdayFlightBookings = vm.EnableSaturdayFlightBookings;
+            p.EnableSundayFlightBookings = vm.EnableSundayFlightBookings;
+            p.DefaultCalendarDaysInAdvanceForFlightBooking = vm.DefaultCalendarDaysInAdvanceForFlightBooking;
+        }
+    }
+
+    private void BackToSearch() => Nav.NavigateTo("/platform/users/search");
+
+    // ====== View Models ======
+    private sealed class AccountVm
+    {
+        public string? UserId { get; set; }
+
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        public string? DisplayName { get; set; }
+
+        public string? FirstName { get; set; }
+        public string? MiddleName { get; set; }
+        public string? LastName { get; set; }
+
+        public string? OrganizationId { get; set; }
+        public bool IsActive { get; set; }
+        public string? ManagerAvaUserId { get; set; }
+        public string? ManagerDisplay { get; set; } // shown in the UI as "Surname, FirstName"
+    }
+
+    private sealed class PreferenceVm
+    {
+        [EmailAddress] public string? Email { get; set; }
+
+        public string? FirstName { get; set; }
+        public string? MiddleName { get; set; }
+        public string? LastName { get; set; }
+
+        [DataType(DataType.Date)]
+        public DateOnly DateOfBirth { get; set; }
+
+        public GenderType Gender { get; set; } = GenderType.Unspecified;
+        public PassportCountry CountryOfIssue { get; set; } = PassportCountry.AUS;
+
+        [DataType(DataType.Date)]
+        public DateOnly PassportExpirationDate { get; set; }
+
+        public string? OriginLocationCode { get; set; }
+
+        public string? DefaultFlightSeating { get; set; }
+        public string? MaxFlightSeating { get; set; }
+        public string? IncludedAirlineCodesCsv { get; set; }
+        public string? ExcludedAirlineCodesCsv { get; set; }
+        public string? CabinClassCoverage { get; set; }
+        public bool NonStopFlight { get; set; }
+
+        public string? DefaultCurrencyCode { get; set; }
+        public decimal MaxFlightPrice { get; set; }
+        public int MaxResults { get; set; }
+
+        public string? FlightBookingTimeAvailableFrom { get; set; }
+        public string? FlightBookingTimeAvailableTo { get; set; }
+
+        public bool EnableSaturdayFlightBookings { get; set; }
+        public bool EnableSundayFlightBookings { get; set; }
+        public int? DefaultCalendarDaysInAdvanceForFlightBooking { get; set; }
+    }
+
+    private async Task ReloadPrefsAsync()
+    {
+        if (user is null) return;
+        pref = await PrefService.GetByUserIdAsync(user.Profile.Id);
+        if (pref is not null) MapPrefToVm(pref, prefVm);
+        StateHasChanged();
+    }
+
+#region ManagerPickerModal
+    private BlazorLoginDemo.Web.Components.Modal? _managerPicker;
+
+    // Backing list of all users (Identity + AvaUser profile)
+    private IReadOnlyList<IAdminUserService.ProvisionedUser> _mgrAll = Array.Empty<IAdminUserService.ProvisionedUser>();
+    private string _mgrSearch = string.Empty;
+    private bool _mgrLoading;
+
+    private IEnumerable<IAdminUserService.ProvisionedUser> _mgrFiltered =>
+        string.IsNullOrWhiteSpace(_mgrSearch)
+            ? _mgrAll
+            : _mgrAll.Where(u =>
+            {
+                var last  = u.Profile.LastName ?? string.Empty;
+                var first = u.Profile.FirstName ?? string.Empty;
+                var disp  = u.Identity.DisplayName ?? string.Empty;
+                var email = u.Identity.Email ?? string.Empty;
+
+                return last.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
+                    || first.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
+                    || disp.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
+                    || email.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase)
+                    || (u.Profile.Id?.Contains(_mgrSearch, StringComparison.OrdinalIgnoreCase) ?? false);
+            })
+            // Don’t allow choosing yourself as your own manager
+            .Where(u => u.UserId != user?.UserId);
+
+    private async Task OpenManagerPicker()
+    {
+        // lazy-load
+        if (_mgrAll.Count == 0)
+        {
+            _mgrLoading = true;
+            StateHasChanged();
+
+            var list = await AdminUserService.GetAllAsync();
+            _mgrAll = list ?? Array.Empty<IAdminUserService.ProvisionedUser>();
+
+            _mgrLoading = false;
+            _mgrSearch = string.Empty;
+        }
+
+        await _managerPicker!.Show();
+    }
+
+    private async Task OnManagerSelected(string managerAvaUserId, string? label, ApplicationUser identity)
+    {
+        if (user is null) return;
+
+        // write to service immediately
+        var updateReq = new IAdminUserService.UpdateUserRequest(
+            UserId: user.UserId,
+            FirstName: null,
+            MiddleName: null,
+            LastName: null,
+            DisplayName: null,
+            OrganizationId: null,
+            IsActive: null,
+            ManagerAvaUserId: managerAvaUserId
+        );
+
+        var updated = await AdminUserService.UpdateAsync(updateReq);
+
+        // refresh local state (Account tab VM)
+        accountVm.ManagerAvaUserId = managerAvaUserId;
+        accountVm.ManagerDisplay   = BuildManagerDisplay(updated.Profile, updated.Identity);
+
+        // keep top-level user in sync
+        user = updated;
+
+        await _managerPicker!.Hide();
+
+        saveAlertClass = "alert-success";
+        saveIconClass  = "bi bi-check-circle-fill";
+        saveMessage    = "Manager updated.";
+    }
+
+    private void ClearManager()
+    {
+        // clear in the VM; the real update is persisted on 'Save Account'
+        accountVm.ManagerAvaUserId = null;
+        accountVm.ManagerDisplay   = string.Empty;
+    }
+
+    private static string BuildManagerDisplay(AvaUser u, ApplicationUser id)
+    {
+        var l = u.LastName ?? string.Empty;
+        var f = u.FirstName ?? string.Empty;
+
+        var label = string.Join(", ", new[] { l, f }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        if (!string.IsNullOrWhiteSpace(label))
+            return label;
+
+        // fallbacks
+        return !string.IsNullOrWhiteSpace(id.DisplayName)
+            ? id.DisplayName!
+            : (id.Email ?? "(unknown)");
+    }
+#endregion
+
+
+
+
+    // Delete modal state
+    private bool showDelete;
+    private string? deleteError;
+    private bool isBusyDelete;
+
+    private void OpenDelete()
+    {
+        deleteError = null;
+        showDelete = true;
+    }
+
+    private void CloseDelete()
+    {
+        showDelete = false;
+    }
+
+private async Task ConfirmDeleteAsync()
+{
+    try
+    {
+        isBusyDelete = true;
+        deleteError = null;
+
+        // Pick the one that matches what {Id} represents on this page:
+        var res = await AdminUserService.DeleteByAvaUserIdAsync(Id);
+        // var res = await this.IAdminUserService.DeleteByAspNetUserIdAsync(Id);
+
+        if (!res.Ok)
+        {
+            deleteError = res.Error ?? "Delete failed.";
+            return;
+        }
+
+        Nav.NavigateTo("/platform/users");
+    }
+    catch (Exception ex)
+    {
+        deleteError = ex.GetBaseException().Message;
+    }
+    finally
+    {
+        isBusyDelete = false;
+        showDelete = false;
+    }
+}
+
+
+
+}

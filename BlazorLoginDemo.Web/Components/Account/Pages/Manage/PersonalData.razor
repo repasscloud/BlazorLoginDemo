@@ -1,0 +1,59 @@
+﻿@page "/Account/Manage/PersonalData"
+@inject IdentityUserAccessor UserAccessor
+
+<PageTitle>Personal Data</PageTitle>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-6">
+
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h4 class="mb-0">Personal Data</h4>
+                </div>
+
+                <div class="card-body">
+                    <StatusMessage />
+
+                    <p class="mb-3">
+                        Your account contains personal data that you have provided. You can download a copy of your data or permanently delete your account from this page.
+                    </p>
+
+                    <div class="alert alert-danger small" role="alert">
+                        <strong>Warning:</strong> Deleting your personal data will <strong>permanently remove your account</strong> and cannot be undone.
+                    </div>
+
+                    <div class="d-grid gap-3 mt-4">
+                        <form action="/Account/Manage/DownloadPersonalData" method="post" class="d-grid">
+                            <AntiforgeryToken />
+                            <button class="btn btn-outline-primary w-100" type="submit">
+                                Download Personal Data
+                            </button>
+                        </form>
+
+                        <a href="/Account/Manage/DeletePersonalData"
+                           class="btn btn-outline-danger w-100">
+                            Delete Account
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-footer d-flex justify-content-between">
+                    <a class="btn btn-outline-secondary btn-sm" href="/Account/Manage">Back to profile</a>
+                    <a class="btn btn-outline-primary btn-sm" href="/">Home</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ = await UserAccessor.GetRequiredUserAsync(HttpContext);
+    }
+}

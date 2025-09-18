@@ -1,0 +1,81 @@
+@using System.Reflection
+@using Microsoft.AspNetCore.Components.Forms
+
+@if (_rows.Count > 0)
+{
+    <div class="alert alert-warning p-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <strong class="me-2">Validation details</strong>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="Toggle">
+                @(_expanded ? "Hide" : "Show")
+            </button>
+        </div>
+
+        @if (_expanded)
+        {
+            <div class="table-responsive mt-2">
+                <table class="table table-sm table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Field</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in _rows)
+                        {
+                            <tr>
+                                <td><code>@r.Field</code></td>
+                                <td>@r.Message</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    // Pick up the current EditForm’s EditContext automatically (no parent changes required).
+    [CascadingParameter] private EditContext? CurrentContext { get; set; }
+
+    private readonly List<(string Field, string Message)> _rows = new();
+    private bool _expanded = true;
+    private PropertyInfo[]? _props;
+
+    protected override void OnInitialized()
+    {
+        if (CurrentContext is null) return;
+
+        // Cache model props once; we’ll map messages by FieldIdentifier(Model, prop.Name)
+        _props = CurrentContext.Model.GetType()
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        CurrentContext.OnFieldChanged += (_, __) => Rebuild();
+        CurrentContext.OnValidationRequested += (_, __) => Rebuild();
+        CurrentContext.OnValidationStateChanged += (_, __) => Rebuild();
+    }
+
+    private void Rebuild()
+    {
+        if (CurrentContext is null || _props is null) return;
+
+        _rows.Clear();
+
+        foreach (var p in _props)
+        {
+            var fi = new FieldIdentifier(CurrentContext.Model, p.Name);
+            foreach (var msg in CurrentContext.GetValidationMessages(fi))
+            {
+                _rows.Add((p.Name, msg));
+            }
+        }
+
+        // Keep noisy panels out of the way unless there are errors
+        _expanded = _rows.Count > 0 && _expanded;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Toggle() => _expanded = !_expanded;
+}

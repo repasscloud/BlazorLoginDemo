@@ -1,0 +1,205 @@
+@page "/support/contact"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components
+
+@* We fully-qualify Blazorise tags to avoid collisions with Microsoft components *@
+
+<div class="container py-4">
+    <div class="row justify-content-center g-4">
+        <div class="col-12 col-lg-7">
+            <Blazorise.Card Class="shadow-sm">
+                <Blazorise.CardHeader>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0">Contact Support</h5>
+                        <span class="text-muted small">Create a support ticket</span>
+                    </div>
+                </Blazorise.CardHeader>
+                <Blazorise.CardBody>
+                    @if (!string.IsNullOrWhiteSpace(_error))
+                    {
+                        <Blazorise.Alert Color="Blazorise.Color.Danger" Visible="true">Darn — @_error</Blazorise.Alert>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_success))
+                    {
+                        <Blazorise.Alert Color="Blazorise.Color.Success" Visible="true">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-check-circle me-2"></i>
+                                @_success
+                            </div>
+                        </Blazorise.Alert>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Subject</label>
+                            <Blazorise.TextEdit @bind-Text="_vm.Subject" Placeholder="Short summary (max 120 chars)" MaxLength="120" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Category</label>
+                            <Blazorise.Select TValue="string" @bind-SelectedValue="_vm.Category">
+                                <Blazorise.SelectItem Value="@("Unspecified")">-- Choose --</Blazorise.SelectItem>
+                                <Blazorise.SelectItem Value="@("Bug")">Bug</Blazorise.SelectItem>
+                                <Blazorise.SelectItem Value="@("Feature")">Feature request</Blazorise.SelectItem>
+                                <Blazorise.SelectItem Value="@("Question")">Question</Blazorise.SelectItem>
+                                <Blazorise.SelectItem Value="@("Billing")">Billing</Blazorise.SelectItem>
+                                <Blazorise.SelectItem Value="@("Account")">Account</Blazorise.SelectItem>
+                            </Blazorise.Select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Priority</label>
+                            <Blazorise.Select TValue="string" @bind-SelectedValue="_vm.Priority">
+                                <Blazorise.SelectItem Value="@("Normal")">Normal</Blazorise.SelectItem>
+                                <Blazorise.SelectItem Value="@("Low")">Low</Blazorise.SelectItem>
+                                <Blazorise.SelectItem Value="@("High")">High</Blazorise.SelectItem>
+                                <Blazorise.SelectItem Value="@("Urgent")">Urgent</Blazorise.SelectItem>
+                            </Blazorise.Select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Describe the issue</label>
+                            <Blazorise.MemoEdit @bind-Text="_vm.Description" Placeholder="Tell us what’s happening — steps to reproduce, expected vs actual, screenshots/links…" Rows="8" />
+                            <div class="form-text">Markdown supported in the final GitHub ticket (we'll post this for you once the service is ready).</div>
+                        </div>
+
+                        <div class="col-12 d-flex align-items-center">
+                            <Blazorise.Check @bind-Checked="_vm.IncludeDiagnostics" Class="me-2" />
+                            <label class="form-check-label">Include diagnostics</label>
+                        </div>
+
+                        <div class="col-md-7">
+                            <label class="form-label">Your email (for updates)</label>
+                            <Blazorise.TextEdit @bind-Text="_vm.CallbackEmail" Placeholder="name@example.com" />
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Page URL (optional)</label>
+                            <Blazorise.TextEdit @bind-Text="_vm.PageUrl" Placeholder="https://…" />
+                        </div>
+                    </div>
+                </Blazorise.CardBody>
+                <Blazorise.CardFooter Class="d-flex gap-2 bg-white border-0">
+                    <Blazorise.Button Color="Blazorise.Color.Primary" Disabled="@_submitting" Clicked="SubmitAsync">
+                        @if (_submitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        Submit ticket
+                    </Blazorise.Button>
+                    <Blazorise.Button Color="Blazorise.Color.Light" Outline Clicked="ResetForm">Reset</Blazorise.Button>
+                </Blazorise.CardFooter>
+            </Blazorise.Card>
+        </div>
+
+        <div class="col-12 col-lg-5">
+            <Blazorise.Card Class="shadow-sm">
+                <Blazorise.CardHeader>
+                    <h6 class="mb-0">Preview</h6>
+                </Blazorise.CardHeader>
+                <Blazorise.CardBody>
+                    <div class="mb-2"><span class="text-muted">Title:</span> <strong>@PreviewTitle</strong></div>
+                    <div class="mb-2"><span class="text-muted">Labels:</span> <span class="badge text-bg-secondary me-1">@_vm.CategoryLabel</span> <span class="badge text-bg-secondary">@_vm.PriorityLabel</span></div>
+                    <div class="small text-muted mb-1">Body</div>
+                    <div class="p-2 border rounded bg-light" style="white-space:pre-wrap">@PreviewBody</div>
+                </Blazorise.CardBody>
+                <Blazorise.CardFooter>
+                    <div class="text-muted small">
+                        This is a placeholder. Posting to GitHub will be enabled once the service is built.
+                    </div>
+                </Blazorise.CardFooter>
+            </Blazorise.Card>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _submitting;
+    private string? _error;
+    private string? _success;
+
+    private TicketVm _vm = new();
+
+    private string PreviewTitle => string.IsNullOrWhiteSpace(_vm.Subject) ? "(no subject)" : _vm.Subject.Trim();
+
+    private string PreviewBody => BuildPreviewBody();
+
+    private async Task SubmitAsync()
+    {
+        _error = null; _success = null; _submitting = true;
+        try
+        {
+            // Simple validations (we can switch to Blazorise Validations later if you prefer)
+            if (string.IsNullOrWhiteSpace(_vm.Subject))
+                throw new ValidationException("Subject is required.");
+            if (string.IsNullOrWhiteSpace(_vm.Description))
+                throw new ValidationException("Description is required.");
+
+            // Placeholder: build the ticket payload that a GitHub service will need later
+            var payload = new
+            {
+                title = PreviewTitle,
+                body = PreviewBody,
+                labels = new[] { _vm.CategoryLabel, _vm.PriorityLabel }
+            };
+
+            // TODO: inject and call IHelpdeskService when ready
+            await Task.Delay(350); // simulate
+
+            _success = "Thanks! Your ticket has been staged. We’ll post it to GitHub as soon as the integration is live.";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.GetBaseException().Message;
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        _vm = new();
+        _error = _success = null;
+    }
+
+    private string BuildPreviewBody()
+    {
+        var lines = new List<string>();
+        lines.Add($"**Category:** {_vm.CategoryLabel}");
+        lines.Add($"**Priority:** {_vm.PriorityLabel}");
+        if (!string.IsNullOrWhiteSpace(_vm.CallbackEmail))
+            lines.Add($"**Contact:** {_vm.CallbackEmail}");
+        if (!string.IsNullOrWhiteSpace(_vm.PageUrl))
+            lines.Add($"**Page:** {_vm.PageUrl}");
+        if (_vm.IncludeDiagnostics)
+            lines.Add($"**Diagnostics:** {DateTimeOffset.Now:u} — {GetUserAgent()} — {Nav?.Uri}");
+        lines.Add("");
+        lines.Add(_vm.Description ?? string.Empty);
+        return string.Join('\n', lines);
+    }
+
+    [Inject] private NavigationManager? Nav { get; set; }
+
+    private static string GetUserAgent()
+    {
+        // Placeholder — in a real app you’d capture UA via JS interop
+        return "(user-agent captured via JS)";
+    }
+
+    private sealed class TicketVm
+    {
+        public string? Subject { get; set; }
+        public string Category { get; set; } = "Bug";     // default
+        public string Priority { get; set; } = "Normal";   // default
+        public string? Description { get; set; }
+
+        public bool IncludeDiagnostics { get; set; } = true;
+        [EmailAddress] public string? CallbackEmail { get; set; }
+        public string? PageUrl { get; set; }
+
+        public string CategoryLabel => string.IsNullOrWhiteSpace(Category) || Category == "Unspecified" ? "Uncategorized" : Category;
+        public string PriorityLabel => string.IsNullOrWhiteSpace(Priority) ? "Normal" : Priority;
+    }
+}

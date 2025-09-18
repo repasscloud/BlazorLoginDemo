@@ -1,0 +1,155 @@
+@namespace BlazorLoginDemo.Web.Components.Shared
+@rendermode InteractiveServer
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@using Blazorise
+@using BlazorLoginDemo.Shared.Models.Kernel.Platform
+
+@inject IAdminUserServiceUnified UserAdmin
+
+<Blazorise.Modal @bind-Visible="Visible" Size="ModalSize.Large" Scrollable="true" Backdrop="Backdrop.True">
+    <Blazorise.ModalContent>
+        <Blazorise.ModalHeader>
+            <Blazorise.ModalTitle>@Title</Blazorise.ModalTitle>
+            <Blazorise.CloseButton />
+        </Blazorise.ModalHeader>
+
+        <Blazorise.ModalBody>
+            <div class="p-2 border-bottom bg-light">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <Blazorise.TextEdit
+                        Text="@_search"
+                        TextChanged="OnSearchChanged"
+                        Debounce="true"
+                        DebounceInterval="250"
+                        Class="form-control"
+                        Placeholder="Search by name or email…" />
+                </div>
+            </div>
+
+            @if (_loading)
+            {
+                <div class="p-3 text-muted small">Loading users…</div>
+            }
+            else if (!_results.Any())
+            {
+                <div class="p-3 text-muted small">No matches.</div>
+            }
+            else
+            {
+                <Blazorise.ListGroup Flush="true">
+                    @foreach (var u in _results)
+                    {
+                        var label = BuildLabel(u);
+                        <Blazorise.ListGroupItem Class="d-flex justify-content-between align-items-center">
+                            <div class="me-3">
+                                <div class="fw-semibold">@label</div>
+                                <div class="text-muted small">
+                                    @u.Email
+                                    <span class="mx-1">•</span>
+                                    UserId: <code>@u.Id</code>
+                                </div>
+                            </div>
+                            <Blazorise.Button Color="Color.Primary" Size="Size.Small" Outline="true"
+                                              Clicked="@(() => Select(u))">
+                                Select as Manager
+                            </Blazorise.Button>
+                        </Blazorise.ListGroupItem>
+                    }
+                </Blazorise.ListGroup>
+            }
+        </Blazorise.ModalBody>
+
+        <Blazorise.ModalFooter>
+            <div class="me-auto text-muted small">@_results.Count shown</div>
+            <Blazorise.Button Color="Color.Light" Clicked="@(() => SetVisible(false))">Close</Blazorise.Button>
+        </Blazorise.ModalFooter>
+    </Blazorise.ModalContent>
+</Blazorise.Modal>
+
+@code {
+    // ---------- Parameters ----------
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    // Optional filters / behavior
+    [Parameter] public string? OrganizationId { get; set; }
+    [Parameter] public string Title { get; set; } = "Select a manager";
+    [Parameter] public int PageSize { get; set; } = 50;
+    [Parameter] public string? ExcludeUserId { get; set; }
+
+    // Result callback
+    [Parameter] public EventCallback<ApplicationUser> OnSelected { get; set; }
+
+    // ---------- State ----------
+    private string? _search;
+    private bool _loading;
+    private List<ApplicationUser> _results = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // When opened, load on first show (or refresh when org filter changes)
+        if (Visible)
+            await LoadAsync();
+    }
+
+    private async Task SetVisible(bool value)
+    {
+        if (Visible != value)
+        {
+            Visible = value;
+            await VisibleChanged.InvokeAsync(value);
+        }
+    }
+
+    private void OnSearchChanged(string? value)
+    {
+        _search = value;
+        _ = LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var aggs = await UserAdmin.SearchAsync(
+                emailContains: _search,
+                nameContains: _search,
+                organizationId: string.IsNullOrWhiteSpace(OrganizationId) ? null : OrganizationId,
+                isActive: true);
+
+            _results = aggs
+                .Select(a => a.User)
+                .Where(u => string.IsNullOrWhiteSpace(ExcludeUserId) || u.Id != ExcludeUserId)
+                .OrderBy(u => u.LastName)
+                .ThenBy(u => u.FirstName)
+                .ThenBy(u => u.DisplayName ?? u.Email)
+                .Take(PageSize)
+                .ToList();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Select(ApplicationUser user)
+    {
+        if (OnSelected.HasDelegate)
+            await OnSelected.InvokeAsync(user);
+
+        await SetVisible(false);
+    }
+
+    private static string BuildLabel(ApplicationUser u)
+    {
+        var surnameCommaFirst = string.Join(", ", new[] { u.LastName, u.FirstName }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        if (!string.IsNullOrWhiteSpace(surnameCommaFirst)) return surnameCommaFirst;
+        if (!string.IsNullOrWhiteSpace(u.DisplayName)) return u.DisplayName;
+        return u.Email ?? u.Id;
+    }
+}
