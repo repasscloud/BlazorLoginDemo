@@ -75,14 +75,32 @@
           <div class="card-header"><strong>Contact Info</strong></div>
           <div class="card-body">
             <dl class="row mb-0">
-              <dt class="col-sm-3">General Contact</dt>
-              <dd class="col-sm-9">@FormatContact(_org.Org.ContactPersonFirstName, _org.Org.ContactPersonLastName, _org.Org.ContactPersonEmail, _org.Org.ContactPersonPhone)</dd>
+                <dt class="col-sm-3">General Contact</dt>
+                <dd class="col-sm-9">
+                    @((MarkupString)FormatContact(
+                        _org.Org.ContactPersonFirstName, 
+                        _org.Org.ContactPersonLastName, 
+                        _org.Org.ContactPersonEmail, 
+                        _org.Org.ContactPersonPhone))
+                </dd>
 
-              <dt class="col-sm-3">Billing Contact</dt>
-              <dd class="col-sm-9">@FormatContact(_org.Org.BillingPersonFirstName, _org.Org.BillingPersonLastName, _org.Org.BillingPersonEmail, _org.Org.BillingPersonPhone)</dd>
+                <dt class="col-sm-3">Billing Contact</dt>
+                <dd class="col-sm-9">
+                    @((MarkupString)FormatContact(
+                        _org.Org.BillingPersonFirstName, 
+                        _org.Org.BillingPersonLastName, 
+                        _org.Org.BillingPersonEmail, 
+                        _org.Org.BillingPersonPhone))
+                </dd>
 
-              <dt class="col-sm-3">Admin Contact</dt>
-              <dd class="col-sm-9">@FormatContact(_org.Org.AdminPersonFirstName, _org.Org.AdminPersonLastName, _org.Org.AdminPersonEmail, _org.Org.AdminPersonPhone)</dd>
+                <dt class="col-sm-3">Admin Contact</dt>
+                <dd class="col-sm-9">
+                    @((MarkupString)FormatContact(
+                        _org.Org.AdminPersonFirstName, 
+                        _org.Org.AdminPersonLastName, 
+                        _org.Org.AdminPersonEmail, 
+                        _org.Org.AdminPersonPhone))
+                </dd>
             </dl>
           </div>
         </div>
@@ -133,18 +151,18 @@
       Nav.NavigateTo($"/platform/organizations/{_org.Org.Id}/edit");
   }
 
-  private static string FormatContact(string? first, string? last, string? email, string? phone)
-  {
-    if (string.IsNullOrWhiteSpace(first) && string.IsNullOrWhiteSpace(last) && string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone))
-      return "<span class='text-muted'>None</span>";
+    private static string FormatContact(string? first, string? last, string? email, string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(first) && string.IsNullOrWhiteSpace(last) && string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone))
+            return "<span class='text-muted'>None</span>";
 
-    var parts = new List<string>();
-    if (!string.IsNullOrWhiteSpace(first) || !string.IsNullOrWhiteSpace(last))
-      parts.Add($"{first} {last}".Trim());
-    if (!string.IsNullOrWhiteSpace(email))
-      parts.Add(email);
-    if (!string.IsNullOrWhiteSpace(phone))
-      parts.Add(phone);
-    return string.Join(" | ", parts);
-  }
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(first) || !string.IsNullOrWhiteSpace(last))
+            parts.Add($"{first} {last}".Trim());
+        if (!string.IsNullOrWhiteSpace(email))
+            parts.Add(email);
+        if (!string.IsNullOrWhiteSpace(phone))
+            parts.Add(phone);
+        return string.Join(" | ", parts);
+    }
 }
