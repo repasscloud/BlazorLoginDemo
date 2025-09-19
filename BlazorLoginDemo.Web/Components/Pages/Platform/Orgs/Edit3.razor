@@ -8,318 +8,336 @@
 @using BlazorLoginDemo.Shared.Models.Static.Platform
 @inject NavigationManager Nav
 @inject ILogger<Edit> Logger
+@inject IJSRuntime JS
 
 
 <EditForm Model="_vm.Organization" OnValidSubmit="SaveAsync">
-  <DataAnnotationsValidator />
-  <ValidationSummary />
+    <DataAnnotationsValidator />
+    <ValidationSummary />
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h2 class="mb-0">Edit Organization</h2>
-    <div class="btn-group">
-      <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">Back</button>
-      <button type="submit" class="btn btn-primary">
-        @if (_isSaving) { <span class="spinner-border spinner-border-sm me-2"></span> }
-        Save
-      </button>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">Edit Organization</h2>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">Back</button>
+            <button type="submit" class="btn btn-primary">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                Save
+            </button>
+        </div>
     </div>
-  </div>
 
   <!-- Identity -->
-  <div class="card mb-3">
-    <div class="card-header">Identity</div>
-    <div class="card-body row g-3">
-      <div class="col-md-6">
-        <label class="form-label">Id</label>
-        <InputText class="form-control bg-light" @bind-Value="_vm.Organization.Id" readonly />
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Name</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.Name" />
-      </div>
+    <div class="card mb-3">
+        <div class="card-header">Identity</div>
+            <div class="card-body row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Id</label>
+                    <div class="input-group">
+                        <InputText class="form-control bg-light" @bind-Value="_vm.Organization.Id" readonly />
+                        <button type="button" class="btn btn-outline-secondary"><i class="bi bi-copy"></i></button>
+                    </div>
 
-      <div class="col-md-6">
-        <label class="form-label">Type</label>
-        <InputSelect class="form-select" @bind-Value="_vm.Organization.Type">
-          @foreach (var t in Enum.GetValues<OrganizationType>()) { <option value="@t">@t</option> }
-        </InputSelect>
-      </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Name</label>
+                    <InputText class="form-control" @bind-Value="_vm.Organization.Name" />
+                </div>
 
-      <div class="col-md-6">
-        <div class="form-check mt-4">
-          <InputCheckbox class="form-check-input" @bind-Value="_vm.Organization.IsActive" />
-          <label class="form-check-label">Active</label>
+            <div class="col-md-6">
+                <label class="form-label">Type</label>
+                <InputSelect class="form-select" @bind-Value="_vm.Organization.Type">
+                    @foreach (var t in Enum.GetValues<OrganizationType>())
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check mt-4">
+                    <InputCheckbox class="form-check-input" @bind-Value="_vm.Organization.IsActive" />
+                    <label class="form-check-label">Active</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Parent Organization Id</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.ParentOrganizationId" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Parent</label>
+                <input class="form-control bg-light" value="@(_vm.Organization.Parent?.Name ?? "(none)")" readonly />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Children</label>
+                <ul class="list-group">
+                    @if (_vm.Organization.Children?.Any() == true)
+                    {
+                        @foreach (var c in _vm.Organization.Children)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                @c.Name <span class="text-muted small">@c.Id</span>
+                            </li>
+                        }
+                    }
+                    else
+                    {
+                        <li class="list-group-item text-muted">No child organizations.</li>
+                    }
+                </ul>
+            </div>
         </div>
-      </div>
+    </div>
 
-      <div class="col-md-6">
-        <label class="form-label">Parent Organization Id</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.ParentOrganizationId" />
-      </div>
+    <!-- Company Defaults -->
+    <div class="card mb-3">
+        <div class="card-header">Company Defaults</div>
+        <div class="card-body row g-3">
+            <div class="col-md-2">
+                <label class="form-label" for="defaultCurrency">Billing Currency</label>
+                <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.DefaultCurrency">
+                    @foreach (var c in _currencyOptions)
+                    {
+                        <option value="@c.Code">@c.Code @c.Flag</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="taxIdType">Tax ID Type</label>
+                <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.TaxIdType">
+                    @foreach (var t in _taxIdOptions)
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Tax Id</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.TaxId" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">🌍 Last Validated (UTC)</label>
+                <input class="form-control" value="@FormatUtc(_vm.Organization.TaxLastValidated)" readonly />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">🕒 Last Validated (Local)</label>
+                <input class="form-control" value="@FormatLocalBrowser(_vm.Organization.TaxLastValidated)" readonly />
+            </div>
+        </div>
+    </div>
 
-      <div class="col-md-6">
-        <label class="form-label">Parent</label>
-        <input class="form-control bg-light" value="@(_vm.Organization.Parent?.Name ?? "(none)")" readonly />
-      </div>
+    <!-- Physical Address -->
+    <div class="card mb-3">
+        <div class="card-header">Physical Address</div>
+        <div class="card-body row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Address Line 1</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine1" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Address Line 2</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine2" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Address Line 3</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine3" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">City</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.City" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">State/Province</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.State" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Postal Code</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.PostalCode" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="addressCountry">Country</label>
+                <InputSelect id="addressCountry" class="form-select" @bind-Value="_vm.Organization.Country">
+                    @foreach (string c in _countryOptions)
+                    {
+                        <option value="@c">@c</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+    </div>
 
-      <div class="col-12">
-        <label class="form-label">Children</label>
-        <ul class="list-group">
-          @if (_vm.Organization.Children?.Any() == true)
-          {
-            @foreach (var c in _vm.Organization.Children)
+    <!-- Mailing Address -->
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Mailing Address</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyPhysicalToMailing">
+                Copy from Physical
+            </button>
+        </div>
+        <div class="card-body row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Address Line 1</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine1" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Address Line 2</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine2" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Address Line 3</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine3" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">City</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingCity" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">State/Province</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingState" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Postal Code</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingPostalCode" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="mailingCountry">Country</label>
+                <InputSelect id="mailingCountry" class="form-select" @bind-Value="_vm.Organization.MailingCountry">
+                    @foreach (string c in _countryOptions)
+                    {
+                        <option value="@c">@c</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contacts -->
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>General / Commercial Contact</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Copy Down</button>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonFirstName" /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonLastName" /></div>
+                    <div class="col-md-4"><label class="form-label">CC</label>
+                        <InputSelect id="ccPerson" class="form-select" @bind-Value="_vm.Organization.ContactPersonCountryCode">
+                            @foreach (string i in _iddOptions)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonPhone" /></div>
+                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonEmail" /></div>
+                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonJobTitle" /></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>Billing Contact</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Copy from General</button>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonFirstName" /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonLastName" /></div>
+                    <div class="col-md-4"><label class="form-label">CC</label>
+                        <InputSelect id="ccBilling" class="form-select" @bind-Value="_vm.Organization.BillingPersonCountryCode">
+                            @foreach (string i in _iddOptions)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonPhone" /></div>
+                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonEmail" /></div>
+                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonJobTitle" /></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>Admin / Technical Contact</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Copy from General</button>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonFirstName" /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonCountryCode" /></div>
+                    <div class="col-md-4"><label class="form-label">CC</label>
+                        <InputSelect id="ccAdmin" class="form-select" @bind-Value="_vm.Organization.BillingPersonCountryCode">
+                            @foreach (string i in _iddOptions)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonPhone" /></div>
+                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonEmail" /></div>
+                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonJobTitle" /></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Domains -->
+    <div class="card mb-3">
+        <div class="card-header">Tenant Domains</div>
+        <div class="card-body">
+            <div class="input-group mb-2">
+                <InputText class="form-control" @bind-Value="_vm.NewDomain" placeholder="example.com" />
+                <button type="button" class="btn btn-outline-primary" @onclick="AddDomain">Add</button>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_vm.DomainMessage))
             {
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                @c.Name <span class="text-muted small">@c.Id</span>
-              </li>
+                <div class="text-danger small mb-2">@_vm.DomainMessage</div>
             }
-          }
-          else
-          {
-            <li class="list-group-item text-muted">No child organizations.</li>
-          }
-        </ul>
-      </div>
-    </div>
-  </div>
 
-  <!-- Company Defaults -->
-  <div class="card mb-3">
-    <div class="card-header">Company Defaults</div>
-    <div class="card-body row g-3">
-        <div class="col-md-3">
-            <label class="form-label" for="defaultCurrency">Billing Currency</label>
-            <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.DefaultCurrency">
-                @foreach (var c in _currencyOptions)
+            <ul class="list-group">
+                @if (_vm.Organization.Domains?.Any() == true)
                 {
-                    <option value="@c.Code">@c.Code @c.Flag</option>
+                    @foreach (var d in _vm.Organization.Domains)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @DomainLabel(d)
+                            <button type="button" class="btn btn-sm btn-outline-danger" title="Remove" @onclick="() => RemoveDomain(d)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </li>
+                    }
                 }
-            </InputSelect>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" for="taxIdType">Tax ID Type</label>
-            <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.TaxIdType">
-                @foreach (var t in _taxIdOptions)
+                else
                 {
-                    <option value="@t">@t</option>
+                    <li class="list-group-item text-muted">No domains configured.</li>
                 }
-            </InputSelect>
-        </div>
-      <div class="col-md-3">
-        <label class="form-label">Tax Id</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.TaxId" />
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Tax Last Validated</label>
-        <InputDate class="form-control bg-light" @bind-Value="_vm.Organization.TaxLastValidated" readonly />
-      </div>
-    </div>
-  </div>
-
-  <!-- Physical Address -->
-  <div class="card mb-3">
-    <div class="card-header">Physical Address</div>
-    <div class="card-body row g-3">
-      <div class="col-md-4">
-        <label class="form-label">Address Line 1</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine1" />
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Address Line 2</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine2" />
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Address Line 3</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine3" />
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">City</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.City" />
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">State/Province</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.State" />
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Postal Code</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.PostalCode" />
-      </div>
-        <div class="col-md-3">
-            <label class="form-label" for="addressCountry">Country</label>
-            <InputSelect id="addressCountry" class="form-select" @bind-Value="_vm.Organization.Country">
-                @foreach (string c in _countryOptions)
-                {
-                    <option value="@c">@c</option>
-                }
-            </InputSelect>
+            </ul>
+            <div class="form-text mt-2">Domains are used for tenant discovery and login routing.</div>
         </div>
     </div>
-  </div>
-
-  <!-- Mailing Address -->
-  <div class="card mb-3">
-    <div class="card-header d-flex align-items-center justify-content-between">
-      <span>Mailing Address</span>
-      <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyPhysicalToMailing">
-        Copy from Physical
-      </button>
-    </div>
-    <div class="card-body row g-3">
-      <div class="col-md-4">
-        <label class="form-label">Address Line 1</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine1" />
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Address Line 2</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine2" />
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Address Line 3</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine3" />
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">City</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.MailingCity" />
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">State/Province</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.MailingState" />
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Postal Code</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.MailingPostalCode" />
-      </div>
-        <div class="col-md-3">
-            <label class="form-label" for="mailingCountry">Country</label>
-            <InputSelect id="mailingCountry" class="form-select" @bind-Value="_vm.Organization.MailingCountry">
-                @foreach (string c in _countryOptions)
-                {
-                    <option value="@c">@c</option>
-                }
-            </InputSelect>
-        </div>
-    </div>
-  </div>
-
-  <!-- Contacts -->
-  <div class="row">
-    <div class="col-lg-4">
-      <div class="card mb-3">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <span>General / Commercial Contact</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary">Copy Down</button>
-        </div>
-        <div class="card-body row g-3">
-          <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonFirstName" /></div>
-          <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonLastName" /></div>
-          <div class="col-md-4"><label class="form-label">CC</label>
-            <InputSelect id="ccPerson" class="form-select" @bind-Value="_vm.Organization.ContactPersonCountryCode">
-                @foreach (string i in _iddOptions){ <option value="@i">@i</option> }
-            </InputSelect>
-          </div>
-          <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonPhone" /></div>
-          <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonEmail" /></div>
-          <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonJobTitle" /></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-4">
-      <div class="card mb-3">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <span>Billing Contact</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary">Copy from General</button>
-        </div>
-        <div class="card-body row g-3">
-          <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonFirstName" /></div>
-          <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonLastName" /></div>
-          <div class="col-md-4"><label class="form-label">CC</label>
-            <InputSelect id="ccBilling" class="form-select" @bind-Value="_vm.Organization.BillingPersonCountryCode">
-                @foreach (string i in _iddOptions){ <option value="@i">@i</option> }
-            </InputSelect>
-          </div>
-          <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonPhone" /></div>
-          <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonEmail" /></div>
-          <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonJobTitle" /></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-4">
-      <div class="card mb-3">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <span>Admin / Technical Contact</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary">Copy from General</button>
-        </div>
-        <div class="card-body row g-3">
-          <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonFirstName" /></div>
-          <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonCountryCode" /></div>
-          <div class="col-md-4"><label class="form-label">CC</label>
-            <InputSelect id="ccAdmin" class="form-select" @bind-Value="_vm.Organization.BillingPersonCountryCode">
-                @foreach (string i in _iddOptions){ <option value="@i">@i</option> }
-            </InputSelect>
-          </div>
-          <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonPhone" /></div>
-          <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonEmail" /></div>
-          <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonJobTitle" /></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Domains -->
-  <div class="card mb-3">
-    <div class="card-header">Tenant Domains</div>
-    <div class="card-body">
-      <div class="input-group mb-2">
-        <InputText class="form-control" @bind-Value="_vm.NewDomain" placeholder="example.com" />
-        <button type="button" class="btn btn-outline-primary" @onclick="AddDomain">Add</button>
-      </div>
-      @if (!string.IsNullOrWhiteSpace(_vm.DomainMessage))
-      {
-        <div class="text-danger small mb-2">@_vm.DomainMessage</div>
-      }
-
-      <ul class="list-group">
-        @if (_vm.Organization.Domains?.Any() == true)
-        {
-          @foreach (var d in _vm.Organization.Domains)
-          {
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              @DomainLabel(d)
-              <button type="button" class="btn btn-sm btn-outline-danger" title="Remove"
-                      @onclick="() => RemoveDomain(d)">
-                <i class="bi bi-trash"></i>
-              </button>
-            </li>
-          }
-        }
-        else
-        {
-          <li class="list-group-item text-muted">No domains configured.</li>
-        }
-      </ul>
-      <div class="form-text mt-2">Domains are used for tenant discovery and login routing.</div>
-    </div>
-  </div>
-
-
-
-
-
 
   <!-- Policies -->
   <div class="card mb-3">
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>Policies</span>
         <div class="btn-group">
-            <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">Travel Policies</button>
+            <button type="button" class="btn btn-outline-primary" @onclick="GoBack">Travel Policies</button>
             <button type="submit" class="btn btn-primary">Expense Policies</button>
         </div>
     </div>
     <div class="card-body row">
       <div class="col-md-6">
-        <h6>Travel Policies</h6>
+        <label class="form-label">Travel Policies</label>
         <ul class="list-group">
             @if (_vm.Organization.TravelPolicies?.Any() == true)
             {
@@ -335,7 +353,7 @@
         </ul>
       </div>
       <div class="col-md-6">
-        <h6>Expense Policies</h6>
+        <label class="form-label">Expense Policies</label>
         <ul class="list-group">
           @if (_vm.Organization.ExpensePolicies?.Any() == true)
           {
@@ -353,50 +371,78 @@
     </div>
   </div>
 
-  <!-- Licensing -->
-  <div class="card mb-3">
-    <div class="card-header d-flex align-items-center justify-content-between">
-        <span>Billing / Licensing</span>
-        <button type="button" class="btn btn-outline-secondary" @onclick="CopyPhysicalToMailing">
-            View/Edit
-        </button>
+    <!-- Licensing -->
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Billing / Licensing</span>
+            <button type="button" class="btn btn-outline-primary" @onclick="CopyPhysicalToMailing">View/Edit</button>
+        </div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label">License Agreement Id</label>
+                <div class="input-group">
+                    <InputText class="form-control bg-light" @bind-Value="_vm.Organization.LicenseAgreementId" readonly />
+                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-copy"></i></button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">License Agreement</label>
+                <input class="form-control bg-light" value="@(_vm.Organization.LicenseAgreement is null ? "(none)" : "Loaded")" readonly />
+            </div>
+        </div>
     </div>
-    <div class="card-body row g-3">
-      <div class="col-md-6">
-        <label class="form-label">License Agreement Id</label>
-        <InputText class="form-control bg-light" @bind-Value="_vm.Organization.LicenseAgreementId" readonly />
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">License Agreement</label>
-        <input class="form-control bg-light" value="@(_vm.Organization.LicenseAgreement is null ? "(none)" : "Loaded")" readonly />
-      </div>
-    </div>
-  </div>
 
-  <!-- Audit -->
-  <div class="card mb-4">
-    <div class="card-header">🌍 Last Updated (UTC)</div>
-    <div class="card-body row g-3">
-      <div class="col-md-3">
-        <InputDate class="form-control" @bind-Value="_vm.Organization.LastUpdatedUtc" readonly />
-      </div>
+    <!-- Audit -->
+    <div class="card mb-4">
+        <div class="card-header">Audit</div>
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">🌍 Last Updated (UTC)</label>
+                <div class="input-group">
+                    <input class="form-control" value="@FormatUtc(_vm.Organization.LastUpdatedUtc)" readonly />
+                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-copy"></i></button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">🕒 Last Updated (Local)</label>
+                <div class="input-group">
+                    <input class="form-control" value="@FormatLocalBrowser(_vm.Organization.LastUpdatedUtc)" readonly />
+                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-copy"></i></button>
+                </div>
+            </div>    
+        </div>
     </div>
-  </div>
-  <div class="card mb-4">
-    <div class="card-header">🕒 Last Updated (Local)</div>
-    <div class="card-body row g-3">
-      <div class="col-md-3">
-        <InputDate class="form-control" @bind-Value="_vm.Organization.LastUpdatedUtc" readonly />
-      </div>
-    </div>
-  </div>
+
+
 </EditForm>
 
 @code {
-  [Parameter] public string? OrgId { get; set; }
+    [Parameter] public string? OrgId { get; set; }
 
-  private OrgEditVm _vm = new();
-  private bool _isSaving;
+    private OrgEditVm _vm = new();
+    private bool _isSaving;
+
+    // holds the browser time zone (IANA id like "Australia/Sydney", "Europe/London", etc.)
+    private TimeZoneInfo? _browserTz; 
+    private string? _tzId;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            _tzId = await JS.InvokeAsync<string>("blazorGetTz"); // e.g., "Australia/Sydney"
+            _browserTz = TimeZoneInfo.FindSystemTimeZoneById(_tzId);
+        }
+        catch
+        {
+            // If you want AU as default instead of server-local/UTC:
+            _tzId = "Australia/Sydney";
+            _browserTz = TimeZoneInfo.FindSystemTimeZoneById(_tzId);
+        }
+        StateHasChanged();
+    }
 
   protected override async Task OnInitializedAsync()
   {
@@ -480,12 +526,12 @@
   // -----------------
   // ViewModel
   // -----------------
-  private sealed class OrgEditVm
-  {
-    public OrganizationUnified Organization { get; set; } = new OrganizationUnified { Name = string.Empty };
-    public string? NewDomain { get; set; }
-    public string DomainMessage { get; set; } = string.Empty;
-  }
+private sealed class OrgEditVm
+{
+public OrganizationUnified Organization { get; set; } = new OrganizationUnified { Name = string.Empty };
+public string? NewDomain { get; set; }
+public string DomainMessage { get; set; } = string.Empty;
+}
 
     private readonly CurrencyOption[] _currencyOptions =
     [
@@ -527,4 +573,18 @@
         "+1",
         "+1"
     };
+
+    private static string FormatUtc(DateTime utc)
+    {
+        DateTime fixedUtc = utc.Kind == DateTimeKind.Utc ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+        return fixedUtc.ToString(format: "yyyy-MM-dd HH:mm:ss.fff");
+    }
+
+    private string FormatLocalBrowser(DateTime utc)
+    {
+        if (_browserTz is null) return "…";
+        DateTime fixedUtc = utc.Kind == DateTimeKind.Utc ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+        DateTime local = TimeZoneInfo.ConvertTimeFromUtc(fixedUtc, _browserTz);
+        return local.ToString(format: "yyyy-MM-dd HH:mm:ss.fff");
+    }
 }
