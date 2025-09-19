@@ -1,4 +1,4 @@
-@page "/platform/organizations/{OrgId}/edit3"
+@page "/platform/organizations/{OrgId}/edit"
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
 
@@ -85,16 +85,16 @@
             <!-- TODO: Link fields in OrgEdit page #25 -->
             <div class="col-md-2">
                 <label class="form-label">Type</label>
-                <input class="form-control bg-light" value="@(_vm.Organization.Type)" readonly />
+                <input class="form-control bg-light" value="@(parentOrgInfo.ParentType)" readonly />
             </div>
 
             <!-- TODO: Link fields in OrgEdit page #25 -->
             <div class="col-md-1">
                 <label class="form-label">@(_vm.Organization.IsActive ? "Active" : "Inactive")</label>
                 <div class="form-check form-switch mt-2">
-                    <InputCheckbox class="form-check-input" @bind-Value="_vm.Organization.IsActive" disabled />
-                    <label class="form-check-label" title="@(_vm.Organization.IsActive ? "Active" : "Inactive")">
-                        <span aria-hidden="true">@(_vm.Organization.IsActive ? " ✅" : " ❌")</span>
+                    <input type="checkbox" class="form-check-input" checked="@(parentOrgInfo.ParentActive)" disabled />
+                    <label class="form-check-label">
+                        <span aria-hidden="true">@(parentOrgInfo.ParentActive ? " ✅" : " ❌")</span>
                     </label>
                 </div>
             </div>
@@ -248,7 +248,7 @@
             <div class="card mb-3">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <span>General / Commercial Contact</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Copy Down</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => CopyGeneralContactDownAsync())">Copy Down</button>
                 </div>
                 <div class="card-body row g-3">
                     <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonFirstName" /></div>
@@ -272,7 +272,7 @@
             <div class="card mb-3">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <span>Billing Contact</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Copy from General</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => CopyFromGeneralContactToBillingAsync())">Copy from General</button>
                 </div>
                 <div class="card-body row g-3">
                     <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonFirstName" /></div>
@@ -296,7 +296,7 @@
             <div class="card mb-3">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <span>Admin / Technical Contact</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Copy from General</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => CopyFromGeneralContactToAdminAsync())">Copy from General</button>
                 </div>
                 <div class="card-body row g-3">
                     <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonFirstName" /></div>
@@ -401,7 +401,7 @@
     <div class="card mb-3">
         <div class="card-header d-flex align-items-center justify-content-between">
             <span>Billing / Licensing</span>
-            <button type="button" class="btn btn-outline-primary" @onclick="CopyPhysicalToMailing">View/Edit</button>
+            <button type="button" class="btn btn-outline-primary">View/Edit</button>
         </div>
         <div class="card-body row g-3">
             <div class="col-md-6">
@@ -449,6 +449,9 @@
 </EditForm>
 
 @code {
+    // -----------------
+    // Parameters and Classes
+    // -----------------
     [Parameter] public string? OrgId { get; set; }
 
     private OrgEditVm _vm = new();
@@ -457,6 +460,37 @@
     // holds the browser time zone (IANA id like "Australia/Sydney", "Europe/London", etc.)
     private TimeZoneInfo? _browserTz; 
     private string? _tzId;
+    private ParentOrgInfo parentOrgInfo = new("", "", false);
+    private record ParentOrgInfo(string ParentName, string ParentType, bool ParentActive);
+    private record CurrencyOption(string Code, string Flag);
+    private readonly List<string> _taxIdOptions = new List<string>
+    {
+        string.Empty,
+        "AU ABN",
+        "AU ACN",
+        "NZ ABN"
+    };
+
+    private readonly List<string> _countryOptions = new List<string>
+    {
+        string.Empty,
+        "Australia",
+        "New Zealand",
+        "Singapore",
+        "United Kingdom",
+        "United States",
+        "Canada"
+    };
+
+    private readonly List<string> _iddOptions = new List<string>
+    {
+        string.Empty,
+        "+61",
+        "+64",
+        "+65",
+        "+44",
+        "+1"
+    };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -494,80 +528,132 @@
                 return;
             }
             _vm.Organization = loaded.Org ?? new OrganizationUnified { Name = "Unknown" };
+            LoadParentOrgInfo(pOrg: _vm.Organization);
         }
     }
 
-  private async Task SaveAsync()
-  {
-    _isSaving = true;
-    try
+    private async Task SaveAsync()
     {
-      _vm.Organization.LastUpdatedUtc = DateTime.UtcNow;
-      // await OrgService.UpdateAsync(_vm.Organization);
-      Logger.LogInformation("Saved organization {OrgId}", _vm.Organization.Id);
-      // Optional: Nav to details
-      // Nav.NavigateTo($"/platform/organizations/{_vm.Organization.Id}");
-    }
-    finally
-    {
-      _isSaving = false;
-    }
-  }
-
-  private void GoBack() => Nav.NavigateTo("/platform/organizations");
-
-  private void CopyPhysicalToMailing()
-  {
-    var o = _vm.Organization;
-    o.MailingAddressLine1 = o.AddressLine1;
-    o.MailingAddressLine2 = o.AddressLine2;
-    o.MailingAddressLine3 = o.AddressLine3;
-    o.MailingCity = o.City;
-    o.MailingState = o.State;
-    o.MailingPostalCode = o.PostalCode;
-    o.MailingCountry = o.Country;
-  }
-
-  // Domain helpers
-  private void AddDomain()
-  {
-    _vm.DomainMessage = string.Empty;
-    var value = (_vm.NewDomain ?? string.Empty).Trim().ToLowerInvariant();
-    if (string.IsNullOrWhiteSpace(value))
-    {
-      _vm.DomainMessage = "Please enter a domain.";
-      return;
-    }
-    if (_vm.Organization.Domains.Any(d => (d?.ToString() ?? string.Empty).Equals(value, StringComparison.OrdinalIgnoreCase)
-                                       || GetDomain(d).Equals(value, StringComparison.OrdinalIgnoreCase)))
-    {
-      _vm.DomainMessage = "That domain already exists.";
-      return;
+        _isSaving = true;
+        try
+        {
+            bool ok = await OrgSvc.UpdateOrgAsync(_vm.Organization);
+            if (!ok) { /* show error */ }
+            
+            // the OrgId is forced, because at this point it must exist, stupid code
+            IAdminOrgServiceUnified.OrgAggregate? fresh = await OrgSvc.GetByIdAsync(OrgId!);
+            if (fresh is not null)
+                _vm.Organization = fresh.Org;
+        }
+        finally
+        {
+            _isSaving = false;
+            LoadParentOrgInfo(pOrg: _vm.Organization);
+            StateHasChanged();
+            await Task.Delay(200);
+            Nav.NavigateTo(uri: "/");
+        }
     }
 
-    // NOTE: OrganizationDomainUnified likely has a 'Domain' property; if different, update GetDomain/label below.
-    _vm.Organization.Domains.Add(new OrganizationDomainUnified { Domain = value });
-    _vm.NewDomain = string.Empty;
-  }
+    private void GoBack() => Nav.NavigateTo("/platform/organizations");
 
-  private void RemoveDomain(OrganizationDomainUnified d)
-  {
-    _vm.Organization.Domains.Remove(d);
-  }
+    private async Task CopyFromGeneralContactToBillingAsync()
+    {
+        OrganizationUnified? o = _vm.Organization;
+        o.BillingPersonFirstName = o.ContactPersonFirstName;
+        o.BillingPersonLastName = o.ContactPersonLastName;
+        o.BillingPersonCountryCode = o.ContactPersonCountryCode;
+        o.BillingPersonPhone = o.ContactPersonPhone;
+        o.BillingPersonEmail = o.ContactPersonEmail;
+        o.BillingPersonJobTitle = o.ContactPersonJobTitle;
 
-  private string DomainLabel(OrganizationDomainUnified d)
-    => GetDomain(d);
+        await SaveAsync();
+    }
 
-  private static string GetDomain(OrganizationDomainUnified d)
-  {
-    // Prefer a 'Domain' property if present; fall back to ToString()
-    var prop = d.GetType().GetProperty("Domain");
-    return prop?.GetValue(d)?.ToString() ?? d.ToString() ?? "(domain)";
-  }
+    private async Task CopyFromGeneralContactToAdminAsync()
+    {
+        OrganizationUnified? o = _vm.Organization;
+        o.AdminPersonFirstName = o.ContactPersonFirstName;
+        o.AdminPersonLastName = o.ContactPersonLastName;
+        o.AdminPersonCountryCode = o.ContactPersonCountryCode;
+        o.AdminPersonPhone = o.ContactPersonPhone;
+        o.AdminPersonEmail = o.ContactPersonEmail;
+        o.AdminPersonJobTitle = o.ContactPersonJobTitle;
 
-  // -----------------
-  // ViewModel
-  // -----------------
+        await SaveAsync();
+    }
+
+    private async Task CopyGeneralContactDownAsync()
+    {
+        OrganizationUnified? o = _vm.Organization;
+        o.BillingPersonFirstName = o.ContactPersonFirstName;
+        o.BillingPersonLastName = o.ContactPersonLastName;
+        o.BillingPersonCountryCode = o.ContactPersonCountryCode;
+        o.BillingPersonPhone = o.ContactPersonPhone;
+        o.BillingPersonEmail = o.ContactPersonEmail;
+        o.BillingPersonJobTitle = o.ContactPersonJobTitle;
+        o.AdminPersonFirstName = o.ContactPersonFirstName;
+        o.AdminPersonLastName = o.ContactPersonLastName;
+        o.AdminPersonCountryCode = o.ContactPersonCountryCode;
+        o.AdminPersonPhone = o.ContactPersonPhone;
+        o.AdminPersonEmail = o.ContactPersonEmail;
+        o.AdminPersonJobTitle = o.ContactPersonJobTitle;
+
+        await SaveAsync();
+    }
+
+    private void CopyPhysicalToMailing()
+    {
+        OrganizationUnified? o = _vm.Organization;
+        o.MailingAddressLine1 = o.AddressLine1;
+        o.MailingAddressLine2 = o.AddressLine2;
+        o.MailingAddressLine3 = o.AddressLine3;
+        o.MailingCity = o.City;
+        o.MailingState = o.State;
+        o.MailingPostalCode = o.PostalCode;
+        o.MailingCountry = o.Country;
+    }
+
+    // Domain helpers
+    private void AddDomain()
+    {
+        _vm.DomainMessage = string.Empty;
+        var value = (_vm.NewDomain ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            _vm.DomainMessage = "Please enter a domain.";
+            return;
+        }
+        if (_vm.Organization.Domains.Any(d => (d?.ToString() ?? string.Empty).Equals(value, StringComparison.OrdinalIgnoreCase)
+            || GetDomain(d).Equals(value, StringComparison.OrdinalIgnoreCase)))
+        {
+            _vm.DomainMessage = "That domain already exists.";
+            return;
+        }
+
+        // NOTE: OrganizationDomainUnified likely has a 'Domain' property; if different, update GetDomain/label below.
+        _vm.Organization.Domains.Add(new OrganizationDomainUnified { Domain = value });
+        _vm.NewDomain = string.Empty;
+    }
+
+    private void RemoveDomain(OrganizationDomainUnified d)
+    {
+        _vm.Organization.Domains.Remove(d);
+    }
+
+    private string DomainLabel(OrganizationDomainUnified d)
+        => GetDomain(d);
+
+    private static string GetDomain(OrganizationDomainUnified d)
+    {
+        // Prefer a 'Domain' property if present; fall back to ToString()
+        var prop = d.GetType().GetProperty("Domain");
+        return prop?.GetValue(d)?.ToString() ?? d.ToString() ?? "(domain)";
+    }
+
+    // -----------------
+    // ViewModel
+    // -----------------
     private sealed class OrgEditVm
     {
         public OrganizationUnified Organization { get; set; } = new OrganizationUnified { Name = string.Empty };
@@ -586,38 +672,6 @@
         new CurrencyOption(Code: "EUR", Flag: "🇪🇺"),
     ];
 
-    private record CurrencyOption(string Code, string Flag);
-
-    private readonly List<string> _taxIdOptions = new List<string>
-    {
-        string.Empty,
-        "AU ABN",
-        "AU ACN",
-        "NZ ABN"
-    };
-
-    private readonly List<string> _countryOptions = new List<string>
-    {
-        string.Empty,
-        "Australia",
-        "New Zealand",
-        "Singapore",
-        "United Kingdom",
-        "United States",
-        "Canada"
-    };
-
-    private readonly List<string> _iddOptions = new List<string>
-    {
-        string.Empty,
-        "+61",
-        "+64",
-        "+65",
-        "+44",
-        "+1",
-        "+1"
-    };
-
     private static string FormatUtc(DateTime utc)
     {
         DateTime fixedUtc = utc.Kind == DateTimeKind.Utc ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc);
@@ -633,11 +687,20 @@
     }
     private IJSObjectReference? _clipboard;
 
-private async Task CopyToClipboardAsync(string? value)
+    private async Task CopyToClipboardAsync(string? value)
     {
         // Lazy-load if user clicks before first render finished
         _clipboard ??= await JS.InvokeAsync<IJSObjectReference>("import", "/js/clipboard.js");
 
         var ok = await _clipboard.InvokeAsync<bool>("copyText", value ?? string.Empty);
+    }
+
+    private void LoadParentOrgInfo(OrganizationUnified pOrg)
+    {
+        var pname = pOrg.Parent?.Name ?? string.Empty;
+        var ptype = pOrg.Parent?.Type.ToString() ?? string.Empty;
+        var pact = pOrg.Parent?.IsActive ?? false;
+        parentOrgInfo = new(pname, ptype, pact);  // overwrite
+
     }
 }

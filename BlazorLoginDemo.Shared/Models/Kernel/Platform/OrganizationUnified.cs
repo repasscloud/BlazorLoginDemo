@@ -48,7 +48,7 @@ public sealed class OrganizationUnified
     public string? City { get; set; }
     public string? State { get; set; }
     public string? PostalCode { get; set; }
-    [DefaultValue("")] public string Country { get; set; } = string.Empty;
+    public string Country { get; set; } = string.Empty;
 
     // Mailing address
     public string? MailingAddressLine1 { get; set; }
@@ -57,7 +57,7 @@ public sealed class OrganizationUnified
     public string? MailingCity { get; set; }
     public string? MailingState { get; set; }
     public string? MailingPostalCode { get; set; }
-    [DefaultValue("")] public string MailingCountry { get; set; } = string.Empty;
+    public string MailingCountry { get; set; } = string.Empty;
 
     // Primary contacts
     // General/Commercial Contact

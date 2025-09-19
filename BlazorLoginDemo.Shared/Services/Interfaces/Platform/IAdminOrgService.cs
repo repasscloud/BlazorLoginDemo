@@ -49,6 +49,7 @@ public interface IAdminOrgServiceUnified
         IReadOnlyList<string>? DomainsReplace // when non-null, fully replace domain list
     );
     Task<OrgAggregate> UpdateAsync(UpdateOrgRequest req, CancellationToken ct = default);
+    Task<bool> UpdateOrgAsync(OrganizationUnified req, CancellationToken ct = default);
 
     Task<OrgAggregate> RemoveDomainAsync(string orgId, string domain, CancellationToken ct = default);
 

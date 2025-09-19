@@ -99,6 +99,8 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
     public async Task<IAdminOrgServiceUnified.OrgAggregate?> GetByIdAsync(string id, CancellationToken ct = default)
     {
         var org = await _db.Organizations
+            .AsNoTracking()
+            .AsSplitQuery()  // avoids cartesian explosion with Includes
             .Include(o => o.Domains)
             .Include(o => o.LicenseAgreement)
             .FirstOrDefaultAsync(o => o.Id == id, ct);
@@ -195,6 +197,56 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             .FirstAsync(o => o.Id == org.Id, ct);
         return new IAdminOrgServiceUnified.OrgAggregate(refreshed, refreshed.Domains.ToList(), refreshed.LicenseAgreement);
     }
+
+    public async Task<bool> UpdateOrgAsync(OrganizationUnified req, CancellationToken ct = default)
+    {
+        // Attach only the root entity; do NOT call Update() (that walks the whole graph)
+        _db.Attach(req);
+
+        var e = _db.Entry(req);
+
+        // Mark ONLY scalar properties as modified (no navs/collections)
+        foreach (var p in e.Properties)
+        {
+            // skip keys, concurrency tokens, and insert-only columns
+            if (p.Metadata.IsKey()) continue;
+            if (p.Metadata.IsConcurrencyToken) continue;
+
+            // your immutable created timestamp
+            if (p.Metadata.Name == nameof(OrganizationUnified.CreatedAt)) continue;
+
+            // If you also want to skip FKs that point to navs, uncomment:
+            // if (p.Metadata.IsForeignKey()) continue;
+
+            p.IsModified = true;
+        }
+
+        // LastUpdatedUtc column
+        e.Property(x => x.LastUpdatedUtc).CurrentValue = DateTime.UtcNow;
+        e.Property(x => x.LastUpdatedUtc).IsModified = true;
+
+        // Ensure navs are untouched (they were/are updated elsewhere)
+        // These lines are protective; not strictly required if you didn't call Update()
+        e.State = EntityState.Unchanged; // baseline
+        foreach (var p in e.Properties)
+        {
+            // re-apply our scalar flags from above
+            if (!p.Metadata.IsKey()
+                && !p.Metadata.IsConcurrencyToken
+                && p.Metadata.Name != nameof(OrganizationUnified.CreatedAt)
+                && !p.Metadata.IsForeignKey())
+            {
+                p.IsModified = true;
+            }
+        }
+
+        // Execute single UPDATE ... WHERE Id = req.Id
+        var affected = await _db.SaveChangesAsync(ct);
+
+        // Fail fast: false => no row matched Id (or concurrency prevented update)
+        return affected > 0;
+    }
+
 
     public async Task<IAdminOrgServiceUnified.OrgAggregate> RemoveDomainAsync(string orgId, string domain, CancellationToken ct = default)
     {
