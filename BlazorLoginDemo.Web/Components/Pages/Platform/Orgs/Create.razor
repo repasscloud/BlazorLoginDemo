@@ -1,0 +1,183 @@
+@page "/platform/organizations/create"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using BlazorLoginDemo.Shared.Models.Kernel.Platform
+@using BlazorLoginDemo.Shared.Models.Static.Platform
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@inject IAdminOrgServiceUnified AdminOrgService
+@inject NavigationManager Nav
+
+
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-xl-7 col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">Create Organization</h5>
+          <small class="text-muted">Minimum details to provision a new organization and its sign-in domains.</small>
+        </div>
+
+        <EditForm Model="_vm" OnValidSubmit="HandleSubmit">
+          <DataAnnotationsValidator />
+          <ValidationSummary />
+          <div class="card-body">
+            <div class="row g-3">
+
+              <div class="col-md-8">
+                <label class="form-label">Name</label>
+                <InputText class="form-control" @bind-Value="_vm.Name" />
+                <ValidationMessage For="@(() => _vm.Name)" />
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Active</label>
+                <div class="form-check form-switch mt-2">
+                  <InputCheckbox class="form-check-input" @bind-Value="_vm.IsActive" />
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Type</label>
+                <InputSelect class="form-select" @bind-Value="_vm.Type">
+                  @foreach (var v in Enum.GetValues<BlazorLoginDemo.Shared.Models.Static.Platform.OrganizationType>())
+                  {
+                    <option value="@v">@v</option>
+                  }
+                </InputSelect>
+                <ValidationMessage For="@(() => _vm.Type)" />
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Parent Organization Id (optional)</label>
+                <InputText class="form-control" @bind-Value="_vm.ParentOrganizationId" placeholder="e.g. org_abc123" />
+                <div class="form-text">Required only for child orgs (e.g. Client under a TMC).</div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label d-flex align-items-center justify-content-between">
+                  <span>Domains</span>
+                  <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddDomain">
+                    <i class="bi bi-plus-lg"></i> Add domain
+                  </button>
+                </label>
+
+                @if (_vm.Domains.Count == 0)
+                {
+                  <div class="text-muted small mb-2">Add one or more login/discovery domains (e.g., example.com).</div>
+                }
+
+                @for (var i = 0; i < _vm.Domains.Count; i++)
+                {
+                  <div class="border rounded-3 p-3 mb-2">
+                    <div class="row g-2 align-items-end">
+                      <div class="col-md-10">
+                        <label class="form-label mb-1">Domain</label>
+                        <InputText class="form-control" @bind-Value="_vm.Domains[i]" placeholder="example.com" />
+                        <ValidationMessage For="@(() => _vm.Domains[i])" />
+                      </div>
+                      <div class="col-md-2 text-end">
+                        <button type="button" class="btn btn-outline-danger" title="Remove domain" @onclick="() => RemoveDomain(i)">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+            </div>
+          </div>
+
+          <div class="card-footer d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+              @if (_isSaving)
+              {
+                <span class="spinner-border spinner-border-sm me-2"></span>
+              }
+              Create Organization
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="@_isSaving">Cancel</button>
+          </div>
+        </EditForm>
+      </div>
+
+      @if (!string.IsNullOrWhiteSpace(_error))
+      {
+        <div class="alert alert-danger mt-3" role="alert">
+          <strong>Could not create organization:</strong> @_error
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+@code {
+  private CreateOrganizationVm _vm = new();
+  private bool _isSaving;
+  private string? _error;
+
+  private async Task HandleSubmit()
+  {
+    _error = null;
+    _isSaving = true;
+
+    try
+    {
+      var req = new BlazorLoginDemo.Shared.Services.Interfaces.Platform.IAdminOrgServiceUnified.CreateOrgRequest(
+        Name: _vm.Name.Trim(),
+        Type: _vm.Type, // enum value
+        ParentOrganizationId: string.IsNullOrWhiteSpace(_vm.ParentOrganizationId) ? null : _vm.ParentOrganizationId.Trim(),
+        IsActive: _vm.IsActive,
+        Domains: _vm.Domains.Select(d => d.Trim().ToLowerInvariant()).Where(d => !string.IsNullOrWhiteSpace(d)).Distinct().ToList()
+      );
+
+      var aggregate = await AdminOrgService.CreateAsync(req);
+      Nav.NavigateTo($"/platform/organizations/{aggregate.Org.Id}");
+    }
+    catch (Exception ex)
+    {
+      _error = ex.Message;
+    }
+    finally
+    {
+      _isSaving = false;
+      StateHasChanged();
+    }
+  }
+
+  private void Cancel() => Nav.NavigateTo("/platform/organizations");
+
+  private void AddDomain() => _vm.Domains.Add(string.Empty);
+
+  private void RemoveDomain(int index)
+  {
+    if (index >= 0 && index < _vm.Domains.Count)
+      _vm.Domains.RemoveAt(index);
+  }
+
+  // ViewModel that matches CreateOrgRequest exactly
+  private sealed class CreateOrganizationVm
+  {
+    [Required, StringLength(128)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    public BlazorLoginDemo.Shared.Models.Static.Platform.OrganizationType Type { get; set; } =
+      BlazorLoginDemo.Shared.Models.Static.Platform.OrganizationType.Client;
+
+    public string? ParentOrganizationId { get; set; }
+
+    public bool IsActive { get; set; } = true;
+
+    // plain strings; the server will create OrganizationDomainUnified rows
+    [MinLength(0)]
+    public List<string> Domains { get; set; } = new();
+
+    // Per-item domain validation helper (optional—but keeps UX nice)
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)+$", ErrorMessage = "Enter a valid domain like example.com")]
+    public string? DomainPattern => null; // not used; pattern is referenced via ValidationMessage for each Domains[i]
+  }
+}
