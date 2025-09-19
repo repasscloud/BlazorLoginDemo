@@ -4,8 +4,10 @@
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform  @* org service *@
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Models.Static.Platform
+@inject IAdminOrgServiceUnified OrgSvc
 @inject NavigationManager Nav
 @inject ILogger<Edit> Logger
 @inject IJSRuntime JS
@@ -480,16 +482,20 @@
         StateHasChanged();
     }
 
-  protected override async Task OnInitializedAsync()
-  {
-    // Load (plug into your existing service)
-    if (!string.IsNullOrWhiteSpace(OrgId))
+    protected override async Task OnInitializedAsync()
     {
-      // var loaded = await OrgService.GetAsync(Id);
-      // _vm.Organization = loaded ?? new OrganizationUnified { Id = Id };
-      _vm.Organization.Id = OrgId!;
+        // Load (plug into your existing service)
+        if (!string.IsNullOrWhiteSpace(OrgId))
+        {
+            IAdminOrgServiceUnified.OrgAggregate? loaded = await OrgSvc.GetByIdAsync(OrgId);
+            if (loaded is null)
+            {
+                Nav.NavigateTo(uri: "/error/no-org-id");
+                return;
+            }
+            _vm.Organization = loaded.Org ?? new OrganizationUnified { Name = "Unknown" };
+        }
     }
-  }
 
   private async Task SaveAsync()
   {
@@ -562,12 +568,12 @@
   // -----------------
   // ViewModel
   // -----------------
-private sealed class OrgEditVm
-{
-public OrganizationUnified Organization { get; set; } = new OrganizationUnified { Name = string.Empty };
-public string? NewDomain { get; set; }
-public string DomainMessage { get; set; } = string.Empty;
-}
+    private sealed class OrgEditVm
+    {
+        public OrganizationUnified Organization { get; set; } = new OrganizationUnified { Name = string.Empty };
+        public string? NewDomain { get; set; }
+        public string DomainMessage { get; set; } = string.Empty;
+    }
 
     private readonly CurrencyOption[] _currencyOptions =
     [
