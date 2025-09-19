@@ -33,14 +33,15 @@
     <div class="card mb-3">
         <div class="card-header">Identity</div>
             <div class="card-body row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Id</label>
-                    <div class="input-group">
-                        <InputText class="form-control bg-light" @bind-Value="_vm.Organization.Id" readonly />
-                        <button type="button" class="btn btn-outline-secondary"><i class="bi bi-copy"></i></button>
-                    </div>
-
+            <div class="col-md-3">
+                <label class="form-label">Id</label>
+                <div class="input-group">
+                    <InputText class="form-control bg-light" @bind-Value="_vm.Organization.Id" readonly />
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(_vm.Organization.Id)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                 </div>
+            </div>
                 <div class="col-md-6">
                     <label class="form-label">Name</label>
                     <InputText class="form-control" @bind-Value="_vm.Organization.Name" />
@@ -66,18 +67,34 @@
                     </div>
                 </div>
 
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <label class="form-label">Parent Organization Id</label>
                 <div class="input-group">
                     <InputText class="form-control" @bind-Value="_vm.Organization.ParentOrganizationId" />
                     <button type="button" class="btn btn-outline-secondary"><i class="bi bi-card-list"></i></button>
                 </div>
-                
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">Parent</label>
                 <input class="form-control bg-light" value="@(_vm.Organization.Parent?.Name ?? "(none)")" readonly />
+            </div>
+
+            <!-- TODO: Link fields in OrgEdit page #25 -->
+            <div class="col-md-2">
+                <label class="form-label">Type</label>
+                <input class="form-control bg-light" value="@(_vm.Organization.Type)" readonly />
+            </div>
+
+            <!-- TODO: Link fields in OrgEdit page #25 -->
+            <div class="col-md-1">
+                <label class="form-label">@(_vm.Organization.IsActive ? "Active" : "Inactive")</label>
+                <div class="form-check form-switch mt-2">
+                    <InputCheckbox class="form-check-input" @bind-Value="_vm.Organization.IsActive" disabled />
+                    <label class="form-check-label" title="@(_vm.Organization.IsActive ? "Active" : "Inactive")">
+                        <span aria-hidden="true">@(_vm.Organization.IsActive ? " ✅" : " ❌")</span>
+                    </label>
+                </div>
             </div>
 
             <div class="col-12">
@@ -389,7 +406,9 @@
                 <label class="form-label">License Agreement Id</label>
                 <div class="input-group">
                     <InputText class="form-control bg-light" @bind-Value="_vm.Organization.LicenseAgreementId" readonly />
-                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-copy"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(_vm.Organization.LicenseAgreementId)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                 </div>
             </div>
             <div class="col-md-6">
@@ -407,14 +426,18 @@
                 <label class="form-label">🌍 Last Updated (UTC)</label>
                 <div class="input-group">
                     <input class="form-control" value="@FormatUtc(_vm.Organization.LastUpdatedUtc)" readonly />
-                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-copy"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(FormatUtc(_vm.Organization.LastUpdatedUtc))">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                 </div>
             </div>
             <div class="col-md-3">
                 <label class="form-label">🕒 Last Updated (Local)</label>
                 <div class="input-group">
                     <input class="form-control" value="@FormatLocalBrowser(_vm.Organization.LastUpdatedUtc)" readonly />
-                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-copy"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(FormatLocalBrowser(_vm.Organization.LastUpdatedUtc))">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                 </div>
             </div>    
         </div>
@@ -441,6 +464,12 @@
         {
             _tzId = await JS.InvokeAsync<string>("blazorGetTz"); // e.g., "Australia/Sydney"
             _browserTz = TimeZoneInfo.FindSystemTimeZoneById(_tzId);
+
+            // IMPORTANT: rooted path (leading slash)
+            _clipboard = await JS.InvokeAsync<IJSObjectReference>("import", "/js/clipboard.js");
+
+            // Optional sanity check (remove if you want)
+            string? ping = await _clipboard.InvokeAsync<string>("ping");
         }
         catch
         {
@@ -593,5 +622,14 @@ public string DomainMessage { get; set; } = string.Empty;
         DateTime fixedUtc = utc.Kind == DateTimeKind.Utc ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc);
         DateTime local = TimeZoneInfo.ConvertTimeFromUtc(fixedUtc, _browserTz);
         return local.ToString(format: "yyyy-MM-dd HH:mm:ss.fff");
+    }
+    private IJSObjectReference? _clipboard;
+
+private async Task CopyToClipboardAsync(string? value)
+    {
+        // Lazy-load if user clicks before first render finished
+        _clipboard ??= await JS.InvokeAsync<IJSObjectReference>("import", "/js/clipboard.js");
+
+        var ok = await _clipboard.InvokeAsync<bool>("copyText", value ?? string.Empty);
     }
 }
