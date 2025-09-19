@@ -48,7 +48,7 @@ public sealed class OrganizationUnified
     public string? City { get; set; }
     public string? State { get; set; }
     public string? PostalCode { get; set; }
-    [DefaultValue("Australia")] public string Country { get; set; } = "Australia";
+    [DefaultValue("")] public string Country { get; set; } = string.Empty;
 
     // Mailing address
     public string? MailingAddressLine1 { get; set; }
@@ -57,13 +57,13 @@ public sealed class OrganizationUnified
     public string? MailingCity { get; set; }
     public string? MailingState { get; set; }
     public string? MailingPostalCode { get; set; }
-    [DefaultValue("Australia")] public string MailingCountry { get; set; } = "Australia";
+    [DefaultValue("")] public string MailingCountry { get; set; } = string.Empty;
 
     // Primary contacts
     // General/Commercial Contact
     public string? ContactPersonFirstName { get; set; }
     public string? ContactPersonLastName { get; set; }
-    [DefaultValue("+61")] public string ContactPersonCountryCode { get; set; } = "+61";
+    [DefaultValue("")] public string ContactPersonCountryCode { get; set; } = string.Empty;
     public string? ContactPersonPhone { get; set; }
     [EmailAddress] public string? ContactPersonEmail { get; set; }
     public string? ContactPersonJobTitle { get; set; }
@@ -71,7 +71,7 @@ public sealed class OrganizationUnified
     // Billing Contact
     public string? BillingPersonFirstName { get; set; }
     public string? BillingPersonLastName { get; set; }
-    [DefaultValue("+61")] public string BillingPersonCountryCode { get; set; } = "+61";
+    [DefaultValue("")] public string BillingPersonCountryCode { get; set; } = string.Empty;
     public string? BillingPersonPhone { get; set; }
     [EmailAddress] public string? BillingPersonEmail { get; set; }
     public string? BillingPersonJobTitle { get; set; }
@@ -79,7 +79,7 @@ public sealed class OrganizationUnified
     // Admin/Technical Contact
     public string? AdminPersonFirstName { get; set; }
     public string? AdminPersonLastName { get; set; }
-    [DefaultValue("+61")] public string AdminPersonCountryCode { get; set; } = "+61";
+    [DefaultValue("")] public string AdminPersonCountryCode { get; set; } = string.Empty;
     public string? AdminPersonPhone { get; set; }
     [EmailAddress] public string? AdminPersonEmail { get; set; }
     public string? AdminPersonJobTitle { get; set; }
@@ -96,5 +96,6 @@ public sealed class OrganizationUnified
     public string? LicenseAgreementId { get; set; }
     public LicenseAgreementUnified? LicenseAgreement { get; set; }
 
+    public DateTime CreatedAt { get; private set; }  // set by DB only
     public DateTime LastUpdatedUtc { get; set; } = DateTime.UtcNow;
 }

@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-using BlazorLoginDemo.Shared.Data;                           // ApplicationUser
+using BlazorLoginDemo.Shared.Data;                          // ApplicationUser
 using BlazorLoginDemo.Shared.Models.Auth;                   // RefreshToken
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;          // TravelPolicy, Region, Continent, Country, etc.
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;    // AmadeusOAuthToken
@@ -148,6 +148,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(x => x.ParentOrganizationId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            e.Property(x => x.CreatedAt)
+                .HasColumnType("timestamptz")  // correct PG type
+                .HasDefaultValueSql("now()")  // DB sets on INSERT (UTC under the hood)
+                .ValueGeneratedOnAdd()
+                .Metadata.SetAfterSaveBehavior(
+                    Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
+            
             e.HasIndex(x => new { x.Type, x.ParentOrganizationId });
         }); // :contentReference[oaicite:11]{index=11}
 
