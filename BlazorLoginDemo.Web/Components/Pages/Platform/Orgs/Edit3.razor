@@ -33,7 +33,7 @@
     <div class="card mb-3">
         <div class="card-header">Identity</div>
             <div class="card-body row g-3">
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <label class="form-label">Id</label>
                     <div class="input-group">
                         <InputText class="form-control bg-light" @bind-Value="_vm.Organization.Id" readonly />
@@ -46,26 +46,33 @@
                     <InputText class="form-control" @bind-Value="_vm.Organization.Name" />
                 </div>
 
-            <div class="col-md-6">
-                <label class="form-label">Type</label>
-                <InputSelect class="form-select" @bind-Value="_vm.Organization.Type">
-                    @foreach (var t in Enum.GetValues<OrganizationType>())
-                    {
-                        <option value="@t">@t</option>
-                    }
-                </InputSelect>
-            </div>
-
-            <div class="col-md-6">
-                <div class="form-check mt-4">
-                    <InputCheckbox class="form-check-input" @bind-Value="_vm.Organization.IsActive" />
-                    <label class="form-check-label">Active</label>
+                <div class="col-md-2">
+                    <label class="form-label">Type</label>
+                    <InputSelect class="form-select" @bind-Value="_vm.Organization.Type">
+                        @foreach (var t in Enum.GetValues<OrganizationType>())
+                        {
+                            <option value="@t">@t</option>
+                        }
+                    </InputSelect>
                 </div>
-            </div>
+
+                <div class="col-md-1">
+                    <label class="form-label">@(_vm.Organization.IsActive ? "Active" : "Inactive")</label>
+                    <div class="form-check form-switch mt-2">
+                        <InputCheckbox class="form-check-input" @bind-Value="_vm.Organization.IsActive" />
+                        <label class="form-check-label" title="@(_vm.Organization.IsActive ? "Active" : "Inactive")">
+                            <span aria-hidden="true">@(_vm.Organization.IsActive ? " ✅" : " ❌")</span>
+                        </label>
+                    </div>
+                </div>
 
             <div class="col-md-6">
                 <label class="form-label">Parent Organization Id</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.ParentOrganizationId" />
+                <div class="input-group">
+                    <InputText class="form-control" @bind-Value="_vm.Organization.ParentOrganizationId" />
+                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-card-list"></i></button>
+                </div>
+                
             </div>
 
             <div class="col-md-6">
@@ -107,7 +114,7 @@
                     }
                 </InputSelect>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label" for="taxIdType">Tax ID Type</label>
                 <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.TaxIdType">
                     @foreach (var t in _taxIdOptions)
@@ -116,15 +123,15 @@
                     }
                 </InputSelect>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label">Tax Id</label>
                 <InputText class="form-control" @bind-Value="_vm.Organization.TaxId" />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">🌍 Last Validated (UTC)</label>
                 <input class="form-control" value="@FormatUtc(_vm.Organization.TaxLastValidated)" readonly />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">🕒 Last Validated (Local)</label>
                 <input class="form-control" value="@FormatLocalBrowser(_vm.Organization.TaxLastValidated)" readonly />
             </div>
@@ -274,9 +281,9 @@
                 </div>
                 <div class="card-body row g-3">
                     <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonFirstName" /></div>
-                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonCountryCode" /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonLastName" /></div>
                     <div class="col-md-4"><label class="form-label">CC</label>
-                        <InputSelect id="ccAdmin" class="form-select" @bind-Value="_vm.Organization.BillingPersonCountryCode">
+                        <InputSelect id="ccAdmin" class="form-select" @bind-Value="_vm.Organization.AdminPersonCountryCode">
                             @foreach (string i in _iddOptions)
                             {
                                 <option value="@i">@i</option>
