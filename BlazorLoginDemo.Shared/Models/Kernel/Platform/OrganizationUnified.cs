@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using BlazorLoginDemo.Shared.Models.Static.Platform; // OrganizationType
-using BlazorLoginDemo.Shared.Models.Static.Billing;
-using BlazorLoginDemo.Shared.Models.Kernel.Billing; // enums: BillingType, BillingFrequency, PaymentMethod, ServiceFeeType, PaymentStatus
+using BlazorLoginDemo.Shared.Models.Kernel.Billing;
+using System.ComponentModel; // enums: BillingType, BillingFrequency, PaymentMethod, ServiceFeeType, PaymentStatus
 
 namespace BlazorLoginDemo.Shared.Models.Kernel.Platform;
 
@@ -34,12 +34,12 @@ public sealed class OrganizationUnified
     // ------------------------------
     // Contact & Company Info (from AvaClient)
     // ------------------------------
-    [MaxLength(3)] public string? DefaultCurrency { get; set; }
+    [MaxLength(3)][DefaultValue("AUD")] public string DefaultCurrency { get; set; } = "AUD";
 
     // Company registered details
-    public string? TaxIdType { get; set; } // Keep as string for now; map to enum later if needed
+    public string TaxIdType { get; set; } = string.Empty;
     public string? TaxId { get; set; }
-    public DateTime? TaxLastValidated { get; set; }
+    public DateTime TaxLastValidated { get; set; } = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     // Physical address
     public string? AddressLine1 { get; set; }
@@ -48,7 +48,7 @@ public sealed class OrganizationUnified
     public string? City { get; set; }
     public string? State { get; set; }
     public string? PostalCode { get; set; }
-    public string? Country { get; set; }
+    [DefaultValue("Australia")] public string Country { get; set; } = "Australia";
 
     // Mailing address
     public string? MailingAddressLine1 { get; set; }
@@ -57,13 +57,13 @@ public sealed class OrganizationUnified
     public string? MailingCity { get; set; }
     public string? MailingState { get; set; }
     public string? MailingPostalCode { get; set; }
-    public string? MailingCountry { get; set; }
+    [DefaultValue("Australia")] public string MailingCountry { get; set; } = "Australia";
 
     // Primary contacts
     // General/Commercial Contact
     public string? ContactPersonFirstName { get; set; }
     public string? ContactPersonLastName { get; set; }
-    public string? ContactPersonCountryCode { get; set; }
+    [DefaultValue("+61")] public string ContactPersonCountryCode { get; set; } = "+61";
     public string? ContactPersonPhone { get; set; }
     [EmailAddress] public string? ContactPersonEmail { get; set; }
     public string? ContactPersonJobTitle { get; set; }
@@ -71,7 +71,7 @@ public sealed class OrganizationUnified
     // Billing Contact
     public string? BillingPersonFirstName { get; set; }
     public string? BillingPersonLastName { get; set; }
-    public string? BillingPersonCountryCode { get; set; }
+    [DefaultValue("+61")] public string BillingPersonCountryCode { get; set; } = "+61";
     public string? BillingPersonPhone { get; set; }
     [EmailAddress] public string? BillingPersonEmail { get; set; }
     public string? BillingPersonJobTitle { get; set; }
@@ -79,7 +79,7 @@ public sealed class OrganizationUnified
     // Admin/Technical Contact
     public string? AdminPersonFirstName { get; set; }
     public string? AdminPersonLastName { get; set; }
-    public string? AdminPersonCountryCode { get; set; }
+    [DefaultValue("+61")] public string AdminPersonCountryCode { get; set; } = "+61";
     public string? AdminPersonPhone { get; set; }
     [EmailAddress] public string? AdminPersonEmail { get; set; }
     public string? AdminPersonJobTitle { get; set; }
