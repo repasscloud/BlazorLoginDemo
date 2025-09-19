@@ -28,7 +28,8 @@
   </div>
 
   <div class="card shadow-sm">
-    <EditForm Model="@vm" OnValidSubmit="@SaveAsync">
+    <!-- Use EditContext + OnSubmit so handler always fires, then validate inside -->
+    <EditForm EditContext="@_ec" OnSubmit="@SaveAsync">
       <DataAnnotationsValidator />
 
       <div class="card-header border-0 pb-0">
@@ -69,6 +70,7 @@
 
               <div class="col-md-5">
                 <label for="type" class="form-label">Type</label>
+                <!-- Bind to string, convert to enum on save -->
                 <InputSelect id="type" class="form-select" @bind-Value="vm.TypeName" disabled="@isSaving">
                   <option value="">(Select type)</option>
                   @foreach (var t in orgTypes)
@@ -114,15 +116,14 @@
                        placeholder="example.com"
                        @bind="newDomain"
                        @bind:event="oninput"
-                       @onkeydown="OnDomainKeyDown"
                        disabled="@isSaving" />
               </div>
               <div class="col-auto">
-                <!-- IMPORTANT: type=button so it doesn't submit the form -->
+                <!-- Keep Add always clickable unless saving -->
                 <button type="button"
                         class="btn btn-outline-primary"
                         @onclick="AddDomain"
-                        disabled="@isSaving || string.IsNullOrWhiteSpace(newDomain)">
+                        disabled="@isSaving">
                   <i class="bi bi-plus"></i> Add
                 </button>
               </div>
@@ -171,6 +172,9 @@
 @code {
   [Parameter] public string OrgId { get; set; } = default!;
 
+  // Form context
+  private EditContext? _ec;
+
   // State
   private OrgEditVm vm = new();
   private string? error;
@@ -205,7 +209,7 @@
       {
         OrgId = agg.Org.Id,
         Name = agg.Org.Name,
-        // Keep Type as string to avoid Razor generic/enum parser oddities
+        // Bind to a string; convert to enum on save
         TypeName = agg.Org.Type.ToString(),
         ParentOrganizationId = agg.Org.ParentOrganizationId,
         IsActive = agg.Org.IsActive,
@@ -216,6 +220,9 @@
                      .OrderBy(x => x)
                      .ToList()
       };
+
+      // (Re)build EditContext each time vm changes so validation works
+      _ec = new EditContext(vm);
 
       var parents = await OrgSvc.SearchAsync(isActive: true);
       foreach (var p in parents.Where(p => p.Org.Id != OrgId))
@@ -231,16 +238,28 @@
     finally
     {
       isLoading = false;
+      StateHasChanged();
     }
   }
 
-  private async Task SaveAsync()
+  // OnSubmit handler — always fires; we validate inside
+  private async Task SaveAsync(EditContext _)
   {
     if (isSaving) return;
+    if (_ec is null) { error = "Form not ready. Reload the page."; StateHasChanged(); return; }
+
+    var isValid = _ec.Validate(); // show inline errors if any
+    if (!isValid)
+    {
+      error = "Please fix the highlighted fields.";
+      success = null;
+      StateHasChanged();
+      return;
+    }
+
     isSaving = true; error = success = null;
     try
     {
-      // Validate the Type string -> enum
       if (!Enum.TryParse<OrganizationType>(vm.TypeName, ignoreCase: true, out var parsedType))
       {
         error = "Please select a valid organization type.";
@@ -273,10 +292,17 @@
   private void AddDomain()
   {
     var d = (newDomain ?? string.Empty).Trim().ToLowerInvariant();
-    if (string.IsNullOrWhiteSpace(d)) return;
+
+    // Quick feedback; keep button enabled
+    if (string.IsNullOrWhiteSpace(d))
+    {
+      error = "Enter a domain like example.com";
+      StateHasChanged();
+      return;
+    }
     if (d.Contains(' ') || d.Contains("@"))
     {
-      error = "Enter a bare domain like example.com";
+      error = "Enter a bare domain (no spaces, no @).";
       StateHasChanged();
       return;
     }
@@ -294,14 +320,6 @@
   {
     vm.Domains.Remove(d);
     StateHasChanged();
-  }
-
-  private void OnDomainKeyDown(KeyboardEventArgs e)
-  {
-    if (e.Key == "Enter")
-    {
-      AddDomain();
-    }
   }
 
   private void GoBack() => Nav.NavigateTo("/platform/organizations");

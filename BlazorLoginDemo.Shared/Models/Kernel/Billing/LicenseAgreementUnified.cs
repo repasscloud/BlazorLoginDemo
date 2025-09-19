@@ -10,7 +10,7 @@ namespace BlazorLoginDemo.Shared.Models.Kernel.Billing;
 public sealed class LicenseAgreementUnified
 {
     [Key]
-    [MaxLength(14)]
+    [MaxLength(64)]
     public string Id { get; set; } = NanoidDotNet.Nanoid.Generate(NanoidDotNet.Nanoid.Alphabets.HexadecimalUppercase, 14);
 
     // Who is the agreement FOR and who created/issued it
