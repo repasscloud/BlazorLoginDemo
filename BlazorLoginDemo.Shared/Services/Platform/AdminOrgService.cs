@@ -129,6 +129,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         return list.Select(o => new IAdminOrgServiceUnified.OrgAggregate(o, o.Domains.ToList(), o.LicenseAgreement)).ToList();
     }
 
+
     // -------------- UPDATE --------------
     public async Task<IAdminOrgServiceUnified.OrgAggregate> UpdateAsync(IAdminOrgServiceUnified.UpdateOrgRequest req, CancellationToken ct = default)
     {

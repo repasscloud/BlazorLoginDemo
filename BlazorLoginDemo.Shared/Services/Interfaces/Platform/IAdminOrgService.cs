@@ -12,6 +12,7 @@ public interface IAdminOrgServiceUnified
     // convenience aggregate
     public sealed record OrgAggregate(OrganizationUnified Org, IReadOnlyList<OrganizationDomainUnified> Domains, LicenseAgreementUnified? LicenseAgreement);
 
+
     // CREATE
     public sealed record CreateOrgRequest(
         string Name,
@@ -26,6 +27,7 @@ public interface IAdminOrgServiceUnified
     Task<OrgAggregate> CreateAsync(CreateOrgRequest req, CancellationToken ct = default);
     Task<CreateOrgResult> CreateOrgAsync(CreateOrgRequest req, CancellationToken ct = default);
 
+
     // READ / SEARCH
     Task<OrgAggregate?> GetByIdAsync(string id, CancellationToken ct = default);
     Task<IReadOnlyList<OrgAggregate>> SearchAsync(
@@ -35,6 +37,7 @@ public interface IAdminOrgServiceUnified
         string? parentOrgId = null,
         string? domainContains = null,
         CancellationToken ct = default);
+
 
     // UPDATE
     public sealed record UpdateOrgRequest(
