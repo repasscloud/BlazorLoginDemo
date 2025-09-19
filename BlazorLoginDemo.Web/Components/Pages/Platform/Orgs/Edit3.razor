@@ -1,0 +1,445 @@
+@page "/platform/organizations/{OrgId}/edit3"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using BlazorLoginDemo.Shared.Models.Kernel.Platform
+@using BlazorLoginDemo.Shared.Models.Static.Platform
+@inject NavigationManager Nav
+@inject ILogger<Edit> Logger
+
+
+<EditForm Model="_vm.Organization" OnValidSubmit="SaveAsync">
+  <DataAnnotationsValidator />
+  <ValidationSummary />
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Edit Organization</h2>
+    <div class="btn-group">
+      <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">Back</button>
+      <button type="submit" class="btn btn-primary">
+        @if (_isSaving) { <span class="spinner-border spinner-border-sm me-2"></span> }
+        Save
+      </button>
+    </div>
+  </div>
+
+  <!-- Identity -->
+  <div class="card mb-3">
+    <div class="card-header">Identity</div>
+    <div class="card-body row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Id</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.Id" readonly />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Name</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.Name" />
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Type</label>
+        <InputSelect class="form-select" @bind-Value="_vm.Organization.Type">
+          @foreach (var t in Enum.GetValues<OrganizationType>()) { <option value="@t">@t</option> }
+        </InputSelect>
+      </div>
+
+      <div class="col-md-6">
+        <div class="form-check mt-4">
+          <InputCheckbox class="form-check-input" @bind-Value="_vm.Organization.IsActive" />
+          <label class="form-check-label">Active</label>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Parent Organization Id</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.ParentOrganizationId" />
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Parent (read-only)</label>
+        <input class="form-control bg-light" value="@(_vm.Organization.Parent?.Name ?? "(none)")" readonly />
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Children (read-only)</label>
+        <ul class="list-group">
+          @if (_vm.Organization.Children?.Any() == true)
+          {
+            @foreach (var c in _vm.Organization.Children)
+            {
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                @c.Name <span class="text-muted small">@c.Id</span>
+              </li>
+            }
+          }
+          else
+          {
+            <li class="list-group-item text-muted">No child organizations.</li>
+          }
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Company Defaults -->
+  <div class="card mb-3">
+    <div class="card-header">Company Defaults</div>
+    <div class="card-body row g-3">
+      <div class="col-md-3">
+        <label class="form-label" for="defaultCurrency">Default Currency</label>
+        <InputSelect id="defaultCurrency"
+                    class="form-select"
+                    @bind-Value="_vm.Organization.DefaultCurrency">
+          @foreach (var c in _currencyOptions)
+          {
+              <option value="@c.Code">@c.Code @c.Flag</option>
+          }
+        </InputSelect>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Tax Id Type</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.TaxIdType" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Tax Id</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.TaxId" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Tax Last Validated</label>
+        <InputDate class="form-control" @bind-Value="_vm.Organization.TaxLastValidated" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Physical Address -->
+  <div class="card mb-3">
+    <div class="card-header">Physical Address</div>
+    <div class="card-body row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Address Line 1</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine1" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Address Line 2</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine2" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Address Line 3</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine3" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">City</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.City" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">State/Province</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.State" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Postal Code</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.PostalCode" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Country</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.Country" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Mailing Address -->
+  <div class="card mb-3">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <span>Mailing Address</span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyPhysicalToMailing">
+        Copy from Physical
+      </button>
+    </div>
+    <div class="card-body row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Address Line 1</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine1" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Address Line 2</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine2" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Address Line 3</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine3" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">City</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.MailingCity" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">State/Province</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.MailingState" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Postal Code</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.MailingPostalCode" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Country</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.MailingCountry" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Contacts -->
+  <div class="row">
+    <div class="col-lg-4">
+      <div class="card mb-3">
+        <div class="card-header">General / Commercial Contact</div>
+        <div class="card-body row g-3">
+          <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonFirstName" /></div>
+          <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonLastName" /></div>
+          <div class="col-md-4"><label class="form-label">CC</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonCountryCode" /></div>
+          <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonPhone" /></div>
+          <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonEmail" /></div>
+          <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonJobTitle" /></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card mb-3">
+        <div class="card-header">Billing Contact</div>
+        <div class="card-body row g-3">
+          <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonFirstName" /></div>
+          <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonLastName" /></div>
+          <div class="col-md-4"><label class="form-label">CC</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonCountryCode" /></div>
+          <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonPhone" /></div>
+          <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonEmail" /></div>
+          <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonJobTitle" /></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card mb-3">
+        <div class="card-header">Admin / Technical Contact</div>
+        <div class="card-body row g-3">
+          <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonFirstName" /></div>
+          <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonLastName" /></div>
+          <div class="col-md-4"><label class="form-label">CC</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonCountryCode" /></div>
+          <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonPhone" /></div>
+          <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonEmail" /></div>
+          <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonJobTitle" /></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Domains -->
+  <div class="card mb-3">
+    <div class="card-header">Tenant Domains</div>
+    <div class="card-body">
+      <div class="input-group mb-2">
+        <InputText class="form-control" @bind-Value="_vm.NewDomain" placeholder="example.com" />
+        <button type="button" class="btn btn-outline-primary" @onclick="AddDomain">Add</button>
+      </div>
+      @if (!string.IsNullOrWhiteSpace(_vm.DomainMessage))
+      {
+        <div class="text-danger small mb-2">@_vm.DomainMessage</div>
+      }
+
+      <ul class="list-group">
+        @if (_vm.Organization.Domains?.Any() == true)
+        {
+          @foreach (var d in _vm.Organization.Domains)
+          {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              @DomainLabel(d)
+              <button type="button" class="btn btn-sm btn-outline-danger" title="Remove"
+                      @onclick="() => RemoveDomain(d)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </li>
+          }
+        }
+        else
+        {
+          <li class="list-group-item text-muted">No domains configured.</li>
+        }
+      </ul>
+      <div class="form-text mt-2">Domains are used for tenant discovery and login routing.</div>
+    </div>
+  </div>
+
+  <!-- Policies -->
+  <div class="card mb-3">
+    <div class="card-header">Policies</div>
+    <div class="card-body row">
+      <div class="col-md-6">
+        <h6>Travel Policies</h6>
+        <ul class="list-group">
+          @if (_vm.Organization.TravelPolicies?.Any() == true)
+          {
+            @foreach (var p in _vm.Organization.TravelPolicies)
+            {
+              <li class="list-group-item">@p</li>
+            }
+          }
+          else
+          {
+            <li class="list-group-item text-muted">None</li>
+          }
+        </ul>
+      </div>
+      <div class="col-md-6">
+        <h6>Expense Policies</h6>
+        <ul class="list-group">
+          @if (_vm.Organization.ExpensePolicies?.Any() == true)
+          {
+            @foreach (var p in _vm.Organization.ExpensePolicies)
+            {
+              <li class="list-group-item">@p</li>
+            }
+          }
+          else
+          {
+            <li class="list-group-item text-muted">None</li>
+          }
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Licensing -->
+  <div class="card mb-3">
+    <div class="card-header">Billing / Licensing</div>
+    <div class="card-body row g-3">
+      <div class="col-md-6">
+        <label class="form-label">License Agreement Id</label>
+        <InputText class="form-control" @bind-Value="_vm.Organization.LicenseAgreementId" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">License Agreement (read-only)</label>
+        <input class="form-control" value="@(_vm.Organization.LicenseAgreement is null ? "(none)" : "Loaded")" readonly />
+      </div>
+    </div>
+  </div>
+
+  <!-- Audit -->
+  <div class="card mb-4">
+    <div class="card-header">Audit</div>
+    <div class="card-body row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Last Updated (UTC)</label>
+        <InputDate class="form-control" @bind-Value="_vm.Organization.LastUpdatedUtc" readonly />
+      </div>
+    </div>
+  </div>
+</EditForm>
+
+@code {
+  [Parameter] public string? OrgId { get; set; }
+
+  private OrgEditVm _vm = new();
+  private bool _isSaving;
+
+  protected override async Task OnInitializedAsync()
+  {
+    // Load (plug into your existing service)
+    if (!string.IsNullOrWhiteSpace(OrgId))
+    {
+      // var loaded = await OrgService.GetAsync(Id);
+      // _vm.Organization = loaded ?? new OrganizationUnified { Id = Id };
+      _vm.Organization.Id = OrgId!;
+    }
+  }
+
+  private async Task SaveAsync()
+  {
+    _isSaving = true;
+    try
+    {
+      _vm.Organization.LastUpdatedUtc = DateTime.UtcNow;
+      // await OrgService.UpdateAsync(_vm.Organization);
+      Logger.LogInformation("Saved organization {OrgId}", _vm.Organization.Id);
+      // Optional: Nav to details
+      // Nav.NavigateTo($"/platform/organizations/{_vm.Organization.Id}");
+    }
+    finally
+    {
+      _isSaving = false;
+    }
+  }
+
+  private void GoBack() => Nav.NavigateTo("/platform/organizations");
+
+  private void CopyPhysicalToMailing()
+  {
+    var o = _vm.Organization;
+    o.MailingAddressLine1 = o.AddressLine1;
+    o.MailingAddressLine2 = o.AddressLine2;
+    o.MailingAddressLine3 = o.AddressLine3;
+    o.MailingCity = o.City;
+    o.MailingState = o.State;
+    o.MailingPostalCode = o.PostalCode;
+    o.MailingCountry = o.Country;
+  }
+
+  // Domain helpers
+  private void AddDomain()
+  {
+    _vm.DomainMessage = string.Empty;
+    var value = (_vm.NewDomain ?? string.Empty).Trim().ToLowerInvariant();
+    if (string.IsNullOrWhiteSpace(value))
+    {
+      _vm.DomainMessage = "Please enter a domain.";
+      return;
+    }
+    if (_vm.Organization.Domains.Any(d => (d?.ToString() ?? string.Empty).Equals(value, StringComparison.OrdinalIgnoreCase)
+                                       || GetDomain(d).Equals(value, StringComparison.OrdinalIgnoreCase)))
+    {
+      _vm.DomainMessage = "That domain already exists.";
+      return;
+    }
+
+    // NOTE: OrganizationDomainUnified likely has a 'Domain' property; if different, update GetDomain/label below.
+    _vm.Organization.Domains.Add(new OrganizationDomainUnified { Domain = value });
+    _vm.NewDomain = string.Empty;
+  }
+
+  private void RemoveDomain(OrganizationDomainUnified d)
+  {
+    _vm.Organization.Domains.Remove(d);
+  }
+
+  private string DomainLabel(OrganizationDomainUnified d)
+    => GetDomain(d);
+
+  private static string GetDomain(OrganizationDomainUnified d)
+  {
+    // Prefer a 'Domain' property if present; fall back to ToString()
+    var prop = d.GetType().GetProperty("Domain");
+    return prop?.GetValue(d)?.ToString() ?? d.ToString() ?? "(domain)";
+  }
+
+  // -----------------
+  // ViewModel
+  // -----------------
+  private sealed class OrgEditVm
+  {
+    public OrganizationUnified Organization { get; set; } = new OrganizationUnified { Name = string.Empty };
+    public string? NewDomain { get; set; }
+    public string DomainMessage { get; set; } = string.Empty;
+  }
+
+    private readonly CurrencyOption[] _currencyOptions =
+    [
+        new CurrencyOption(Code: "AUD", Flag: "🇦🇺"),
+        new CurrencyOption(Code: "GBP", Flag: "🇬🇧"),
+        new CurrencyOption(Code: "USD", Flag: "🇺🇸"),
+        new CurrencyOption(Code: "NZD", Flag: "🇳🇿"),
+        new CurrencyOption(Code: "CAD", Flag: "🇨🇦"),
+        new CurrencyOption(Code: "HKD", Flag: "🇭🇰"),
+        new CurrencyOption(Code: "EUR", Flag: "🇪🇺"),
+    ];
+
+    private record CurrencyOption(string Code, string Flag);
+}
