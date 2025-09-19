@@ -6,277 +6,253 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
-@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Models.Static.Platform
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 
 @inject IAdminOrgServiceUnified OrgSvc
 @inject NavigationManager Nav
 
 <div class="container-lg py-4">
-  <!-- Title / Back -->
-  <div class="d-flex align-items-start justify-content-between mb-3">
-    <div>
-      <h1 class="h4 mb-1">Edit Organization</h1>
-      <p class="text-muted mb-0">Update core org details and managed domains.</p>
-    </div>
-    <div>
-      <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="GoBack" disabled="@isSaving">
-        <i class="bi bi-arrow-left"></i> Back
-      </button>
-    </div>
+  <div class="d-flex align-items-center mb-3">
+    <button type="button" class="btn btn-link text-decoration-none me-2" @onclick="GoBack">
+      <i class="bi bi-arrow-left"></i>
+      Back
+    </button>
+    <h1 class="h4 mb-0">Edit Organisation</h1>
   </div>
 
-  <div class="card shadow-sm">
-    <!-- Use EditContext + OnSubmit so handler always fires, then validate inside -->
-    <EditForm EditContext="@_ec" OnSubmit="@SaveAsync">
-      <DataAnnotationsValidator />
-
-      <div class="card-header border-0 pb-0">
-        @if (!string.IsNullOrWhiteSpace(success))
-        {
-          <div class="alert alert-success d-flex align-items-center mb-3">
-            <i class="bi bi-check-circle-fill fs-5 me-2"></i>
-            <div>@success</div>
-          </div>
-        }
-        @if (!string.IsNullOrWhiteSpace(error))
-        {
-          <div class="alert alert-danger d-flex align-items-center mb-3">
-            <i class="bi bi-x-circle-fill fs-5 me-2"></i>
-            <div>@error</div>
-          </div>
-        }
-        <ValidationSummary class="alert alert-warning mb-0" />
+  @if (!string.IsNullOrWhiteSpace(error))
+  {
+    <div class="alert alert-danger d-flex align-items-start" role="alert">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      <div>
+        <div class="fw-semibold">Error</div>
+        <div>@error</div>
       </div>
+    </div>
+  }
 
-      <div class="card-body">
-        @if (isLoading)
-        {
-          <div class="d-flex align-items-center text-muted">
-            <span class="spinner-border spinner-border-sm me-2"></span> Loading…
-          </div>
-        }
-        else
-        {
-          <!-- Core Details -->
-          <div class="mb-4">
-            <div class="row g-3">
-              <div class="col-md-7">
-                <label for="name" class="form-label">Name</label>
-                <InputText id="name" class="form-control" @bind-Value="vm.Name" disabled="@isSaving" />
-                <ValidationMessage For="@(() => vm.Name)" class="text-danger" />
-              </div>
+  @if (vm is null || editContext is null)
+  {
+    <div class="text-muted d-flex align-items-center">
+      <span class="spinner-border spinner-border-sm me-2"></span>
+      Loading…
+    </div>
+  }
+  else
+  {
+    <EditForm EditContext="editContext" OnValidSubmit="SaveAsync">
+      <DataAnnotationsValidator />
+      <ValidationSummary />
 
-              <div class="col-md-5">
-                <label for="type" class="form-label">Type</label>
-                <!-- Bind to string, convert to enum on save -->
-                <InputSelect id="type" class="form-select" @bind-Value="vm.TypeName" disabled="@isSaving">
-                  <option value="">(Select type)</option>
-                  @foreach (var t in orgTypes)
-                  {
-                    <option value="@t.ToString()">@t.ToString()</option>
-                  }
-                </InputSelect>
-                <ValidationMessage For="@(() => vm.TypeName)" class="text-danger" />
-              </div>
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="row g-3">
 
-              <div class="col-md-7">
-                <label for="parent" class="form-label">Parent Organization <span class="text-muted">(optional)</span></label>
-                <InputSelect id="parent" class="form-select" @bind-Value="vm.ParentOrganizationId" disabled="@isSaving">
-                  <option value="">(None)</option>
-                  @foreach (var o in parentOrgOptions)
-                  {
-                    <option value="@o.Id">@o.Label</option>
-                  }
-                </InputSelect>
-              </div>
+            <div class="col-md-8">
+              <label class="form-label">Organisation Name</label>
+              <InputText class="form-control" @bind-Value="vm.Name" disabled="@isSaving" />
+            </div>
 
-              <div class="col-md-5 d-flex align-items-end">
-                <div class="form-check form-switch">
-                  <InputCheckbox id="active" class="form-check-input" @bind-Value="vm.IsActive" disabled="@isSaving" />
-                  <label for="active" class="form-check-label ms-2">Active</label>
+            <div class="col-md-4">
+              <label class="form-label">Type</label>
+              <InputSelect class="form-select" @bind-Value="vm.Type" disabled="@isSaving">
+                @foreach (var t in Enum.GetValues<OrganizationType>())
+                {
+                  <option value="@t">@t</option>
+                }
+              </InputSelect>
+            </div>
+
+            <div class="col-12">
+              <div class="row g-3">
+                <div class="col-md-7">
+                  <label for="parent" class="form-label">Parent Organization <span class="text-muted">(optional)</span></label>
+                  <InputSelect id="parent" class="form-select" @bind-Value="vm.ParentOrganizationId" disabled="@isSaving">
+                    <option value="">(None)</option>
+                    @foreach (var p in parentOrgOptions)
+                    {
+                      <option value="@p.Id">@p.Label</option>
+                    }
+                  </InputSelect>
+                </div>
+
+                <div class="col-md-5 d-flex align-items-end">
+                  <div class="form-check form-switch">
+                    <InputCheckbox id="active" class="form-check-input" @bind-Value="vm.IsActive" disabled="@isSaving" />
+                    <label for="active" class="form-check-label ms-2">Active</label>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <hr class="text-body-secondary opacity-25" />
+            <!-- Domains -->
+            <div class="mb-2">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-at me-2"></i>
+                <h2 class="h6 mb-0">Managed Email Domains</h2>
+              </div>
 
-          <!-- Domains -->
-          <div class="mb-2">
-            <div class="d-flex align-items-center mb-2">
-              <i class="bi bi-at me-2"></i>
-              <h2 class="h6 mb-0">Managed Email Domains</h2>
+              <div class="row g-2 align-items-center mb-2">
+                <div class="col-sm-8 col-md-6">
+                  <input class="form-control"
+                         placeholder="example.com"
+                         @bind="newDomain"
+                         @bind:event="oninput"
+                         disabled="@isSaving" />
+                </div>
+                <div class="col-auto">
+                  <button type="button"
+                          class="btn btn-outline-primary"
+                          @onclick="AddDomain"
+                          disabled="@isSaving">
+                    <i class="bi bi-plus"></i> Add
+                  </button>
+                </div>
+              </div>
+
+              @if (vm.Domains.Count == 0)
+              {
+                <div class="text-muted">No domains added.</div>
+              }
+              else
+              {
+                <ul class="list-group">
+                  @foreach (var d in vm.Domains)
+                  {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>@d</span>
+                      <button type="button"
+                              class="btn btn-sm btn-outline-danger"
+                              @onclick="() => RemoveDomain(d)"
+                              disabled="@isSaving">
+                        <i class="bi bi-x-lg"></i>
+                        Remove
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
             </div>
 
-            <div class="row g-2 align-items-center mb-2">
-              <div class="col-sm-8 col-md-6">
-                <input class="form-control"
-                       placeholder="example.com"
-                       @bind="newDomain"
-                       @bind:event="oninput"
-                       disabled="@isSaving" />
-              </div>
-              <div class="col-auto">
-                <!-- Keep Add always clickable unless saving -->
-                <button type="button"
-                        class="btn btn-outline-primary"
-                        @onclick="AddDomain"
-                        disabled="@isSaving">
-                  <i class="bi bi-plus"></i> Add
-                </button>
-              </div>
-            </div>
+          </div>
+        </div>
 
-            @if (vm.Domains.Count == 0)
+        <div class="card-footer d-flex justify-content-between">
+          <div class="text-muted">
+            @if (isSaving)
             {
-              <div class="text-muted small">No domains configured.</div>
-            }
-            else
-            {
-              <div class="d-flex flex-wrap gap-2">
-                @foreach (var d in vm.Domains)
-                {
-                  <span class="badge text-bg-light border">
-                    <i class="bi bi-globe me-1"></i>@d
-                    <button type="button"
-                            class="btn btn-sm btn-link text-danger ms-1 p-0 align-text-top"
-                            title="Remove"
-                            @onclick="@(() => RemoveDomain(d))"
-                            disabled="@isSaving">
-                      <i class="bi bi-x"></i>
-                    </button>
-                  </span>
-                }
-              </div>
+              <span class="spinner-border spinner-border-sm me-2">Saving…</span>
             }
           </div>
-        }
-      </div>
-
-      <div class="card-footer d-flex justify-content-between align-items-center">
-        <div class="text-muted small">Saving will replace the domain list with what is shown above.</div>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-outline-secondary" @onclick="GoBack" disabled="@isSaving">Cancel</button>
-          <button type="submit" class="btn btn-primary" disabled="@isSaving || isLoading">
-            @if (isSaving) { <span class="spinner-border spinner-border-sm me-2">Saving…</span> }
-            else { <span>Save changes</span> }
-          </button>
+          <div class="d-flex">
+            <button type="button" class="btn btn-outline-secondary me-2" @onclick="GoBack" disabled="@isSaving">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+              @if (isSaving)
+              {
+                <span class="spinner-border spinner-border-sm me-2"></span>
+              }
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </EditForm>
-  </div>
+  }
 </div>
 
 @code {
-  [Parameter] public string OrgId { get; set; } = default!;
+  [Parameter] public string? OrgId { get; set; }
 
-  // Form context
-  private EditContext? _ec;
-
-  // State
-  private OrgEditVm vm = new();
+  private Vm? vm;
+  private EditContext? editContext;
   private string? error;
-  private string? success;
-  private bool isLoading = true;
   private bool isSaving;
-  private string newDomain = string.Empty;
+  private string? newDomain;
 
-  private readonly List<SelectOption> parentOrgOptions = new();
-  private readonly OrganizationType[] orgTypes = Enum.GetValues<OrganizationType>();
+  private List<(string Id, string Label)> parentOrgOptions = new();
 
-  protected override async Task OnParametersSetAsync()
+  protected override async Task OnInitializedAsync()
   {
-    await LoadAsync();
-  }
-
-  private async Task LoadAsync()
-  {
-    isLoading = true; error = success = null;
-    parentOrgOptions.Clear();
-
     try
     {
-      var agg = await OrgSvc.GetByIdAsync(OrgId);
-      if (agg is null)
+      if (string.IsNullOrWhiteSpace(OrgId))
       {
-        error = "Organization not found.";
+        error = "No organization id provided.";
         return;
       }
 
-      vm = new OrgEditVm
+      // Load the target org
+      var agg = await OrgSvc.GetByIdAsync(OrgId);
+      if (agg is null)
+      {
+        error = $"Organization not found: {OrgId}";
+        return;
+      }
+
+      // Build VM from aggregate (note: fields live under agg.Org)
+      vm = new Vm
       {
         OrgId = agg.Org.Id,
         Name = agg.Org.Name,
-        // Bind to a string; convert to enum on save
-        TypeName = agg.Org.Type.ToString(),
+        Type = agg.Org.Type,                          // OrganizationUnified.Type
         ParentOrganizationId = agg.Org.ParentOrganizationId,
         IsActive = agg.Org.IsActive,
-        Domains = agg.Domains
-                     .Select(d => (d.Domain ?? string.Empty).Trim().ToLowerInvariant())
-                     .Where(s => !string.IsNullOrWhiteSpace(s))
-                     .Distinct()
-                     .OrderBy(x => x)
-                     .ToList()
+        Domains = (agg.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                    .Select(d => d.Domain)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x)
+                    .ToList()
       };
 
-      // (Re)build EditContext each time vm changes so validation works
-      _ec = new EditContext(vm);
+      // Parent options via SearchAsync (no GetAllAsync on the interface)
+      var all = await OrgSvc.SearchAsync();
+      parentOrgOptions = all
+        .Where(x => x.Org.Id != vm.OrgId)
+        .Select(x => (x.Org.Id, $"{x.Org.Name} ({x.Org.Type})"))
+        .OrderBy(x => x.Item2)
+        .ToList();
 
-      var parents = await OrgSvc.SearchAsync(isActive: true);
-      foreach (var p in parents.Where(p => p.Org.Id != OrgId))
-      {
-        parentOrgOptions.Add(new SelectOption(p.Org.Id, p.Org.Name));
-      }
-      parentOrgOptions.Sort((a, b) => string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase));
+      editContext = new EditContext(vm);
     }
     catch (Exception ex)
     {
       error = ex.GetBaseException().Message;
     }
-    finally
-    {
-      isLoading = false;
-      StateHasChanged();
-    }
   }
 
-  // OnSubmit handler — always fires; we validate inside
-  private async Task SaveAsync(EditContext _)
+  private async Task SaveAsync()
   {
-    if (isSaving) return;
-    if (_ec is null) { error = "Form not ready. Reload the page."; StateHasChanged(); return; }
-
-    var isValid = _ec.Validate(); // show inline errors if any
-    if (!isValid)
-    {
-      error = "Please fix the highlighted fields.";
-      success = null;
-      StateHasChanged();
+    if (vm is null || editContext is null)
       return;
-    }
 
-    isSaving = true; error = success = null;
+    error = null;
+    isSaving = true;
+
     try
     {
-      if (!Enum.TryParse<OrganizationType>(vm.TypeName, ignoreCase: true, out var parsedType))
+      if (!editContext.Validate())
       {
-        error = "Please select a valid organization type.";
+        error = "Please fix validation errors.";
         return;
       }
 
+      // Prepare update request
       var req = new IAdminOrgServiceUnified.UpdateOrgRequest(
         OrgId: vm.OrgId!,
-        Name: vm.Name!,
-        Type: parsedType,
-        ParentOrganizationId: string.IsNullOrWhiteSpace(vm.ParentOrganizationId) ? null : vm.ParentOrganizationId,
+        Name: vm.Name?.Trim(),
+        Type: vm.Type, // nullable OrganizationType?
+        ParentOrganizationId: string.IsNullOrWhiteSpace(vm.ParentOrganizationId) ? "" : vm.ParentOrganizationId!.Trim(),
         IsActive: vm.IsActive,
-        DomainsReplace: vm.Domains
+        DomainsReplace: vm.Domains?.ToList() // replace set with plain strings
       );
 
-      var updated = await OrgSvc.UpdateAsync(req);
-      success = $"Saved. Org: {updated.Org.Name}";
+      await OrgSvc.UpdateAsync(req);
+
+      Nav.NavigateTo("/platform/organizations");
     }
     catch (Exception ex)
     {
@@ -293,7 +269,6 @@
   {
     var d = (newDomain ?? string.Empty).Trim().ToLowerInvariant();
 
-    // Quick feedback; keep button enabled
     if (string.IsNullOrWhiteSpace(d))
     {
       error = "Enter a domain like example.com";
@@ -307,10 +282,10 @@
       return;
     }
 
-    if (!vm.Domains.Contains(d))
+    if (!vm!.Domains.Contains(d, StringComparer.OrdinalIgnoreCase))
       vm.Domains.Add(d);
 
-    vm.Domains = vm.Domains.Distinct().OrderBy(x => x).ToList();
+    vm.Domains = vm.Domains.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
     newDomain = string.Empty;
     error = null;
     StateHasChanged();
@@ -318,24 +293,21 @@
 
   private void RemoveDomain(string d)
   {
-    vm.Domains.Remove(d);
+    vm!.Domains.RemoveAll(x => string.Equals(x, d, StringComparison.OrdinalIgnoreCase));
     StateHasChanged();
   }
 
   private void GoBack() => Nav.NavigateTo("/platform/organizations");
 
-  private sealed record SelectOption(string Id, string Label);
-
-  private sealed class OrgEditVm
+  private sealed class Vm
   {
     public string? OrgId { get; set; }
 
-    [Required]
+    [Required, MaxLength(128)]
     public string? Name { get; set; }
 
-    // Keep as string for binding; convert on save
     [Required]
-    public string? TypeName { get; set; }
+    public OrganizationType? Type { get; set; }
 
     public string? ParentOrganizationId { get; set; }
     public bool IsActive { get; set; }
