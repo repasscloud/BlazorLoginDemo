@@ -31,7 +31,7 @@
     <div class="card-body row g-3">
       <div class="col-md-6">
         <label class="form-label">Id</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.Id" readonly />
+        <InputText class="form-control bg-light" @bind-Value="_vm.Organization.Id" readonly />
       </div>
       <div class="col-md-6">
         <label class="form-label">Name</label>
@@ -58,12 +58,12 @@
       </div>
 
       <div class="col-md-6">
-        <label class="form-label">Parent (read-only)</label>
+        <label class="form-label">Parent</label>
         <input class="form-control bg-light" value="@(_vm.Organization.Parent?.Name ?? "(none)")" readonly />
       </div>
 
       <div class="col-12">
-        <label class="form-label">Children (read-only)</label>
+        <label class="form-label">Children</label>
         <ul class="list-group">
           @if (_vm.Organization.Children?.Any() == true)
           {
@@ -87,28 +87,31 @@
   <div class="card mb-3">
     <div class="card-header">Company Defaults</div>
     <div class="card-body row g-3">
-      <div class="col-md-3">
-        <label class="form-label" for="defaultCurrency">Default Currency</label>
-        <InputSelect id="defaultCurrency"
-                    class="form-select"
-                    @bind-Value="_vm.Organization.DefaultCurrency">
-          @foreach (var c in _currencyOptions)
-          {
-              <option value="@c.Code">@c.Code @c.Flag</option>
-          }
-        </InputSelect>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Tax Id Type</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.TaxIdType" />
-      </div>
+        <div class="col-md-3">
+            <label class="form-label" for="defaultCurrency">Billing Currency</label>
+            <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.DefaultCurrency">
+                @foreach (var c in _currencyOptions)
+                {
+                    <option value="@c.Code">@c.Code @c.Flag</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="taxIdType">Tax ID Type</label>
+            <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.TaxIdType">
+                @foreach (var t in _taxIdOptions)
+                {
+                    <option value="@t">@t</option>
+                }
+            </InputSelect>
+        </div>
       <div class="col-md-3">
         <label class="form-label">Tax Id</label>
         <InputText class="form-control" @bind-Value="_vm.Organization.TaxId" />
       </div>
       <div class="col-md-3">
         <label class="form-label">Tax Last Validated</label>
-        <InputDate class="form-control" @bind-Value="_vm.Organization.TaxLastValidated" />
+        <InputDate class="form-control bg-light" @bind-Value="_vm.Organization.TaxLastValidated" readonly />
       </div>
     </div>
   </div>
@@ -141,10 +144,15 @@
         <label class="form-label">Postal Code</label>
         <InputText class="form-control" @bind-Value="_vm.Organization.PostalCode" />
       </div>
-      <div class="col-md-3">
-        <label class="form-label">Country</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.Country" />
-      </div>
+        <div class="col-md-3">
+            <label class="form-label" for="addressCountry">Country</label>
+            <InputSelect id="addressCountry" class="form-select" @bind-Value="_vm.Organization.Country">
+                @foreach (string c in _countryOptions)
+                {
+                    <option value="@c">@c</option>
+                }
+            </InputSelect>
+        </div>
     </div>
   </div>
 
@@ -181,10 +189,15 @@
         <label class="form-label">Postal Code</label>
         <InputText class="form-control" @bind-Value="_vm.Organization.MailingPostalCode" />
       </div>
-      <div class="col-md-3">
-        <label class="form-label">Country</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.MailingCountry" />
-      </div>
+        <div class="col-md-3">
+            <label class="form-label" for="mailingCountry">Country</label>
+            <InputSelect id="mailingCountry" class="form-select" @bind-Value="_vm.Organization.MailingCountry">
+                @foreach (string c in _countryOptions)
+                {
+                    <option value="@c">@c</option>
+                }
+            </InputSelect>
+        </div>
     </div>
   </div>
 
@@ -192,11 +205,18 @@
   <div class="row">
     <div class="col-lg-4">
       <div class="card mb-3">
-        <div class="card-header">General / Commercial Contact</div>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>General / Commercial Contact</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary">Copy Down</button>
+        </div>
         <div class="card-body row g-3">
           <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonFirstName" /></div>
           <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonLastName" /></div>
-          <div class="col-md-4"><label class="form-label">CC</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonCountryCode" /></div>
+          <div class="col-md-4"><label class="form-label">CC</label>
+            <InputSelect id="ccPerson" class="form-select" @bind-Value="_vm.Organization.ContactPersonCountryCode">
+                @foreach (string i in _iddOptions){ <option value="@i">@i</option> }
+            </InputSelect>
+          </div>
           <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonPhone" /></div>
           <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonEmail" /></div>
           <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonJobTitle" /></div>
@@ -206,11 +226,18 @@
 
     <div class="col-lg-4">
       <div class="card mb-3">
-        <div class="card-header">Billing Contact</div>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Billing Contact</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary">Copy from General</button>
+        </div>
         <div class="card-body row g-3">
           <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonFirstName" /></div>
           <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonLastName" /></div>
-          <div class="col-md-4"><label class="form-label">CC</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonCountryCode" /></div>
+          <div class="col-md-4"><label class="form-label">CC</label>
+            <InputSelect id="ccBilling" class="form-select" @bind-Value="_vm.Organization.BillingPersonCountryCode">
+                @foreach (string i in _iddOptions){ <option value="@i">@i</option> }
+            </InputSelect>
+          </div>
           <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonPhone" /></div>
           <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonEmail" /></div>
           <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonJobTitle" /></div>
@@ -220,11 +247,18 @@
 
     <div class="col-lg-4">
       <div class="card mb-3">
-        <div class="card-header">Admin / Technical Contact</div>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Admin / Technical Contact</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary">Copy from General</button>
+        </div>
         <div class="card-body row g-3">
           <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonFirstName" /></div>
-          <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonLastName" /></div>
-          <div class="col-md-4"><label class="form-label">CC</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonCountryCode" /></div>
+          <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonCountryCode" /></div>
+          <div class="col-md-4"><label class="form-label">CC</label>
+            <InputSelect id="ccAdmin" class="form-select" @bind-Value="_vm.Organization.BillingPersonCountryCode">
+                @foreach (string i in _iddOptions){ <option value="@i">@i</option> }
+            </InputSelect>
+          </div>
           <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonPhone" /></div>
           <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonEmail" /></div>
           <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonJobTitle" /></div>
@@ -269,24 +303,35 @@
     </div>
   </div>
 
+
+
+
+
+
   <!-- Policies -->
   <div class="card mb-3">
-    <div class="card-header">Policies</div>
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Policies</span>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">Travel Policies</button>
+            <button type="submit" class="btn btn-primary">Expense Policies</button>
+        </div>
+    </div>
     <div class="card-body row">
       <div class="col-md-6">
         <h6>Travel Policies</h6>
         <ul class="list-group">
-          @if (_vm.Organization.TravelPolicies?.Any() == true)
-          {
-            @foreach (var p in _vm.Organization.TravelPolicies)
+            @if (_vm.Organization.TravelPolicies?.Any() == true)
             {
-              <li class="list-group-item">@p</li>
+                @foreach (var p in _vm.Organization.TravelPolicies)
+                {
+                    <li class="list-group-item">@p</li>
+                }
             }
-          }
-          else
-          {
-            <li class="list-group-item text-muted">None</li>
-          }
+            else
+            {
+                <li class="list-group-item text-muted">None</li>
+            }
         </ul>
       </div>
       <div class="col-md-6">
@@ -310,25 +355,37 @@
 
   <!-- Licensing -->
   <div class="card mb-3">
-    <div class="card-header">Billing / Licensing</div>
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Billing / Licensing</span>
+        <button type="button" class="btn btn-outline-secondary" @onclick="CopyPhysicalToMailing">
+            View/Edit
+        </button>
+    </div>
     <div class="card-body row g-3">
       <div class="col-md-6">
         <label class="form-label">License Agreement Id</label>
-        <InputText class="form-control" @bind-Value="_vm.Organization.LicenseAgreementId" />
+        <InputText class="form-control bg-light" @bind-Value="_vm.Organization.LicenseAgreementId" readonly />
       </div>
       <div class="col-md-6">
-        <label class="form-label">License Agreement (read-only)</label>
-        <input class="form-control" value="@(_vm.Organization.LicenseAgreement is null ? "(none)" : "Loaded")" readonly />
+        <label class="form-label">License Agreement</label>
+        <input class="form-control bg-light" value="@(_vm.Organization.LicenseAgreement is null ? "(none)" : "Loaded")" readonly />
       </div>
     </div>
   </div>
 
   <!-- Audit -->
   <div class="card mb-4">
-    <div class="card-header">Audit</div>
+    <div class="card-header">🌍 Last Updated (UTC)</div>
     <div class="card-body row g-3">
       <div class="col-md-3">
-        <label class="form-label">Last Updated (UTC)</label>
+        <InputDate class="form-control" @bind-Value="_vm.Organization.LastUpdatedUtc" readonly />
+      </div>
+    </div>
+  </div>
+  <div class="card mb-4">
+    <div class="card-header">🕒 Last Updated (Local)</div>
+    <div class="card-body row g-3">
+      <div class="col-md-3">
         <InputDate class="form-control" @bind-Value="_vm.Organization.LastUpdatedUtc" readonly />
       </div>
     </div>
@@ -442,4 +499,32 @@
     ];
 
     private record CurrencyOption(string Code, string Flag);
+
+    private readonly List<string> _taxIdOptions = new List<string>
+    {
+        string.Empty,
+        "AU ABN",
+        "AU ACN",
+        "NZ ABN"
+    };
+
+    private readonly List<string> _countryOptions = new List<string>
+    {
+        "Australia",
+        "New Zealand",
+        "Singapore",
+        "United Kingdom",
+        "United States",
+        "Canada"
+    };
+
+    private readonly List<string> _iddOptions = new List<string>
+    {
+        "+61",
+        "+64",
+        "+65",
+        "+44",
+        "+1",
+        "+1"
+    };
 }
