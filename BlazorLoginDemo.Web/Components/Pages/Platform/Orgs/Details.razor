@@ -56,22 +56,19 @@
 
               <dt class="col-sm-3">Domains</dt>
               <dd class="col-sm-9">
-                @{
-                  var domains = _org.Domains ?? new List<DomainDto>(); // whatever your type is
-                }
-                @if (domains.Count == 0)
+                @if (_org.Domains.Count == 0)
                 {
-                  <span class="text-muted">None</span>
+                    <span class="text-muted">None</span>
                 }
                 else
                 {
-                  <ul class="mb-0">
-                    @foreach (var d in domains)
+                    <ul class="mb-0">
+                    @foreach (var d in _org.Domains)
                     {
-                      <li>@d.Domain</li>
+                        <li>@d.Domain</li>
                     }
-                  </ul>
-                }
+                    </ul>
+                }    
               </dd>
             </dl>
           </div>
