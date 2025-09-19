@@ -5,9 +5,11 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Models.Static.Platform
+
 @inject IAdminOrgServiceUnified OrgSvc
 @inject NavigationManager Nav
 
@@ -19,12 +21,14 @@
       <p class="text-muted mb-0">Update core org details and managed domains.</p>
     </div>
     <div>
-      <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="GoBack" disabled="@isSaving"><i class="bi bi-arrow-left"></i> Back</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="GoBack" disabled="@isSaving">
+        <i class="bi bi-arrow-left"></i> Back
+      </button>
     </div>
   </div>
 
   <div class="card shadow-sm">
-    <EditForm Model="@vm" OnValidSubmit="SaveAsync">
+    <EditForm Model="@vm" OnValidSubmit="@SaveAsync">
       <DataAnnotationsValidator />
 
       <div class="card-header border-0 pb-0">
@@ -48,9 +52,11 @@
       <div class="card-body">
         @if (isLoading)
         {
-          <div class="d-flex align-items-center text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Loading…</div>
+          <div class="d-flex align-items-center text-muted">
+            <span class="spinner-border spinner-border-sm me-2"></span> Loading…
+          </div>
         }
-        else if (vm is not null)
+        else
         {
           <!-- Core Details -->
           <div class="mb-4">
@@ -63,12 +69,14 @@
 
               <div class="col-md-5">
                 <label for="type" class="form-label">Type</label>
-                <InputSelect id="type" class="form-select" @bind-Value="vm.Type" disabled="@isSaving">
+                <InputSelect id="type" class="form-select" @bind-Value="vm.TypeName" disabled="@isSaving">
+                  <option value="">(Select type)</option>
                   @foreach (var t in orgTypes)
                   {
-                    <option value="@t">@t</option>
+                    <option value="@t.ToString()">@t.ToString()</option>
                   }
                 </InputSelect>
+                <ValidationMessage For="@(() => vm.TypeName)" class="text-danger" />
               </div>
 
               <div class="col-md-7">
@@ -102,10 +110,21 @@
 
             <div class="row g-2 align-items-center mb-2">
               <div class="col-sm-8 col-md-6">
-                <input class="form-control" placeholder="example.com" @bind="newDomain" @bind:event="oninput" @onkeydown="OnDomainKeyDown" disabled="@isSaving" />
+                <input class="form-control"
+                       placeholder="example.com"
+                       @bind="newDomain"
+                       @bind:event="oninput"
+                       @onkeydown="OnDomainKeyDown"
+                       disabled="@isSaving" />
               </div>
               <div class="col-auto">
-                <button type="button" class="btn btn-outline-primary" @onclick="AddDomain" disabled="@isSaving || string.IsNullOrWhiteSpace(newDomain)"><i class="bi bi-plus"></i> Add</button>
+                <!-- IMPORTANT: type=button so it doesn't submit the form -->
+                <button type="button"
+                        class="btn btn-outline-primary"
+                        @onclick="AddDomain"
+                        disabled="@isSaving || string.IsNullOrWhiteSpace(newDomain)">
+                  <i class="bi bi-plus"></i> Add
+                </button>
               </div>
             </div>
 
@@ -120,7 +139,13 @@
                 {
                   <span class="badge text-bg-light border">
                     <i class="bi bi-globe me-1"></i>@d
-                    <button type="button" class="btn btn-sm btn-link text-danger ms-1 p-0 align-text-top" title="Remove" @onclick="() => RemoveDomain(d)" disabled="@isSaving"><i class="bi bi-x"></i></button>
+                    <button type="button"
+                            class="btn btn-sm btn-link text-danger ms-1 p-0 align-text-top"
+                            title="Remove"
+                            @onclick="@(() => RemoveDomain(d))"
+                            disabled="@isSaving">
+                      <i class="bi bi-x"></i>
+                    </button>
                   </span>
                 }
               </div>
@@ -134,11 +159,11 @@
         <div class="d-flex gap-2">
           <button type="button" class="btn btn-outline-secondary" @onclick="GoBack" disabled="@isSaving">Cancel</button>
           <button type="submit" class="btn btn-primary" disabled="@isSaving || isLoading">
-            @if (isSaving) { <span class="spinner-border spinner-border-sm me-2"> Saving…</span> } else { <span>Save changes</span> }
+            @if (isSaving) { <span class="spinner-border spinner-border-sm me-2">Saving…</span> }
+            else { <span>Save changes</span> }
           </button>
         </div>
       </div>
-
     </EditForm>
   </div>
 </div>
@@ -180,10 +205,16 @@
       {
         OrgId = agg.Org.Id,
         Name = agg.Org.Name,
-        Type = agg.Org.Type,
+        // Keep Type as string to avoid Razor generic/enum parser oddities
+        TypeName = agg.Org.Type.ToString(),
         ParentOrganizationId = agg.Org.ParentOrganizationId,
         IsActive = agg.Org.IsActive,
-        Domains = agg.Domains.Select(d => d.Domain.Trim().ToLowerInvariant()).Distinct().OrderBy(x => x).ToList()
+        Domains = agg.Domains
+                     .Select(d => (d.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                     .Where(s => !string.IsNullOrWhiteSpace(s))
+                     .Distinct()
+                     .OrderBy(x => x)
+                     .ToList()
       };
 
       var parents = await OrgSvc.SearchAsync(isActive: true);
@@ -191,7 +222,7 @@
       {
         parentOrgOptions.Add(new SelectOption(p.Org.Id, p.Org.Name));
       }
-      parentOrgOptions.Sort((a,b) => string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase));
+      parentOrgOptions.Sort((a, b) => string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase));
     }
     catch (Exception ex)
     {
@@ -209,10 +240,17 @@
     isSaving = true; error = success = null;
     try
     {
+      // Validate the Type string -> enum
+      if (!Enum.TryParse<OrganizationType>(vm.TypeName, ignoreCase: true, out var parsedType))
+      {
+        error = "Please select a valid organization type.";
+        return;
+      }
+
       var req = new IAdminOrgServiceUnified.UpdateOrgRequest(
         OrgId: vm.OrgId!,
-        Name: vm.Name,
-        Type: vm.Type,
+        Name: vm.Name!,
+        Type: parsedType,
         ParentOrganizationId: string.IsNullOrWhiteSpace(vm.ParentOrganizationId) ? null : vm.ParentOrganizationId,
         IsActive: vm.IsActive,
         DomainsReplace: vm.Domains
@@ -228,6 +266,7 @@
     finally
     {
       isSaving = false;
+      StateHasChanged();
     }
   }
 
@@ -235,20 +274,34 @@
   {
     var d = (newDomain ?? string.Empty).Trim().ToLowerInvariant();
     if (string.IsNullOrWhiteSpace(d)) return;
-    if (d.Contains(' ') || d.Contains("@")) { error = "Enter a bare domain like example.com"; return; }
-    if (!vm.Domains.Contains(d)) vm.Domains.Add(d);
+    if (d.Contains(' ') || d.Contains("@"))
+    {
+      error = "Enter a bare domain like example.com";
+      StateHasChanged();
+      return;
+    }
+
+    if (!vm.Domains.Contains(d))
+      vm.Domains.Add(d);
+
     vm.Domains = vm.Domains.Distinct().OrderBy(x => x).ToList();
-    newDomain = string.Empty; error = null;
+    newDomain = string.Empty;
+    error = null;
+    StateHasChanged();
   }
 
   private void RemoveDomain(string d)
   {
     vm.Domains.Remove(d);
+    StateHasChanged();
   }
 
   private void OnDomainKeyDown(KeyboardEventArgs e)
   {
-    if (e.Key == "Enter") { AddDomain(); }
+    if (e.Key == "Enter")
+    {
+      AddDomain();
+    }
   }
 
   private void GoBack() => Nav.NavigateTo("/platform/organizations");
@@ -262,12 +315,12 @@
     [Required]
     public string? Name { get; set; }
 
+    // Keep as string for binding; convert on save
     [Required]
-    public OrganizationType? Type { get; set; }
+    public string? TypeName { get; set; }
 
     public string? ParentOrganizationId { get; set; }
     public bool IsActive { get; set; }
-
     public List<string> Domains { get; set; } = new();
   }
 }
