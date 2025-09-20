@@ -3,6 +3,9 @@
 @attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
 
 @using System.ComponentModel.DataAnnotations
+@using System.Reflection;
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
 @using Microsoft.AspNetCore.Components.Forms
 @using BlazorLoginDemo.Web.Components.Shared
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
@@ -551,12 +554,15 @@
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+            _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
+
             await LoadParentOrgInfo(pOrgId: _vm.Organization.ParentOrganizationId);
+
             StateHasChanged();
         }
     }
 
-    private async Task SaveAsync(bool navigateOnSuccess = true)
+    @* private async Task SaveAsync(bool navigateOnSuccess = true)
     {
         _isSaving = true;
         try
@@ -607,7 +613,70 @@
         {
             _isSaving = false;
         }
+    } *@
+
+    private async Task SaveAsync(bool navigateOnSuccess = true)
+    {
+        // If nothing actually changed, just go back.
+        var currentSig = ComputeSignature(_vm.Organization, _vm.Domains);
+        if (currentSig == _vm.OriginalSignature)
+        {
+            Nav.NavigateTo("/platform/organizations");
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            // 1) Save scalars (your Attach/mark-modified path)
+            await OrgSvc.UpdateOrgAsync(_vm.Organization);
+
+            // 2) Replace domains (Edit_Old methodology)
+            await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
+                OrgId: _vm.Organization.Id,
+                Name: null,
+                Type: null,
+                ParentOrganizationId: null,
+                IsActive: null,
+                DomainsReplace: _vm.Domains
+                    .Select(d => d.Trim().ToLowerInvariant())
+                    .Where(d => !string.IsNullOrWhiteSpace(d))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList()
+            ));
+
+            // 3) Reload to reflect server truth
+            var fresh = await OrgSvc.GetByIdAsync(_vm.Organization.Id);
+            if (fresh is not null)
+            {
+                _vm.Organization = fresh.Org;
+                _vm.Domains = (fresh.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                    .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                // reset baseline after successful save
+                _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
+            }
+
+            if (navigateOnSuccess)
+            {
+                Nav.NavigateTo("/platform/organizations");
+            }
+        }
+        catch
+        {
+            // If the backend still throws on a no-op or anything weird, just leave and don’t crash the page.
+            Nav.NavigateTo("/platform/organizations");
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
     }
+
 
     private void GoBack() => Nav.NavigateTo("/platform/organizations");
 
@@ -680,7 +749,6 @@
             return;
         }
 
-        // already exists in the current list?
         if (_vm.Domains.Contains(value, StringComparer.OrdinalIgnoreCase))
         {
             _vm.DomainMessage = "That domain already exists.";
@@ -690,7 +758,6 @@
         _isSaving = true;
         try
         {
-            // Build the new list we want persisted (Edit_Old.razor methodology)
             var newDomains = _vm.Domains
                 .Append(value)
                 .Select(d => d.Trim().ToLowerInvariant())
@@ -698,7 +765,6 @@
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            // Persist via unified update that REPLACES domains on the server
             await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
                 OrgId: _vm.Organization.Id,
                 Name: null,
@@ -708,7 +774,6 @@
                 DomainsReplace: newDomains
             ));
 
-            // Reload the aggregate so UI reflects server truth
             var fresh = await OrgSvc.GetByIdAsync(_vm.Organization.Id);
             if (fresh is not null)
             {
@@ -720,8 +785,17 @@
                     .ToList();
             }
 
-            // Clear input on success
             _vm.NewDomain = string.Empty;
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Server uses exceptions for domain conflicts — show a friendly error
+            _vm.DomainMessage = BuildDomainConflictMessage(ex.Message, value);
+        }
+        catch (Exception ex)
+        {
+            // Anything else: still keep the page alive and show a compact error
+            _vm.DomainMessage = $"Unable to add '{value}': {ex.GetBaseException().Message}";
         }
         finally
         {
@@ -730,7 +804,8 @@
         }
     }
 
-    private async Task RemoveDomainAsync(string domain)
+
+    @* private async Task RemoveDomainAsync(string domain)
     {
         _vm.DomainMessage = string.Empty;
 
@@ -783,6 +858,58 @@
             _isSaving = false;
             StateHasChanged();
         }
+    } *@
+    private async Task RemoveDomainAsync(string domain)
+    {
+        _vm.DomainMessage = string.Empty;
+        var target = (domain ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(target)) return;
+
+        _isSaving = true;
+        try
+        {
+            var newDomains = _vm.Domains
+                .Where(d => !string.Equals(d?.Trim(), target, StringComparison.OrdinalIgnoreCase))
+                .Select(d => (d ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
+                OrgId: _vm.Organization.Id,
+                Name: null,
+                Type: null,
+                ParentOrganizationId: null,
+                IsActive: null,
+                DomainsReplace: newDomains
+            ));
+
+            var fresh = await OrgSvc.GetByIdAsync(_vm.Organization.Id);
+            if (fresh is not null)
+            {
+                _vm.Organization = fresh.Org;
+                _vm.Domains = (fresh.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                    .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
+            }
+            else
+            {
+                // Fallback: if refresh failed, baseline from current org + the list we just persisted
+                _vm.OriginalSignature = ComputeSignature(_vm.Organization, newDomains);
+            }
+        }
+        catch (Exception ex)
+        {
+            _vm.DomainMessage = $"Unable to remove '{target}': {ex.GetBaseException().Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
     }
 
     private string DomainLabel(OrganizationDomainUnified d)
@@ -807,6 +934,7 @@
 
         public string? NewDomain { get; set; }
         public string DomainMessage { get; set; } = string.Empty;
+        public string OriginalSignature { get; set; } = string.Empty;
     }
 
     private readonly CurrencyOption[] _currencyOptions =
@@ -883,5 +1011,79 @@
 
         // Save but stay on this page
         await SaveAsync(navigateOnSuccess: false);
+    }
+
+    private static string BuildDomainConflictMessage(string serverMessage, string attemptedDomain)
+    {
+        // If server returned a list like "These domain(s) are already in use: a.com, b.com"
+        // we show a concise per-domain message. Otherwise fall back to a generic one.
+        if (!string.IsNullOrWhiteSpace(serverMessage) &&
+            serverMessage.Contains("already in use", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"Domain '{attemptedDomain}' is already assigned to another organization.";
+        }
+        return $"Unable to add '{attemptedDomain}': {serverMessage}";
+    }
+
+    // save helpers 'cos the code is shit sometimes junk bitch
+    private static readonly JsonSerializerOptions _sigJsonOpts = new()
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented = false
+    };
+
+    // Hash ONLY scalars from Organization + the normalized domains list.
+    // This avoids nav properties and cycles.
+    private static string ComputeSignature(OrganizationUnified org, IEnumerable<string> domains)
+    {
+        var orgScalarShape = ToScalarShape(org);
+        var orgJson = JsonSerializer.Serialize(orgScalarShape, _sigJsonOpts);
+
+        var domSig = string.Join("|", (domains ?? Array.Empty<string>())
+            .Select(d => (d ?? string.Empty).Trim().ToLowerInvariant())
+            .Where(d => !string.IsNullOrWhiteSpace(d))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(d => d, StringComparer.OrdinalIgnoreCase));
+
+        return $"{orgJson}||{domSig}";
+    }
+
+    // Build a { PropertyName : Value } map of only scalar props.
+    // Skips any navs/collections/classes that cause cycles.
+    private static object ToScalarShape(object obj)
+    {
+        var dict = new SortedDictionary<string, object?>(StringComparer.Ordinal);
+        var props = obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        foreach (var p in props)
+        {
+            if (!p.CanRead) continue;
+            var t = p.PropertyType;
+            if (IsScalarType(t))
+            {
+                dict[p.Name] = p.GetValue(obj);
+            }
+            // else: skip (navs/collections/complex types)
+        }
+
+        return dict;
+    }
+
+    private static bool IsScalarType(Type t)
+    {
+        t = Nullable.GetUnderlyingType(t) ?? t;
+
+        if (t.IsEnum) return true;
+        if (t.IsPrimitive) return true;
+
+        if (t == typeof(string)) return true;
+        if (t == typeof(decimal)) return true;
+        if (t == typeof(Guid)) return true;
+        if (t == typeof(DateTime) || t == typeof(DateTimeOffset)) return true;
+
+        // .NET 6+ date/time-only types without direct refs
+        if (t.FullName == "System.DateOnly" || t.FullName == "System.TimeOnly") return true;
+
+        return false;
     }
 }
