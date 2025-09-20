@@ -331,34 +331,41 @@
         <div class="card-body">
             <div class="input-group mb-2">
                 <InputText class="form-control" @bind-Value="_vm.NewDomain" placeholder="example.com" />
-                <button type="button" class="btn btn-outline-primary" @onclick="AddDomain">Add</button>
+                <button type="button" class="btn btn-outline-primary" @onclick="AddDomainAsync" disabled="@_isSaving">
+                    Add
+                </button>
             </div>
+
             @if (!string.IsNullOrWhiteSpace(_vm.DomainMessage))
             {
                 <div class="text-danger small mb-2">@_vm.DomainMessage</div>
             }
 
-            <ul class="list-group">
-                @if (_vm.Organization.Domains?.Any() == true)
-                {
-                    @foreach (var d in _vm.Organization.Domains)
+            @if (_vm.Domains.Count == 0)
+            {
+                <div class="text-muted">No domains.</div>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var d in _vm.Domains)
                     {
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            @DomainLabel(d)
-                            <button type="button" class="btn btn-sm btn-outline-danger" title="Remove" @onclick="() => RemoveDomain(d)">
+                            <span>@d</span>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger"
+                                    title="Remove"
+                                    @onclick="async () => await RemoveDomainAsync(d)"
+                                    disabled="_isSaving">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </li>
                     }
-                }
-                else
-                {
-                    <li class="list-group-item text-muted">No domains configured.</li>
-                }
-            </ul>
-            <div class="form-text mt-2">Domains are used for tenant discovery and login routing.</div>
+                </ul>
+            }
         </div>
     </div>
+
 
   <!-- Policies -->
   <div class="card mb-3">
@@ -540,38 +547,69 @@
                 return;
             }
             _vm.Organization = loaded.Org ?? new OrganizationUnified { Name = "Unknown" };
+            _vm.Domains = (loaded.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
             await LoadParentOrgInfo(pOrgId: _vm.Organization.ParentOrganizationId);
             StateHasChanged();
         }
     }
 
     private async Task SaveAsync(bool navigateOnSuccess = true)
+{
+    _isSaving = true;
+    try
     {
-        _isSaving = true;
-        try
+        // 1) Save scalar fields (your attach/mark-modified implementation). This does NOT touch collections.
+        bool ok = await OrgSvc.UpdateOrgAsync(_vm.Organization);
+        if (!ok)
         {
-            bool ok = await OrgSvc.UpdateOrgAsync(_vm.Organization);
-            if (!ok) { /* show error */ }
-            
-            // the OrgId is forced, because at this point it must exist, stupid code
-            IAdminOrgServiceUnified.OrgAggregate? fresh = await OrgSvc.GetByIdAsync(OrgId!);
-            if (fresh is not null)
-                _vm.Organization = fresh.Org;
-            
-            if (navigateOnSuccess)
-            {
-                Nav.NavigateTo(uri: "/platform/organizations");
-                return;
-            }
+            // optional: surface an error message here
+        }
 
-            await LoadParentOrgInfo(pOrgId: _vm.Organization.ParentOrganizationId);
-            StateHasChanged();
-        }
-        finally
+        // 2) Replace domains the OLD way (server rebuilds OrganizationDomainUnified rows from strings)
+        await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
+            OrgId: _vm.Organization.Id,
+            Name: null,                    // don't change here
+            Type: null,                    // don't change here
+            ParentOrganizationId: null,    // don't change here
+            IsActive: null,                // don't change here
+            DomainsReplace: _vm.Domains
+                .Select(d => d.Trim().ToLowerInvariant())
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList()
+        ));
+
+        // 3) Refresh aggregate & rehydrate VM (including domain strings)
+        var fresh = await OrgSvc.GetByIdAsync(_vm.Organization.Id);
+        if (fresh is not null)
         {
-            _isSaving = false;
+            _vm.Organization = fresh.Org;
+            _vm.Domains = (fresh.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
+
+        if (navigateOnSuccess)
+        {
+            Nav.NavigateTo("/platform/organizations");
+            return;
+        }
+
+        await LoadParentOrgInfo(_vm.Organization.ParentOrganizationId);
+        StateHasChanged();
     }
+    finally
+    {
+        _isSaving = false;
+    }
+}
+
 
     private void GoBack() => Nav.NavigateTo("/platform/organizations");
 
@@ -633,28 +671,97 @@
     }
 
     // Domain helpers
-    private void AddDomain()
+    private async Task AddDomainAsync()
     {
         _vm.DomainMessage = string.Empty;
+
         var value = (_vm.NewDomain ?? string.Empty).Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(value))
         {
             _vm.DomainMessage = "Please enter a domain.";
             return;
         }
-        if (_vm.Organization.Domains.Any(d =>
-            (d?.ToString() ?? string.Empty).Equals(value, StringComparison.OrdinalIgnoreCase)
-            || (d is not null && GetDomain(d).Equals(value, StringComparison.OrdinalIgnoreCase))
-        ))
+
+        // already exists in the current list?
+        if (_vm.Domains.Contains(value, StringComparer.OrdinalIgnoreCase))
         {
             _vm.DomainMessage = "That domain already exists.";
             return;
         }
 
-        // NOTE: OrganizationDomainUnified likely has a 'Domain' property; if different, update GetDomain/label below.
-        _vm.Organization.Domains.Add(new OrganizationDomainUnified { Domain = value });
-        _vm.NewDomain = string.Empty;
+        _isSaving = true;
+        try
+        {
+            // Build the new list we want persisted (Edit_Old.razor methodology)
+            var newDomains = _vm.Domains
+                .Append(value)
+                .Select(d => d.Trim().ToLowerInvariant())
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            // Persist via unified update that REPLACES domains on the server
+            await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
+                OrgId: _vm.Organization.Id,
+                Name: null,
+                Type: null,
+                ParentOrganizationId: null,
+                IsActive: null,
+                DomainsReplace: newDomains
+            ));
+
+            // Reload the aggregate so UI reflects server truth
+            var fresh = await OrgSvc.GetByIdAsync(_vm.Organization.Id);
+            if (fresh is not null)
+            {
+                _vm.Organization = fresh.Org;
+                _vm.Domains = (fresh.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                    .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            // Clear input on success
+            _vm.NewDomain = string.Empty;
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
     }
+
+
+private async Task RemoveDomainAsync(string domain)
+{
+    if (string.IsNullOrWhiteSpace(domain)) return;
+
+    try
+    {
+        _isSaving = true;
+
+        // Server-side remove (same as Edit_Old.razor)
+        await OrgSvc.RemoveDomainAsync(_vm.Organization.Id, domain);
+
+        // Reload aggregate and rehydrate VM (including domains list)
+        var fresh = await OrgSvc.GetByIdAsync(_vm.Organization.Id);
+        if (fresh is not null)
+        {
+            _vm.Organization = fresh.Org;
+            _vm.Domains = (fresh.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+    }
+    finally
+    {
+        _isSaving = false;
+    }
+}
+
 
     private void RemoveDomain(OrganizationDomainUnified d)
     {
@@ -677,6 +784,10 @@
     private sealed class OrgEditVm
     {
         public OrganizationUnified Organization { get; set; } = new OrganizationUnified { Name = string.Empty };
+
+        // Manage domains the OLD way: simple strings
+        public List<string> Domains { get; set; } = new();
+
         public string? NewDomain { get; set; }
         public string DomainMessage { get; set; } = string.Empty;
     }
@@ -756,4 +867,14 @@
         // Save but stay on this page
         await SaveAsync(navigateOnSuccess: false);
     }
+
+    private async Task OnDomainKeyDown(KeyboardEventArgs e)
+{
+    if (e.Key == "Enter")
+    {
+        // Optional: avoid the form submit by focusing out or just handling add first
+        await AddDomainAsync();
+    }
+}
+
 }
