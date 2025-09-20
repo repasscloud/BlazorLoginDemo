@@ -4,6 +4,7 @@
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
+@using BlazorLoginDemo.Web.Components.Shared
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform  @* org service *@
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Models.Static.Platform
@@ -11,7 +12,6 @@
 @inject NavigationManager Nav
 @inject ILogger<Edit> Logger
 @inject IJSRuntime JS
-
 
 <EditForm Model="_vm.Organization" OnValidSubmit="SaveAsync">
     <DataAnnotationsValidator />
@@ -72,10 +72,23 @@
             <div class="col-md-3">
                 <label class="form-label">Parent Organization Id</label>
                 <div class="input-group">
-                    <InputText class="form-control" @bind-Value="_vm.Organization.ParentOrganizationId" />
-                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-card-list"></i></button>
+                    <InputText class="form-control"
+                            @bind-Value="_vm.Organization.ParentOrganizationId"
+                            placeholder="Select a parent organization…" />
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            title="Pick Parent Organization"
+                            @onclick="OpenParentPickerAsync">
+                        <i class="bi bi-card-list"></i>
+                    </button>
                 </div>
+                @* optional helper text showing the picked org name *@
+                @if (!string.IsNullOrWhiteSpace(_parentOrgDisplay))
+                {
+                    <small class="text-muted">Selected: @_parentOrgDisplay</small>
+                }
             </div>
+
 
             <div class="col-md-6">
                 <label class="form-label">Parent</label>
@@ -444,9 +457,9 @@
             </div>    
         </div>
     </div>
-
-
 </EditForm>
+
+<OrgPickerModal @ref="_orgPicker" />
 
 @code {
     // -----------------
@@ -701,6 +714,33 @@
         var ptype = pOrg.Parent?.Type.ToString() ?? string.Empty;
         var pact = pOrg.Parent?.IsActive ?? false;
         parentOrgInfo = new(pname, ptype, pact);  // overwrite
+    }
 
+    // Modal reference
+    private OrgPickerModal? _orgPicker;
+
+    // Optional friendly display text (Name + Id)
+    private string? _parentOrgDisplay;
+
+    private async Task OpenParentPickerAsync()
+    {
+        // If you want to exclude the current org from being its own parent and you have an Id:
+        var excludeId = _vm?.Organization?.Id; // remove if your VM doesn't expose Id
+
+        // Open the modal (prefill: active only)
+        var agg = await _orgPicker!.OpenAsync(
+            excludeOrgId: excludeId,
+            title: "Select Parent Organization",
+            typePreset: null,
+            activeOnlyPreset: true);
+
+        if (agg is null)
+            return;
+
+        // Assign the chosen Id to your bound field
+        _vm.Organization.ParentOrganizationId = agg.Org.Id;
+
+        // Optional: show friendly text under the input
+        _parentOrgDisplay = $"{agg.Org.Name} ({agg.Org.Id})";
     }
 }
