@@ -1,0 +1,223 @@
+@page "/platform/orgs"
+@page "/platform/orgs/search"
+@page "/platform/organizations"
+@page "/platform/organizations/search"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@using BlazorLoginDemo.Shared.Models.Static.Platform
+@using BlazorLoginDemo.Shared.Models.Kernel.Platform
+@inject IAdminOrgServiceUnified Orgs
+@inject NavigationManager Nav
+
+<h3 class="mb-3">Find Client Organization</h3>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-center">
+            <div class="col-sm-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input class="form-control"
+                        placeholder="Search by name or domain..."
+                        value="@_vm.Query"
+                        @oninput="OnQueryChanged" />
+                    @if (!string.IsNullOrWhiteSpace(_vm.Query))
+                    {
+                        <button type="button" class="btn btn-outline-secondary" title="Clear" @onclick="ClearQuery">Clear</button>
+                    }
+                </div>
+            </div>
+
+            <div class="col-sm-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="activeOnly"
+                        checked="@_vm.ActiveOnly" @onchange="OnActiveOnlyChanged" />
+                    <label class="form-check-label" for="activeOnly">Active only</label>
+                </div>
+            </div>
+
+            <div class="col-sm-3 text-sm-end">
+                <button type="button" class="btn btn-outline-secondary" title="Reload" @onclick="ReloadAsync">
+                    <i class="bi bi-arrow-repeat me-1"></i> Reload
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_vm.IsLoading)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+    </div>
+}
+else if (!string.IsNullOrEmpty(_vm.Error))
+{
+    <div class="alert alert-danger">@_vm.Error</div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Clients <span class="badge bg-secondary">@_vm.Filtered.Count</span></span>
+            <small class="text-muted">Loaded @_vm.All.Count total</small>
+        </div>
+
+        <div class="list-group list-group-flush">
+            @if (_vm.Filtered.Count == 0)
+            {
+                <div class="list-group-item text-muted">No matches.</div>
+            }
+            else
+            {
+                @foreach (var o in _vm.Filtered)
+                {
+                    <button type="button"
+                        class="list-group-item list-group-item-action text-start"
+                        title="Open @o.Name"
+                        @onclick="() => Go(o.Id)">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="fw-semibold">@o.Name</div>
+                                <div class="small text-muted">
+                                    @if (o.Domains?.Length > 0)
+                                    {
+                                        <span>@string.Join(", ", o.Domains)</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(o.ParentName))
+                                    {
+                                        <span class="ms-2">· TMC: @o.ParentName</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="text-nowrap">
+                                @if (o.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </div>
+                        </div>
+                    </button>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private Vm _vm = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAllAsync();
+
+    private async Task ReloadAsync() => await LoadAllAsync();
+
+    private async Task LoadAllAsync()
+    {
+        _vm.IsLoading = true;
+        _vm.Error = null;
+
+        try
+        {
+            // Load ALL clients in one shot (server-side filter by OrganizationType.Client)
+            IReadOnlyList<IAdminOrgServiceUnified.OrgAggregate>? list = await Orgs.SearchAsync(
+            nameContains: null,
+            type: OrganizationType.Client,
+            isActive: null,            // include both active/inactive; toggle handled client-side
+            parentOrgId: null,
+            domainContains: null);
+
+            _vm.All = list.Select(x => new OrgItem
+            {
+                Id = x.Org.Id,
+                Name = x.Org.Name,
+                IsActive = x.Org.IsActive,
+                // Parent name may be null unless included by your aggregate; show when available
+                ParentName = x.Org.Parent?.Name,
+                Domains = (x.Domains?.Select(d => d.Domain).ToArray()) ?? Array.Empty<string>()
+            })
+            .OrderBy(o => o.Name)
+            .ToList();
+
+            _vm.ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            _vm.Error = ex.Message;
+        }
+        finally
+        {
+            _vm.IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnQueryChanged(ChangeEventArgs e)
+    {
+        _vm.Query = e.Value?.ToString() ?? "";
+        _vm.ApplyFilter();
+    }
+
+    private void OnActiveOnlyChanged(ChangeEventArgs e)
+    {
+        _vm.ActiveOnly = bool.TryParse(e.Value?.ToString(), out var b) && b;
+        _vm.ApplyFilter();
+    }
+
+    private void ClearQuery()
+    {
+        _vm.Query = string.Empty;
+        _vm.ApplyFilter();
+    }
+
+    private void Go(string id)
+    {
+        if (!string.IsNullOrWhiteSpace(id))
+        Nav.NavigateTo($"/platform/organizations/{id}");
+    }
+
+    private sealed class Vm
+    {
+        public bool IsLoading { get; set; }
+        public string? Error { get; set; }
+        public string Query { get; set; } = "";
+        public bool ActiveOnly { get; set; } = true;
+
+        public List<OrgItem> All { get; set; } = new();
+        public List<OrgItem> Filtered { get; set; } = new();
+
+        public void ApplyFilter()
+        {
+            var q = (Query ?? string.Empty).Trim();
+            IEnumerable<OrgItem> items = All;
+
+            if (ActiveOnly)
+                items = items.Where(i => i.IsActive);
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                items = items.Where(i =>
+                (i.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (i.ParentName?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (i.Domains?.Any(d => d.Contains(q, StringComparison.OrdinalIgnoreCase)) ?? false));
+            }
+
+            // Safety cap to keep DOM snappy if there are thousands
+            Filtered = items.Take(1000).ToList();
+        }
+    }
+
+    private sealed class OrgItem
+    {
+        public string Id { get; set; } = default!;
+        public string Name { get; set; } = default!;
+        public bool IsActive { get; set; }
+        public string? ParentName { get; set; }
+        public string[]? Domains { get; set; }
+    }
+}
