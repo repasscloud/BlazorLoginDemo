@@ -131,6 +131,38 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         return list.Select(o => new IAdminOrgServiceUnified.OrgAggregate(o, o.Domains.ToList(), o.LicenseAgreement)).ToList();
     }
 
+    public async Task<IReadOnlyList<IAdminOrgServiceUnified.OrganizationPickerDto>> GetAllForPickerAsync(CancellationToken ct = default)
+    {
+        return await _db.Organizations
+            .AsNoTracking()
+            .OrderBy(o => o.Name).ThenBy(o => o.Id)
+            .Select(o => new IAdminOrgServiceUnified.OrganizationPickerDto
+            {
+                Id = o.Id,
+                Name = o.Name,
+                Type = o.Type,
+                IsActive = o.IsActive,
+
+                ContactPersonFirstName = o.ContactPersonFirstName,
+                ContactPersonLastName  = o.ContactPersonLastName,
+                ContactPersonEmail     = o.ContactPersonEmail,
+                ContactPersonPhone     = o.ContactPersonPhone,
+
+                BillingPersonFirstName = o.BillingPersonFirstName,
+                BillingPersonLastName  = o.BillingPersonLastName,
+                BillingPersonEmail     = o.BillingPersonEmail,
+                BillingPersonPhone     = o.BillingPersonPhone,
+
+                AdminPersonFirstName   = o.AdminPersonFirstName,
+                AdminPersonLastName    = o.AdminPersonLastName,
+                AdminPersonPhone       = o.AdminPersonPhone,
+                AdminPersonEmail       = o.AdminPersonEmail,
+
+                TaxId                  = o.TaxId,
+                Country                = o.Country
+            })
+            .ToListAsync(ct);
+    }
 
     // -------------- UPDATE --------------
     public async Task<IAdminOrgServiceUnified.OrgAggregate> UpdateAsync(IAdminOrgServiceUnified.UpdateOrgRequest req, CancellationToken ct = default)
@@ -200,24 +232,29 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
 
     public async Task<bool> UpdateOrgAsync(OrganizationUnified req, CancellationToken ct = default)
     {
-        // Attach only the root entity; do NOT call Update() (that walks the whole graph)
-        _db.Attach(req);
+        // Normalize inputs (avoid empty-string FK values)
+        req.ParentOrganizationId = string.IsNullOrWhiteSpace(req.ParentOrganizationId)
+            ? null
+            : req.ParentOrganizationId.Trim();
 
+        req.Name = req.Name.Trim(); // (optional) keep your name tidy
+
+        // Attach only the root entity; do NOT call Update() (avoids walking the graph)
+        _db.Attach(req);
         var e = _db.Entry(req);
 
-        // Mark ONLY scalar properties as modified (no navs/collections)
+        // Baseline: nothing modified
+        e.State = EntityState.Unchanged;
+
+        // Mark ONLY scalar properties as modified (including FKs like ParentOrganizationId)
         foreach (var p in e.Properties)
         {
-            // skip keys, concurrency tokens, and insert-only columns
+            // Skip keys, concurrency tokens, and insert-only columns
             if (p.Metadata.IsKey()) continue;
             if (p.Metadata.IsConcurrencyToken) continue;
-
-            // your immutable created timestamp
             if (p.Metadata.Name == nameof(OrganizationUnified.CreatedAt)) continue;
 
-            // If you also want to skip FKs that point to navs, uncomment:
-            // if (p.Metadata.IsForeignKey()) continue;
-
+            // IMPORTANT: DO NOT skip foreign keys — we want ParentOrganizationId to persist
             p.IsModified = true;
         }
 
@@ -225,28 +262,13 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         e.Property(x => x.LastUpdatedUtc).CurrentValue = DateTime.UtcNow;
         e.Property(x => x.LastUpdatedUtc).IsModified = true;
 
-        // Ensure navs are untouched (they were/are updated elsewhere)
-        // These lines are protective; not strictly required if you didn't call Update()
-        e.State = EntityState.Unchanged; // baseline
-        foreach (var p in e.Properties)
-        {
-            // re-apply our scalar flags from above
-            if (!p.Metadata.IsKey()
-                && !p.Metadata.IsConcurrencyToken
-                && p.Metadata.Name != nameof(OrganizationUnified.CreatedAt)
-                && !p.Metadata.IsForeignKey())
-            {
-                p.IsModified = true;
-            }
-        }
+        // Ensure navs/collections are untouched (we never called Update(), so they're fine)
+        // No need for a second pass that reverts FKs.
 
         // Execute single UPDATE ... WHERE Id = req.Id
         var affected = await _db.SaveChangesAsync(ct);
-
-        // Fail fast: false => no row matched Id (or concurrency prevented update)
         return affected > 0;
     }
-
 
     public async Task<IAdminOrgServiceUnified.OrgAggregate> RemoveDomainAsync(string orgId, string domain, CancellationToken ct = default)
     {

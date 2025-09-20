@@ -11,7 +11,9 @@
 @inject IAdminOrgServiceUnified Orgs
 @inject NavigationManager Nav
 
-<h3 class="mb-3">Find Client Organization</h3>
+
+
+<h3 class="mb-3">Find Organization</h3>
 
 <div class="card mb-3">
     <div class="card-body">
@@ -25,7 +27,7 @@
                         @oninput="OnQueryChanged" />
                     @if (!string.IsNullOrWhiteSpace(_vm.Query))
                     {
-                        <button type="button" class="btn btn-outline-secondary" title="Clear" @onclick="ClearQuery">Clear</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="ClearQuery">Clear</button>
                     }
                 </div>
             </div>
@@ -39,7 +41,7 @@
             </div>
 
             <div class="col-sm-3 text-sm-end">
-                <button type="button" class="btn btn-outline-secondary" title="Reload" @onclick="ReloadAsync">
+                <button type="button" class="btn btn-outline-secondary" @onclick="ReloadAsync">
                     <i class="bi bi-arrow-repeat me-1"></i> Reload
                 </button>
             </div>
@@ -61,7 +63,7 @@ else
 {
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Clients <span class="badge bg-secondary">@_vm.Filtered.Count</span></span>
+            <span>Organizations <span class="badge bg-secondary">@_vm.Filtered.Count</span></span>
             <small class="text-muted">Loaded @_vm.All.Count total</small>
         </div>
 
@@ -74,13 +76,11 @@ else
             {
                 @foreach (var o in _vm.Filtered)
                 {
-                    <button type="button"
-                        class="list-group-item list-group-item-action text-start"
-                        title="Open @o.Name"
-                        @onclick="() => Go(o.Id)">
-                        <div class="d-flex justify-content-between">
+                    <button type="button" class="list-group-item list-group-item-action text-start" title="Open @o.Name" @onclick="() => Go(o.Id)">
+                        <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <div class="fw-semibold">@o.Name</div>
+
                                 <div class="small text-muted">
                                     @if (o.Domains?.Length > 0)
                                     {
@@ -88,9 +88,20 @@ else
                                     }
                                     @if (!string.IsNullOrWhiteSpace(o.ParentName))
                                     {
-                                        <span class="ms-2">· TMC: @o.ParentName</span>
+                                        <span class="ms-2">· Parent: @o.ParentName</span>
                                     }
                                 </div>
+
+                                <!-- Add this details block here -->
+                                <div class="small">
+                                    <span class="text-muted">Country:</span> @(!string.IsNullOrWhiteSpace(o.Country) ? o.Country : "-")
+                                    <span class="mx-2">·</span>
+                                    <span class="text-muted">TaxId:</span> @(!string.IsNullOrWhiteSpace(o.TaxId) ? o.TaxId : "-")
+                                    <span class="mx-2">·</span>
+                                    <span class="text-muted">Created:</span> @(o.CreatedAt.HasValue ? o.CreatedAt.Value.ToString("yyyy-MM-dd") : "-")
+                                </div>
+                                <!-- end details block -->
+
                             </div>
                             <div class="text-nowrap">
                                 @if (o.IsActive)
@@ -114,7 +125,6 @@ else
     private Vm _vm = new();
 
     protected override async Task OnInitializedAsync() => await LoadAllAsync();
-
     private async Task ReloadAsync() => await LoadAllAsync();
 
     private async Task LoadAllAsync()
@@ -124,11 +134,11 @@ else
 
         try
         {
-            // Load ALL clients in one shot (server-side filter by OrganizationType.Client)
-            IReadOnlyList<IAdminOrgServiceUnified.OrgAggregate>? list = await Orgs.SearchAsync(
+            // ⬇️ NO FILTERS — load absolutely everything
+            var list = await Orgs.SearchAsync(
             nameContains: null,
-            type: OrganizationType.Client,
-            isActive: null,            // include both active/inactive; toggle handled client-side
+            type: null,               // was OrganizationType.Client — removed
+            isActive: null,           // include active + inactive
             parentOrgId: null,
             domainContains: null);
 
@@ -137,9 +147,11 @@ else
                 Id = x.Org.Id,
                 Name = x.Org.Name,
                 IsActive = x.Org.IsActive,
-                // Parent name may be null unless included by your aggregate; show when available
-                ParentName = x.Org.Parent?.Name,
-                Domains = (x.Domains?.Select(d => d.Domain).ToArray()) ?? Array.Empty<string>()
+                ParentName = x.Org.Parent?.Name, // null-safe
+                Domains = (x.Domains?.Select(d => d.Domain).ToArray()) ?? Array.Empty<string>(),
+                Country    = x.Org.Country,
+                TaxId      = x.Org.TaxId,
+                CreatedAt  = x.Org.CreatedAt,
             })
             .OrderBy(o => o.Name)
             .ToList();
@@ -178,7 +190,7 @@ else
     private void Go(string id)
     {
         if (!string.IsNullOrWhiteSpace(id))
-        Nav.NavigateTo($"/platform/organizations/{id}");
+            Nav.NavigateTo($"/platform/organizations/{id}");
     }
 
     private sealed class Vm
@@ -186,7 +198,7 @@ else
         public bool IsLoading { get; set; }
         public string? Error { get; set; }
         public string Query { get; set; } = "";
-        public bool ActiveOnly { get; set; } = true;
+        public bool ActiveOnly { get; set; } = false; // ⬅️ default OFF so ALL show immediately
 
         public List<OrgItem> All { get; set; } = new();
         public List<OrgItem> Filtered { get; set; } = new();
@@ -204,11 +216,12 @@ else
                 items = items.Where(i =>
                 (i.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (i.ParentName?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (i.Country?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (i.TaxId?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (i.Domains?.Any(d => d.Contains(q, StringComparison.OrdinalIgnoreCase)) ?? false));
             }
 
-            // Safety cap to keep DOM snappy if there are thousands
-            Filtered = items.Take(1000).ToList();
+            Filtered = items.Take(2000).ToList(); // light safety cap
         }
     }
 
@@ -219,5 +232,8 @@ else
         public bool IsActive { get; set; }
         public string? ParentName { get; set; }
         public string[]? Domains { get; set; }
+        public string? Country { get; set; }
+        public string? TaxId { get; set; }
+        public DateTime? CreatedAt { get; set; } // or DateTime if non-nullable in your model
     }
 }

@@ -1,318 +1,768 @@
-@page "/platform/organizations/{OrgId}/edit3"
+@page "/platform/organizations/{OrgId}/edit"
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
 
 @using System.ComponentModel.DataAnnotations
-@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
-@using Microsoft.AspNetCore.Components.Web
+@using BlazorLoginDemo.Web.Components.Shared
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Models.Static.Platform
-@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
-
 @inject IAdminOrgServiceUnified OrgSvc
 @inject NavigationManager Nav
+@inject ILogger<Edit> Logger
+@inject IJSRuntime JS
 
-<div class="container-lg py-4">
+<EditForm Model="_vm.Organization" OnValidSubmit="@(async () => await SaveAsync(true))">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
 
-  @if (!string.IsNullOrWhiteSpace(error))
-  {
-    <div class="alert alert-danger d-flex align-items-start mb-3" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>
-      <div>
-        <div class="fw-semibold">Error</div>
-        <div>@error</div>
-      </div>
-    </div>
-  }
-
-  @if (vm is null || editContext is null)
-  {
-    <div class="text-muted d-flex align-items-center">
-      <span class="spinner-border spinner-border-sm me-2"></span>
-      Loading…
-    </div>
-  }
-  else
-  {
-    <EditForm EditContext="editContext" OnValidSubmit="SaveAsync">
-      <DataAnnotationsValidator />
-      <ValidationSummary />
-
-      <div class="card shadow-sm mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h1 class="h5 mb-0">Edit Organisation</h1>
-          <button type="button" class="btn btn-outline-secondary" @onclick="GoBack" disabled="@isSaving">
-            <i class="bi bi-arrow-left me-1"></i> Back
-          </button>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">Edit Organization</h2>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">Back</button>
+            <button type="submit" class="btn btn-primary">
+                @if (_isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                Save
+            </button>
         </div>
+    </div>
 
-        <div class="card-body">
-          <div class="row g-3">
+  <!-- Identity -->
+    <div class="card mb-3">
+        <div class="card-header">Identity</div>
+            <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Id</label>
+                <div class="input-group">
+                    <InputText class="form-control bg-light" @bind-Value="_vm.Organization.Id" readonly />
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(_vm.Organization.Id)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+                <div class="col-md-6">
+                    <label class="form-label">Name</label>
+                    <InputText class="form-control" @bind-Value="_vm.Organization.Name" />
+                </div>
 
-            <div class="col-md-8">
-              <label class="form-label">Organisation Name</label>
-              <InputText class="form-control" @bind-Value="vm.Name" disabled="@isSaving" />
+                <div class="col-md-2">
+                    <label class="form-label">Type</label>
+                    <InputSelect class="form-select" @bind-Value="_vm.Organization.Type">
+                        @foreach (var t in Enum.GetValues<OrganizationType>())
+                        {
+                            <option value="@t">@t</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="col-md-1">
+                    <label class="form-label">@(_vm.Organization.IsActive ? "Active" : "Inactive")</label>
+                    <div class="form-check form-switch mt-2">
+                        <InputCheckbox class="form-check-input" @bind-Value="_vm.Organization.IsActive" />
+                        <label class="form-check-label" title="@(_vm.Organization.IsActive ? "Active" : "Inactive")">
+                            <span aria-hidden="true">@(_vm.Organization.IsActive ? " ✅" : " ❌")</span>
+                        </label>
+                    </div>
+                </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Parent Organization Id</label>
+                <div class="input-group">
+                    <InputText class="form-control bg-light" @bind-Value="_vm.Organization.ParentOrganizationId" placeholder="Select a parent organization…" readonly />
+                    <button type="button" class="btn btn-outline-secondary" title="Pick Parent Organization" @onclick="OpenParentPickerAsync">
+                        <i class="bi bi-card-list"></i>
+                    </button>
+                </div>
+                @* optional helper text showing the picked org name *@
+                @* @if (!string.IsNullOrWhiteSpace(_parentOrgDisplay))
+                {
+                    <small class="text-muted">Selected: @_parentOrgDisplay</small>
+                } *@
             </div>
 
-            <div class="col-md-4">
-              <label class="form-label">Type</label>
-              <InputSelect class="form-select" @bind-Value="vm.Type" disabled="@isSaving">
-                @foreach (var t in Enum.GetValues<OrganizationType>())
-                {
-                  <option value="@t">@t</option>
-                }
-              </InputSelect>
+
+            <div class="col-md-6">
+                <label class="form-label">Parent</label>
+                <input class="form-control bg-light" value="@(parentOrgName ?? "(none)")" readonly />
+            </div>
+
+            <!-- TODO: Link fields in OrgEdit page #25 -->
+            <div class="col-md-2">
+                <label class="form-label">Type</label>
+                <input class="form-control bg-light" value="@(parentOrgType)" readonly />
+            </div>
+
+            <!-- TODO: Link fields in OrgEdit page #25 -->
+            <div class="col-md-1">
+                <label class="form-label">@(_vm.Organization.IsActive ? "Active" : "Inactive")</label>
+                <div class="form-check form-switch mt-2">
+                    <input type="checkbox" class="form-check-input" checked="@(parentOrgActive)" disabled />
+                    <label class="form-check-label">
+                        <span aria-hidden="true">@(parentOrgActive ? " ✅" : " ❌")</span>
+                    </label>
+                </div>
             </div>
 
             <div class="col-12">
-              <div class="row g-3">
-                <div class="col-md-7">
-                  <label for="parent" class="form-label">Parent Organization <span class="text-muted">(optional)</span></label>
-                  <InputSelect id="parent" class="form-select" @bind-Value="vm.ParentOrganizationId" disabled="@isSaving">
-                    <option value="">(None)</option>
-                    @foreach (var p in parentOrgOptions)
-                    {
-                      <option value="@p.Id">@p.Label</option>
-                    }
-                  </InputSelect>
-                </div>
-
-                <div class="col-md-5 d-flex align-items-end">
-                  <div class="form-check form-switch">
-                    <InputCheckbox id="active" class="form-check-input" @bind-Value="vm.IsActive" disabled="@isSaving" />
-                    <label for="active" class="form-check-label ms-2">Active</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Domains -->
-            <div class="mb-2">
-                <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-at me-2"></i>
-                    <label class="form-label mb-0">Managed Email Domains</label>
-                </div>
-
-
-              <div class="row g-2 align-items-center mb-2">
-                <div class="col-sm-8 col-md-6">
-                  <input class="form-control"
-                         placeholder="example.com"
-                         @bind="newDomain"
-                         @bind:event="oninput"
-                         disabled="@isSaving" />
-                </div>
-                <div class="col-auto">
-                  <button type="button"
-                          class="btn btn-outline-primary"
-                          @onclick="AddDomain"
-                          disabled="@isSaving">
-                    <i class="bi bi-plus"></i> Add
-                  </button>
-                </div>
-              </div>
-
-              @if (vm.Domains.Count == 0)
-              {
-                <div class="text-muted">No domains added.</div>
-              }
-              else
-              {
+                <label class="form-label">Children</label>
                 <ul class="list-group">
-                  @foreach (var d in vm.Domains)
-                  {
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span>@d</span>
-                      <button type="button"
-                              class="btn btn-sm btn-outline-danger"
-                              @onclick="() => RemoveDomain(d)"
-                              disabled="@isSaving">
-                        <i class="bi bi-x-lg"></i>
-                        Remove
-                      </button>
-                    </li>
-                  }
+                    @if (_vm.Organization.Children?.Any() == true)
+                    {
+                        @foreach (var c in _vm.Organization.Children)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                @c.Name <span class="text-muted small">@c.Id</span>
+                            </li>
+                        }
+                    }
+                    else
+                    {
+                        <li class="list-group-item text-muted">No child organizations.</li>
+                    }
                 </ul>
-              }
             </div>
+        </div>
+    </div>
 
-          </div>
+    <!-- Company Defaults -->
+    <div class="card mb-3">
+        <div class="card-header">Company Defaults</div>
+        <div class="card-body row g-3">
+            <div class="col-md-2">
+                <label class="form-label" for="defaultCurrency">Billing Currency</label>
+                <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.DefaultCurrency">
+                    @foreach (var c in _currencyOptions)
+                    {
+                        <option value="@c.Code">@c.Code @c.Flag</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="taxIdType">Tax ID Type</label>
+                <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.TaxIdType">
+                    @foreach (var t in _taxIdOptions)
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tax Id</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.TaxId" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">🌍 Last Validated (UTC)</label>
+                <input class="form-control" value="@FormatUtc(_vm.Organization.TaxLastValidated)" readonly />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">🕒 Last Validated (Local)</label>
+                <input class="form-control" value="@FormatLocalBrowser(_vm.Organization.TaxLastValidated)" readonly />
+            </div>
+        </div>
+    </div>
+
+    <!-- Physical Address -->
+    <div class="card mb-3">
+        <div class="card-header">Physical Address</div>
+        <div class="card-body row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Address Line 1</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine1" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Address Line 2</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine2" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Address Line 3</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine3" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">City</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.City" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">State/Province</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.State" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Postal Code</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.PostalCode" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="addressCountry">Country</label>
+                <InputSelect id="addressCountry" class="form-select" @bind-Value="_vm.Organization.Country">
+                    @foreach (string c in _countryOptions)
+                    {
+                        <option value="@c">@c</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mailing Address -->
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Mailing Address</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyPhysicalToMailing">
+                Copy from Physical
+            </button>
+        </div>
+        <div class="card-body row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Address Line 1</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine1" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Address Line 2</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine2" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Address Line 3</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine3" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">City</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingCity" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">State/Province</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingState" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Postal Code</label>
+                <InputText class="form-control" @bind-Value="_vm.Organization.MailingPostalCode" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="mailingCountry">Country</label>
+                <InputSelect id="mailingCountry" class="form-select" @bind-Value="_vm.Organization.MailingCountry">
+                    @foreach (string c in _countryOptions)
+                    {
+                        <option value="@c">@c</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contacts -->
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>General / Commercial Contact</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => CopyGeneralContactDownAsync())">Copy Down</button>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonFirstName" /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonLastName" /></div>
+                    <div class="col-md-4"><label class="form-label">CC</label>
+                        <InputSelect id="ccPerson" class="form-select" @bind-Value="_vm.Organization.ContactPersonCountryCode">
+                            @foreach (string i in _iddOptions)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonPhone" /></div>
+                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonEmail" /></div>
+                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonJobTitle" /></div>
+                </div>
+            </div>
         </div>
 
-        <div class="card-footer d-flex justify-content-between">
-          <div class="text-muted">
-            @if (isSaving)
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>Billing Contact</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => CopyFromGeneralContactToBillingAsync())">Copy from General</button>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonFirstName" /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonLastName" /></div>
+                    <div class="col-md-4"><label class="form-label">CC</label>
+                        <InputSelect id="ccBilling" class="form-select" @bind-Value="_vm.Organization.BillingPersonCountryCode">
+                            @foreach (string i in _iddOptions)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonPhone" /></div>
+                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonEmail" /></div>
+                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonJobTitle" /></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>Admin / Technical Contact</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => CopyFromGeneralContactToAdminAsync())">Copy from General</button>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonFirstName" /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonLastName" /></div>
+                    <div class="col-md-4"><label class="form-label">CC</label>
+                        <InputSelect id="ccAdmin" class="form-select" @bind-Value="_vm.Organization.AdminPersonCountryCode">
+                            @foreach (string i in _iddOptions)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonPhone" /></div>
+                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonEmail" /></div>
+                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonJobTitle" /></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Domains -->
+    <div class="card mb-3">
+    <div class="card-header">Domains</div>
+    <div class="card-body">
+        <!-- add domain input -->
+        <div class="input-group mb-2">
+        <input class="form-control" @bind="_vm.NewDomain" placeholder="e.g. example.com" />
+        <button type="button" class="btn btn-outline-primary" @onclick="AddDomain">Add</button>
+        </div>
+
+        <!-- place the foreach RIGHT HERE -->
+        <div class="d-flex flex-wrap gap-1">
+        @foreach (var dom in (_vm.Organization?.Domains ?? Enumerable.Empty<OrganizationDomainUnified>())
+                                    .Where(x => x is not null))
+        {
+            <span class="badge bg-light text-dark me-1">
+            @GetDomain(dom)
+            </span>
+        }
+        </div>
+
+        @* (optional) if you support removing a domain, use a pill with a close button) *@
+        @* <div class="d-flex flex-wrap gap-1">
+        @foreach (var dom in (_vm.Organization?.Domains ?? Enumerable.Empty<OrganizationDomainUnified>()).Where(x => x is not null))
+        {
+            <span class="badge rounded-pill text-bg-light">
+            @GetDomain(dom)
+            <button type="button"
+                    class="btn-close btn-close-white ms-2"
+                    aria-label="Remove"
+                    @onclick="() => RemoveDomain(dom!)"></button>
+            </span>
+        }
+        </div> *@
+    </div>
+    </div>
+
+
+    <!-- Policies -->
+    <div class="card mb-3">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Policies</span>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-primary" @onclick="GoBack">Travel Policies</button>
+            <button type="submit" class="btn btn-primary">Expense Policies</button>
+        </div>
+    </div>
+    <div class="card-body row">
+        <div class="col-md-6">
+        <label class="form-label">Travel Policies</label>
+        <ul class="list-group">
+            @if (_vm.Organization?.TravelPolicies?.Any() == true)
             {
-              <span class="spinner-border spinner-border-sm me-2">Saving…</span>
+                @foreach (var p in _vm.Organization.TravelPolicies)
+                {
+                    <li class="list-group-item">@p</li>
+                }
             }
-          </div>
-          <div class="d-flex">
-            <button type="button" class="btn btn-outline-secondary me-2" @onclick="GoBack" disabled="@isSaving">
-              Cancel
-            </button>
-            <button type="submit" class="btn btn-primary" disabled="@isSaving">
-              @if (isSaving)
-              {
-                <span class="spinner-border spinner-border-sm me-2"></span>
-              }
-              Save
-            </button>
-          </div>
+            else
+            {
+                <li class="list-group-item text-muted">None</li>
+            }
+        </ul>
         </div>
-      </div>
-    </EditForm>
-  }
-</div>
+        <div class="col-md-6">
+        <label class="form-label">Expense Policies</label>
+        <ul class="list-group">
+            @if (_vm.Organization?.ExpensePolicies?.Any() == true)
+            {
+            @foreach (var p in _vm.Organization.ExpensePolicies)
+            {
+                <li class="list-group-item">@p</li>
+            }
+            }
+            else
+            {
+            <li class="list-group-item text-muted">None</li>
+            }
+        </ul>
+        </div>
+    </div>
+    </div>
 
+    <!-- Licensing -->
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Billing / Licensing</span>
+            <button type="button" class="btn btn-outline-primary">View/Edit</button>
+        </div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label">License Agreement Id</label>
+                <div class="input-group">
+                    <InputText class="form-control bg-light" @bind-Value="_vm.Organization!.LicenseAgreementId" readonly />
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(_vm.Organization.LicenseAgreementId)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">License Agreement</label>
+                <input class="form-control bg-light" value="@(_vm.Organization.LicenseAgreement is null ? "(none)" : "Loaded")" readonly />
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit -->
+    <div class="card mb-4">
+        <div class="card-header">Audit</div>
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">🌍 Last Updated (UTC)</label>
+                <div class="input-group">
+                    <input class="form-control" value="@FormatUtc(_vm.Organization.LastUpdatedUtc)" readonly />
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(FormatUtc(_vm.Organization.LastUpdatedUtc))">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">🕒 Last Updated (Local)</label>
+                <div class="input-group">
+                    <input class="form-control" value="@FormatLocalBrowser(_vm.Organization.LastUpdatedUtc)" readonly />
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(FormatLocalBrowser(_vm.Organization.LastUpdatedUtc))">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>    
+        </div>
+    </div>
+</EditForm>
+
+<OrgPickerModal @ref="_orgPicker" />
 
 @code {
-  [Parameter] public string? OrgId { get; set; }
+    // -----------------
+    // Parameters and Classes
+    // -----------------
+    [Parameter] public string? OrgId { get; set; }
 
-  private Vm? vm;
-  private EditContext? editContext;
-  private string? error;
-  private bool isSaving;
-  private string? newDomain;
-
-  private List<(string Id, string Label)> parentOrgOptions = new();
-
-  protected override async Task OnInitializedAsync()
-  {
-    try
+    private OrgEditVm _vm = new OrgEditVm
     {
-      if (string.IsNullOrWhiteSpace(OrgId))
-      {
-        error = "No organization id provided.";
-        return;
-      }
+        Organization = new OrganizationUnified
+        {
+            Name = string.Empty,
+            Type = OrganizationType.Client,
+            IsActive = true,
+            Domains = new List<OrganizationDomainUnified>()
+        }
+    };
+    private bool _isSaving;
 
-      // Load the target org
-      var agg = await OrgSvc.GetByIdAsync(OrgId);
-      if (agg is null)
-      {
-        error = $"Organization not found: {OrgId}";
-        return;
-      }
-
-      // Build VM from aggregate (note: fields live under agg.Org)
-      vm = new Vm
-      {
-        OrgId = agg.Org.Id,
-        Name = agg.Org.Name,
-        Type = agg.Org.Type,                          // OrganizationUnified.Type
-        ParentOrganizationId = agg.Org.ParentOrganizationId,
-        IsActive = agg.Org.IsActive,
-        Domains = (agg.Domains ?? Array.Empty<OrganizationDomainUnified>())
-                    .Select(d => d.Domain)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(x => x)
-                    .ToList()
-      };
-
-      // Parent options via SearchAsync (no GetAllAsync on the interface)
-      var all = await OrgSvc.SearchAsync();
-      parentOrgOptions = all
-        .Where(x => x.Org.Id != vm.OrgId)
-        .Select(x => (x.Org.Id, $"{x.Org.Name} ({x.Org.Type})"))
-        .OrderBy(x => x.Item2)
-        .ToList();
-
-      editContext = new EditContext(vm);
-    }
-    catch (Exception ex)
+    // holds the browser time zone (IANA id like "Australia/Sydney", "Europe/London", etc.)
+    private TimeZoneInfo? _browserTz; 
+    private string? _tzId;
+    
+    // holds parent org info
+    private string? parentOrgName;
+    private string? parentOrgType;
+    private bool parentOrgActive = false;
+    
+    private record CurrencyOption(string Code, string Flag);
+    private readonly List<string> _taxIdOptions = new List<string>
     {
-      error = ex.GetBaseException().Message;
-    }
-  }
+        string.Empty,
+        "AU ABN",
+        "AU ACN",
+        "NZ ABN"
+    };
 
-  private async Task SaveAsync()
-  {
-    if (vm is null || editContext is null)
-      return;
-
-    error = null;
-    isSaving = true;
-
-    try
+    private readonly List<string> _countryOptions = new List<string>
     {
-      if (!editContext.Validate())
-      {
-        error = "Please fix validation errors.";
-        return;
-      }
+        string.Empty,
+        "Australia",
+        "New Zealand",
+        "Singapore",
+        "United Kingdom",
+        "United States",
+        "Canada"
+    };
 
-      // Prepare update request
-      var req = new IAdminOrgServiceUnified.UpdateOrgRequest(
-        OrgId: vm.OrgId!,
-        Name: vm.Name?.Trim(),
-        Type: vm.Type, // nullable OrganizationType?
-        ParentOrganizationId: string.IsNullOrWhiteSpace(vm.ParentOrganizationId) ? "" : vm.ParentOrganizationId!.Trim(),
-        IsActive: vm.IsActive,
-        DomainsReplace: vm.Domains?.ToList() // replace set with plain strings
-      );
-
-      await OrgSvc.UpdateAsync(req);
-
-      Nav.NavigateTo("/platform/organizations");
-    }
-    catch (Exception ex)
+    private readonly List<string> _iddOptions = new List<string>
     {
-      error = ex.GetBaseException().Message;
-    }
-    finally
-    {
-      isSaving = false;
-      StateHasChanged();
-    }
-  }
+        string.Empty,
+        "+61",
+        "+64",
+        "+65",
+        "+44",
+        "+1"
+    };
 
-  private void AddDomain()
-  {
-    var d = (newDomain ?? string.Empty).Trim().ToLowerInvariant();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
 
-    if (string.IsNullOrWhiteSpace(d))
-    {
-      error = "Enter a domain like example.com";
-      StateHasChanged();
-      return;
-    }
-    if (d.Contains(' ') || d.Contains("@"))
-    {
-      error = "Enter a bare domain (no spaces, no @).";
-      StateHasChanged();
-      return;
+        try
+        {
+            _tzId = await JS.InvokeAsync<string>("blazorGetTz"); // e.g., "Australia/Sydney"
+            _browserTz = TimeZoneInfo.FindSystemTimeZoneById(_tzId);
+
+            // IMPORTANT: rooted path (leading slash)
+            _clipboard = await JS.InvokeAsync<IJSObjectReference>("import", "/js/clipboard.js");
+
+            // Optional sanity check (remove if you want)
+            string? ping = await _clipboard.InvokeAsync<string>("ping");
+        }
+        catch
+        {
+            // If you want AU as default instead of server-local/UTC:
+            _tzId = "Australia/Sydney";
+            _browserTz = TimeZoneInfo.FindSystemTimeZoneById(_tzId);
+        }
+        StateHasChanged();
     }
 
-    if (!vm!.Domains.Contains(d, StringComparer.OrdinalIgnoreCase))
-      vm.Domains.Add(d);
+    protected override async Task OnInitializedAsync()
+    {
+        // Load (plug into your existing service)
+        if (!string.IsNullOrWhiteSpace(OrgId))
+        {
+            IAdminOrgServiceUnified.OrgAggregate? loaded = await OrgSvc.GetByIdAsync(OrgId);
+            if (loaded is null)
+            {
+                Nav.NavigateTo(uri: "/error/no-org-id");
+                return;
+            }
+            _vm.Organization = loaded.Org ?? new OrganizationUnified { Name = "Unknown" };
+            await LoadParentOrgInfo(pOrgId: _vm.Organization.ParentOrganizationId);
+            StateHasChanged();
+        }
+    }
 
-    vm.Domains = vm.Domains.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
-    newDomain = string.Empty;
-    error = null;
-    StateHasChanged();
-  }
+    private async Task SaveAsync(bool navigateOnSuccess = true)
+    {
+        _isSaving = true;
+        try
+        {
+            bool ok = await OrgSvc.UpdateOrgAsync(_vm.Organization);
+            if (!ok) { /* show error */ }
+            
+            // the OrgId is forced, because at this point it must exist, stupid code
+            IAdminOrgServiceUnified.OrgAggregate? fresh = await OrgSvc.GetByIdAsync(OrgId!);
+            if (fresh is not null)
+                _vm.Organization = fresh.Org;
+            
+            if (navigateOnSuccess)
+            {
+                Nav.NavigateTo(uri: "/platform/organizations");
+                return;
+            }
 
-  private void RemoveDomain(string d)
-  {
-    vm!.Domains.RemoveAll(x => string.Equals(x, d, StringComparison.OrdinalIgnoreCase));
-    StateHasChanged();
-  }
+            await LoadParentOrgInfo(pOrgId: _vm.Organization.ParentOrganizationId);
+            StateHasChanged();
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
 
-  private void GoBack() => Nav.NavigateTo("/platform/organizations");
+    private void GoBack() => Nav.NavigateTo("/platform/organizations");
 
-  private sealed class Vm
-  {
-    public string? OrgId { get; set; }
+    private async Task CopyFromGeneralContactToBillingAsync()
+    {
+        OrganizationUnified? o = _vm.Organization;
+        o.BillingPersonFirstName = o.ContactPersonFirstName;
+        o.BillingPersonLastName = o.ContactPersonLastName;
+        o.BillingPersonCountryCode = o.ContactPersonCountryCode;
+        o.BillingPersonPhone = o.ContactPersonPhone;
+        o.BillingPersonEmail = o.ContactPersonEmail;
+        o.BillingPersonJobTitle = o.ContactPersonJobTitle;
 
-    [Required, MaxLength(128)]
-    public string? Name { get; set; }
+        await SaveAsync(navigateOnSuccess: false);
+    }
 
-    [Required]
-    public OrganizationType? Type { get; set; }
+    private async Task CopyFromGeneralContactToAdminAsync()
+    {
+        OrganizationUnified? o = _vm.Organization;
+        o.AdminPersonFirstName = o.ContactPersonFirstName;
+        o.AdminPersonLastName = o.ContactPersonLastName;
+        o.AdminPersonCountryCode = o.ContactPersonCountryCode;
+        o.AdminPersonPhone = o.ContactPersonPhone;
+        o.AdminPersonEmail = o.ContactPersonEmail;
+        o.AdminPersonJobTitle = o.ContactPersonJobTitle;
 
-    public string? ParentOrganizationId { get; set; }
-    public bool IsActive { get; set; }
-    public List<string> Domains { get; set; } = new();
-  }
+        await SaveAsync(navigateOnSuccess: false);
+    }
+
+    private async Task CopyGeneralContactDownAsync()
+    {
+        OrganizationUnified? o = _vm.Organization;
+        o.BillingPersonFirstName = o.ContactPersonFirstName;
+        o.BillingPersonLastName = o.ContactPersonLastName;
+        o.BillingPersonCountryCode = o.ContactPersonCountryCode;
+        o.BillingPersonPhone = o.ContactPersonPhone;
+        o.BillingPersonEmail = o.ContactPersonEmail;
+        o.BillingPersonJobTitle = o.ContactPersonJobTitle;
+        o.AdminPersonFirstName = o.ContactPersonFirstName;
+        o.AdminPersonLastName = o.ContactPersonLastName;
+        o.AdminPersonCountryCode = o.ContactPersonCountryCode;
+        o.AdminPersonPhone = o.ContactPersonPhone;
+        o.AdminPersonEmail = o.ContactPersonEmail;
+        o.AdminPersonJobTitle = o.ContactPersonJobTitle;
+
+        await SaveAsync(navigateOnSuccess: false);
+    }
+
+    private void CopyPhysicalToMailing()
+    {
+        OrganizationUnified? o = _vm.Organization;
+        o.MailingAddressLine1 = o.AddressLine1;
+        o.MailingAddressLine2 = o.AddressLine2;
+        o.MailingAddressLine3 = o.AddressLine3;
+        o.MailingCity = o.City;
+        o.MailingState = o.State;
+        o.MailingPostalCode = o.PostalCode;
+        o.MailingCountry = o.Country;
+    }
+
+    // Domain helpers
+    private void AddDomain()
+    {
+        _vm.DomainMessage = string.Empty;
+        var value = (_vm.NewDomain ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            _vm.DomainMessage = "Please enter a domain.";
+            return;
+        }
+        if (_vm.Organization.Domains.Any(d => (d?.ToString() ?? string.Empty).Equals(value, StringComparison.OrdinalIgnoreCase)
+            || GetDomain(d).Equals(value, StringComparison.OrdinalIgnoreCase)))
+        {
+            _vm.DomainMessage = "That domain already exists.";
+            return;
+        }
+
+        // NOTE: OrganizationDomainUnified likely has a 'Domain' property; if different, update GetDomain/label below.
+        _vm.Organization.Domains.Add(new OrganizationDomainUnified { Domain = value });
+        _vm.NewDomain = string.Empty;
+    }
+
+    private void RemoveDomain(OrganizationDomainUnified d)
+    {
+        _vm.Organization.Domains.Remove(d);
+    }
+
+    private string DomainLabel(OrganizationDomainUnified d)
+        => GetDomain(d);
+
+    @* private static string GetDomain(OrganizationDomainUnified d)
+    {
+        // Prefer a 'Domain' property if present; fall back to ToString()
+        var prop = d.GetType().GetProperty("Domain");
+        return prop?.GetValue(d)?.ToString() ?? d.ToString() ?? "(domain)";
+    } *@
+    private static string GetDomain(OrganizationDomainUnified? d)
+        => (d?.Domain ?? string.Empty).Trim();
+
+    // -----------------
+    // ViewModel
+    // -----------------
+    private sealed class OrgEditVm
+    {
+        public OrganizationUnified Organization { get; set; } = new OrganizationUnified { Name = string.Empty };
+        public string? NewDomain { get; set; }
+        public string DomainMessage { get; set; } = string.Empty;
+    }
+
+    private readonly CurrencyOption[] _currencyOptions =
+    [
+        new CurrencyOption(Code: "AUD", Flag: "🇦🇺"),
+        new CurrencyOption(Code: "GBP", Flag: "🇬🇧"),
+        new CurrencyOption(Code: "USD", Flag: "🇺🇸"),
+        new CurrencyOption(Code: "NZD", Flag: "🇳🇿"),
+        new CurrencyOption(Code: "CAD", Flag: "🇨🇦"),
+        new CurrencyOption(Code: "HKD", Flag: "🇭🇰"),
+        new CurrencyOption(Code: "EUR", Flag: "🇪🇺"),
+    ];
+
+    private static string FormatUtc(DateTime utc)
+    {
+        DateTime fixedUtc = utc.Kind == DateTimeKind.Utc ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+        return fixedUtc.ToString(format: "yyyy-MM-dd HH:mm:ss.fff");
+    }
+
+    private string FormatLocalBrowser(DateTime utc)
+    {
+        if (_browserTz is null) return "…";
+        DateTime fixedUtc = utc.Kind == DateTimeKind.Utc ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+        DateTime local = TimeZoneInfo.ConvertTimeFromUtc(fixedUtc, _browserTz);
+        return local.ToString(format: "yyyy-MM-dd HH:mm:ss.fff");
+    }
+    private IJSObjectReference? _clipboard;
+
+    private async Task CopyToClipboardAsync(string? value)
+    {
+        // Lazy-load if user clicks before first render finished
+        _clipboard ??= await JS.InvokeAsync<IJSObjectReference>("import", "/js/clipboard.js");
+
+        var ok = await _clipboard.InvokeAsync<bool>("copyText", value ?? string.Empty);
+    }
+
+    private async Task LoadParentOrgInfo(string? pOrgId)
+    {
+        if (!string.IsNullOrWhiteSpace(pOrgId))
+        {
+            IAdminOrgServiceUnified.OrgAggregate? loaded = await OrgSvc.GetByIdAsync(pOrgId);
+            if (loaded is null)
+                return;
+            
+            parentOrgActive = loaded.Org.IsActive;
+            parentOrgName = loaded.Org.Name;
+            parentOrgType = loaded.Org.Type.ToString();
+        }
+    }
+
+    // Modal reference
+    private OrgPickerModal? _orgPicker;
+
+    // Optional friendly display text (Name + Id)
+    private string? _parentOrgDisplay;
+
+    private async Task OpenParentPickerAsync()
+    {
+        var excludeId = _vm?.Organization?.Id;
+
+        var picked = await _orgPicker!.OpenAsync(
+            excludeOrgId: excludeId,
+            title: "Select Parent Organization",
+            typePreset: null);
+
+        if (picked is null) return;
+
+        _vm!.Organization.ParentOrganizationId = picked.Id;
+        _parentOrgDisplay = $"{picked.Name} ({picked.Id})";
+
+        // Save but stay on this page
+        await SaveAsync(navigateOnSuccess: false);
+    }
+
 }
