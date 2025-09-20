@@ -327,44 +327,41 @@
 
     <!-- Domains -->
     <div class="card mb-3">
-    <div class="card-header">Domains</div>
-    <div class="card-body">
-        <!-- add domain input -->
-        <div class="input-group mb-2">
-        <input class="form-control" @bind="_vm.NewDomain" placeholder="e.g. example.com" />
-        <button type="button" class="btn btn-outline-primary" @onclick="AddDomain">Add</button>
-        </div>
+        <div class="card-header">Tenant Domains</div>
+        <div class="card-body">
+            <div class="input-group mb-2">
+                <InputText class="form-control" @bind-Value="_vm.NewDomain" placeholder="example.com" />
+                <button type="button" class="btn btn-outline-primary" @onclick="AddDomain">Add</button>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_vm.DomainMessage))
+            {
+                <div class="text-danger small mb-2">@_vm.DomainMessage</div>
+            }
 
-        <!-- place the foreach RIGHT HERE -->
-        <div class="d-flex flex-wrap gap-1">
-        @foreach (var dom in (_vm.Organization?.Domains ?? Enumerable.Empty<OrganizationDomainUnified>())
-                                    .Where(x => x is not null))
-        {
-            <span class="badge bg-light text-dark me-1">
-            @GetDomain(dom)
-            </span>
-        }
+            <ul class="list-group">
+                @if (_vm.Organization.Domains?.Any() == true)
+                {
+                    @foreach (var d in _vm.Organization.Domains)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @DomainLabel(d)
+                            <button type="button" class="btn btn-sm btn-outline-danger" title="Remove" @onclick="() => RemoveDomain(d)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </li>
+                    }
+                }
+                else
+                {
+                    <li class="list-group-item text-muted">No domains configured.</li>
+                }
+            </ul>
+            <div class="form-text mt-2">Domains are used for tenant discovery and login routing.</div>
         </div>
-
-        @* (optional) if you support removing a domain, use a pill with a close button) *@
-        @* <div class="d-flex flex-wrap gap-1">
-        @foreach (var dom in (_vm.Organization?.Domains ?? Enumerable.Empty<OrganizationDomainUnified>()).Where(x => x is not null))
-        {
-            <span class="badge rounded-pill text-bg-light">
-            @GetDomain(dom)
-            <button type="button"
-                    class="btn-close btn-close-white ms-2"
-                    aria-label="Remove"
-                    @onclick="() => RemoveDomain(dom!)"></button>
-            </span>
-        }
-        </div> *@
-    </div>
     </div>
 
-
-    <!-- Policies -->
-    <div class="card mb-3">
+  <!-- Policies -->
+  <div class="card mb-3">
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>Policies</span>
         <div class="btn-group">
@@ -373,10 +370,10 @@
         </div>
     </div>
     <div class="card-body row">
-        <div class="col-md-6">
+      <div class="col-md-6">
         <label class="form-label">Travel Policies</label>
         <ul class="list-group">
-            @if (_vm.Organization?.TravelPolicies?.Any() == true)
+            @if (_vm.Organization.TravelPolicies?.Any() == true)
             {
                 @foreach (var p in _vm.Organization.TravelPolicies)
                 {
@@ -388,25 +385,25 @@
                 <li class="list-group-item text-muted">None</li>
             }
         </ul>
-        </div>
-        <div class="col-md-6">
+      </div>
+      <div class="col-md-6">
         <label class="form-label">Expense Policies</label>
         <ul class="list-group">
-            @if (_vm.Organization?.ExpensePolicies?.Any() == true)
-            {
+          @if (_vm.Organization.ExpensePolicies?.Any() == true)
+          {
             @foreach (var p in _vm.Organization.ExpensePolicies)
             {
-                <li class="list-group-item">@p</li>
+              <li class="list-group-item">@p</li>
             }
-            }
-            else
-            {
+          }
+          else
+          {
             <li class="list-group-item text-muted">None</li>
-            }
+          }
         </ul>
-        </div>
+      </div>
     </div>
-    </div>
+  </div>
 
     <!-- Licensing -->
     <div class="card mb-3">
@@ -418,7 +415,7 @@
             <div class="col-md-6">
                 <label class="form-label">License Agreement Id</label>
                 <div class="input-group">
-                    <InputText class="form-control bg-light" @bind-Value="_vm.Organization!.LicenseAgreementId" readonly />
+                    <InputText class="form-control bg-light" @bind-Value="_vm.Organization.LicenseAgreementId" readonly />
                     <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(_vm.Organization.LicenseAgreementId)">
                         <i class="bi bi-clipboard"></i>
                     </button>
@@ -465,16 +462,7 @@
     // -----------------
     [Parameter] public string? OrgId { get; set; }
 
-    private OrgEditVm _vm = new OrgEditVm
-    {
-        Organization = new OrganizationUnified
-        {
-            Name = string.Empty,
-            Type = OrganizationType.Client,
-            IsActive = true,
-            Domains = new List<OrganizationDomainUnified>()
-        }
-    };
+    private OrgEditVm _vm = new();
     private bool _isSaving;
 
     // holds the browser time zone (IANA id like "Australia/Sydney", "Europe/London", etc.)
@@ -654,8 +642,10 @@
             _vm.DomainMessage = "Please enter a domain.";
             return;
         }
-        if (_vm.Organization.Domains.Any(d => (d?.ToString() ?? string.Empty).Equals(value, StringComparison.OrdinalIgnoreCase)
-            || GetDomain(d).Equals(value, StringComparison.OrdinalIgnoreCase)))
+        if (_vm.Organization.Domains.Any(d =>
+            (d?.ToString() ?? string.Empty).Equals(value, StringComparison.OrdinalIgnoreCase)
+            || (d is not null && GetDomain(d).Equals(value, StringComparison.OrdinalIgnoreCase))
+        ))
         {
             _vm.DomainMessage = "That domain already exists.";
             return;
@@ -674,14 +664,12 @@
     private string DomainLabel(OrganizationDomainUnified d)
         => GetDomain(d);
 
-    @* private static string GetDomain(OrganizationDomainUnified d)
+    private static string GetDomain(OrganizationDomainUnified d)
     {
         // Prefer a 'Domain' property if present; fall back to ToString()
         var prop = d.GetType().GetProperty("Domain");
         return prop?.GetValue(d)?.ToString() ?? d.ToString() ?? "(domain)";
-    } *@
-    private static string GetDomain(OrganizationDomainUnified? d)
-        => (d?.Domain ?? string.Empty).Trim();
+    }
 
     // -----------------
     // ViewModel
@@ -758,11 +746,14 @@
 
         if (picked is null) return;
 
-        _vm!.Organization.ParentOrganizationId = picked.Id;
+        // ensure org exists before dereference (kills CS8602)
+        var org = _vm?.Organization;
+        if (org is null) return;
+
+        org.ParentOrganizationId = picked.Id;
         _parentOrgDisplay = $"{picked.Name} ({picked.Id})";
 
         // Save but stay on this page
         await SaveAsync(navigateOnSuccess: false);
     }
-
 }
