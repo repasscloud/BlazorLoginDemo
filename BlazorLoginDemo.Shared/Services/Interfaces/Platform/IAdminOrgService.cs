@@ -38,7 +38,6 @@ public interface IAdminOrgServiceUnified
         string? domainContains = null,
         CancellationToken ct = default);
 
-
     // UPDATE
     public sealed record UpdateOrgRequest(
         string OrgId,
