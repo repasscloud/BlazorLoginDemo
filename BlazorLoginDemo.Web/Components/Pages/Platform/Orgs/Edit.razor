@@ -617,7 +617,7 @@
 
     private async Task SaveAsync(bool navigateOnSuccess = true)
     {
-        // If nothing actually changed, just go back.
+        // No-op? Just go back.
         var currentSig = ComputeSignature(_vm.Organization, _vm.Domains);
         if (currentSig == _vm.OriginalSignature)
         {
@@ -628,46 +628,41 @@
         _isSaving = true;
         try
         {
-            // 1) Save scalars (your Attach/mark-modified path)
-            await OrgSvc.UpdateOrgAsync(_vm.Organization);
+            var normalizedDomains = _vm.Domains
+                .Select(d => (d ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            // 2) Replace domains (Edit_Old methodology)
-            await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
+            // ✅ canonical unified update: send all scalars + DomainsReplace
+            var updated = await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
                 OrgId: _vm.Organization.Id,
-                Name: null,
-                Type: null,
-                ParentOrganizationId: null,
-                IsActive: null,
-                DomainsReplace: _vm.Domains
-                    .Select(d => d.Trim().ToLowerInvariant())
-                    .Where(d => !string.IsNullOrWhiteSpace(d))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList()
+                Name: _vm.Organization.Name?.Trim(),
+                Type: _vm.Organization.Type,
+                ParentOrganizationId: string.IsNullOrWhiteSpace(_vm.Organization.ParentOrganizationId)
+                    ? null
+                    : _vm.Organization.ParentOrganizationId,
+                IsActive: _vm.Organization.IsActive,
+                DomainsReplace: normalizedDomains
             ));
 
-            // 3) Reload to reflect server truth
-            var fresh = await OrgSvc.GetByIdAsync(_vm.Organization.Id);
-            if (fresh is not null)
-            {
-                _vm.Organization = fresh.Org;
-                _vm.Domains = (fresh.Domains ?? Array.Empty<OrganizationDomainUnified>())
-                    .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
-                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+            // Use server truth to rehydrate VM
+            _vm.Organization = updated.Org;
+            _vm.Domains = (updated.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-                // reset baseline after successful save
-                _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
-            }
+            // Reset baseline so subsequent no-op saves short-circuit cleanly
+            _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
 
             if (navigateOnSuccess)
-            {
                 Nav.NavigateTo("/platform/organizations");
-            }
         }
         catch
         {
-            // If the backend still throws on a no-op or anything weird, just leave and don’t crash the page.
+            // If backend throws (validation/no-op/whatever), do NOT crash the page — just leave.
             Nav.NavigateTo("/platform/organizations");
         }
         finally
@@ -676,7 +671,6 @@
             StateHasChanged();
         }
     }
-
 
     private void GoBack() => Nav.NavigateTo("/platform/organizations");
 
