@@ -26,11 +26,15 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // read token for blazorize
+        var blazoriseProductToken = builder.Configuration["Blazorise:ProductToken"];
+
         // Blazorize
         builder.Services
         .AddBlazorise(options =>
         {
             options.Immediate = true;
+            options.ProductToken = blazoriseProductToken;
         })
         .AddBootstrap5Providers()
         .AddFontAwesomeIcons();
