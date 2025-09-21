@@ -645,7 +645,7 @@
         }
     } *@
 
-    private async Task SaveAsync(bool navigateOnSuccess = true)
+    @* private async Task SaveAsync(bool navigateOnSuccess = true)
     {
         // No-op? Just go back.
         var currentSig = ComputeSignature(_vm.Organization, _vm.Domains);
@@ -702,7 +702,67 @@
             _isSaving = false;
             StateHasChanged();
         }
+    } *@
+
+    private async Task SaveAsync(bool navigateOnSuccess = true)
+    {
+        // No-op? Just go back.
+        var currentSig = ComputeSignature(_vm.Organization, _vm.Domains);
+        if (currentSig == _vm.OriginalSignature)
+        {
+            Nav.NavigateTo("/platform/organizations");
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            // 1) Save ALL scalar fields (name, active, parent, *addresses*, tax, country, etc.)
+            // This executes a single UPDATE on OrganizationUnified (no navs/collections).
+            await OrgSvc.UpdateOrgAsync(_vm.Organization);
+
+            // 2) Save domains using the unified replace pattern (old page methodology)
+            var normalizedDomains = _vm.Domains
+                .Select(d => (d ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var updated = await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
+                OrgId: _vm.Organization.Id,
+                Name: null,                   // already persisted in step 1
+                Type: null,                   // already persisted in step 1 (if you bind it)
+                ParentOrganizationId: null,   // already persisted in step 1
+                IsActive: null,               // already persisted in step 1
+                DomainsReplace: normalizedDomains
+            ));
+
+            // 3) Rehydrate from server truth and reset baseline
+            _vm.Organization = updated.Org;
+            _vm.Domains = (updated.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            await LoadChildrenAsync(_vm.Organization.Id); // keep "Children" section fresh
+            _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
+
+            if (navigateOnSuccess)
+                Nav.NavigateTo("/platform/organizations");
+        }
+        catch
+        {
+            // If backend throws (validation/no-op/etc.), do NOT crash the page — just leave.
+            Nav.NavigateTo("/platform/organizations");
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
     }
+
 
     private void GoBack() => Nav.NavigateTo("/platform/organizations");
 
