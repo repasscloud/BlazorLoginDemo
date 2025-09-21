@@ -41,8 +41,8 @@
             </div>
 
             <div class="col-sm-3 text-sm-end">
-                <button type="button" class="btn btn-outline-primary" @onclick="ReloadAsync">
-                    <i class="bi bi-arrow-repeat me-1"></i> New
+                <button type="button" class="btn btn-outline-primary" @onclick="GoToNewOrgPage">
+                    <i class="bi bi-building-add me-1"></i> New
                 </button>
                 <button type="button" class="btn btn-outline-secondary" @onclick="ReloadAsync">
                     <i class="bi bi-arrow-repeat me-1"></i> Reload
@@ -194,6 +194,12 @@ else
     {
         if (!string.IsNullOrWhiteSpace(id))
             Nav.NavigateTo($"/platform/organizations/{id}");
+    }
+
+    private void GoToNewOrgPage()
+    {
+        Nav.NavigateTo(uri: "/platform/organizations/create");
+        return;
     }
 
     private sealed class Vm
