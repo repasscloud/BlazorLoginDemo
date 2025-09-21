@@ -1,204 +1,371 @@
 @page "/support/contact"
-@page "/support"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Components
 
-@* We fully-qualify Blazorise tags to avoid collisions with Microsoft components *@
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
 
-<div class="container py-4">
-    <div class="row justify-content-center g-4">
-        <div class="col-12 col-lg-7">
-            <Blazorise.Card Class="shadow-sm">
-                <Blazorise.CardHeader>
-                    <div class="d-flex align-items-center justify-content-between">
-                        <h5 class="mb-0">Contact Support</h5>
-                        <span class="text-muted small">Create a support ticket</span>
-                    </div>
-                </Blazorise.CardHeader>
-                <Blazorise.CardBody>
-                    @if (!string.IsNullOrWhiteSpace(_error))
-                    {
-                        <Blazorise.Alert Color="Blazorise.Color.Danger" Visible="true">Darn — @_error</Blazorise.Alert>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(_success))
-                    {
-                        <Blazorise.Alert Color="Blazorise.Color.Success" Visible="true">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-check-circle me-2"></i>
-                                @_success
-                            </div>
-                        </Blazorise.Alert>
-                    }
-
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label">Subject</label>
-                            <Blazorise.TextEdit @bind-Text="_vm.Subject" Placeholder="Short summary (max 120 chars)" MaxLength="120" />
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Category</label>
-                            <Blazorise.Select TValue="string" @bind-SelectedValue="_vm.Category">
-                                <Blazorise.SelectItem Value="@("Unspecified")">-- Choose --</Blazorise.SelectItem>
-                                <Blazorise.SelectItem Value="@("Bug")">Bug</Blazorise.SelectItem>
-                                <Blazorise.SelectItem Value="@("Feature")">Feature request</Blazorise.SelectItem>
-                                <Blazorise.SelectItem Value="@("Question")">Question</Blazorise.SelectItem>
-                                <Blazorise.SelectItem Value="@("Billing")">Billing</Blazorise.SelectItem>
-                                <Blazorise.SelectItem Value="@("Account")">Account</Blazorise.SelectItem>
-                            </Blazorise.Select>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Priority</label>
-                            <Blazorise.Select TValue="string" @bind-SelectedValue="_vm.Priority">
-                                <Blazorise.SelectItem Value="@("Normal")">Normal</Blazorise.SelectItem>
-                                <Blazorise.SelectItem Value="@("Low")">Low</Blazorise.SelectItem>
-                                <Blazorise.SelectItem Value="@("High")">High</Blazorise.SelectItem>
-                                <Blazorise.SelectItem Value="@("Urgent")">Urgent</Blazorise.SelectItem>
-                            </Blazorise.Select>
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label">Describe the issue</label>
-                            <Blazorise.MemoEdit @bind-Text="_vm.Description" Placeholder="Tell us what’s happening — steps to reproduce, expected vs actual, screenshots/links…" Rows="8" />
-                            <div class="form-text">Markdown supported in the final GitHub ticket (we'll post this for you once the service is ready).</div>
-                        </div>
-
-                        <div class="col-12 d-flex align-items-center">
-                            <Blazorise.Check @bind-Checked="_vm.IncludeDiagnostics" Class="me-2" />
-                            <label class="form-check-label">Include diagnostics</label>
-                        </div>
-
-                        <div class="col-md-7">
-                            <label class="form-label">Your email (for updates)</label>
-                            <Blazorise.TextEdit @bind-Text="_vm.CallbackEmail" Placeholder="name@example.com" />
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label">Page URL (optional)</label>
-                            <Blazorise.TextEdit @bind-Text="_vm.PageUrl" Placeholder="https://…" />
-                        </div>
-                    </div>
-                </Blazorise.CardBody>
-                <Blazorise.CardFooter Class="d-flex gap-2 bg-white border-0">
-                    <Blazorise.Button Color="Blazorise.Color.Primary" Disabled="@_submitting" Clicked="SubmitAsync">
-                        @if (_submitting)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                        }
-                        Submit ticket
-                    </Blazorise.Button>
-                    <Blazorise.Button Color="Blazorise.Color.Light" Outline Clicked="ResetForm">Reset</Blazorise.Button>
-                </Blazorise.CardFooter>
-            </Blazorise.Card>
+<CascadingAuthenticationState>
+    @if (!_isAuthChecked)
+    {
+        <div class="container py-5">
+            <div class="text-center text-muted">Loading…</div>
         </div>
-
-        <div class="col-12 col-lg-5">
-            <Blazorise.Card Class="shadow-sm">
-                <Blazorise.CardHeader>
-                    <h6 class="mb-0">Preview</h6>
-                </Blazorise.CardHeader>
-                <Blazorise.CardBody>
-                    <div class="mb-2"><span class="text-muted">Title:</span> <strong>@PreviewTitle</strong></div>
-                    <div class="mb-2"><span class="text-muted">Labels:</span> <span class="badge text-bg-secondary me-1">@_vm.CategoryLabel</span> <span class="badge text-bg-secondary">@_vm.PriorityLabel</span></div>
-                    <div class="small text-muted mb-1">Body</div>
-                    <div class="p-2 border rounded bg-light" style="white-space:pre-wrap">@PreviewBody</div>
-                </Blazorise.CardBody>
-                <Blazorise.CardFooter>
-                    <div class="text-muted small">
-                        This is a placeholder. Posting to GitHub will be enabled once the service is built.
+    }
+    else if (!_isAuthenticated)
+    {
+        <div class="container py-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-7">
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger text-white">Login required</div>
+                        <div class="card-body">
+                            <p class="mb-4">
+                                Please sign in to submit a support ticket.
+                            </p>
+                            <a class="btn btn-primary" href="/login">Go to Login</a>
+                        </div>
                     </div>
-                </Blazorise.CardFooter>
-            </Blazorise.Card>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
+    }
+    else
+    {
+        <div class="container py-4">
+            <div class="row justify-content-center">
+                <div class="col-lg-9">
+                    <div class="card">
+                        <div class="card-header">Contact Support</div>
+
+                        <div class="card-body">
+                            <EditForm Model="_vm" OnValidSubmit="SubmitAsync">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary />
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="userId">User ID</label>
+                                        <InputText id="userId" class="form-control" @bind-Value="_vm.UserId" placeholder="none" readonly />
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="orgId">Org ID</label>
+                                        <InputText id="orgId" class="form-control" @bind-Value="_vm.OrgId" placeholder="none" readonly />
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label">Subject</label>
+                                        <InputText class="form-control" @bind-Value="_vm.Subject" placeholder="Brief summary of the issue…" />
+                                    </div>
+
+                                    <!-- Category -->
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="categoryGroup">Category</label>
+                                        <InputSelect id="categoryGroup"
+                                                    class="form-select"
+                                                    @bind-Value="_selectedCategoryGroup"
+                                                    @onchange="OnCategoryGroupChanged">
+                                            <option value="@DefaultGroupKey">— Select Category —</option>
+                                            @foreach (var g in _categoryGroups)
+                                            {
+                                                <option value="@g.Key">@g.Label</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+
+                                    <!-- SubCategory -->
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="subcategory">Sub-Category</label>
+                                        <InputSelect id="subcategory" class="form-select" @bind-Value="_vm.Category">
+                                            <option value="@NoSubcatValue">— Select Sub-Category —</option>
+                                            @foreach (var c in SubcategoriesForSelected)
+                                            {
+                                                <option value="@c.Value">@c.Label</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+
+                                    <!-- Priority -->
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="priority">Priority</label>
+                                        <InputSelect id="priority" class="form-select" @bind-Value="_vm.Priority">
+                                            @foreach (var p in _priorities)
+                                            {
+                                                <option value="@p.Value">@p.Label</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label">Description</label>
+                                        <InputTextArea class="form-control" @bind-Value="_vm.Description" placeholder="Describe the problem, steps to reproduce, expected vs actual…" rows="6" />
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Callback Email (optional)</label>
+                                        <InputText type="email" class="form-control" @bind-Value="_vm.CallbackEmail" placeholder="name@example.com" />
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Related Page URL (optional)</label>
+                                        <InputText class="form-control" @bind-Value="_vm.PageUrl" placeholder="https://yourapp/path/that/errored" />
+                                        @* if came from error page with ?pageUrl=xxx already filled this *@
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" id="diagChk" @bind="_vm.IncludeDiagnostics" />
+                                            <label class="form-check-label" for="diagChk">Include diagnostics</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label">Attachments (screenshots, logs)</label>
+                                        <InputFile OnChange="OnFilesSelected" multiple />
+                                        @if (_files.Count > 0)
+                                        {
+                                            <ul class="list-group list-group-flush mt-2">
+                                                @foreach (var f in _files)
+                                                {
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        <span class="text-truncate" style="max-width: 70%;">
+                                                            @f.Name (@(FormatSize(f.Size)))
+                                                        </span>
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => RemoveFile(f)">Remove</button>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        }
+                                        @* <div class="form-text">Accepted: any common file. Max size handled server-side.</div> *@
+                                    </div>
+
+                                    <div class="col-12 d-flex justify-content-end gap-2">
+                                        <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">
+                                            @if (_isSubmitting)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            }
+                                            Submit Ticket
+                                        </button>
+                                        <a class="btn btn-outline-secondary" href="javascript:history.back()">Cancel</a>
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</CascadingAuthenticationState>
 
 @code {
-    private bool _submitting;
-    private string? _error;
-    private string? _success;
+    [Parameter, SupplyParameterFromQuery(Name = "pageUrl")]
+    public string? IncomingPageUrl { get; set; }
+
+    private bool _isAuthChecked;
+    private bool _isAuthenticated;
+    private bool _isSubmitting;
+
+    private string? _userId;
+    private string? _orgId;
+
+    private record DropdownOption(string Value, string Label);
+    private const string DefaultGroupKey = "none";
+    private const string NoSubcatValue  = "no-cat";
+
+    // Group container
+    private sealed record CategoryGroup(string Key, string Label, DropdownOption[] Items);
+
+    // Top-level category groups (short labels); subcats are the real saved values.
+    private readonly CategoryGroup[] _categoryGroups =
+    [
+        new("techops",   "Technical / Ops", new[]
+        {
+            new DropdownOption("bug",                    "Bug / Defect"),
+            new DropdownOption("incident-outage",        "Incident / Outage"),
+            new DropdownOption("performance",            "Performance / Slowness"),
+            new DropdownOption("access-login",           "Access / Login / SSO"),
+            new DropdownOption("user-provisioning",      "User Provisioning / Deprovisioning"),
+            new DropdownOption("config-setup",           "Configuration / Setup"),
+            new DropdownOption("integration-api",        "Integrations / API / Webhooks"),
+            new DropdownOption("data-import-export",     "Data Import / Export"),
+            new DropdownOption("reporting",              "Reporting / Analytics"),
+            new DropdownOption("security-compliance",    "Security / Privacy / Compliance"),
+        }),
+
+        new("travel",    "Travel / TMC", new[]
+        {
+            new DropdownOption("travel-policy",                 "Travel Policy / Approvals"),
+            new DropdownOption("booking-issue",                 "Booking Issue (Flight/Hotel/Car)"),
+            new DropdownOption("ticketing-pnr",                 "Ticketing / PNR"),
+            new DropdownOption("refunds-exchanges-farerules",   "Refunds / Exchanges / Fare Rules"),
+            new DropdownOption("traveler-profiles",             "Traveler Profiles"),
+            new DropdownOption("duty-of-care",                  "Duty of Care / Traveler Safety"),
+            new DropdownOption("gds-ndc",                       "GDS / NDC Content"),
+        }),
+
+        new("commercial","Vendor / Commercial", new[]
+        {
+            new DropdownOption("supplier-onboarding",     "Supplier / Vendor Onboarding"),
+            new DropdownOption("licensing-entitlements",  "Licensing / Seats / Entitlements"),
+        }),
+
+        new("finance",   "Billing / Finance", new[]
+        {
+            new DropdownOption("billing-inquiry",  "Billing Inquiry"),
+            new DropdownOption("invoice-receipt",  "Invoice / Receipt Request"),
+            new DropdownOption("payment-issue",    "Payment Issue / Refund"),
+            new DropdownOption("contract-po",      "Contract / PO / Order"),
+            new DropdownOption("pricing-quote",    "Pricing / Quote"),
+        }),
+
+        new("misc",      "Enablement / Misc", new[]
+        {
+            new DropdownOption("implementation",   "Implementation / Project"),
+            new DropdownOption("training",         "Training / Enablement"),
+            new DropdownOption("support-sla",      "Support / SLA"),
+            new DropdownOption("general-question", "General Question"),
+        }),
+    ];
+
+    // Backing state for column 1 (filter only; not saved)
+    private string _selectedCategoryGroup = DefaultGroupKey;
+
+    // Filtered subcategory list for column 2
+    private IEnumerable<DropdownOption> SubcategoriesForSelected =>
+        _categoryGroups.FirstOrDefault(g => g.Key == _selectedCategoryGroup)?.Items
+        ?? Array.Empty<DropdownOption>();
+
+    // Ensure subcategory (_vm.Category) is valid for the chosen group
+    private void OnCategoryGroupChanged(ChangeEventArgs _)
+    {
+        if (!SubcategoriesForSelected.Any(i => string.Equals(i.Value, _vm.Category, StringComparison.OrdinalIgnoreCase)))
+            _vm.Category = NoSubcatValue; // reset to sentinel if current value not in this group
+    }
+
+    private readonly DropdownOption[] _priorities = 
+    [
+        new DropdownOption("low", "Low"),
+        new DropdownOption("normal", "Normal"),
+        new DropdownOption("high", "High"),
+        new DropdownOption("urgent", "Urgent")
+    ];
 
     private TicketVm _vm = new();
 
-    private string PreviewTitle => string.IsNullOrWhiteSpace(_vm.Subject) ? "(no subject)" : _vm.Subject.Trim();
+    // Keep files in memory for now; wire to your API when ready
+    private List<IBrowserFile> _files = new();
 
-    private string PreviewBody => BuildPreviewBody();
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+
+        _isAuthenticated = user.Identity?.IsAuthenticated == true;
+        _isAuthChecked = true;
+
+        if (_isAuthenticated)
+        {
+            _vm.UserId ??= user.Identity?.Name
+                ?? GetFirstClaim(user, ClaimTypes.NameIdentifier, "sub", "nameid");
+
+            _vm.OrgId ??= GetFirstClaim(user,
+                "org_id", "organization", "OrganizationId", "org", "tenant", "tenant_id");
+        }
+
+        // if _vm.Category already has a value, pick the matching group; else leave "none"
+        var grp = _categoryGroups.FirstOrDefault(g => g.Items.Any(i =>
+            string.Equals(i.Value, _vm.Category, StringComparison.OrdinalIgnoreCase)));
+        if (grp is not null)
+            _selectedCategoryGroup = grp.Key;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(IncomingPageUrl))
+        {
+            _vm.PageUrl = IncomingPageUrl;
+        }
+    }
 
     private async Task SubmitAsync()
     {
-        _error = null; _success = null; _submitting = true;
+        _isSubmitting = true;
         try
         {
-            // Simple validations (we can switch to Blazorise Validations later if you prefer)
-            if (string.IsNullOrWhiteSpace(_vm.Subject))
-                throw new ValidationException("Subject is required.");
-            if (string.IsNullOrWhiteSpace(_vm.Description))
-                throw new ValidationException("Description is required.");
+            // TODO: Build a multipart/form-data request to your backend:
+            //  - Fields from _vm
+            //  - _userId, _orgId
+            //  - Files from _files (use IBrowserFile.OpenReadStream() and StreamContent)
+            //
+            // Example placeholder:
+            await Task.Delay(600);
 
-            // Placeholder: build the ticket payload that a GitHub service will need later
-            var payload = new
-            {
-                title = PreviewTitle,
-                body = PreviewBody,
-                labels = new[] { _vm.CategoryLabel, _vm.PriorityLabel }
-            };
-
-            // TODO: inject and call IHelpdeskService when ready
-            await Task.Delay(350); // simulate
-
-            _success = "Thanks! Your ticket has been staged. We’ll post it to GitHub as soon as the integration is live.";
-        }
-        catch (Exception ex)
-        {
-            _error = ex.GetBaseException().Message;
+            // On success, navigate or show toast
+            Nav.NavigateTo("/support/thanks", forceLoad: true);
         }
         finally
         {
-            _submitting = false;
+            _isSubmitting = false;
         }
     }
 
-    private void ResetForm()
+    private void OnFilesSelected(InputFileChangeEventArgs e)
     {
-        _vm = new();
-        _error = _success = null;
+        foreach (var file in e.GetMultipleFiles())
+        {
+            _files.Add(file);
+        }
     }
 
-    private string BuildPreviewBody()
+    private void RemoveFile(IBrowserFile file)
     {
-        var lines = new List<string>();
-        lines.Add($"**Category:** {_vm.CategoryLabel}");
-        lines.Add($"**Priority:** {_vm.PriorityLabel}");
-        if (!string.IsNullOrWhiteSpace(_vm.CallbackEmail))
-            lines.Add($"**Contact:** {_vm.CallbackEmail}");
-        if (!string.IsNullOrWhiteSpace(_vm.PageUrl))
-            lines.Add($"**Page:** {_vm.PageUrl}");
-        if (_vm.IncludeDiagnostics)
-            lines.Add($"**Diagnostics:** {DateTimeOffset.Now:u} — {GetUserAgent()} — {Nav?.Uri}");
-        lines.Add("");
-        lines.Add(_vm.Description ?? string.Empty);
-        return string.Join('\n', lines);
+        _files.Remove(file);
     }
 
-    [Inject] private NavigationManager? Nav { get; set; }
-
-    private static string GetUserAgent()
+    private static string? GetFirstClaim(ClaimsPrincipal user, params string[] types)
     {
-        // Placeholder — in a real app you’d capture UA via JS interop
-        return "(user-agent captured via JS)";
+        foreach (var t in types)
+        {
+            var v = user.FindFirst(t)?.Value;
+            if (!string.IsNullOrWhiteSpace(v)) return v;
+        }
+        return null;
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB" };
+        double size = bytes;
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return $"{size:0.##} {units[unit]}";
     }
 
     private sealed class TicketVm
     {
         public string? Subject { get; set; }
-        public string Category { get; set; } = "Bug";     // default
-        public string Priority { get; set; } = "Normal";   // default
+        public string Category { get; set; } = "bug";  // default
+        public string Priority { get; set; } = "normal";  // default
         public string? Description { get; set; }
 
         public bool IncludeDiagnostics { get; set; } = true;
         [EmailAddress] public string? CallbackEmail { get; set; }
         public string? PageUrl { get; set; }
+
+        public string? UserId { get; set; }
+        public string? OrgId  { get; set; }
 
         public string CategoryLabel => string.IsNullOrWhiteSpace(Category) || Category == "Unspecified" ? "Uncategorized" : Category;
         public string PriorityLabel => string.IsNullOrWhiteSpace(Priority) ? "Normal" : Priority;
