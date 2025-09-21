@@ -557,6 +557,7 @@
             _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
 
             await LoadParentOrgInfo(pOrgId: _vm.Organization.ParentOrganizationId);
+            await LoadChildrenAsync(_vm.Organization.Id);
 
             StateHasChanged();
         }
@@ -653,6 +654,8 @@
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            await LoadChildrenAsync(_vm.Organization.Id);
 
             // Reset baseline so subsequent no-op saves short-circuit cleanly
             _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
@@ -779,6 +782,8 @@
                     .ToList();
             }
 
+            await LoadChildrenAsync(_vm.Organization.Id);
+
             _vm.NewDomain = string.Empty;
         }
         catch (InvalidOperationException ex)
@@ -879,6 +884,9 @@
             ));
 
             var fresh = await OrgSvc.GetByIdAsync(_vm.Organization.Id);
+
+            await LoadChildrenAsync(_vm.Organization.Id);
+
             if (fresh is not null)
             {
                 _vm.Organization = fresh.Org;
@@ -1079,5 +1087,23 @@
         if (t.FullName == "System.DateOnly" || t.FullName == "System.TimeOnly") return true;
 
         return false;
+    }
+
+    // load children org details
+    private async Task LoadChildrenAsync(string? parentId)
+    {
+        // Blank-out the list first so the UI reflects “loading/empty” correctly
+        _vm.Organization.Children = new List<OrganizationUnified>();
+
+        if (string.IsNullOrWhiteSpace(parentId))
+            return;
+
+        // Use the existing unified search by parent id
+        var kids = await OrgSvc.SearchAsync(parentOrgId: parentId);
+
+        _vm.Organization.Children = kids?
+            .Select(k => k.Org)
+            .Where(o => o is not null)
+            .ToList() ?? new List<OrganizationUnified>();
     }
 }
