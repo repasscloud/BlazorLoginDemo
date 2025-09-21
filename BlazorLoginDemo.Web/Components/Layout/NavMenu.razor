@@ -27,6 +27,43 @@
             </NavLink>
         </div>
 
+        <!-- Platform -->
+        <AuthorizeView Roles="@($"{AppRoles.Sudo},{AppRoles.Platform.SuperAdmin},{AppRoles.Platform.Admin}")">
+            <Authorized>
+                <!-- Orgs -->
+                <div class="nav-item px-3">
+                    <button type="button"
+                            class="nav-link d-flex justify-content-between align-items-center w-100"
+                            @onclick="TogglePlatformOrgsGroup">
+                        <span class="d-inline-flex align-items-center">
+                            <span class="bi bi-building-gear-nav-menu" aria-hidden="true"></span>
+                            <span class="ms-1">Orgs</span>
+                        </span>
+                        <span class="caret @(platformOrgsOpen ? "open" : null)" aria-hidden="true">▸</span>
+                    </button>
+
+                    <!-- Orgs Children -->
+                    <div class="nav-submenu @(platformOrgsOpen ? "show" : null)">
+                        <div class="nav-subitem">
+                            <NavLink class="nav-link" href="/platform/orgs" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-card-list-nav-menu" aria-hidden="true"></span> List
+                            </NavLink>
+                        </div>
+                        <AuthorizeView Roles="@($"{AppRoles.Sudo},{AppRoles.Platform.SuperAdmin}")">
+                            <Authorized Context="x">
+                                <div class="nav-subitem">
+                                    <NavLink class="nav-link" href="/platform/organizations/create" Match="NavLinkMatch.Prefix">
+                                        <span class="bi bi-building-add-nav-menu" aria-hidden="true"></span> New
+                                    </NavLink>
+                                </div>
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+@*         
         <!-- Admin Clients -->
         <div class="nav-item px-3">
             <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
@@ -303,12 +340,17 @@
                     </NavLink>
                 </div>
             </div>
-        </div>
+        </div> *@
     </nav>
 </div>
 
 @code {
     private string? currentUrl;
+    
+    // platform
+    private void TogglePlatformOrgsGroup() => platformOrgsOpen = !platformOrgsOpen;
+    private bool platformOrgsOpen;
+    
     private bool adminClientsOpen;
     private void ToggleAdminClientsGroup() => adminClientsOpen = !adminClientsOpen;
     private bool adminPoliciesOpen;
