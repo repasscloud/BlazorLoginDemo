@@ -117,7 +117,8 @@ esac
 # ── 🐳 0) Stop all docker containers ──────────────────────────────────────────
 echo
 echo "🐳 0) Stop all docker containers"
-docker compose down -v --remove-orphans # --rmi all 
+docker compose down -v --remove-orphans # --rmi all
+docker buildx prune --force
 
 # ── 🧹 1) Clean slate: migrations, obj, bin, and blazorlogin* volumes ────────
 echo
