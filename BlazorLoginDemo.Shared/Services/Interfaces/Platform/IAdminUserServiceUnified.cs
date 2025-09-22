@@ -45,6 +45,12 @@ public interface IAdminUserServiceUnified
     );
     Task<UserAggregate> UpdateAsync(UpdateUserRequest req, CancellationToken ct = default);
 
+    /// <summary>
+    /// Updates a user's domain/profile fields in bulk. Identity base fields (UserName, PasswordHash, etc.)
+    /// are not modified. Navigation properties are not traversed.
+    /// </summary>
+    Task<bool> UpdateUserAsync(ApplicationUser req, CancellationToken ct = default);
+
     // DELETE
     Task<bool> DeleteAsync(string id, CancellationToken ct = default);
 

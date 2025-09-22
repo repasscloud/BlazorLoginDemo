@@ -1,8 +1,9 @@
 @page "/platform/users/create"
 @rendermode InteractiveServer
-@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 
 @using System.ComponentModel.DataAnnotations
+@using BlazorLoginDemo.Shared.Auth
 @using Microsoft.AspNetCore.Components.Forms
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
@@ -15,7 +16,7 @@
   <!-- Title Row -->
   <div class="d-flex align-items-start justify-content-between mb-3">
     <div>
-      <h1 class="h4 mb-1">Create User (Platform)</h1>
+      <h1 class="h4 mb-1">Create User (Platform Access)</h1>
       @* <p class="text-muted mb-0">Identity + Profile + Org link. Minimal, predictable, fast.</p> *@
     </div>
     @* <div>

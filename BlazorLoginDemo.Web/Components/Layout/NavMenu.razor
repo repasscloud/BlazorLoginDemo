@@ -28,7 +28,7 @@
         </div>
 
         <!-- Platform -->
-        <AuthorizeView Roles="@($"{AppRoles.Sudo},{AppRoles.Platform.SuperAdmin},{AppRoles.Platform.Admin}")">
+        <AuthorizeView Policy="@AppPolicies.PlatformPolicy.AdminArea" Context="auth">
             <Authorized>
                 <!-- Orgs -->
                 <div class="nav-item px-3">
@@ -42,55 +42,51 @@
                         <span class="caret @(platformOrgsOpen ? "open" : null)" aria-hidden="true">▸</span>
                     </button>
 
-                    <!-- Orgs Children -->
                     <div class="nav-submenu @(platformOrgsOpen ? "show" : null)">
                         <div class="nav-subitem">
                             <NavLink class="nav-link" href="/platform/orgs" Match="NavLinkMatch.Prefix">
                                 <span class="bi bi-card-list-nav-menu" aria-hidden="true"></span> List
                             </NavLink>
                         </div>
-                        <AuthorizeView Roles="@($"{AppRoles.Sudo},{AppRoles.Platform.SuperAdmin}")">
-                            <Authorized Context="x">
-                                <div class="nav-subitem">
-                                    <NavLink class="nav-link" href="/platform/organizations/create" Match="NavLinkMatch.Prefix">
-                                        <span class="bi bi-building-add-nav-menu" aria-hidden="true"></span> New
-                                    </NavLink>
-                                </div>
-                            </Authorized>
-                        </AuthorizeView>
+                        <div class="nav-subitem">
+                            <NavLink class="nav-link" href="/platform/organizations/create" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-building-add-nav-menu" aria-hidden="true"></span> New
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users -->
+                <div class="nav-item px-3">
+                    <button type="button"
+                            class="nav-link d-flex justify-content-between align-items-center w-100"
+                            @onclick="TogglePlatformUsersGroup">
+                        <span class="d-inline-flex align-items-center">
+                            <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span>
+                            <span class="ms-1">Users</span>
+                        </span>
+                        <span class="caret @(platformUsersOpen ? "open" : null)" aria-hidden="true">▸</span>
+                    </button>
+
+                    <div class="nav-submenu @(platformUsersOpen ? "show" : null)">
+                        <div class="nav-subitem">
+                            <NavLink class="nav-link" href="/platform/users" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-people-nav-menu" aria-hidden="true"></span> List
+                            </NavLink>
+                        </div>
+                        <div class="nav-subitem">
+                            <NavLink class="nav-link" href="/platform/users/create" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-person-add-nav-menu" aria-hidden="true"></span> New
+                            </NavLink>
+                        </div>
                     </div>
                 </div>
             </Authorized>
         </AuthorizeView>
 
-@*         
-        <!-- Admin Clients -->
-        <div class="nav-item px-3">
-            <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
-            <button type="button"
-                    class="nav-link d-flex justify-content-between align-items-center w-100"
-                    @onclick="ToggleAdminClientsGroup">
-                <span class="d-inline-flex align-items-center">
-                    <span class="bi bi-building-gear-nav-menu" aria-hidden="true"></span>
-                    <span class="ms-1">Clients</span>
-                </span>
-                <span class="caret @(adminClientsOpen ? "open" : null)" aria-hidden="true">▸</span>
-            </button>
 
-            <!-- Children -->
-            <div class="nav-submenu @(adminClientsOpen ? "show" : null)">
-                <div class="nav-subitem">
-                    <NavLink class="nav-link" href="/admin/clients" Match="NavLinkMatch.Prefix">
-                        <span class="bi bi-card-list-nav-menu" aria-hidden="true"></span> Clients
-                    </NavLink>
-                </div>
-                <div class="nav-subitem">
-                    <NavLink class="nav-link" href="/admin/clients/new" Match="NavLinkMatch.Prefix">
-                        <span class="bi bi-person-plus-nav-menu" aria-hidden="true"></span> New
-                    </NavLink>
-                </div>
-            </div>
-        </div>
+
+@*         
 
         <!-- Admin Users -->
         <div class="nav-item px-3">
@@ -350,6 +346,9 @@
     // platform
     private void TogglePlatformOrgsGroup() => platformOrgsOpen = !platformOrgsOpen;
     private bool platformOrgsOpen;
+
+    private void TogglePlatformUsersGroup() => platformUsersOpen = !platformUsersOpen;
+    private bool platformUsersOpen;
     
     private bool adminClientsOpen;
     private void ToggleAdminClientsGroup() => adminClientsOpen = !adminClientsOpen;

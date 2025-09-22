@@ -58,3 +58,7 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* added for Search.Razor in Platform.Users dir */
+.spinner-border.spinner-border-sm { width: 1rem; height: 1rem; border-width: .15em; }
+.loading-text { display: inline-block; }

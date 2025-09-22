@@ -1,8 +1,9 @@
 @page "/platform/organizations/create"
 @rendermode InteractiveServer
-@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 
 @using System.ComponentModel.DataAnnotations
+@using BlazorLoginDemo.Shared.Auth
 @using Microsoft.AspNetCore.Components.Forms
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Models.Static.Platform

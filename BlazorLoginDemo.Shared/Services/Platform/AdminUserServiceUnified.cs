@@ -161,6 +161,110 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
         return new IAdminUserServiceUnified.UserAggregate(loaded.Id, loaded, loaded.Organization);
     }
 
+    public async Task<bool> UpdateUserAsync(ApplicationUser req, CancellationToken ct = default)
+    {
+        // Validate FK targets that we allow to change
+        if (!string.IsNullOrWhiteSpace(req.OrganizationId))
+        {
+            var orgExists = await _db.Organizations.AnyAsync(o => o.Id == req.OrganizationId, ct);
+            if (!orgExists) throw new InvalidOperationException($"Organization '{req.OrganizationId}' not found.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(req.ManagerId))
+        {
+            if (req.ManagerId == req.Id)
+                throw new InvalidOperationException("A user cannot be their own manager.");
+            var mgrExists = await _db.Users.AnyAsync(u => u.Id == req.ManagerId, ct);
+            if (!mgrExists) throw new InvalidOperationException($"Manager user '{req.ManagerId}' not found.");
+        }
+
+        // Ensure array props aren't null (so EF doesn't write nulls unintentionally)
+        req.IncludedAirlineCodes ??= Array.Empty<string>();
+        req.ExcludedAirlineCodes ??= Array.Empty<string>();
+
+        // Attach and mark ONLY allowed domain properties as modified
+        _db.Attach(req);
+        var e = _db.Entry(req);
+
+        // ApplicationUser adds many domain props; Identity base props MUST be left alone.
+        // Whitelist the domain/scalar props we allow to update.
+        var allowed = new HashSet<string>(StringComparer.Ordinal)
+        {
+            // Core/account profile
+            nameof(ApplicationUser.IsActive),
+            nameof(ApplicationUser.DisplayName),
+            nameof(ApplicationUser.FirstName),
+            nameof(ApplicationUser.MiddleName),
+            nameof(ApplicationUser.LastName),
+            nameof(ApplicationUser.Department),
+            nameof(ApplicationUser.PreferredCulture),
+
+            // Org & hierarchy
+            nameof(ApplicationUser.OrganizationId),
+            nameof(ApplicationUser.UserCategory),
+            nameof(ApplicationUser.ManagerId),
+
+            // PII / travel docs
+            nameof(ApplicationUser.DateOfBirth),
+            nameof(ApplicationUser.Gender),
+            nameof(ApplicationUser.CountryOfIssue),
+            nameof(ApplicationUser.PassportExpirationDate),
+
+            // Flight prefs & visibility
+            nameof(ApplicationUser.OriginLocationCode),
+            nameof(ApplicationUser.DefaultFlightSeating),
+            nameof(ApplicationUser.DefaultFlightSeatingVisible),
+            nameof(ApplicationUser.MaxFlightSeating),
+            nameof(ApplicationUser.MaxFlightSeatingVisible),
+            nameof(ApplicationUser.IncludedAirlineCodes),
+            nameof(ApplicationUser.ExcludedAirlineCodes),
+            nameof(ApplicationUser.AirlineCodesVisible),
+            nameof(ApplicationUser.CabinClassCoverage),
+            nameof(ApplicationUser.CabinClassCoverageVisible),
+            nameof(ApplicationUser.NonStopFlight),
+            nameof(ApplicationUser.NonStopFlightVisible),
+
+            // Financial/limits
+            nameof(ApplicationUser.DefaultCurrencyCode),
+            nameof(ApplicationUser.DefaultCurrencyCodeVisible),
+            nameof(ApplicationUser.MaxFlightPrice),
+            nameof(ApplicationUser.MaxFlightPriceVisible),
+            nameof(ApplicationUser.MaxResults),
+            nameof(ApplicationUser.MaxResultsVisible),
+
+            // Booking windows
+            nameof(ApplicationUser.FlightBookingTimeAvailableFrom),
+            nameof(ApplicationUser.FlightBookingTimeAvailableTo),
+            nameof(ApplicationUser.FlightBookingTimeAvailableVisible),
+
+            // Weekend/policy toggles
+            nameof(ApplicationUser.EnableSaturdayFlightBookings),
+            nameof(ApplicationUser.EnableSundayFlightBookings),
+            nameof(ApplicationUser.EnableWeekendFlightBookingsVisible),
+            nameof(ApplicationUser.DefaultCalendarDaysInAdvanceForFlightBooking),
+            nameof(ApplicationUser.CalendarDaysInAdvanceForFlightBookingVisible),
+
+            // Policy links
+            nameof(ApplicationUser.TravelPolicyId),
+            nameof(ApplicationUser.TravelPolicyName),
+            nameof(ApplicationUser.ExpensePolicyId),
+            nameof(ApplicationUser.ExpensePolicyName),
+        };
+
+        foreach (var p in e.Properties)
+        {
+            // Skip keys & concurrency tokens
+            if (p.Metadata.IsKey()) continue;
+            if (p.Metadata.IsConcurrencyToken) continue;
+
+            // Only touch allowed domain props; leave IdentityUser base fields alone
+            p.IsModified = allowed.Contains(p.Metadata.Name);
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     // -------------- DELETE --------------
     public async Task<bool> DeleteAsync(string id, CancellationToken ct = default)
     {

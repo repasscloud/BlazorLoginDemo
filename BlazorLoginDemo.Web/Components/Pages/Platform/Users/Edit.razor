@@ -1,0 +1,484 @@
+@page "/platform/users/{id}"
+@rendermode InteractiveServer
+
+@using BlazorLoginDemo.Shared.Data
+@using BlazorLoginDemo.Shared.Models.Static
+@using BlazorLoginDemo.Shared.Models.Static.Platform
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@inject IAdminUserServiceUnified UserSvc
+@inject IAdminOrgServiceUnified OrgSvc
+@inject NavigationManager Nav
+
+<PageTitle>Edit User</PageTitle>
+
+@if (_vm.LoadError is not null)
+{
+    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@_vm.LoadError</div>
+}
+else if (_vm.IsLoading)
+{
+    <div class="alert alert-light border d-inline-flex align-items-center">
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        Loading user…
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">Edit User</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="/platform/users">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
+            <button class="btn btn-primary" type="submit" disabled="@_vm.IsSaving">
+                @if (_vm.IsSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                Save
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_vm.Toast))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@_vm.Toast
+            <button type="button" class="btn-close" @onclick="() => _vm.Toast = string.Empty" aria-label="Close"></button>
+        </div>
+    }
+
+    <EditForm id="user-edit-form" Model="_vm.User" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="row g-3">
+            <!-- Account / Status -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">Account</div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Email (login)</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.Email" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">User Category</label>
+                            <select class="form-select" @bind="_vm.User.UserCategory">
+                                @foreach (var cat in Enum.GetValues<UserCategoryType>())
+                                {
+                                    <option value="@cat">@cat</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" @bind="_vm.User.IsActive" />
+                                <label class="form-check-label" for="isActiveSwitch">Active</label>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">Manager (User Id)</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.ManagerId" />
+                            <div class="form-text">Optional. Self-referential org chart.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Organization -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">Organization</div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Organization</label>
+                            <select class="form-select" @bind="_vm.User.OrganizationId">
+                                <option value="">— Unassigned —</option>
+                                @foreach (var o in _vm.Orgs)
+                                {
+                                    <option value="@o.Id">@o.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Names / Profile -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">Profile</div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Display Name</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.DisplayName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Department</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.Department" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">First Name</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.FirstName" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Middle Name</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.MiddleName" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Last Name</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.LastName" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Preferred Culture</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.PreferredCulture" />
+                            <div class="form-text">e.g. en-AU</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PII & Travel-docs -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">PII & Travel Documents</div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Date of Birth</label>
+                            <InputDate class="form-control" @bind-Value="_vm.User.DateOfBirth" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Gender</label>
+                            <select class="form-select" @bind="_vm.User.Gender">
+                                @foreach (var g in Enum.GetValues<GenderType>())
+                                {
+                                    <option value="@g">@g</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Passport Country</label>
+                            <select class="form-select" @bind="_vm.User.CountryOfIssue">
+                                @foreach (var c in Enum.GetValues<PassportCountry>())
+                                {
+                                    <option value="@c">@c</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Passport Expiry</label>
+                            <InputDate class="form-control" @bind-Value="_vm.User.PassportExpirationDate" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flight Preferences -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">Flight Preferences</div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Origin Location (IATA)</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.OriginLocationCode" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Default Flight Seating</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.DefaultFlightSeating" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="dfsVisible" @bind="_vm.User.DefaultFlightSeatingVisible" />
+                                <label class="form-check-label" for="dfsVisible">Visible</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Flight Seating</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.MaxFlightSeating" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="mfsVisible" @bind="_vm.User.MaxFlightSeatingVisible" />
+                                <label class="form-check-label" for="mfsVisible">Visible</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Included Airline Codes (one per line)</label>
+                            <textarea class="form-control" rows="4" @bind="_vm.IncludedAirlineCodesText"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Excluded Airline Codes (one per line)</label>
+                            <textarea class="form-control" rows="4" @bind="_vm.ExcludedAirlineCodesText"></textarea>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="airlineCodesVisible" @bind="_vm.User.AirlineCodesVisible" />
+                                <label class="form-check-label" for="airlineCodesVisible">Airline Codes Visible</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Cabin Class Coverage</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.CabinClassCoverage" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="cccVisible" @bind="_vm.User.CabinClassCoverageVisible" />
+                                <label class="form-check-label" for="cccVisible">Visible</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Non-stop Flights</label>
+                            <select class="form-select" @bind="_vm.User.NonStopFlight">
+                                <option value="">Unset</option>
+                                <option value="false">No</option>
+                                <option value="true">Yes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="nsVisible" @bind="_vm.User.NonStopFlightVisible" />
+                                <label class="form-check-label" for="nsVisible">Visible</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial & Limits -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">Financial & Limits</div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Default Currency (ISO 4217)</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.DefaultCurrencyCode" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="dccVisible" @bind="_vm.User.DefaultCurrencyCodeVisible" />
+                                <label class="form-check-label" for="dccVisible">Visible</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Max Flight Price</label>
+                            <InputNumber class="form-control" @bind-Value="_vm.User.MaxFlightPrice" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="mfpVisible" @bind="_vm.User.MaxFlightPriceVisible" />
+                                <label class="form-check-label" for="mfpVisible">Visible</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Max Results</label>
+                            <InputNumber class="form-control" @bind-Value="_vm.User.MaxResults" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="mrVisible" @bind="_vm.User.MaxResultsVisible" />
+                                <label class="form-check-label" for="mrVisible">Visible</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Booking Windows -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">Booking Windows</div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Flights Available From (hh:mm:ss)</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.FlightBookingTimeAvailableFrom" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Flights Available To (hh:mm:ss)</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.FlightBookingTimeAvailableTo" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="fbtVisible" @bind="_vm.User.FlightBookingTimeAvailableVisible" />
+                                <label class="form-check-label" for="fbtVisible">Visible</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Policy Toggles -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">Policy Toggles</div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="satFlights" @bind="_vm.User.EnableSaturdayFlightBookings" />
+                                <label class="form-check-label" for="satFlights">Enable Saturday Flight Bookings</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="sunFlights" @bind="_vm.User.EnableSundayFlightBookings" />
+                                <label class="form-check-label" for="sunFlights">Enable Sunday Flight Bookings</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="wkndVisible" @bind="_vm.User.EnableWeekendFlightBookingsVisible" />
+                                <label class="form-check-label" for="wkndVisible">Weekend Flight Toggles Visible</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Days in Advance (Flights)</label>
+                            <InputNumber class="form-control" @bind-Value="_vm.User.DefaultCalendarDaysInAdvanceForFlightBooking" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" role="switch" id="calDaysVisible" @bind="_vm.User.CalendarDaysInAdvanceForFlightBookingVisible" />
+                                <label class="form-check-label" for="calDaysVisible">Visible</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Policy Links -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">Policy Links</div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Travel Policy Id</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.TravelPolicyId" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Travel Policy Name</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.TravelPolicyName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Expense Policy Id</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.ExpensePolicyId" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Expense Policy Name</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.ExpensePolicyName" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save / Danger zone (optional) -->
+            <div class="col-12">
+                <div class="d-flex justify-content-end gap-2">
+                    <a class="btn btn-outline-secondary" href="/platform/users">
+                        <i class="bi bi-arrow-left me-1"></i> Cancel
+                    </a>
+                    <button class="btn btn-primary" type="submit" disabled="@_vm.IsSaving">
+                        @if (_vm.IsSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string? id { get; set; }
+
+    private VM _vm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _vm.IsLoading = true;
+        _vm.LoadError = null;
+
+        try
+        {
+            _vm.Orgs = (await OrgSvc.GetAllForPickerAsync()).ToList();
+
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                _vm.LoadError = "Invalid route. No user id provided.";
+                return;
+            }
+
+            // Assuming your user service has this signature:
+            // Task<IAdminUserServiceUnified.UserAggregate?> GetByIdAsync(string id)
+            var agg = await UserSvc.GetByIdAsync(id);
+            if (agg is null)
+            {
+                _vm.LoadError = $"User '{id}' not found.";
+                return;
+            }
+
+            _vm.User = agg.User;
+
+            // hydrate multi-line editor helpers for airline codes
+            _vm.IncludedAirlineCodesText = string.Join(Environment.NewLine, _vm.User.IncludedAirlineCodes ?? Array.Empty<string>());
+            _vm.ExcludedAirlineCodesText = string.Join(Environment.NewLine, _vm.User.ExcludedAirlineCodes ?? Array.Empty<string>());
+        }
+        finally
+        {
+            _vm.IsLoading = false;
+        }
+    }
+
+private async Task SaveAsync()
+{
+    if (_vm.User is null) return;
+
+    _vm.IsSaving = true; _vm.Toast = string.Empty;
+
+    // Sync multi-line editors -> string[] on the model
+    _vm.User.IncludedAirlineCodes = SplitCodes(_vm.IncludedAirlineCodesText);
+    _vm.User.ExcludedAirlineCodes = SplitCodes(_vm.ExcludedAirlineCodesText);
+
+    // Normalize a few inputs
+    _vm.User.OrganizationId = string.IsNullOrWhiteSpace(_vm.User.OrganizationId) ? null : _vm.User.OrganizationId.Trim();
+    _vm.User.Email = _vm.User.Email?.Trim();
+
+    // NEW: call the full-domain updater
+    var ok = await UserSvc.UpdateUserAsync(_vm.User);
+
+    _vm.IsSaving = false;
+    _vm.Toast = ok ? "Saved." : string.Empty;
+    if (!ok) _vm.LoadError ??= "Update failed.";
+}
+
+
+    private static string[] SplitCodes(string? text)
+        => string.IsNullOrWhiteSpace(text)
+            ? Array.Empty<string>()
+            : text
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim().ToUpperInvariant())
+                .Where(s => s.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+    private sealed class VM
+    {
+        public bool IsLoading { get; set; }
+        public bool IsSaving { get; set; }
+        public string? LoadError { get; set; }
+        public string Toast { get; set; } = string.Empty;
+
+        public ApplicationUser User { get; set; } = new();
+        public List<IAdminOrgServiceUnified.OrganizationPickerDto> Orgs { get; set; } = new();
+
+        // UI helpers for string[] fields
+        public string IncludedAirlineCodesText { get; set; } = string.Empty;
+        public string ExcludedAirlineCodesText { get; set; } = string.Empty;
+    }
+}

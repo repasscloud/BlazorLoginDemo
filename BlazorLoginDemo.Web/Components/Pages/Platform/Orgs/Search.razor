@@ -3,8 +3,9 @@
 @page "/platform/organizations"
 @page "/platform/organizations/search"
 @rendermode InteractiveServer
-@attribute [Authorize(Roles = "Sudo,Platform.SuperAdmin")]
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 
+@using BlazorLoginDemo.Shared.Auth
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Static.Platform
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
