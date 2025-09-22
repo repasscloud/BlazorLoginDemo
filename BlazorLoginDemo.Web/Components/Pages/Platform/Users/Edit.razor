@@ -59,10 +59,10 @@ else
                     <div class="card-header">Account</div>
                     <div class="card-body row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Email (login)</label>
+                            <label class="form-label">Email/Login</label>
                             <InputText class="form-control" @bind-Value="_vm.User.Email" />
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <label class="form-label">User Category</label>
                             <select class="form-select" @bind="_vm.User.UserCategory">
                                 @foreach (var cat in Enum.GetValues<UserCategoryType>())
@@ -71,16 +71,23 @@ else
                                 }
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <div class="form-check form-switch mt-4">
-                                <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" @bind="_vm.User.IsActive" />
-                                <label class="form-check-label" for="isActiveSwitch">Active</label>
+                        <div class="col-md-1">
+                            <label class="form-label">@(_vm.User.IsActive ? "Active" : "Inactive")</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.IsActive" />
+                                <label class="form-check-label" title="@(_vm.User.IsActive ? "Active" : "Inactive")">
+                                    <span aria-hidden="true">@(_vm.User.IsActive ? " ✅" : " ❌")</span>
+                                </label>
                             </div>
                         </div>
-                        <div class="col-md-9">
-                            <label class="form-label">Manager (User Id)</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.ManagerId" />
-                            <div class="form-text">Optional. Self-referential org chart.</div>
+                        <div class="col-md-2">
+                            <label class="form-label">@(_vm.User.IsActive ? "Active" : "Inactive")</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.IsActive" />
+                                <label class="form-check-label" title="@(_vm.User.IsActive ? "Active" : "Inactive")">
+                                    <span aria-hidden="true">@(_vm.User.IsActive ? " ✅" : " ❌")</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -100,6 +107,11 @@ else
                                     <option value="@o.Id">@o.Name</option>
                                 }
                             </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Manager</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.ManagerId" />
+                            @* <div class="form-text">Optional. Self-referential org chart.</div> *@
                         </div>
                     </div>
                 </div>
@@ -374,8 +386,30 @@ else
                 </div>
             </div>
 
-            <!-- Save / Danger zone (optional) -->
+            <!-- User Roles -->
             <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">Roles</div>
+                    <div class="card-body">
+                        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2">
+                        @foreach (var r in _allRoles)
+                        {
+                            <div class="col">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="role_@r"
+                                    checked="@_selected.Contains(r)"
+                                    @onchange="(e => OnToggleRole(r, e.Value is true))" />
+                                <label class="form-check-label" for="role_@r">@r</label>
+                            </div>
+                            </div>
+                        }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save / Danger zone (optional) -->
+            <div class="col-12 mb-3">
                 <div class="d-flex justify-content-end gap-2">
                     <a class="btn btn-outline-secondary" href="/platform/users">
                         <i class="bi bi-arrow-left me-1"></i> Cancel
@@ -427,6 +461,11 @@ else
             // hydrate multi-line editor helpers for airline codes
             _vm.IncludedAirlineCodesText = string.Join(Environment.NewLine, _vm.User.IncludedAirlineCodes ?? Array.Empty<string>());
             _vm.ExcludedAirlineCodesText = string.Join(Environment.NewLine, _vm.User.ExcludedAirlineCodes ?? Array.Empty<string>());
+
+            // ---- roles (merged) ----
+            _allRoles = (await UserSvc.GetAllRolesAsync()).ToList();
+            var current = await UserSvc.GetUserRolesAsync(id);
+            _selected = current.ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
         finally
         {
@@ -480,5 +519,29 @@ private async Task SaveAsync()
         // UI helpers for string[] fields
         public string IncludedAirlineCodesText { get; set; } = string.Empty;
         public string ExcludedAirlineCodesText { get; set; } = string.Empty;
+    }
+
+    // -------------- ROLES --------------
+    private List<string> _allRoles = new();
+    private HashSet<string> _selected = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task SaveRolesAsync()
+    {
+        var res = await UserSvc.ReplaceUserRolesAsync(
+            new IAdminUserServiceUnified.UpdateUserRolesRequest(_vm.User.Id, _selected));
+        if (!res.Ok)
+        {
+            // show res.Error
+        }
+        else
+        {
+            // toast: $"Roles updated. Added: {string.Join(", ", res.Added)} Removed: {string.Join(", ", res.Removed)}"
+        }
+    }
+
+    private void OnToggleRole(string role, bool isChecked)
+    {
+        if (isChecked) _selected.Add(role);
+        else _selected.Remove(role);
     }
 }
