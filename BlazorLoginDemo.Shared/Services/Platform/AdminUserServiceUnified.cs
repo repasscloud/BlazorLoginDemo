@@ -282,4 +282,114 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
 
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.Users.AnyAsync(u => u.Id == id, ct);
+
+
+    // -------------- ROLES --------------
+    public async Task<IReadOnlyList<string>> GetAllRolesAsync(CancellationToken ct = default)
+    {
+        // Role names are unique; return ordered for stable UI
+        return await _roleManager.Roles
+            .AsNoTracking()
+            .OrderBy(r => r.Name)
+            .Select(r => r.Name!)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<string>> GetUserRolesAsync(string userId, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId)
+            ?? throw new InvalidOperationException($"User '{userId}' not found.");
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return roles.OrderBy(r => r, StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    public async Task<IAdminUserServiceUnified.UpdateUserRolesResult> ReplaceUserRolesAsync(
+        IAdminUserServiceUnified.UpdateUserRolesRequest req,
+        CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(req.UserId)
+            ?? throw new InvalidOperationException($"User '{req.UserId}' not found.");
+
+        // Normalize desired list (distinct, trimmed)
+        var desired = req.Roles
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var current = (await _userManager.GetRolesAsync(user))
+            .OrderBy(r => r, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var curSet = current.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var desSet = desired.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var toAdd = desSet.Except(curSet).ToArray();
+        var toRemove = curSet.Except(desSet).ToArray();
+
+        // Optionally ensure missing roles exist (handy in dev fresh builds)
+        if (req.AutoCreateMissingRoles && toAdd.Length > 0)
+        {
+            foreach (var role in toAdd)
+            {
+                if (!await _roleManager.RoleExistsAsync(role))
+                {
+                    var create = await _roleManager.CreateAsync(new IdentityRole(role));
+                    if (!create.Succeeded)
+                    {
+                        var msg = string.Join("; ", create.Errors.Select(e => $"{e.Code}:{e.Description}"));
+                        _log.LogError("Failed to create role '{Role}': {Msg}", role, msg);
+                        return new(false, $"Failed creating role '{role}': {msg}", Array.Empty<string>(), Array.Empty<string>(), current);
+                    }
+                }
+            }
+        }
+
+        // Remove extras first (keeps Add predictable if a role rename happened)
+        if (toRemove.Length > 0)
+        {
+            var res = await _userManager.RemoveFromRolesAsync(user, toRemove);
+            if (!res.Succeeded)
+            {
+                var msg = string.Join("; ", res.Errors.Select(e => $"{e.Code}:{e.Description}"));
+                _log.LogError("RemoveFromRoles failed for user {UserId}: {Msg}", req.UserId, msg);
+                return new(false, $"Remove roles failed: {msg}", Array.Empty<string>(), Array.Empty<string>(), current);
+            }
+        }
+
+        if (toAdd.Length > 0)
+        {
+            var res = await _userManager.AddToRolesAsync(user, toAdd);
+            if (!res.Succeeded)
+            {
+                var msg = string.Join("; ", res.Errors.Select(e => $"{e.Code}:{e.Description}"));
+                _log.LogError("AddToRoles failed for user {UserId}: {Msg}", req.UserId, msg);
+                return new(false, $"Add roles failed: {msg}", Array.Empty<string>(), Array.Empty<string>(), current);
+            }
+        }
+
+        var finalRoles = await _userManager.GetRolesAsync(user);
+        return new(true, null,
+            Added: toAdd.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToArray(),
+            Removed: toRemove.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToArray(),
+            FinalRoles: finalRoles.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToArray());
+    }
+
+    public async Task<bool> AddUserRolesAsync(string userId, IEnumerable<string> roles, CancellationToken ct = default)
+    {
+        var req = new IAdminUserServiceUnified.UpdateUserRolesRequest(userId, roles.Distinct(StringComparer.OrdinalIgnoreCase).ToArray());
+        var existing = await GetUserRolesAsync(userId, ct);
+        var merged = existing.Union(req.Roles, StringComparer.OrdinalIgnoreCase).ToArray();
+        var result = await ReplaceUserRolesAsync(req with { Roles = merged }, ct);
+        return result.Ok;
+    }
+
+    public async Task<bool> RemoveUserRolesAsync(string userId, IEnumerable<string> roles, CancellationToken ct = default)
+    {
+        var existing = await GetUserRolesAsync(userId, ct);
+        var target = existing.Except(roles, StringComparer.OrdinalIgnoreCase).ToArray();
+        var result = await ReplaceUserRolesAsync(
+            new IAdminUserServiceUnified.UpdateUserRolesRequest(userId, target, AutoCreateMissingRoles: false), ct);
+        return result.Ok;
+    }
 }

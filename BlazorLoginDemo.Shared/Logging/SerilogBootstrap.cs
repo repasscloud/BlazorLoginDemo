@@ -4,8 +4,6 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.PostgreSQL;
 using NpgsqlTypes;
-using System;
-using System.Collections.Generic;
 
 namespace BlazorLoginDemo.Shared.Logging;
 

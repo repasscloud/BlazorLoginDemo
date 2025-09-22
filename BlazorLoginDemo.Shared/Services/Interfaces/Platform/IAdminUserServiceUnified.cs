@@ -56,4 +56,33 @@ public interface IAdminUserServiceUnified
 
     // UTIL
     Task<bool> ExistsAsync(string id, CancellationToken ct = default);
+
+    // ---- ROLES ----
+    Task<IReadOnlyList<string>> GetAllRolesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<string>> GetUserRolesAsync(string userId, CancellationToken ct = default);
+
+    public sealed record UpdateUserRolesRequest(
+        string UserId,
+        IReadOnlyCollection<string> Roles,
+        bool AutoCreateMissingRoles = true
+    );
+
+    public sealed record UpdateUserRolesResult(
+        bool Ok,
+        string? Error,
+        IReadOnlyList<string> Added,
+        IReadOnlyList<string> Removed,
+        IReadOnlyList<string> FinalRoles
+    );
+
+    /// <summary>
+    /// Replaces the user's role set with the provided list (diffs add/remove).
+    /// </summary>
+    Task<UpdateUserRolesResult> ReplaceUserRolesAsync(UpdateUserRolesRequest req, CancellationToken ct = default);
+
+    /// <summary>
+    /// Convenience helpers when you don't want a full replace.
+    /// </summary>
+    Task<bool> AddUserRolesAsync(string userId, IEnumerable<string> roles, CancellationToken ct = default);
+    Task<bool> RemoveUserRolesAsync(string userId, IEnumerable<string> roles, CancellationToken ct = default);
 }
