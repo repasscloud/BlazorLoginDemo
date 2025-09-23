@@ -135,7 +135,12 @@ else
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Preferred Culture</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.PreferredCulture" />
+                            <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.User.PreferredCulture">
+                                @foreach (var c in CulturesType.Bcp47)
+                                {
+                                    <option value="@c.Tag">@c.Label</option>
+                                }
+                            </InputSelect>
                             @* <div class="form-text">e.g. en-AU</div> *@
                         </div>
                     </div>
@@ -156,7 +161,7 @@ else
                             <select class="form-select" @bind="_vm.User.CountryOfIssue">
                                 @foreach (var c in Enum.GetValues<PassportCountry>())
                                 {
-                                    <option value="@c">@c</option>
+                                    <option value="@c">@c.GetDisplayName()</option>
                                 }
                             </select>
                         </div>
@@ -189,17 +194,33 @@ else
 
                         <div class="col-md-3">
                             <label class="form-label">Default Flight Seating</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.DefaultFlightSeating" />
+                            <InputSelect id="defaultFlightSeatingChoice" class="form-select" @bind-Value="_vm.User.DefaultFlightSeating">
+                                @foreach (var c in FareType.BookingClassOptions)
+                                {
+                                    <option value="@c.code">@c.label</option>
+                                }
+                            </InputSelect>
                         </div>
 
                         <div class="col-md-3">
                             <label class="form-label">Max Flight Seating</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.MaxFlightSeating" />
+                            <InputSelect id="maxFlightSeatingChoice" class="form-select" @bind-Value="_vm.User.MaxFlightSeating">
+                                @foreach (var c in FareType.BookingClassOptions)
+                                {
+                                    <option value="@c.code">@c.label</option>
+                                }
+                            </InputSelect>
                         </div>
 
                         <div class="col-md-3">
                             <label class="form-label">Cabin Class Coverage</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.CabinClassCoverage" />
+                            @* _supportedFlightCoverage *@
+                            <InputSelect id="ccCoverageChoice" class="form-select" @bind-Value="_vm.User.CabinClassCoverage">
+                                @foreach (var c in CabinClassCoverages.CabinClassCoverageOptions)
+                                {
+                                    <option value="@c.code">@c.label</option>
+                                }
+                            </InputSelect>
                         </div>
 
                         <div class="col-md-3">
