@@ -39,11 +39,9 @@ else
 
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h2 class="mb-0">Edit User</h2>
-        <div class="d-flex gap-2">
-            <a class="btn btn-outline-secondary" href="/platform/users">
-                <i class="bi bi-arrow-left me-1"></i> Back
-            </a>
-            <button class="btn btn-primary" type="submit" disabled="@_vm.IsSaving">
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-secondary" href="/platform/users">Back</button>
+            <button type="submit" class="btn btn-primary">
                 @if (_vm.IsSaving)
                 {
                     <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
