@@ -1,0 +1,51 @@
+I need to create a dedicated "UserPickerModal". See the code in the Edit.razor file, this is for organizations, and there is an OrgPickerModal that leets us pick an org to assign as teh "parent org" for an org. I need something similar for users. In the ApplicationUser class, there is two references to the manger of a user:
+- public string? ManagerId { get; set; }
+- public ApplicationUser? Manager { get; set; }
+
+I need a new temp variable like this:
+private OrgPickerModal? _orgPicker;
+
+That is setup like this:
+<OrgPickerModal @ref="_orgPicker" />
+
+and has a function like this:
+private async Task OpenParentPickerAsync()
+    {
+        var excludeId = _vm?.Organization?.Id;
+
+        var picked = await _orgPicker!.OpenAsync(
+            excludeOrgId: excludeId,
+            title: "Select Parent Organization",
+            typePreset: null);
+
+        if (picked is null) return;
+
+        // ensure org exists before dereference (kills CS8602)
+        var org = _vm?.Organization;
+        if (org is null) return;
+
+        org.ParentOrganizationId = picked.Id;
+        _parentOrgDisplay = $"{picked.Name} ({picked.Id})";
+
+        // Save but stay on this page
+        await SaveAsync(navigateOnSuccess: false);
+    }
+
+
+EXCEPT with 2 differences:
+1. it cannot reference the user itself (no self referencing)
+2. it can only pick manager to be assigned for users WITHIN the same org as teh current user.
+
+For #2 to work, an ApplicationUser will need these two values to exist:
+- public string? OrganizationId { get; set; }
+- public OrganizationUnified? Organization { get; set; }
+
+Should they not exist, then instead of opening a modal, it should flash a banner at the top of the page saying "Manager cannot be assigned if user is not a member of an org" or something useful for the person doing the assignment to see.
+
+I have added teh current EditUser.razor file for the Edit page of users for reference. I also want it to automatically save the user object when a manager is assigned to the user. (or changed).
+
+Can the modal also have permanent option to set the manager to null so the manager can be cleared from a user? That would be helpful.
+
+Design the modal, reference teh service to see how that works - if we need a few function in the interface/service, I will add that in. Make it look nice, clean, same style, and do all the above.
+
+Surgical precision to make this work.

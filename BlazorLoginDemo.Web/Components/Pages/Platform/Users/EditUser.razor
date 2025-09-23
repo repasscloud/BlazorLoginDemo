@@ -5,9 +5,14 @@
 @using BlazorLoginDemo.Shared.Models.Static
 @using BlazorLoginDemo.Shared.Models.Static.Platform
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@using BlazorLoginDemo.Web.Components.Shared
+
 @inject IAdminUserServiceUnified UserSvc
 @inject IAdminOrgServiceUnified OrgSvc
 @inject NavigationManager Nav
+
+@{ var U = _vm.User!; }
+
 
 <PageTitle>Edit User</PageTitle>
 
@@ -24,6 +29,14 @@ else if (_vm.IsLoading)
 }
 else
 {
+    @if (!string.IsNullOrWhiteSpace(_topBanner))
+    {
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @_topBanner
+        <button type="button" class="btn-close" aria-label="Close" @onclick="() => _topBanner = null"></button>
+    </div>
+    }
+
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h2 class="mb-0">Edit User</h2>
         <div class="d-flex gap-2">
@@ -105,9 +118,19 @@ else
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Manager</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.ManagerId" />
-                            @* <div class="form-text">Optional. Self-referential org chart.</div> *@
+                            <div class="input-group">
+                                <input class="form-control" readonly
+                                    value="@(_vm.User?.ManagerId is null ? "(none)" : (_managerDisplay ?? _vm.User.ManagerId))" />
+                                <button type="button" class="btn btn-outline-secondary" @onclick="OpenManagerPickerAsync">
+                                <span class="bi bi-person-add" aria-hidden="true"></span><span class="ms-1">Assign</span>
+                                </button>
+                            </div>
                         </div>
+                        @* <div class="col-md-4">
+                            <label class="form-label">Manager</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.ManagerId" />
+                            <div class="form-text">Optional. Self-referential org chart.</div>
+                        </div> *@
                     </div>
                 </div>
             </div>
@@ -119,23 +142,23 @@ else
                     <div class="card-body row g-3">
                         <div class="col-md-4">
                             <label class="form-label">First Name</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.FirstName" />
+                            <InputText class="form-control" @bind-Value="U.FirstName" />
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Middle Name</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.MiddleName" />
+                            <InputText class="form-control" @bind-Value="U.MiddleName" />
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Last Name</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.LastName" />
+                            <InputText class="form-control" @bind-Value="U.LastName" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Display Name</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.DisplayName" />
+                            <InputText class="form-control" @bind-Value="U.DisplayName" />
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Preferred Culture</label>
-                            <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.User.PreferredCulture">
+                            <InputSelect id="defaultCurrency" class="form-select" @bind-Value="U.PreferredCulture">
                                 @foreach (var c in CulturesType.Bcp47)
                                 {
                                     <option value="@c.Tag">@c.Label</option>
@@ -154,11 +177,11 @@ else
                     <div class="card-body row g-3">
                         <div class="col-md-3">
                             <label class="form-label">Date of Birth</label>
-                            <InputDate class="form-control" @bind-Value="_vm.User.DateOfBirth" />
+                            <InputDate class="form-control" @bind-Value="U.DateOfBirth" />
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Passport Country</label>
-                            <select class="form-select" @bind="_vm.User.CountryOfIssue">
+                            <select class="form-select" @bind="U.CountryOfIssue">
                                 @foreach (var c in Enum.GetValues<PassportCountry>())
                                 {
                                     <option value="@c">@c.GetDisplayName()</option>
@@ -167,11 +190,11 @@ else
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Passport Expiry</label>
-                            <InputDate class="form-control" @bind-Value="_vm.User.PassportExpirationDate" />
+                            <InputDate class="form-control" @bind-Value="U.PassportExpirationDate" />
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Gender</label>
-                            <select class="form-select" @bind="_vm.User.Gender">
+                            <select class="form-select" @bind="U.Gender">
                                 @foreach (var g in Enum.GetValues<GenderType>())
                                 {
                                     <option value="@g">@g</option>
@@ -189,12 +212,12 @@ else
                     <div class="card-body row g-3">
                         <div class="col-md-3">
                             <label class="form-label">Origin Location (IATA)</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.OriginLocationCode" />
+                            <InputText class="form-control" @bind-Value="U.OriginLocationCode" />
                         </div>
 
                         <div class="col-md-3">
                             <label class="form-label">Default Flight Seating</label>
-                            <InputSelect id="defaultFlightSeatingChoice" class="form-select" @bind-Value="_vm.User.DefaultFlightSeating">
+                            <InputSelect id="defaultFlightSeatingChoice" class="form-select" @bind-Value="U.DefaultFlightSeating">
                                 @foreach (var c in FareType.BookingClassOptions)
                                 {
                                     <option value="@c.code">@c.label</option>
@@ -204,7 +227,7 @@ else
 
                         <div class="col-md-3">
                             <label class="form-label">Max Flight Seating</label>
-                            <InputSelect id="maxFlightSeatingChoice" class="form-select" @bind-Value="_vm.User.MaxFlightSeating">
+                            <InputSelect id="maxFlightSeatingChoice" class="form-select" @bind-Value="U.MaxFlightSeating">
                                 @foreach (var c in FareType.BookingClassOptions)
                                 {
                                     <option value="@c.code">@c.label</option>
@@ -215,7 +238,7 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Cabin Class Coverage</label>
                             @* _supportedFlightCoverage *@
-                            <InputSelect id="ccCoverageChoice" class="form-select" @bind-Value="_vm.User.CabinClassCoverage">
+                            <InputSelect id="ccCoverageChoice" class="form-select" @bind-Value="U.CabinClassCoverage">
                                 @foreach (var c in CabinClassCoverages.CabinClassCoverageOptions)
                                 {
                                     <option value="@c.code">@c.label</option>
@@ -225,7 +248,7 @@ else
 
                         <div class="col-md-3">
                             <label class="form-label">Non-stop Flights</label>
-                            <select class="form-select" @bind="_vm.User.NonStopFlight">
+                            <select class="form-select" @bind="U.NonStopFlight">
                                 <option value="">Unset</option>
                                 <option value="false">No</option>
                                 <option value="true">Yes</option>
@@ -234,7 +257,7 @@ else
 
                         <div class="col-md-3">
                             <label class="form-label">Booking Lead Days</label>
-                            <InputNumber class="form-control" @bind-Value="_vm.User.DefaultCalendarDaysInAdvanceForFlightBooking" />
+                            <InputNumber class="form-control" @bind-Value="U.DefaultCalendarDaysInAdvanceForFlightBooking" />
                         </div>
 
                         <div class="col-md-9">
@@ -256,17 +279,17 @@ else
                     <div class="card-body row g-3">
                         <div class="col-md-3">
                             <label class="form-label">Default Currency (ISO 4217)</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.DefaultCurrencyCode" />
+                            <InputText class="form-control" @bind-Value="U.DefaultCurrencyCode" />
                         </div>
 
                         <div class="col-md-3">
                             <label class="form-label">Max Flight Price</label>
-                            <InputNumber class="form-control" @bind-Value="_vm.User.MaxFlightPrice" />
+                            <InputNumber class="form-control" @bind-Value="U.MaxFlightPrice" />
                         </div>
 
                         <div class="col-md-3">
                             <label class="form-label">Max Results</label>
-                            <InputNumber class="form-control" @bind-Value="_vm.User.MaxResults" />
+                            <InputNumber class="form-control" @bind-Value="U.MaxResults" />
                         </div>
                         
                     </div>
@@ -280,11 +303,11 @@ else
                     <div class="card-body row g-3">
                         <div class="col-md-3">
                             <label class="form-label">Flights Available From (hh:mm:ss)</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.FlightBookingTimeAvailableFrom" />
+                            <InputText class="form-control" @bind-Value="U.FlightBookingTimeAvailableFrom" />
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Flights Available To (hh:mm:ss)</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.FlightBookingTimeAvailableTo" />
+                            <InputText class="form-control" @bind-Value="U.FlightBookingTimeAvailableTo" />
                         </div>
                     </div>
                 </div>
@@ -297,19 +320,19 @@ else
                     <div class="card-body row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Travel Policy Id</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.TravelPolicyId" />
+                            <InputText class="form-control" @bind-Value="U.TravelPolicyId" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Travel Policy Name</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.TravelPolicyName" />
+                            <InputText class="form-control" @bind-Value="U.TravelPolicyName" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Expense Policy Id</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.ExpensePolicyId" />
+                            <InputText class="form-control" @bind-Value="U.ExpensePolicyId" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Expense Policy Name</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.ExpensePolicyName" />
+                            <InputText class="form-control" @bind-Value="U.ExpensePolicyName" />
                         </div>
                     </div>
                 </div>
@@ -323,9 +346,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Default Flight Seating</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.DefaultFlightSeatingVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.DefaultFlightSeatingVisible" />
                                 <label class="form-check-label" for="dfsVisible">
-                                    <span aria-hidden="true">@(_vm.User.DefaultFlightSeatingVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.DefaultFlightSeatingVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -333,9 +356,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Max Flight Seating</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.MaxFlightSeatingVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.MaxFlightSeatingVisible" />
                                 <label class="form-check-label" for="mfsVisible">
-                                    <span aria-hidden="true">@(_vm.User.MaxFlightSeatingVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.MaxFlightSeatingVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -343,9 +366,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Cabin Class Coverage</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.CabinClassCoverageVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.CabinClassCoverageVisible" />
                                 <label class="form-check-label" for="cccVisible">
-                                    <span aria-hidden="true">@(_vm.User.CabinClassCoverageVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.CabinClassCoverageVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -353,9 +376,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Airlines Codes</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.AirlineCodesVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.AirlineCodesVisible" />
                                 <label class="form-check-label" for="airlineCodesVisible">
-                                    <span aria-hidden="true">@(_vm.User.AirlineCodesVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.AirlineCodesVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -363,9 +386,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Non-Stop</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.NonStopFlightVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.NonStopFlightVisible" />
                                 <label class="form-check-label" for="nsVisible">
-                                    <span aria-hidden="true">@(_vm.User.NonStopFlightVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.NonStopFlightVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -373,9 +396,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Default Currency</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.DefaultCurrencyCodeVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.DefaultCurrencyCodeVisible" />
                                 <label class="form-check-label" for="dccVisible">
-                                    <span aria-hidden="true">@(_vm.User.DefaultCurrencyCodeVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.DefaultCurrencyCodeVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -383,9 +406,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Max Flight Price</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.MaxFlightPriceVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.MaxFlightPriceVisible" />
                                 <label class="form-check-label" for="mfpVisible">
-                                    <span aria-hidden="true">@(_vm.User.MaxFlightPriceVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.MaxFlightPriceVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -393,9 +416,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Max Results</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.MaxResultsVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.MaxResultsVisible" />
                                 <label class="form-check-label" for="mrVisible">
-                                    <span aria-hidden="true">@(_vm.User.MaxResultsVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.MaxResultsVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -403,9 +426,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Booking Windows</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.FlightBookingTimeAvailableVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.FlightBookingTimeAvailableVisible" />
                                 <label class="form-check-label" for="fbtVisible">
-                                    <span aria-hidden="true">@(_vm.User.FlightBookingTimeAvailableVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.FlightBookingTimeAvailableVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -437,9 +460,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Adv. Calendar Days</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.CalendarDaysInAdvanceForFlightBookingVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.CalendarDaysInAdvanceForFlightBookingVisible" />
                                 <label class="form-check-label" for="calDaysVisible">
-                                    <span aria-hidden="true">@(_vm.User.CalendarDaysInAdvanceForFlightBookingVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.CalendarDaysInAdvanceForFlightBookingVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -447,9 +470,9 @@ else
                         <div class="col-md-3">
                             <label class="form-label">Weekend Options</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.EnableWeekendFlightBookingsVisible" />
+                                <InputCheckbox class="form-check-input" @bind-Value="U.EnableWeekendFlightBookingsVisible" />
                                 <label class="form-check-label" for="wkndVisible">
-                                    <span aria-hidden="true">@(_vm.User.EnableWeekendFlightBookingsVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                    <span aria-hidden="true">@(U.EnableWeekendFlightBookingsVisible ? " ✅ Visible" : " ❌ Invisible")</span>
                                 </label>
                             </div>
                         </div>
@@ -516,6 +539,8 @@ else
     </EditForm>
 }
 
+<UserPickerModal @ref="_userPicker" />
+
 @code {
     [Parameter] public string? id { get; set; }
 
@@ -562,28 +587,27 @@ else
         }
     }
 
-private async Task SaveAsync()
-{
-    if (_vm.User is null) return;
+    private async Task SaveAsync()
+    {
+        if (_vm.User is null) return;
 
-    _vm.IsSaving = true; _vm.Toast = string.Empty;
+        _vm.IsSaving = true; _vm.Toast = string.Empty;
 
-    // Sync multi-line editors -> string[] on the model
-    _vm.User.IncludedAirlineCodes = SplitCodes(_vm.IncludedAirlineCodesText);
-    _vm.User.ExcludedAirlineCodes = SplitCodes(_vm.ExcludedAirlineCodesText);
+        // Sync multi-line editors -> string[] on the model
+        _vm.User.IncludedAirlineCodes = SplitCodes(_vm.IncludedAirlineCodesText);
+        _vm.User.ExcludedAirlineCodes = SplitCodes(_vm.ExcludedAirlineCodesText);
 
-    // Normalize a few inputs
-    _vm.User.OrganizationId = string.IsNullOrWhiteSpace(_vm.User.OrganizationId) ? null : _vm.User.OrganizationId.Trim();
-    _vm.User.Email = _vm.User.Email?.Trim();
+        // Normalize a few inputs
+        _vm.User.OrganizationId = string.IsNullOrWhiteSpace(_vm.User.OrganizationId) ? null : _vm.User.OrganizationId.Trim();
+        _vm.User.Email = _vm.User.Email?.Trim();
 
-    // NEW: call the full-domain updater
-    var ok = await UserSvc.UpdateUserAsync(_vm.User);
+        // NEW: call the full-domain updater
+        var ok = await UserSvc.UpdateUserAsync(_vm.User);
 
-    _vm.IsSaving = false;
-    _vm.Toast = ok ? "Saved." : string.Empty;
-    if (!ok) _vm.LoadError ??= "Update failed.";
-}
-
+        _vm.IsSaving = false;
+        _vm.Toast = ok ? "Saved." : string.Empty;
+        if (!ok) _vm.LoadError ??= "Update failed.";
+    }
 
     private static string[] SplitCodes(string? text)
         => string.IsNullOrWhiteSpace(text)
@@ -603,6 +627,7 @@ private async Task SaveAsync()
         public string Toast { get; set; } = string.Empty;
 
         public ApplicationUser User { get; set; } = new();
+
         public List<IAdminOrgServiceUnified.OrganizationPickerDto> Orgs { get; set; } = new();
 
         // UI helpers for string[] fields
@@ -714,6 +739,68 @@ private async Task SaveAsync()
         set => _vm!.User!.EnableSundayFlightBookings = value;
     }
 
-    @* private bool FlightBookingTimeAvailableVisible =>
-        _vm?.User?.FlightBookingTimeAvailableVisible ?? false; *@
+    private UserPickerModal? _userPicker;
+
+    private string? _topBanner; // show when user has no org
+    private string? _managerDisplay; // optional: pretty label next to Manager field
+
+    @code {
+    private async Task OpenManagerPickerAsync()
+    {
+        var user = _vm?.User;
+        if (user is null) return;
+
+        // If the user is not in an org -> show banner instead of opening the modal
+        if (string.IsNullOrWhiteSpace(user.OrganizationId))
+        {
+            _topBanner = "Manager cannot be assigned because this user is not a member of an organization.";
+            return;
+        }
+
+        var res = await _userPicker!.OpenAsync(
+            excludeUserId: user.Id,                 // no self-reference
+            organizationId: user.OrganizationId!,   // same org only
+            title: "Select Manager",
+            onlyActive: true);
+
+        if (res is null) return; // closed/cancelled
+
+        if (res.Action == UserPickerModal.UserPickerAction.Cleared)
+        {
+            // Clear manager (server treats empty string as 'clear')
+            await UserSvc.UpdateAsync(new IAdminUserServiceUnified.UpdateUserRequest(
+                UserId: user.Id,
+                FirstName: null,
+                MiddleName: null,
+                LastName: null,
+                DisplayName: null,
+                OrganizationId: null,
+                IsActive: null,
+                ManagerUserId: ""   // <= clears per service implementation
+            ));
+
+            user.ManagerId = null;
+            _managerDisplay = "(none)";
+            StateHasChanged();
+            return;
+        }
+
+        // Assign new manager
+        var picked = res.User!;
+        await UserSvc.UpdateAsync(new IAdminUserServiceUnified.UpdateUserRequest(
+            UserId: user.Id,
+            FirstName: null,
+            MiddleName: null,
+            LastName: null,
+            DisplayName: null,
+            OrganizationId: null,
+            IsActive: null,
+            ManagerUserId: picked.Id
+        ));
+
+        user.ManagerId = picked.Id;
+        _managerDisplay = $"{picked.Label}{(string.IsNullOrWhiteSpace(picked.Email) ? "" : $" ({picked.Email})")}";
+        StateHasChanged();
+        }
+    }
 }
