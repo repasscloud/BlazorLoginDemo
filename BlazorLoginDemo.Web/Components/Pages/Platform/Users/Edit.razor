@@ -40,7 +40,7 @@ else
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h2 class="mb-0">Edit User</h2>
         <div class="btn-group">
-            <button type="button" class="btn btn-outline-secondary" href="/platform/users">Back</button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="BackButton">Back</button>
             <button type="submit" class="btn btn-primary">
                 @if (_vm.IsSaving)
                 {
@@ -574,6 +574,40 @@ else
             _vm.IncludedAirlineCodesText = string.Join(Environment.NewLine, _vm.User.IncludedAirlineCodes ?? Array.Empty<string>());
             _vm.ExcludedAirlineCodesText = string.Join(Environment.NewLine, _vm.User.ExcludedAirlineCodes ?? Array.Empty<string>());
 
+            // Set the manager display text from ManagerId
+            if (_vm.User?.ManagerId is not null)
+            {
+                // Retrieve the manager aggregate
+                IAdminUserServiceUnified.UserAggregate? _mgr =
+                    await UserSvc.GetByIdAsync(_vm.User.ManagerId);
+
+                ApplicationUser? u = _mgr?.User;
+                if (u is not null)
+                {
+                    // Prefer DisplayName; otherwise First + Last
+                    string? name = !string.IsNullOrWhiteSpace(u.DisplayName)
+                        ? u.DisplayName!.Trim()
+                        : $"{(u.FirstName ?? string.Empty).Trim()} {(u.LastName ?? string.Empty).Trim()}".Trim();
+
+                    // Prefer Email; otherwise EmailAddress
+                    var email = !string.IsNullOrWhiteSpace(u.Email)
+                        ? u.Email!.Trim()
+                        : (u.Email ?? string.Empty).Trim();
+
+                    // Join only the non-empty parts (no extra spaces)
+                    if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(email))
+                        _managerDisplay = $"{name} {email}";
+                    else if (!string.IsNullOrWhiteSpace(name))
+                        _managerDisplay = name;
+                    else
+                        _managerDisplay = email; // could be empty if nothing available
+                }
+                else
+                {
+                    _managerDisplay = string.Empty; // or keep existing value if you prefer
+                }
+            }
+
             // ---- roles (merged) ----
             _allRoles = (await UserSvc.GetAllRolesAsync()).ToList();
             var current = await UserSvc.GetUserRolesAsync(id);
@@ -724,6 +758,12 @@ else
         }
     }
 
+    private void BackButton()
+    {
+        Nav.NavigateTo(uri: "/platform/users");
+        return;
+    }
+
     // Non-nullable wrappers for binding/conditional usage
     private bool EnableSaturdayFlightBookingsValue
     {
@@ -742,7 +782,6 @@ else
     private string? _topBanner; // show when user has no org
     private string? _managerDisplay; // optional: pretty label next to Manager field
 
-    @code {
     private async Task OpenManagerPickerAsync()
     {
         var user = _vm?.User;
@@ -799,6 +838,5 @@ else
         user.ManagerId = picked.Id;
         _managerDisplay = $"{picked.Label}{(string.IsNullOrWhiteSpace(picked.Email) ? "" : $" ({picked.Email})")}";
         StateHasChanged();
-        }
     }
 }

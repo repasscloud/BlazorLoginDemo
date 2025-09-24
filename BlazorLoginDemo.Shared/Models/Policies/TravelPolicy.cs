@@ -23,7 +23,6 @@ public class TravelPolicy
     [RegularExpression(@"^[A-Z]{3}$", ErrorMessage = "Currency must be exactly 3 uppercase letters.")]
     [JsonPropertyName("currency")]
     [DefaultValue("AUD")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public required string DefaultCurrencyCode { get; set; } = "AUD";
 
     /// <summary>
@@ -72,6 +71,7 @@ public class TravelPolicy
     public int? DefaultCalendarDaysInAdvanceForFlightBooking { get; set; }
 
     [JsonIgnore] // Prevent circular reference during serialization.
+    [ForeignKey(nameof(OrganizationUnifiedId))]
     public OrganizationUnified Organization { get; set; } = default!;
 
     // --- Geography allow/deny lists -----------------------------------------
@@ -119,15 +119,15 @@ public class TravelPolicy
     // NOTE: All are optional. If null/zero, the blanket setting applies.
 
     // -- Max cabin by duration --
-    [CabinTypeValidation] public string? MaxFlightSeatingAt6Hours  { get; set; }
-    [CabinTypeValidation] public string? MaxFlightSeatingAt8Hours  { get; set; }
+    [CabinTypeValidation] public string? MaxFlightSeatingAt6Hours { get; set; }
+    [CabinTypeValidation] public string? MaxFlightSeatingAt8Hours { get; set; }
     [CabinTypeValidation] public string? MaxFlightSeatingAt10Hours { get; set; }
     [CabinTypeValidation] public string? MaxFlightSeatingAt14Hours { get; set; }
 
     // -- Max price by duration --
     // Use nullable so "unset" cleanly falls back to blanket MaxFlightPrice.
-    [Column(TypeName = "numeric(14,2)")] public decimal? MaxFlightPriceAt6Hours  { get; set; }
-    [Column(TypeName = "numeric(14,2)")] public decimal? MaxFlightPriceAt8Hours  { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal? MaxFlightPriceAt6Hours { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal? MaxFlightPriceAt8Hours { get; set; }
     [Column(TypeName = "numeric(14,2)")] public decimal? MaxFlightPriceAt10Hours { get; set; }
     [Column(TypeName = "numeric(14,2)")] public decimal? MaxFlightPriceAt14Hours { get; set; }
 
@@ -148,8 +148,8 @@ public class TravelPolicy
         string? thresholdCabin =
             (h >= 14 && !string.IsNullOrWhiteSpace(MaxFlightSeatingAt14Hours)) ? MaxFlightSeatingAt14Hours
           : (h >= 10 && !string.IsNullOrWhiteSpace(MaxFlightSeatingAt10Hours)) ? MaxFlightSeatingAt10Hours
-          : (h >=  8 && !string.IsNullOrWhiteSpace(MaxFlightSeatingAt8Hours )) ? MaxFlightSeatingAt8Hours
-          : (h >=  6 && !string.IsNullOrWhiteSpace(MaxFlightSeatingAt6Hours )) ? MaxFlightSeatingAt6Hours
+          : (h >= 8 && !string.IsNullOrWhiteSpace(MaxFlightSeatingAt8Hours)) ? MaxFlightSeatingAt8Hours
+          : (h >= 6 && !string.IsNullOrWhiteSpace(MaxFlightSeatingAt6Hours)) ? MaxFlightSeatingAt6Hours
           : null;
 
         return thresholdCabin ?? MaxFlightSeating ?? DefaultFlightSeating;
@@ -166,24 +166,205 @@ public class TravelPolicy
         decimal? thresholdCap =
             (h >= 14 && MaxFlightPriceAt14Hours.HasValue) ? MaxFlightPriceAt14Hours
           : (h >= 10 && MaxFlightPriceAt10Hours.HasValue) ? MaxFlightPriceAt10Hours
-          : (h >=  8 && MaxFlightPriceAt8Hours.HasValue ) ? MaxFlightPriceAt8Hours
-          : (h >=  6 && MaxFlightPriceAt6Hours.HasValue ) ? MaxFlightPriceAt6Hours
+          : (h >= 8 && MaxFlightPriceAt8Hours.HasValue) ? MaxFlightPriceAt8Hours
+          : (h >= 6 && MaxFlightPriceAt6Hours.HasValue) ? MaxFlightPriceAt6Hours
           : null;
 
         if (thresholdCap.HasValue) return thresholdCap.Value;
-        if (MaxFlightPrice > 0m)   return MaxFlightPrice;
+        if (MaxFlightPrice > 0m) return MaxFlightPrice;
         return null; // no cap at all
     }
+
+    // USAGE
+    // var duration = TimeSpan.FromHours(9.5);
+    // var cabin    = policy.EffectiveCabinFor(duration);      // e.g. "PREMIUM_ECONOMY"
+    // var cap      = policy.EffectivePriceCapFor(duration);   // e.g. 3500m or null (no cap)
+
+    // How it behaves (auto-calc rules)
+    // - For a 9.5h flight:
+    //    - EffectiveCabinFor(9.5h) checks 14→10→8→6; picks 8h bucket if set; else blanket.
+    //    - EffectivePriceCapFor(9.5h) same logic; if all threshold caps null, uses blanket MaxFlightPrice when >0, otherwise no cap.
+    //    - For a 15h flight: the 14h bucket wins (if set).
+    // - This is intentionally simple so the booking logic just calls these two methods and doesn’t care how you configured the policy.
+
+
+    // =========================================================================
+    // Approval workflow rules
+    // =========================================================================
+
+    // If true and the fare is within the effective policy limit, auto-approve and
+    // ignore manager/L1/L2/L3/Billing-Contact (to-policy) requirements.
+    [DefaultValue(false)]
+    public bool AutoApproveToPolicyLimit { get; set; } = false;
+
+    // If true and within the effective policy limit, require Manager approval
+    // (unless AutoApproveToPolicyLimit short-circuits it).
+    [DefaultValue(false)]
+    public bool RequireManagerApprovalToPolicyLimit { get; set; } = false;
+
+    // L1/L2/L3 approvals:
+    // - When the corresponding "*ApprovalRequired" is true AND an Amount is set,
+    //   the level is required only when FareTotal > Amount.
+    // - When "*ApprovalRequired" is true and Amount is null, the level is always
+    //   required (within the policy window), regardless of price.
+    [DefaultValue(false)]
+    public bool L1ApprovalRequired { get; set; } = false;
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal? L1ApprovalAmount { get; set; } = null;
+
+    [DefaultValue(false)]
+    public bool L2ApprovalRequired { get; set; } = false;
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal? L2ApprovalAmount { get; set; } = null;
+
+    [DefaultValue(false)]
+    public bool L3ApprovalRequired { get; set; } = false;
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal? L3ApprovalAmount { get; set; } = null;
+
+    // Billing Contact rules
+    // - ToPolicyLimit: even when within policy, also get Billing Contact’s approval.
+    // - AbovePolicyLimit: used when a TMC/Platform override is attempting to book
+    //   above the effective limit; if true, require Billing Contact approval.
+    [DefaultValue(false)]
+    public bool BillingContactApprovalToPolicyLimit { get; set; } = false;
+
+    [DefaultValue(false)]
+    public bool BillingContactApprovalAbovePolicyLimit { get; set; } = false;
+    
+    /// <summary>
+    /// Returns the approval targets that must sign off for a proposed fare,
+    /// based on this policy and the effective (duration-aware) price cap.
+    /// 
+    /// Arguments:
+    /// - fareTotal: the proposed total (base + mandatory taxes/fees)
+    /// - blockTime: scheduled block time (used to compute the effective cap)
+    /// - isOverrideAbovePolicy: true only when an authorized TMC/Platform flow
+    ///   is *attempting* to book above the policy limit.
+    /// - hasManagerAssigned: whether the traveler has a manager (used only if
+    ///   manager approval is required). If false, the caller should decide how
+    ///   to route Manager approvals (fallback group, etc.).
+    /// </summary>
+    public ApprovalDecision EvaluateApprovals(
+        decimal fareTotal,
+        TimeSpan blockTime,
+        bool isOverrideAbovePolicy,
+        bool hasManagerAssigned
+    )
+    {
+        var required = new HashSet<ApproverTarget>();
+
+        // Determine the effective cap for this duration
+        var cap = EffectivePriceCapFor(blockTime);
+        var withinPolicy = !cap.HasValue || fareTotal <= cap.Value;
+
+        // 1) Auto-approve short-circuit (within policy only)
+        if (withinPolicy && AutoApproveToPolicyLimit)
+        {
+            return new ApprovalDecision(
+                WithinPolicy: true,
+                AutoApproved: true,
+                RequiredTargets: Array.Empty<ApproverTarget>()
+            );
+        }
+
+        // 2) If *not* within policy:
+        //    - If no override path, the caller should typically block upstream.
+        //    - If override path is active, require Billing Contact if configured.
+        if (!withinPolicy)
+        {
+            if (isOverrideAbovePolicy && BillingContactApprovalAbovePolicyLimit)
+                required.Add(ApproverTarget.BillingContact);
+
+            var orderedAbove = required
+                .OrderBy(t => t == ApproverTarget.Manager ? 0
+                        : t == ApproverTarget.Level1  ? 1
+                        : t == ApproverTarget.Level2  ? 2
+                        : t == ApproverTarget.Level3  ? 3
+                        : 4) // BillingContact last
+                .ToArray();
+
+            return new ApprovalDecision(
+                WithinPolicy: false,
+                AutoApproved: false,
+                RequiredTargets: orderedAbove
+            );
+        }
+
+        // 3) Within policy window: accumulate required approvals.
+
+        // 3a) Manager (if configured)
+        if (RequireManagerApprovalToPolicyLimit && hasManagerAssigned)
+            required.Add(ApproverTarget.Manager);
+
+        // 3b) Billing Contact even within policy (if configured)
+        if (BillingContactApprovalToPolicyLimit)
+            required.Add(ApproverTarget.BillingContact);
+
+        // 3c) L1/L2/L3
+        // If the boolean is true and amount is null => always required (within policy).
+        // If the boolean is true and amount is set  => required only when fare >= amount.
+        if (L1ApprovalRequired && (!L1ApprovalAmount.HasValue || fareTotal >= L1ApprovalAmount.Value))
+            required.Add(ApproverTarget.Level1);
+
+        if (L2ApprovalRequired && (!L2ApprovalAmount.HasValue || fareTotal >= L2ApprovalAmount.Value))
+            required.Add(ApproverTarget.Level2);
+
+        if (L3ApprovalRequired && (!L3ApprovalAmount.HasValue || fareTotal >= L3ApprovalAmount.Value))
+            required.Add(ApproverTarget.Level3);
+
+        var ordered = required
+            .OrderBy(t => t == ApproverTarget.Manager ? 0
+                    : t == ApproverTarget.Level1  ? 1
+                    : t == ApproverTarget.Level2  ? 2
+                    : t == ApproverTarget.Level3  ? 3
+                    : 4) // BillingContact last
+            .ToArray();
+
+        return new ApprovalDecision(
+            WithinPolicy: true,
+            AutoApproved: false,
+            RequiredTargets: ordered
+        );
+    }
+
+    /// <summary>
+    /// Convenience wrapper if you only want the targets.
+    /// </summary>
+    public IReadOnlyCollection<ApproverTarget> GetApprovalTargets(
+        decimal fareTotal,
+        TimeSpan blockTime,
+        bool isOverrideAbovePolicy,
+        bool hasManagerAssigned
+    )
+        => EvaluateApprovals(fareTotal, blockTime, isOverrideAbovePolicy, hasManagerAssigned).RequiredTargets;
+
+    /// <summary>
+    /// Convenience wrapper to check if it will auto-approve (within policy).
+    /// </summary>
+    public bool ShouldAutoApprove(decimal fareTotal, TimeSpan blockTime)
+    {
+        var cap = EffectivePriceCapFor(blockTime);
+        var withinPolicy = !cap.HasValue || fareTotal <= cap.GetValueOrDefault();
+        return withinPolicy && AutoApproveToPolicyLimit;
+    }
+
+
 }
 
-// USAGE
-// var duration = TimeSpan.FromHours(9.5);
-// var cabin    = policy.EffectiveCabinFor(duration);      // e.g. "PREMIUM_ECONOMY"
-// var cap      = policy.EffectivePriceCapFor(duration);   // e.g. 3500m or null (no cap)
+// Who to notify for approval. Your calling code maps these to groups/emails.
+public enum ApproverTarget
+{
+    Manager = 0,
+    Level1  = 1,
+    Level2  = 2,
+    Level3  = 3,
+    BillingContact = 4
+}
 
-// How it behaves (auto-calc rules)
-// - For a 9.5h flight:
-//    - EffectiveCabinFor(9.5h) checks 14→10→8→6; picks 8h bucket if set; else blanket.
-//    - EffectivePriceCapFor(9.5h) same logic; if all threshold caps null, uses blanket MaxFlightPrice when >0, otherwise no cap.
-//    - For a 15h flight: the 14h bucket wins (if set).
-// - This is intentionally simple so the booking logic just calls these two methods and doesn’t care how you configured the policy.
+// Result of an evaluation pass for a proposed booking.
+public sealed record ApprovalDecision(
+    bool WithinPolicy,
+    bool AutoApproved,
+    IReadOnlyCollection<ApproverTarget> RequiredTargets
+);
