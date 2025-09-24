@@ -93,7 +93,11 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
     // -------------- READ --------------
     public async Task<IAdminUserServiceUnified.UserAggregate?> GetByIdAsync(string id, CancellationToken ct = default)
     {
-        var user = await _db.Users.Include(u => u.Organization).FirstOrDefaultAsync(u => u.Id == id, ct);
+        var user = await _db.Users
+            .AsNoTracking()
+            .Include(u => u.Organization)
+            .FirstOrDefaultAsync(u => u.Id == id, ct);
+
         return user is null ? null : new IAdminUserServiceUnified.UserAggregate(user.Id, user, user.Organization);
     }
 
@@ -163,6 +167,8 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
 
     public async Task<bool> UpdateUserAsync(ApplicationUser req, CancellationToken ct = default)
     {
+        _db.ChangeTracker.Clear();
+
         // Validate FK targets that we allow to change
         if (!string.IsNullOrWhiteSpace(req.OrganizationId))
         {
