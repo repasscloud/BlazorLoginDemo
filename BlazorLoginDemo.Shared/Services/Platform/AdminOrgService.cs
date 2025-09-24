@@ -167,6 +167,8 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
     // -------------- UPDATE --------------
     public async Task<IAdminOrgServiceUnified.OrgAggregate> UpdateAsync(IAdminOrgServiceUnified.UpdateOrgRequest req, CancellationToken ct = default)
     {
+        _db.ChangeTracker.Clear();
+        
         var org = await _db.Organizations
             .Include(o => o.Domains)
             .Include(o => o.LicenseAgreement)
@@ -238,6 +240,9 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             : req.ParentOrganizationId.Trim();
 
         req.Name = req.Name.Trim(); // (optional) keep your name tidy
+
+        // ensure no stale tracked instances remain for this context
+        _db.ChangeTracker.Clear();
 
         // Attach only the root entity; do NOT call Update() (avoids walking the graph)
         _db.Attach(req);

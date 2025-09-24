@@ -21,6 +21,14 @@
     <DataAnnotationsValidator />
     <ValidationSummary />
 
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            @_error
+        </div>
+    }
+
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h2 class="mb-0">Edit Organization</h2>
         <div class="btn-group">
@@ -503,6 +511,7 @@
 
     private OrgEditVm _vm = new();
     private bool _isSaving;
+    private string? _error;
 
     // holds the browser time zone (IANA id like "Australia/Sydney", "Europe/London", etc.)
     private TimeZoneInfo? _browserTz; 
@@ -595,38 +604,36 @@
 
     private async Task SaveAsync(bool navigateOnSuccess = true)
     {
-        // No-op? Just go back.
-        var currentSig = ComputeSignature(_vm.Organization, _vm.Domains);
-        if (currentSig == _vm.OriginalSignature)
-        {
-            Nav.NavigateTo("/platform/organizations");
-            return;
-        }
-
+        _error = null;
         _isSaving = true;
+
         try
         {
-            // 1) Save ALL scalar fields (name, active, parent, *addresses*, tax, country, etc.)
-            // This executes a single UPDATE on OrganizationUnified (no navs/collections).
-            await OrgSvc.UpdateOrgAsync(_vm.Organization);
+            // 1) Persist scalars (name, parent, addresses, tax, country, etc.)
+            bool ok = await OrgSvc.UpdateOrgAsync(_vm.Organization);
+            if (!ok)
+            {
+                _error = "Update did not apply: 0 rows affected (record may be unchanged or missing).";
+                return; // stay on page, show error
+            }
 
-            // 2) Save domains using the unified replace pattern (old page methodology)
-            var normalizedDomains = _vm.Domains
+            // 2) Persist domains via unified replace
+            List<string>? normalizedDomains = _vm.Domains
                 .Select(d => (d ?? string.Empty).Trim().ToLowerInvariant())
                 .Where(d => !string.IsNullOrWhiteSpace(d))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var updated = await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
+            IAdminOrgServiceUnified.OrgAggregate? updated = await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
                 OrgId: _vm.Organization.Id,
-                Name: null,                   // already persisted in step 1
-                Type: null,                   // already persisted in step 1 (if you bind it)
-                ParentOrganizationId: null,   // already persisted in step 1
-                IsActive: null,               // already persisted in step 1
+                Name: null,
+                Type: null,
+                ParentOrganizationId: null,
+                IsActive: null,
                 DomainsReplace: normalizedDomains
             ));
 
-            // 3) Rehydrate from server truth and reset baseline
+            // 3) Rehydrate + recompute signature AFTER successful save
             _vm.Organization = updated.Org;
             _vm.Domains = (updated.Domains ?? Array.Empty<OrganizationDomainUnified>())
                 .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
@@ -634,16 +641,23 @@
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            await LoadChildrenAsync(_vm.Organization.Id); // keep "Children" section fresh
+            await LoadParentOrgInfo(_vm.Organization.ParentOrganizationId);
+            await LoadChildrenAsync(_vm.Organization.Id);
+
             _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
 
             if (navigateOnSuccess)
                 Nav.NavigateTo("/platform/organizations");
         }
-        catch
+        catch (Exception ex)
         {
-            // If backend throws (validation/no-op/etc.), do NOT crash the page — just leave.
-            Nav.NavigateTo("/platform/organizations");
+            var msg = ex.GetBaseException().Message;
+            if (!string.IsNullOrWhiteSpace(_vm.NewDomain) &&
+                msg.Contains("already", StringComparison.OrdinalIgnoreCase))
+            {
+                _vm.DomainMessage = BuildDomainConflictMessage(msg, _vm.NewDomain);
+            }
+            _error = msg;
         }
         finally
         {
@@ -651,7 +665,6 @@
             StateHasChanged();
         }
     }
-
 
     private void GoBack() => Nav.NavigateTo("/platform/organizations");
 
@@ -927,14 +940,16 @@
 
         if (picked is null) return;
 
-        // ensure org exists before dereference (kills CS8602)
         var org = _vm?.Organization;
         if (org is null) return;
+
+        // No change? Do nothing (don't trigger a save or navigation)
+        if (org.ParentOrganizationId == picked.Id) return;
 
         org.ParentOrganizationId = picked.Id;
         _parentOrgDisplay = $"{picked.Name} ({picked.Id})";
 
-        // Save but stay on this page
+        // Save but stay on this page even if it fails (error will show in the alert)
         await SaveAsync(navigateOnSuccess: false);
     }
 
