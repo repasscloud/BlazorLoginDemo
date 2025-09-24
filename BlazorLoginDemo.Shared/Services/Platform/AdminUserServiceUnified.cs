@@ -169,6 +169,14 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
     {
         _db.ChangeTracker.Clear();
 
+        // Normalize FKs (blank -> null)
+        req.OrganizationId = string.IsNullOrWhiteSpace(req.OrganizationId) ? null : req.OrganizationId;
+        req.ManagerId      = string.IsNullOrWhiteSpace(req.ManagerId)      ? null : req.ManagerId;
+
+        // 🔑 Prevent EF relationship fix-up from overwriting the FK you just set
+        req.Organization = null;
+        req.Manager      = null;
+
         // Validate FK targets that we allow to change
         if (!string.IsNullOrWhiteSpace(req.OrganizationId))
         {

@@ -3,6 +3,7 @@
 
 @using BlazorLoginDemo.Shared.Data
 @using BlazorLoginDemo.Shared.Models.Static
+@using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Models.Static.Platform
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Web.Components.Shared
@@ -41,7 +42,7 @@ else
         <h2 class="mb-0">Edit User</h2>
         <div class="btn-group">
             <button type="button" class="btn btn-outline-secondary" @onclick="BackButton">Back</button>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" form="user-edit-form" disabled="@_vm.IsSaving">
                 @if (_vm.IsSaving)
                 {
                     <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -102,13 +103,13 @@ else
                     <div class="card-body row g-3">
                         <div class="col-md-4">
                             <label class="form-label">Organization</label>
-                            <select class="form-select" @bind="_vm.User.OrganizationId">
-                                <option value="">— Unassigned —</option>
+                            <InputSelect class="form-select" @bind-Value="_vm.User.OrganizationId">
+                                <option value="">— No org —</option>
                                 @foreach (var o in _vm.Orgs)
                                 {
                                     <option value="@o.Id">@o.Name</option>
                                 }
-                            </select>
+                            </InputSelect>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Department</label>
@@ -619,27 +620,28 @@ else
         }
     }
 
-    private async Task SaveAsync()
-    {
-        if (_vm.User is null) return;
+private async Task SaveAsync()
+{
+    if (_vm.User is null) return;
 
-        _vm.IsSaving = true; _vm.Toast = string.Empty;
+    _vm.IsSaving = true; _vm.Toast = string.Empty;
 
-        // Sync multi-line editors -> string[] on the model
-        _vm.User.IncludedAirlineCodes = SplitCodes(_vm.IncludedAirlineCodesText);
-        _vm.User.ExcludedAirlineCodes = SplitCodes(_vm.ExcludedAirlineCodesText);
+    _vm.User.IncludedAirlineCodes = SplitCodes(_vm.IncludedAirlineCodesText);
+    _vm.User.ExcludedAirlineCodes = SplitCodes(_vm.ExcludedAirlineCodesText);
 
-        // Normalize a few inputs
-        _vm.User.OrganizationId = string.IsNullOrWhiteSpace(_vm.User.OrganizationId) ? null : _vm.User.OrganizationId.Trim();
-        _vm.User.Email = _vm.User.Email?.Trim();
+    _vm.User.OrganizationId = string.IsNullOrWhiteSpace(_vm.User.OrganizationId) ? null : _vm.User.OrganizationId.Trim();
+    _vm.User.ManagerId      = string.IsNullOrWhiteSpace(_vm.User.ManagerId)      ? null : _vm.User.ManagerId.Trim();
 
-        // NEW: call the full-domain updater
-        var ok = await UserSvc.UpdateUserAsync(_vm.User);
+    // 🔑 Stop EF “fix-up” from overwriting your FK with the old nav value
+    _vm.User.Organization = null;
+    _vm.User.Manager      = null;
 
-        _vm.IsSaving = false;
-        _vm.Toast = ok ? "Saved." : string.Empty;
-        if (!ok) _vm.LoadError ??= "Update failed.";
-    }
+    var ok = await UserSvc.UpdateUserAsync(_vm.User);
+
+    _vm.IsSaving = false;
+    _vm.Toast = ok ? "Saved." : string.Empty;
+    if (!ok) _vm.LoadError ??= "Update failed.";
+}
 
     private static string[] SplitCodes(string? text)
         => string.IsNullOrWhiteSpace(text)
@@ -838,5 +840,11 @@ else
         user.ManagerId = picked.Id;
         _managerDisplay = $"{picked.Label}{(string.IsNullOrWhiteSpace(picked.Email) ? "" : $" ({picked.Email})")}";
         StateHasChanged();
+    }
+
+    private void OnOrgPicked(OrganizationUnified? picked)
+    {
+        _vm.User.OrganizationId = picked?.Id; // ✅ set FK the service persists
+        _vm.User.Organization = null;          // ✅ avoid nav confusion on attach
     }
 }
