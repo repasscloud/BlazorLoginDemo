@@ -1,0 +1,344 @@
+@page "/platform/organizations/{OrgId}/licenses/create"
+@attribute [Authorize]
+@using System.Security.Claims
+@using BlazorLoginDemo.Shared.Models.Kernel.Billing
+@using BlazorLoginDemo.Shared.Models.Static.Billing
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+
+@inject IAdminUserServiceUnified UserSvc
+@inject IAdminOrgServiceUnified OrgSvc
+@inject IAdminLicenseAgreementServiceUnified LicenseSvc
+@inject AuthenticationStateProvider Auth
+@inject NavigationManager Nav
+
+<h3 class="mt-3">New License Agreement</h3>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (loading)
+{
+    <div class="text-muted">Loading…</div>
+}
+else
+{
+    <EditForm Model="model" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                Core
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Licensee Org (target)</label>
+                        <input class="form-control" value="@OrgId" disabled />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Issuer Org (yours)</label>
+                        <input class="form-control" value="@issuerOrgName" disabled />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Remittance Email</label>
+                        <InputText class="form-control" @bind-Value="model.RemittanceEmail" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Start Date</label>
+                        <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="model.StartDate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Expiry Date</label>
+                        <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="model.ExpiryDate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Renewal Date</label>
+                        <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="model.RenewalDate" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Terms</label>
+                        <InputSelect @bind-Value="model.PaymentTerms" class="form-select">
+                            @foreach (var opt in Enum.GetValues<PaymentTerms>())
+                            {
+                                <option value="@opt">@opt</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Method</label>
+                        <InputSelect @bind-Value="model.PaymentMethod" class="form-select">
+                            @foreach (var opt in Enum.GetValues<PaymentMethod>())
+                            {
+                                <option value="@opt">@opt</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="model.AutoRenew" />
+                            <label class="form-check-label">Auto Renew</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                Billing & Thresholds
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Billing Type</label>
+                        <InputSelect @bind-Value="model.BillingType" class="form-select">
+                            @foreach (var opt in Enum.GetValues<BillingType>())
+                            {
+                                <option value="@opt">@opt</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Billing Frequency</label>
+                        <InputSelect @bind-Value="model.BillingFrequency" class="form-select">
+                            @foreach (var opt in Enum.GetValues<BillingFrequency>())
+                            {
+                                <option value="@opt">@opt</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Access Fee</label>
+                        <InputNumber class="form-control" @bind-Value="model.AccessFee" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Access Fee Scope</label>
+                        <InputSelect @bind-Value="model.AccessFeeScope" class="form-select">
+                            @foreach (var opt in Enum.GetValues<LicenseAgreementUnified.BillingPeriodScope>())
+                            {
+                                <option value="@opt">@opt</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Account Threshold</label>
+                        <InputNumber class="form-control" @bind-Value="model.AccountThreshold" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Threshold Scope</label>
+                        <InputSelect @bind-Value="model.ThresholdScope" class="form-select">
+                            @foreach (var opt in Enum.GetValues<LicenseAgreementUnified.BillingPeriodScope>())
+                            {
+                                <option value="@opt">@opt</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Tax Rate (%)</label>
+                        <InputNumber class="form-control" @bind-Value="model.TaxRate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Minimum Monthly Spend</label>
+                        <InputNumber class="form-control" @bind-Value="model.MinimumMonthlySpend" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Prepaid Balance</label>
+                        <InputNumber class="form-control" @bind-Value="model.PrepaidBalance" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Grace Period (days)</label>
+                        <InputNumber class="form-control" @bind-Value="model.GracePeriodDays" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Status</label>
+                        <InputSelect @bind-Value="model.PaymentStatus" class="form-select">
+                            @foreach (var opt in Enum.GetValues<PaymentStatus>())
+                            {
+                                <option value="@opt">@opt</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                Service Fees (optional)
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">PNR Creation Fee</label>
+                        <InputNumber class="form-control" @bind-Value="model.PnrCreationFee" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">PNR Change Fee</label>
+                        <InputNumber class="form-control" @bind-Value="model.PnrChangeFee" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Flight Markup %</label>
+                        <InputNumber class="form-control" @bind-Value="model.FlightMarkupPercent" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Flight Per-Item Fee</label>
+                        <InputNumber class="form-control" @bind-Value="model.FlightPerItemFee" />
+                    </div>
+                    <!-- Repeat similar blocks for Hotel/Car/Rail/Transfer/Activity/Travel as needed -->
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" type="submit" disabled="@saving">
+                @(saving ? "Saving…" : "Create License")
+            </button>
+            <button class="btn btn-outline-secondary" type="button" @onclick="Cancel">
+                Cancel
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string OrgId { get; set; } = default!;
+
+    //private LicenseAgreementUnified model = new();
+    private LicenseAgreementUnified model = default!;
+
+    private bool loading = true;
+    private bool saving = false;
+    private string? error;
+    private string? issuerOrgId;
+    private string? issuerOrgName = "—";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Route guard: must have a target org
+        if (string.IsNullOrWhiteSpace(OrgId))
+        {
+            Nav.NavigateTo("/platform/error/missing-target-org", forceLoad: true);
+            return;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Current authenticated user
+            var auth = await Auth.GetAuthenticationStateAsync();
+            var principal = auth.User;
+            if (principal?.Identity?.IsAuthenticated != true)
+            {
+                Nav.NavigateTo("/Identity/Account/Login", forceLoad: true);
+                return;
+            }
+
+            var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? principal.FindFirstValue("sub");
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                Nav.NavigateTo("/platform/error/no-userid", forceLoad: true);
+                return;
+            }
+
+            // Load current user aggregate (to get their Organization)
+            var me = await UserSvc.GetByIdAsync(userId, CancellationToken.None);
+            if (me?.User is null || string.IsNullOrWhiteSpace(me.User.OrganizationId))
+            {
+                // No issuer organization on the current user → hard stop
+                Nav.NavigateTo("/platform/error/missing-org", forceLoad: true);
+                return;
+            }
+
+            issuerOrgId = me.User.OrganizationId!;
+            issuerOrgName = me.Organization?.Name ?? issuerOrgId;
+
+            // Ensure the target org exists (defensive UX)
+            var exists = await OrgSvc.ExistsAsync(OrgId, CancellationToken.None);
+            if (!exists)
+            {
+                Nav.NavigateTo($"/platform/error/org-not-found/{OrgId}", forceLoad: true);
+                return;
+            }
+
+            // Prefill the model with required FKs + sensible defaults
+            var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+            model = new LicenseAgreementUnified
+            {
+                OrganizationUnifiedId = OrgId,                // licensee — target org
+                CreatedByOrganizationUnifiedId = issuerOrgId, // issuer — current user's org
+                StartDate = today,
+                ExpiryDate = today.AddYears(1),
+                RenewalDate = today.AddYears(1).AddDays(-30),
+                AutoRenew = false,
+                PaymentTerms = PaymentTerms.Net0,
+                PaymentMethod = PaymentMethod.Stripe,
+                BillingType = BillingType.Prepaid,
+                BillingFrequency = BillingFrequency.PayAsYouGo,
+                PaymentStatus = PaymentStatus.Pending,
+                CreatedAtUtc = DateTime.UtcNow,
+                LastUpdatedAtUtc = DateTime.UtcNow
+            };
+        }
+        catch (Exception ex)
+        {
+            error = ex.GetBaseException().Message;
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (issuerOrgId is null)
+        {
+            Nav.NavigateTo("/platform/error/missing-org", forceLoad: true);
+            return;
+        }
+
+        try
+        {
+            saving = true;
+            error = null;
+
+            // Re-enforce the required links just before save
+            model.OrganizationUnifiedId = OrgId;
+            model.CreatedByOrganizationUnifiedId = issuerOrgId;
+
+            // Use Org Upsert to attach/update the 1:1 License on the org itself
+            var agg = await OrgSvc.UpsertLicenseAgreementAsync(OrgId, model, CancellationToken.None);
+
+            // Success → go back to Org page (or your license edit page if you have one)
+            Nav.NavigateTo($"/platform/organizations/{OrgId}", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.GetBaseException().Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Nav.NavigateTo($"/platform/organizations/{OrgId}");
+    }
+}
