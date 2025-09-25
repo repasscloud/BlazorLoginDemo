@@ -78,6 +78,7 @@ public class ApplicationUser : IdentityUser
     public string? ManagerId { get; set; }
     public ApplicationUser? Manager { get; set; }
     public ICollection<ApplicationUser> DirectReports { get; set; } = new List<ApplicationUser>();
+    public string? CostCentre { get; set; } = string.Empty;
 
     // -----------------------------
     // PII & travel-doc basics (ex-AvaUserSysPreference)

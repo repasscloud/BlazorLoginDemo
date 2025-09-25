@@ -101,7 +101,7 @@ else
                 <div class="card mb-3">
                     <div class="card-header">Organization</div>
                     <div class="card-body row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Organization</label>
                             <InputSelect class="form-select" @bind-Value="_vm.User.OrganizationId">
                                 <option value="">— No org —</option>
@@ -111,11 +111,15 @@ else
                                 }
                             </InputSelect>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Department</label>
                             <InputText class="form-control" @bind-Value="_vm.User.Department" />
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Cost Centre</label>
+                            <InputText class="form-control" @bind-Value="_vm.User.CostCentre" />
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label">Manager</label>
                             <div class="input-group">
                                 <input class="form-control" readonly
@@ -815,7 +819,8 @@ private async Task SaveAsync()
                 DisplayName: null,
                 OrganizationId: null,
                 IsActive: null,
-                ManagerUserId: ""   // <= clears per service implementation
+                ManagerUserId: "",   // <= clears per service implementation
+                CostCentre: null
             ));
 
             user.ManagerId = null;
@@ -834,7 +839,8 @@ private async Task SaveAsync()
             DisplayName: null,
             OrganizationId: null,
             IsActive: null,
-            ManagerUserId: picked.Id
+            ManagerUserId: picked.Id,
+            CostCentre: null
         ));
 
         user.ManagerId = picked.Id;

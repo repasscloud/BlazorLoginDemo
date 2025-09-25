@@ -136,6 +136,7 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
         if (req.LastName is not null) user.LastName = req.LastName;
         if (req.DisplayName is not null) user.DisplayName = req.DisplayName;
         if (req.IsActive.HasValue) user.IsActive = req.IsActive.Value;
+        if (req.CostCentre  is not null) user.CostCentre = req.CostCentre.Trim();
 
         if (req.OrganizationId is not null)
         {
@@ -172,6 +173,7 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
         // Normalize FKs (blank -> null)
         req.OrganizationId = string.IsNullOrWhiteSpace(req.OrganizationId) ? null : req.OrganizationId;
         req.ManagerId      = string.IsNullOrWhiteSpace(req.ManagerId)      ? null : req.ManagerId;
+        req.CostCentre     = (req.CostCentre ?? string.Empty).Trim();
 
         // 🔑 Prevent EF relationship fix-up from overwriting the FK you just set
         req.Organization = null;
@@ -217,6 +219,7 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
             nameof(ApplicationUser.OrganizationId),
             nameof(ApplicationUser.UserCategory),
             nameof(ApplicationUser.ManagerId),
+            nameof(ApplicationUser.CostCentre),
 
             // PII / travel docs
             nameof(ApplicationUser.DateOfBirth),

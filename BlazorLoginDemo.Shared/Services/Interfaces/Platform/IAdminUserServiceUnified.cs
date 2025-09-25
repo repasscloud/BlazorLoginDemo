@@ -41,7 +41,8 @@ public interface IAdminUserServiceUnified
         string? DisplayName,
         string? OrganizationId,
         bool? IsActive,
-        string? ManagerUserId
+        string? ManagerUserId,
+        string? CostCentre = null
     );
     Task<UserAggregate> UpdateAsync(UpdateUserRequest req, CancellationToken ct = default);
 
