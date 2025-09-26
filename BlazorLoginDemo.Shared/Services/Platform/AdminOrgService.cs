@@ -1,6 +1,7 @@
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
 using BlazorLoginDemo.Shared.Models.Static.Platform;
+using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -11,11 +12,13 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
 {
     private readonly ApplicationDbContext _db;
     private readonly ILogger<AdminOrgServiceUnified> _log;
+    private readonly ILoggerService _logger;
 
-    public AdminOrgServiceUnified(ApplicationDbContext db, ILogger<AdminOrgServiceUnified> log)
+    public AdminOrgServiceUnified(ApplicationDbContext db, ILogger<AdminOrgServiceUnified> log, ILoggerService logger)
     {
         _db = db;
         _log = log;
+        _logger = logger;
     }
 
     // -------------- CREATE (rich) --------------
@@ -73,6 +76,8 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             throw;
         }
 
+        await _logger.LogInfoAsync($"Created Organization '{org.Name}' (ID: {org.Id})");
+
         var loaded = await _db.Organizations
             .Include(o => o.Domains)
             .Include(o => o.LicenseAgreement)
@@ -86,6 +91,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         try
         {
             var agg = await CreateAsync(req, ct);
+            await _logger.LogInfoAsync($"CreateOrgAsync succeeded for Org '{agg.Org.Name}' (ID: {agg.Org.Id})");
             return new(true, null, agg.Org.Id);
         }
         catch (Exception ex)
@@ -104,6 +110,9 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             .Include(o => o.Domains)
             .Include(o => o.LicenseAgreement)
             .FirstOrDefaultAsync(o => o.Id == id, ct);
+
+        await _logger.LogInfoAsync("Retrieved organization by ID: " + id);
+
         return org is null ? null : new IAdminOrgServiceUnified.OrgAggregate(org, org.Domains.ToList(), org.LicenseAgreement);
     }
 

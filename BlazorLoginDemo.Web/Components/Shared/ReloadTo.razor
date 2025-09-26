@@ -1,0 +1,51 @@
+@page "/reload/{*to}"
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager Nav
+
+@code {
+    [Parameter] public string? to { get; set; }
+
+    private string? _dest;
+    private bool _navigated;
+
+    protected override void OnParametersSet()
+    {
+        _dest = Normalize(to, Nav.Uri);
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || string.IsNullOrEmpty(_dest) || _navigated)
+            return Task.CompletedTask;
+
+        _navigated = true;
+
+        // Blazor nav (forces full page load)
+        Nav.NavigateTo(_dest!, forceLoad: true);
+        return Task.CompletedTask;
+    }
+
+    private static string Normalize(string? target, string currentUri)
+    {
+        var seg = Uri.UnescapeDataString(target ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(seg)) return "/";
+
+        if (!seg.StartsWith('/')) seg = "/" + seg;
+
+        // carry over ? and # from /reload/... URL if dest doesn't already have them
+        var current = new Uri(currentUri);
+        if (!seg.Contains('?') && !string.IsNullOrEmpty(current.Query)) seg += current.Query;
+        if (!seg.Contains('#') && !string.IsNullOrEmpty(current.Fragment)) seg += current.Fragment;
+        return seg;
+    }
+}
+
+@if (!string.IsNullOrEmpty(_dest))
+{
+    <!-- SSR-safe redirect -->
+    <meta http-equiv="refresh" content="0;url=@_dest" />
+    <script>
+        // Client-side hard redirect fallback (runs immediately on hydrate)
+        window.location.replace('@_dest'.replaceAll("'", "%27"));
+    </script>
+}

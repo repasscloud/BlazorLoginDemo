@@ -91,7 +91,7 @@ BEGIN
 
       -- Your extended profile fields
       "IsActive","LastSeenUtc","DisplayName","FirstName","LastName","Department",
-      "UserCategory","Gender","CountryOfIssue",
+      "UserCategory","PreferredCulture","CostCentre","Gender","CountryOfIssue",
 
       -- Travel / policy defaults (satisfy NOT NULLs)
       "DefaultFlightSeating","DefaultFlightSeatingVisible",
@@ -129,6 +129,8 @@ BEGIN
       'Administrator', -- LastName
       NULL,            -- Department (nullable)
       0,               -- UserCategory (NOT NULL) -> 0 = default category
+      'en-AU',         -- PreferredCulture (NOT NULL)
+      NULL,            -- CostCentre (nullable)
       0,               -- Gender (NOT NULL) -> align with your enum's "Unknown"
       0,               -- CountryOfIssue (NOT NULL) -> align with your enum/country table (e.g., 0=Unknown)
 

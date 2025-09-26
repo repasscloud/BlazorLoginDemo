@@ -46,6 +46,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
         services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
+        services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
         return services;
     }
     
@@ -61,6 +62,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddAvaPolicyServices(this IServiceCollection services)
     {
+        services.AddScoped<ILoggerService, LoggerService>();
         services.AddScoped<ITravelPolicyService, TravelPolicyService>();
         services.AddScoped<IRegionService, RegionService>();
         services.AddScoped<IContinentService, ContinentService>();

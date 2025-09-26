@@ -1,13 +1,20 @@
+using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BlazorLoginDemo.Shared.Services.Policy;
 
 public sealed class TravelPolicyService : ITravelPolicyService
 {
     private readonly ApplicationDbContext _db;
+    private readonly ILoggerService _logger;
 
-    public TravelPolicyService(ApplicationDbContext db) => _db = db;
+    public TravelPolicyService(ApplicationDbContext db, ILoggerService logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
     // -----------------------------
     // CREATE
@@ -31,6 +38,8 @@ public sealed class TravelPolicyService : ITravelPolicyService
         // verify org exists
         var orgExists = await _db.Organizations.AsNoTracking().AnyAsync(o => o.Id == policy.OrganizationUnifiedId, ct);
         if (!orgExists) throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found.");
+
+        await _logger.LogInfoAsync($"Creating TravelPolicy '{policy.PolicyName}' for Org '{policy.OrganizationUnifiedId}'");
 
         await _db.TravelPolicies.AddAsync(policy, ct);
         await _db.SaveChangesAsync(ct);

@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-using BlazorLoginDemo.Shared.Data;                          // ApplicationUser
 using BlazorLoginDemo.Shared.Models.Auth;                   // RefreshToken
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;          // TravelPolicy, Region, Continent, Country, etc.
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;    // AmadeusOAuthToken

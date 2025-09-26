@@ -148,7 +148,7 @@
                     <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
                         @if (isSubmitting)
                         {
-                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true">Creating…</span>
+                            <span class="me-2" role="status" aria-hidden="true">Creating…</span>
                         }
                         else
                         {
@@ -254,6 +254,13 @@
         finally
         {
             isSubmitting = false;
+        }
+
+        if (successId is not null)
+        {
+            await Task.Delay(millisecondsDelay: 2000);
+            Nav.NavigateTo(uri: "/reload/platform/users/create");
+            return;
         }
     }
 

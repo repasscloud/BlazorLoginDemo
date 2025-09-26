@@ -64,25 +64,32 @@ public sealed class LicenseAgreementUnified
     public decimal PnrChangeFee { get; set; } = 0m;
 
     public decimal FlightMarkupPercent { get; set; } = 0m;
-    public decimal FlightPerItemFee { get; set; } = 0m;  public ServiceFeeType FlightFeeType { get; set; } = ServiceFeeType.None;
+    public decimal FlightPerItemFee { get; set; } = 0m;
+    public ServiceFeeType FlightFeeType { get; set; } = ServiceFeeType.None;
 
     public decimal HotelMarkupPercent { get; set; } = 0m;
-    public decimal HotelPerItemFee { get; set; } = 0m;   public ServiceFeeType HotelFeeType { get; set; } = ServiceFeeType.None;
+    public decimal HotelPerItemFee { get; set; } = 0m;
+    public ServiceFeeType HotelFeeType { get; set; } = ServiceFeeType.None;
 
     public decimal CarMarkupPercent { get; set; } = 0m;
-    public decimal CarPerItemFee { get; set; } = 0m;     public ServiceFeeType CarFeeType { get; set; } = ServiceFeeType.None;
+    public decimal CarPerItemFee { get; set; } = 0m;
+    public ServiceFeeType CarFeeType { get; set; } = ServiceFeeType.None;
 
     public decimal RailMarkupPercent { get; set; } = 0m;
-    public decimal RailPerItemFee { get; set; } = 0m;    public ServiceFeeType RailFeeType { get; set; } = ServiceFeeType.None;
+    public decimal RailPerItemFee { get; set; } = 0m;
+    public ServiceFeeType RailFeeType { get; set; } = ServiceFeeType.None;
 
     public decimal TransferMarkupPercent { get; set; } = 0m;
-    public decimal TransferPerItemFee { get; set; } = 0m;public ServiceFeeType TransferFeeType { get; set; } = ServiceFeeType.None;
+    public decimal TransferPerItemFee { get; set; } = 0m;
+    public ServiceFeeType TransferFeeType { get; set; } = ServiceFeeType.None;
 
     public decimal ActivityMarkupPercent { get; set; } = 0m;
-    public decimal ActivityPerItemFee { get; set; } = 0m;public ServiceFeeType ActivityFeeType { get; set; } = ServiceFeeType.None;
+    public decimal ActivityPerItemFee { get; set; } = 0m;
+    public ServiceFeeType ActivityFeeType { get; set; } = ServiceFeeType.None;
 
     public decimal TravelMarkupPercent { get; set; } = 0m;
-    public decimal TravelPerItemFee { get; set; } = 0m;  public ServiceFeeType TravelFeeType { get; set; } = ServiceFeeType.None;
+    public decimal TravelPerItemFee { get; set; } = 0m;
+    public ServiceFeeType TravelFeeType { get; set; } = ServiceFeeType.None;
 
     // Late fees (embedded, unified)
     public LateFeeSettings LateFees { get; set; } = new();

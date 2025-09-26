@@ -34,6 +34,10 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">@org.Name</h4>
                         <div>
+                            @if (org.LicenseAgreement is null)
+                            {
+                                <button class="btn btn-warning me-2" @onclick="CreateLicense"><i class="bi bi-file-earmark-plus"></i> Add License</button>
+                            }
                             <button class="btn btn-outline-secondary me-2" @onclick="BackToList">Back</button>
                             <button class="btn btn-primary" @onclick="EditOrg">Edit</button>
                         </div>
@@ -116,36 +120,36 @@
 
 
 @code {
-  [Parameter] public string Id { get; set; } = string.Empty;
+    [Parameter] public string Id { get; set; } = string.Empty;
 
-  private IAdminOrgServiceUnified.OrgAggregate? _org;
-  private bool _loading = true;
-  private string? _error;
+    private IAdminOrgServiceUnified.OrgAggregate? _org;
+    private bool _loading = true;
+    private string? _error;
 
-  protected override async Task OnInitializedAsync()
-  {
-    try
+    protected override async Task OnInitializedAsync()
     {
-      _org = await OrgService.GetByIdAsync(Id);
-      if (_org == null) _error = "Organization not found.";
+        try
+        {
+            _org = await OrgService.GetByIdAsync(Id);
+            if (_org == null) _error = "Organization not found.";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
-    catch (Exception ex)
-    {
-      _error = ex.Message;
-    }
-    finally
-    {
-      _loading = false;
-    }
-  }
 
-  private void BackToList() => Nav.NavigateTo("/platform/organizations");
+    private void BackToList() => Nav.NavigateTo("/platform/organizations");
 
-  private void EditOrg()
-  {
-    if (_org != null)
-      Nav.NavigateTo($"/platform/organizations/{_org.Org.Id}/edit");
-  }
+    private void EditOrg()
+    {
+        if (_org != null)
+            Nav.NavigateTo($"/platform/organizations/{_org.Org.Id}/edit");
+    }
 
     private static string FormatContact(string? first, string? last, string? email, string? phone)
     {
@@ -160,5 +164,11 @@
         if (!string.IsNullOrWhiteSpace(phone))
             parts.Add(phone);
         return string.Join(" | ", parts);
+    }
+
+    private void CreateLicense()
+    {
+        if (_org is not null)
+            Nav.NavigateTo($"/platform/organizations/{_org.Org.Id}/licenses/create");
     }
 }
