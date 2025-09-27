@@ -144,6 +144,15 @@ public class Program
                 p.RequireRole(AppRoles.Sudo, AppRoles.Client.DataExporter));
             options.AddPolicy(AppPolicies.ClientPolicy.Requestor, p =>
                 p.RequireRole(AppRoles.Sudo, AppRoles.Client.Requestor));
+
+            // Shared
+            options.AddPolicy("Shared:BookingSelect", p =>
+                p.RequireRole(
+                    AppRoles.Sudo,
+                    AppRoles.Platform.SuperAdmin, AppRoles.Platform.SuperUser, AppRoles.Platform.Admin, AppRoles.Platform.Support.Admin, AppRoles.Platform.Support.Agent,
+                    AppRoles.Tmc.Admin, AppRoles.Tmc.BookingsManager, AppRoles.Tmc.TravelAgent,
+                    AppRoles.Client.Admin, AppRoles.Client.Requestor
+            ));
         });
 
 
