@@ -81,6 +81,32 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Travel Booking -->
+                <div class="nav-item px-3">
+                    <button type="button"
+                            class="nav-link d-flex justify-content-between align-items-center w-100"
+                            @onclick="TogglePlatformTravelGroup">
+                        <span class="d-inline-flex align-items-center">
+                            <span class="bi bi-luggage-nav-menu" aria-hidden="true"></span>
+                            <span class="ms-1">Travel</span>
+                        </span>
+                        <span class="caret @(platformTravelOpen ? "open" : null)" aria-hidden="true">▸</span>
+                    </button>
+
+                    <div class="nav-submenu @(platformTravelOpen ? "show" : null)">
+                        <div class="nav-subitem">
+                            <NavLink class="nav-link" href="/platform/users" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-people-nav-menu" aria-hidden="true"></span> List
+                            </NavLink>
+                        </div>
+                        <div class="nav-subitem">
+                            <NavLink class="nav-link" href="/reload/platform/users/create" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-person-add-nav-menu" aria-hidden="true"></span> New
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
             </Authorized>
         </AuthorizeView>
 
@@ -349,6 +375,11 @@
 
     private void TogglePlatformUsersGroup() => platformUsersOpen = !platformUsersOpen;
     private bool platformUsersOpen;
+
+    private void TogglePlatformTravelGroup() => platformTravelOpen = !platformTravelOpen;
+    private bool platformTravelOpen;
+
+
     
     private bool adminClientsOpen;
     private void ToggleAdminClientsGroup() => adminClientsOpen = !adminClientsOpen;
