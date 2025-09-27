@@ -86,6 +86,11 @@
     {
         if (_user == null) return "#";
 
+        if (_user.IsInRole("Sudo"))
+        {
+            return $"/booking/sudo/{type}";
+        }
+
         if (_user.IsInRole("Platform.SuperAdmin") ||
             _user.IsInRole("Platform.SuperUser") ||
             _user.IsInRole("Platform.Admin") ||
