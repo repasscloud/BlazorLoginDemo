@@ -42,8 +42,112 @@ else if (model is not null)
         </div>
 
         <div class="card mb-3">
-            <div class="card-header py-2">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between">
                 <strong>Core</strong>
+                @switch(model.PaymentStatus)
+                {
+                    case PaymentStatus.Pending:
+                        <button type="button" class="btn btn-secondary btn-sm">
+                            <i class="bi-hourglass-split me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Processing:
+                        <button type="button" class="btn btn-info btn-sm">
+                            <i class="bi-arrow-repeat me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Authorized:
+                        <button type="button" class="btn btn-primary btn-sm">
+                            <i class="bi-shield-check me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.PartiallyPaid:
+                        <button type="button" class="btn btn-warning btn-sm text-dark">
+                            <i class="bi-cash-coin me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Paid:
+                        <button type="button" class="btn btn-success btn-sm">
+                            <i class="bi-check-circle me-1"></i> Paid
+                        </button>
+                        break;
+
+                    case PaymentStatus.Failed:
+                        <button type="button" class="btn btn-danger btn-sm">
+                            <i class="bi-x-circle me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Overdue:
+                        <button type="button" class="btn btn-warning btn-sm text-dark">
+                            <i class="bi-exclamation-triangle me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Disputed:
+                        <button type="button" class="btn btn-danger btn-sm">
+                            <i class="bi-exclamation-octagon me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Refunded:
+                        <button type="button" class="btn btn-info btn-sm">
+                            <i class="bi-arrow-counterclockwise me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.PartiallyRefunded:
+                        <button type="button" class="btn btn-info btn-sm">
+                            <i class="bi-arrow-left-right me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Cancelled:
+                        <button type="button" class="btn btn-secondary btn-sm">
+                            <i class="bi-slash-circle me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.WrittenOff:
+                        <button type="button" class="btn btn-secondary btn-sm">
+                            <i class="bi-journal-x me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Chargeback:
+                        <button type="button" class="btn btn-danger btn-sm">
+                            <i class="bi-bank me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Voided:
+                        <button type="button" class="btn btn-secondary btn-sm">
+                            <i class="bi-ban me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.Scheduled:
+                        <button type="button" class="btn btn-primary btn-sm">
+                            <i class="bi-calendar-event me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    case PaymentStatus.OnHold:
+                        <button type="button" class="btn btn-warning btn-sm text-dark">
+                            <i class="bi-pause-circle me-1"></i> @DisplayName(model.PaymentStatus)
+                        </button>
+                        break;
+
+                    default:
+                        <button type="button" class="btn btn-outline-dark btn-sm">
+                        <i class="bi bi-question-octagon"></i> Unknown
+                        </button>
+                        break;
+                }
             </div>
             <div class="card-body">
                 <div class="row g-3">
