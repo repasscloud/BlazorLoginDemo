@@ -455,17 +455,23 @@
     <!-- Licensing -->
     <div class="card mb-3">
         <div class="card-header d-flex align-items-center justify-content-between">
-            <span>Billing / Licensing</span>
-            <button type="button" class="btn btn-outline-primary">View/Edit</button>
+            <span>Licensing / Billing</span>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-primary">Licensing</button>
+                <button type="submit" class="btn btn-primary">Billing Profile</button>
+            </div>
         </div>
         <div class="card-body row g-3">
             <div class="col-md-6">
-                <label class="form-label">License Agreement Id</label>
+                <label class="form-label">License Agreement ID</label>
                 <div class="input-group">
                     <InputText class="form-control bg-light" @bind-Value="_vm.Organization.LicenseAgreementId" readonly />
-                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(_vm.Organization.LicenseAgreementId)">
-                        <i class="bi bi-clipboard"></i>
-                    </button>
+                    @if (_vm.Organization.LicenseAgreementId is not null)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="() => ViewLicense(_vm.Organization.LicenseAgreementId)">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </button>
+                    }
                 </div>
             </div>
             <div class="col-md-6">
@@ -1045,10 +1051,13 @@
             .ToList() ?? new List<OrganizationUnified>();
     }
 
-    //navigate to child org by id
+    // navigate to child org by id
     public void GoToChildOrgById(string orgId)
     {
         Nav.NavigateTo(uri: $"/platform/organizations/{orgId}");
         return;
     }
+
+    public void ViewLicense(string licenseId) =>
+        Nav.NavigateTo(uri: $"/platform/licenses/{licenseId}/license/edit"); 
 }
