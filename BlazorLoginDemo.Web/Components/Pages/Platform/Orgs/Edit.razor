@@ -1058,6 +1058,9 @@
         return;
     }
 
-    public void ViewLicense(string licenseId) =>
-        Nav.NavigateTo(uri: $"/platform/licenses/{licenseId}/license/edit"); 
+    public void ViewLicense(string licenseId)
+    {
+        Nav.NavigateTo(uri: $"/platform/licenses/{licenseId}/license/edit");
+        return;
+    }
 }
