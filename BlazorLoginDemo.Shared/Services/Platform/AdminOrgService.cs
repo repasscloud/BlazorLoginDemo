@@ -317,6 +317,11 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             // create new and attach 1:1
             model.OrganizationUnifiedId = org.Id;
             _db.LicenseAgreements.Add(model);
+
+            // NEW: set org ➜ license back-link in the same transaction
+            // (Id is client-generated via Nanoid, so it's already available)
+            org.LicenseAgreementId = model.Id;
+            org.LicenseAgreement   = model; // optional, keeps nav in sync while tracked
         }
         else
         {

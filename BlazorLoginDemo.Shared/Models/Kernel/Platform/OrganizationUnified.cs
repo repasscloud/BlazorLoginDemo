@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using BlazorLoginDemo.Shared.Models.Static.Platform; // OrganizationType
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 using System.ComponentModel; // enums: BillingType, BillingFrequency, PaymentMethod, ServiceFeeType, PaymentStatus
+using System.Text.Json.Serialization; // JSON: avoid self-referencing cycles on navs
 
 namespace BlazorLoginDemo.Shared.Models.Kernel.Platform;
 
@@ -94,6 +95,8 @@ public sealed class OrganizationUnified
     // Billing / Licensing (1:1)
     // ------------------------------
     public string? LicenseAgreementId { get; set; }
+
+    [JsonIgnore] // break Org ↔ License self-referencing loop during JSON serialization
     public LicenseAgreementUnified? LicenseAgreement { get; set; }
 
     public DateTime CreatedAt { get; private set; }  // set by DB only

@@ -139,6 +139,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("organizations", "ava");
             e.HasKey(x => x.Id);
+            e.HasIndex(x => x.LicenseAgreementId).IsUnique();
 
             e.Property(x => x.Name).HasMaxLength(128).IsRequired();
 
@@ -178,6 +179,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.ToTable("license_agreements", "ava");
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasMaxLength(14);
+
+            e.HasIndex(x => x.OrganizationUnifiedId).IsUnique();
 
             // Owning org (1:1 per org)
             e.HasOne(x => x.Organization)

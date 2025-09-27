@@ -72,10 +72,14 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
             throw;
         }
 
-        // Load linked orgs for aggregate (no tracking)
+        // NEW: back-link the Organization to this License (ava.organizations.LicenseAgreementId)
+        await _db.Organizations
+            .Where(o => o.Id == org.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, model.Id), ct);
+
+        // Load & return
         var loaded = await _db.LicenseAgreements.AsNoTracking().FirstAsync(x => x.Id == model.Id, ct);
-        var agg = ToAgg(loaded, org, issuer);
-        return agg;
+        return ToAgg(loaded, org, issuer);
     }
 
     public async Task<IAdminLicenseAgreementServiceUnified.CreateResult> CreateLicenseAsync(
@@ -116,6 +120,12 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
             ValidateDates(model);
             _db.LicenseAgreements.Add(model);
             await _db.SaveChangesAsync(ct);
+
+            // NEW: back-link org ➜ license
+            await _db.Organizations
+                .Where(o => o.Id == org.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, model.Id), ct);
+
             var created = await _db.LicenseAgreements.AsNoTracking().FirstAsync(x => x.Id == model.Id, ct);
             return ToAgg(created, org, issuer);
         }
@@ -165,6 +175,11 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
             existing.LastUpdatedAtUtc = DateTime.UtcNow;
 
             await _db.SaveChangesAsync(ct);
+            // NEW: ensure org ➜ license back-link remains correct
+            await _db.Organizations
+                .Where(o => o.Id == org.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, existing.Id), ct);
+
             var refreshed = await _db.LicenseAgreements.AsNoTracking().FirstAsync(x => x.Id == existing.Id, ct);
             return ToAgg(refreshed, org, issuer);
         }
@@ -281,6 +296,16 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
         e.Property(x => x.LastUpdatedAtUtc).IsModified = true;
 
         var affected = await _db.SaveChangesAsync(ct);
+
+        // NEW: keep org ➜ license back-link consistent
+        await _db.Organizations
+            .Where(o => o.LicenseAgreementId == replacement.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, (string?)null), ct);
+
+        await _db.Organizations
+            .Where(o => o.Id == replacement.OrganizationUnifiedId)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, replacement.Id), ct);
+
         return affected > 0;
     }
 
@@ -364,9 +389,23 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
         }
 
         var affected = await _db.SaveChangesAsync(ct);
+
+        // NEW: if we changed the owning org, re-point the org back-link
+        if (propName == nameof(LicenseAgreementUnified.OrganizationUnifiedId))
+        {
+            // clear previous (only if it pointed to this license)
+            await _db.Organizations
+                .Where(o => o.Id == current.OrganizationUnifiedId && o.LicenseAgreementId == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, (string?)null), ct);
+
+            // set new
+            await _db.Organizations
+                .Where(o => o.Id == orgIdInit) // orgIdInit holds the *new* org id we validated above
+                .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, id), ct);
+        }
+
         return affected > 0;
     }
-
 
     public async Task<bool> ReassignOrganizationsAsync(
         string id,
@@ -376,13 +415,24 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
     {
         await EnsureOrgLinksAsync(newOrganizationUnifiedId, newCreatedByOrganizationUnifiedId, ct);
 
+        // Update the license owner/issuer
         var affected = await _db.LicenseAgreements
             .Where(x => x.Id == id)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(x => x.OrganizationUnifiedId, newOrganizationUnifiedId)
                 .SetProperty(x => x.CreatedByOrganizationUnifiedId, newCreatedByOrganizationUnifiedId)
-                .SetProperty(x => x.LastUpdatedAtUtc, DateTime.UtcNow),
-                ct);
+                .SetProperty(x => x.LastUpdatedAtUtc, DateTime.UtcNow), ct);
+
+        // NEW: move the org back-link
+        // 1) clear any previous org that points to this license
+        await _db.Organizations
+            .Where(o => o.LicenseAgreementId == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, (string?)null), ct);
+
+        // 2) set the new org to point to this license
+        await _db.Organizations
+            .Where(o => o.Id == newOrganizationUnifiedId)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, id), ct);
 
         return affected > 0;
     }
@@ -402,8 +452,14 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
     // ------------------------ DELETE ------------------------
     public async Task<bool> DeleteAsync(string id, CancellationToken ct = default)
     {
+        // NEW: clear org ➜ license link if present
+        await _db.Organizations
+            .Where(o => o.LicenseAgreementId == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.LicenseAgreementId, (string?)null), ct);
+
         var entity = await _db.LicenseAgreements.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (entity is null) return false;
+
         _db.LicenseAgreements.Remove(entity);
         await _db.SaveChangesAsync(ct);
         return true;

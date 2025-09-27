@@ -6,7 +6,7 @@ public enum PaymentTerms
     [Display(Name = "Net 0 Days")]
     Net0 = 0,
 
-    [Display(Name = "New 1 Days")]
+    [Display(Name = "Net 1 Day")]
     Net1 = 1,
 
     [Display(Name = "Net 7 Days")]
