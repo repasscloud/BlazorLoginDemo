@@ -112,17 +112,28 @@
                         </div>
                         <div class="card-body">
                             <dl class="row mb-0">
-                                <dt class="col-sm-4">Default Currency</dt>
-                                <dd class="col-sm-8">@org.LicenseAgreement.Organization?.DefaultCurrency</dd>
-
                                 <dt class="col-sm-4">License Agreement ID</dt>
                                 <dd class="col-sm-8">@org.LicenseAgreement.Organization?.LicenseAgreementId</dd>
 
                                 <dt class="col-sm-4">Start Date</dt>
                                 <dd class="col-sm-8">@org.LicenseAgreement.StartDate.ToString("yyyy-MM-dd")</dd>
 
-                                <dt class="col-sm-4">Expiry Date</dt>
-                                <dd class="col-sm-8">@org.LicenseAgreement.ExpiryDate.ToString("yyyy-MM-dd")</dd>
+<dt class="col-sm-4">Expiry Date</dt>
+@{
+    var expiry = org.LicenseAgreement.ExpiryDate.ToDateTime(TimeOnly.MinValue);
+    var daysLeft = (expiry - DateTime.UtcNow.Date).TotalDays;
+    string badgeClass = daysLeft > 90 ? "text-bg-secondary" :
+                        daysLeft > 60 ? "text-bg-success" :
+                        daysLeft > 30 ? "text-bg-warning" :
+                        daysLeft > 0  ? "text-bg-danger" :
+                                        "text-bg-dark";
+}
+<dd class="col-sm-8">
+    @org.LicenseAgreement.ExpiryDate.ToString("yyyy-MM-dd")
+    <span class="badge @badgeClass ms-2">
+        @(daysLeft <= 0 ? "Expired" : $"{Math.Ceiling(daysLeft)} days left")
+    </span>
+</dd>
 
                                 <dt class="col-sm-4">Renewal Date</dt>
                                 <dd class="col-sm-8">
@@ -132,7 +143,11 @@
                                 </dd>
 
                                 <dt class="col-sm-4">Remittance Email</dt>
-                                <dd class="col-sm-8">@org.LicenseAgreement.RemittanceEmail</dd>
+                                <dd class="col-sm-8">
+                                    @(string.IsNullOrWhiteSpace(org.LicenseAgreement.RemittanceEmail)
+                                        ? (MarkupString)"<span class='text-muted'>None</span>"
+                                        : (MarkupString)org.LicenseAgreement.RemittanceEmail)
+                                </dd>
 
                                 <dt class="col-sm-4">Client Count Limit</dt>
                                 <dd class="col-sm-8">@(org.LicenseAgreement.ClientCountLimit?.ToString() ?? "Unlimited")</dd>
