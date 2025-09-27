@@ -38,8 +38,10 @@
                             {
                                 <button class="btn btn-warning me-2" @onclick="CreateLicense"><i class="bi bi-file-earmark-plus"></i> Add License</button>
                             }
-                            <button class="btn btn-outline-secondary me-2" @onclick="BackToList">Back</button>
-                            <button class="btn btn-primary" @onclick="EditOrg">Edit</button>
+                            <div class="btn-group">
+                                <button class="btn btn-outline-secondary" @onclick="BackToList">Back</button>
+                                <button class="btn btn-primary" @onclick="EditOrg">Edit</button>
+                            </div>
                         </div>
                     </div>
 
@@ -105,11 +107,48 @@
                 @if (org.LicenseAgreement is not null)
                 {
                     <div class="card shadow-sm">
-                        <div class="card-header"><strong>License Agreement</strong></div>
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <strong>License Agreement</strong> <button class="btn btn-outline-secondary me-2" @onclick="ViewEditLicense"><i class="bi bi-file-text"></i> Vew License</button>
+                        </div>
                         <div class="card-body">
-                            <pre class="mb-0">
-                                @System.Text.Json.JsonSerializer.Serialize(org.LicenseAgreement, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })
-                            </pre>
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Default Currency</dt>
+                                <dd class="col-sm-8">@org.LicenseAgreement.Organization?.DefaultCurrency</dd>
+
+                                <dt class="col-sm-4">License Agreement ID</dt>
+                                <dd class="col-sm-8">@org.LicenseAgreement.Organization?.LicenseAgreementId</dd>
+
+                                <dt class="col-sm-4">Start Date</dt>
+                                <dd class="col-sm-8">@org.LicenseAgreement.StartDate.ToString("yyyy-MM-dd")</dd>
+
+                                <dt class="col-sm-4">Expiry Date</dt>
+                                <dd class="col-sm-8">@org.LicenseAgreement.ExpiryDate.ToString("yyyy-MM-dd")</dd>
+
+                                <dt class="col-sm-4">Renewal Date</dt>
+                                <dd class="col-sm-8">
+                                    @(org.LicenseAgreement.RenewalDate.HasValue 
+                                        ? org.LicenseAgreement.RenewalDate.Value.ToString("yyyy-MM-dd") 
+                                        : "—")
+                                </dd>
+
+                                <dt class="col-sm-4">Remittance Email</dt>
+                                <dd class="col-sm-8">@org.LicenseAgreement.RemittanceEmail</dd>
+
+                                <dt class="col-sm-4">Client Count Limit</dt>
+                                <dd class="col-sm-8">@(org.LicenseAgreement.ClientCountLimit?.ToString() ?? "Unlimited")</dd>
+
+                                <dt class="col-sm-4">User Account Limit</dt>
+                                <dd class="col-sm-8">@(org.LicenseAgreement.UserAccountLimit?.ToString() ?? "Unlimited")</dd>
+
+                                <dt class="col-sm-4">Payment Status</dt>
+                                <dd class="col-sm-8">@((BlazorLoginDemo.Shared.Models.Static.Billing.PaymentStatus)org.LicenseAgreement.PaymentStatus)</dd>
+
+                                <dt class="col-sm-4">Created At (UTC)</dt>
+                                <dd class="col-sm-8">@org.LicenseAgreement.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                                <dt class="col-sm-4">Last Updated (UTC)</dt>
+                                <dd class="col-sm-8">@org.LicenseAgreement.LastUpdatedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                            </dl>
                         </div>
                     </div>
                 }
@@ -169,6 +208,16 @@
     private void CreateLicense()
     {
         if (_org is not null)
-            Nav.NavigateTo($"/platform/organizations/{_org.Org.Id}/licenses/create");
+            Nav.NavigateTo($"/platform/organizations/{_org.Org.Id}/license/new");
+    }
+
+    private void ViewEditLicense()
+    {
+        if (_org is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(_org.LicenseAgreement?.Organization?.LicenseAgreementId))
+                Nav.NavigateTo($"/platform/licenses/{_org.LicenseAgreement.Organization.LicenseAgreementId}/license/edit");
+                return;
+        }
     }
 }

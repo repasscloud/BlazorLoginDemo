@@ -1,53 +1,45 @@
-@page "/platform/organizations/{OrgId}/license/new"
+@page "/platform/licenses/{LicenseId}/license/edit"
 @rendermode InteractiveServer
 
 @using System.ComponentModel.DataAnnotations
-@using System.Reflection
 @using System.Security.Claims
-@using Microsoft.AspNetCore.Components
-@using Microsoft.AspNetCore.Components.Forms
+@using System.Reflection
 @using BlazorLoginDemo.Shared.Models.Kernel.Billing
-@using static BlazorLoginDemo.Shared.Models.Kernel.Billing.LicenseAgreementUnified
+@using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Models.Static.Billing
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 
+@inject IAdminLicenseAgreementServiceUnified LicenseService
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider Auth
-@inject IAdminOrgServiceUnified OrgSvc
-@inject IAdminUserServiceUnified UserSvc
 
 @if (loading)
 {
     <div class="alert alert-info mb-3">Loading…</div>
 }
-else if (!string.IsNullOrWhiteSpace(error))
+else if (error is not null)
 {
     <div class="alert alert-danger mb-3">@error</div>
 }
-
-@if (!loading)
+else if (model is not null)
 {
-    <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+    <EditForm Model="model" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
-        <!-- Hidden-but-required IDs (also enforced in code) -->
-        <input type="hidden" value="@model.OrganizationUnifiedId" />
-        <input type="hidden" value="@model.CreatedByOrganizationUnifiedId" />
-
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <h2>New License Agreement</h2>
-                <div class="btn-group">
-                    <button class="btn btn-outline-secondary" type="button" @onclick="Cancel" disabled="@saving">Back</button>
-                    <button type="submit" class="btn btn-primary" disabled="@saving">
-                        @if (saving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                        }
-                        Save
-                    </button>
-                </div>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2>Edit License Agreement</h2>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary" type="button" @onclick="Cancel" disabled="@saving">Cancel</button>
+                <button type="submit" class="btn btn-primary" disabled="@saving">
+                    @if (saving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    Save
+                </button>
             </div>
+        </div>
 
         <div class="card mb-3">
             <div class="card-header py-2">
@@ -73,7 +65,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Payment Terms</label>
-                        <InputSelect TValue="PaymentTerms" @bind-Value="model.PaymentTerms" class="form-select">
+                        <InputSelect TValue="PaymentTerms" class="form-select" @bind-Value="model.PaymentTerms">
                             @foreach (var v in EnumValues<PaymentTerms>())
                             {
                                 <option value="@v">@DisplayName(v)</option>
@@ -83,19 +75,28 @@ else if (!string.IsNullOrWhiteSpace(error))
                     <div class="col-md-4">
                         <label class="form-label">Payment Method</label>
                         <InputSelect TValue="PaymentMethod" class="form-select" @bind-Value="model.PaymentMethod">
-                            @foreach (var v in EnumValues<PaymentMethod>()) { <option value="@v">@v</option> }
+                            @foreach (var v in EnumValues<PaymentMethod>())
+                            {
+                                <option value="@v">@DisplayName(v)</option>
+                            }
                         </InputSelect>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Billing Type</label>
                         <InputSelect TValue="BillingType" class="form-select" @bind-Value="model.BillingType">
-                            @foreach (var v in EnumValues<BillingType>()) { <option value="@v">@v</option> }
+                            @foreach (var v in EnumValues<BillingType>())
+                            {
+                                <option value="@v">@v</option>
+                            }
                         </InputSelect>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Billing Frequency</label>
                         <InputSelect TValue="BillingFrequency" class="form-select" @bind-Value="model.BillingFrequency">
-                            @foreach (var v in EnumValues<BillingFrequency>()) { <option value="@v">@v</option> }
+                            @foreach (var v in EnumValues<BillingFrequency>())
+                            {
+                                <option value="@v">@DisplayName(v)</option>
+                            }
                         </InputSelect>
                     </div>
                     <div class="col-md-4">
@@ -111,10 +112,9 @@ else if (!string.IsNullOrWhiteSpace(error))
             </div>
         </div>
 
-
         <div class="card mb-3">
             <div class="card-header py-2">
-                <strong>Access Fee & Thresholds</strong>
+                <strong>Financials</strong>
             </div>
             <div class="card-body">
                 <div class="row g-3">
@@ -124,8 +124,11 @@ else if (!string.IsNullOrWhiteSpace(error))
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Access Fee Scope</label>
-                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.AccessFeeScope">
-                            @foreach (var v in EnumValues<BillingPeriodScope>()) { <option value="@v">@v</option> }
+                        <InputSelect TValue="LicenseAgreementUnified.BillingPeriodScope" class="form-select" @bind-Value="model.AccessFeeScope">
+                            @foreach (var v in EnumValues<LicenseAgreementUnified.BillingPeriodScope>())
+                            {
+                                <option value="@v">@v</option>
+                            }
                         </InputSelect>
                     </div>
                     <div class="col-md-3">
@@ -134,12 +137,15 @@ else if (!string.IsNullOrWhiteSpace(error))
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Threshold Scope</label>
-                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.ThresholdScope">
-                            @foreach (var v in EnumValues<BillingPeriodScope>()) { <option value="@v">@v</option> }
+                        <InputSelect TValue="LicenseAgreementUnified.BillingPeriodScope" class="form-select" @bind-Value="model.ThresholdScope">
+                            @foreach (var v in EnumValues<LicenseAgreementUnified.BillingPeriodScope>())
+                            {
+                                <option value="@v">@v</option>
+                            }
                         </InputSelect>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Tax Rate (%)</label>
+                        <label class="form-label">Tax Rate</label>
                         <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.TaxRate" />
                     </div>
                     <div class="col-md-3">
@@ -148,10 +154,10 @@ else if (!string.IsNullOrWhiteSpace(error))
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Prepaid Balance</label>
-                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.PrepaidBalance" />
+                        <InputNumber TValue="decimal" class="form-control bg-light" step="0.01" @bind-Value="model.PrepaidBalance" readonly />
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Invoice Grace Period (days)</label>
+                        <label class="form-label">Grace Period Days</label>
                         <InputNumber TValue="int" class="form-control" @bind-Value="model.GracePeriodDays" />
                     </div>
                 </div>
@@ -164,35 +170,38 @@ else if (!string.IsNullOrWhiteSpace(error))
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    <!-- Discount A (Flat) -->
                     <div class="col-md-4">
-                        <label class="form-label">Flat Amount</label>
-                        <InputNumber TValue="decimal" class="form-control" @bind-Value="model.DiscountA!.Amount" />
+                        <label class="form-label">Flat Discount Amount</label>
+                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.DiscountA!.Amount" />
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Flat Scope</label>
-                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.DiscountA!.Scope">
-                            @foreach (var v in EnumValues<BillingPeriodScope>()) { <option value="@v">@v</option> }
+                        <label class="form-label">Scope</label>
+                        <InputSelect TValue="LicenseAgreementUnified.BillingPeriodScope" class="form-select" @bind-Value="model.DiscountA!.Scope">
+                            @foreach (var v in EnumValues<LicenseAgreementUnified.BillingPeriodScope>())
+                            {
+                                <option value="@v">@v</option>
+                            }
                         </InputSelect>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Flat Expires (UTC)</label>
+                        <label class="form-label">Expires (UTC)</label>
                         <InputDate TValue="DateTime?" class="form-control" @bind-Value="model.DiscountA!.ExpiresOnUtc" />
                     </div>
-
-                    <!-- Discount B (Percent) -->
                     <div class="col-md-4">
-                        <label class="form-label">Percent (0-100)</label>
-                        <InputNumber TValue="decimal" class="form-control" @bind-Value="model.DiscountB!.Percent" />
+                        <label class="form-label">Percent Discount %</label>
+                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.DiscountB!.Percent" />
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Percent Scope</label>
-                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.DiscountB!.Scope">
-                            @foreach (var v in EnumValues<BillingPeriodScope>()) { <option value="@v">@v</option> }
+                        <label class="form-label">Scope</label>
+                        <InputSelect TValue="LicenseAgreementUnified.BillingPeriodScope" class="form-select" @bind-Value="model.DiscountB!.Scope">
+                            @foreach (var v in EnumValues<LicenseAgreementUnified.BillingPeriodScope>())
+                            {
+                                <option value="@v">@v</option>
+                            }
                         </InputSelect>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Percent Expires (UTC)</label>
+                        <label class="form-label">Expires (UTC)</label>
                         <InputDate TValue="DateTime?" class="form-control" @bind-Value="model.DiscountB!.ExpiresOnUtc" />
                     </div>
                 </div>
@@ -205,8 +214,6 @@ else if (!string.IsNullOrWhiteSpace(error))
             </div>
             <div class="card-body">
                 <div class="row gy-3">
-
-                    <!-- PNR (2-up) -->
                     <div class="col-12">
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -219,8 +226,6 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                         </div>
                     </div>
-
-                    <!-- Flight (3-up) -->
                     <div class="col-12">
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -242,8 +247,6 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                         </div>
                     </div>
-
-                    <!-- Hotel -->
                     <div class="col-12">
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -256,7 +259,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Hotel Fee Type</label>
-                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.HotelFeeType" class="form-select">
+                                <InputSelect TValue="ServiceFeeType" class="form-select" @bind-Value="model.HotelFeeType">
                                     @foreach (var v in EnumValues<ServiceFeeType>())
                                     {
                                         <option value="@v">@DisplayName(v)</option>
@@ -265,8 +268,6 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                         </div>
                     </div>
-
-                    <!-- Car -->
                     <div class="col-12">
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -279,7 +280,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Car Fee Type</label>
-                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.CarFeeType" class="form-select">
+                                <InputSelect TValue="ServiceFeeType" class="form-select" @bind-Value="model.CarFeeType">
                                     @foreach (var v in EnumValues<ServiceFeeType>())
                                     {
                                         <option value="@v">@DisplayName(v)</option>
@@ -288,8 +289,6 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                         </div>
                     </div>
-
-                    <!-- Rail -->
                     <div class="col-12">
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -302,7 +301,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Rail Fee Type</label>
-                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.RailFeeType" class="form-select">
+                                <InputSelect TValue="ServiceFeeType" class="form-select" @bind-Value="model.RailFeeType">
                                     @foreach (var v in EnumValues<ServiceFeeType>())
                                     {
                                         <option value="@v">@DisplayName(v)</option>
@@ -311,8 +310,6 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                         </div>
                     </div>
-
-                    <!-- Transfer -->
                     <div class="col-12">
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -325,7 +322,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Transfer Fee Type</label>
-                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.TransferFeeType" class="form-select">
+                                <InputSelect TValue="ServiceFeeType" class="form-select" @bind-Value="model.TransferFeeType">
                                     @foreach (var v in EnumValues<ServiceFeeType>())
                                     {
                                         <option value="@v">@DisplayName(v)</option>
@@ -334,8 +331,6 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                         </div>
                     </div>
-
-                    <!-- Activity -->
                     <div class="col-12">
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -348,7 +343,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Activity Fee Type</label>
-                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.ActivityFeeType" class="form-select">
+                                <InputSelect TValue="ServiceFeeType" class="form-select" @bind-Value="model.ActivityFeeType">
                                     @foreach (var v in EnumValues<ServiceFeeType>())
                                     {
                                         <option value="@v">@DisplayName(v)</option>
@@ -357,8 +352,6 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                         </div>
                     </div>
-
-                    <!-- Travel -->
                     <div class="col-12">
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -371,7 +364,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">All Travel Fee Type</label>
-                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.TravelFeeType" class="form-select">
+                                <InputSelect TValue="ServiceFeeType" class="form-select" @bind-Value="model.TravelFeeType">
                                     @foreach (var v in EnumValues<ServiceFeeType>())
                                     {
                                         <option value="@v">@DisplayName(v)</option>
@@ -380,7 +373,6 @@ else if (!string.IsNullOrWhiteSpace(error))
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -418,8 +410,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Late Fee Terms</label>
-                        <!-- PaymentTerms -->
-                        <InputSelect TValue="PaymentTerms" @bind-Value="model.LateFees.Terms" class="form-select">
+                        <InputSelect TValue="PaymentTerms" class="form-select" @bind-Value="model.LateFees.Terms">
                             @foreach (var v in EnumValues<PaymentTerms>())
                             {
                                 <option value="@v">@DisplayName(v)</option>
@@ -450,24 +441,19 @@ else if (!string.IsNullOrWhiteSpace(error))
 
         <div class="mt-3 d-flex gap-2 mb-3">
             <button class="btn btn-primary" type="submit" disabled="@saving">Save</button>
-            <button class="btn btn-outline-secondary" type="button" @onclick="Cancel" disabled="@saving">Back</button>
+            <button class="btn btn-outline-secondary" type="button" @onclick="Cancel" disabled="@saving">Cancel</button>
         </div>
     </EditForm>
 }
 
 @code {
-    [Parameter] public string OrgId { get; set; } = default!;
+    [Parameter] public string LicenseId { get; set; } = default!;
 
-    //private LicenseAgreementUnified model = new();
     private LicenseAgreementUnified model = default!;
-
     private bool loading = true;
     private bool saving = false;
     private string? error;
-    private string? issuerOrgId;
-    private string? issuerOrgName = "—";
 
-    // Helpers
     private static IEnumerable<TEnum> EnumValues<TEnum>() where TEnum : struct, Enum
         => Enum.GetValues<TEnum>();
 
@@ -478,86 +464,20 @@ else if (!string.IsNullOrWhiteSpace(error))
         return attr?.GetName() ?? value.ToString();
     }
 
-    protected override async Task OnParametersSetAsync()
-    {
-        // Route guard: must have a target org
-        if (string.IsNullOrWhiteSpace(OrgId))
-        {
-            Nav.NavigateTo("/platform/error/missing-target-org", forceLoad: true);
-            return;
-        }
-    }
-
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            // Current authenticated user
-            var auth = await Auth.GetAuthenticationStateAsync();
-            var principal = auth.User;
-            if (principal?.Identity?.IsAuthenticated != true)
+            var agg = await LicenseService.GetByIdAsync(LicenseId, CancellationToken.None);
+            if (agg is null)
             {
-                Nav.NavigateTo("/Identity/Account/Login", forceLoad: true);
+                Nav.NavigateTo("/platform/error/license-not-found", forceLoad: true);
                 return;
             }
-
-            var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier)
-                        ?? principal.FindFirstValue("sub");
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                Nav.NavigateTo("/platform/error/no-userid", forceLoad: true);
-                return;
-            }
-
-            // Load current user aggregate (to get their Organization)
-            var me = await UserSvc.GetByIdAsync(userId, CancellationToken.None);
-            if (me?.User is null || string.IsNullOrWhiteSpace(me.User.OrganizationId))
-            {
-                // No issuer organization on the current user → hard stop
-                Nav.NavigateTo("/platform/error/missing-org", forceLoad: true);
-                return;
-            }
-
-            issuerOrgId = me.User.OrganizationId!;
-            issuerOrgName = me.Organization?.Name ?? issuerOrgId;
-
-            // Ensure the target org exists (defensive UX)
-            var exists = await OrgSvc.ExistsAsync(OrgId, CancellationToken.None);
-            if (!exists)
-            {
-                Nav.NavigateTo($"/platform/error/org-not-found/{OrgId}", forceLoad: true);
-                return;
-            }
-
-            // Prefill the model with required FKs + sensible defaults
-            var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-            model = new LicenseAgreementUnified
-            {
-                OrganizationUnifiedId = OrgId,                // licensee — target org
-                CreatedByOrganizationUnifiedId = issuerOrgId, // issuer — current user's org
-
-                StartDate = today,
-                ExpiryDate = today.AddYears(1),
-                RenewalDate = today.AddYears(1).AddDays(-30),
-                AutoRenew = false,
-
-                PaymentTerms = PaymentTerms.Net0,
-                PaymentMethod = PaymentMethod.Stripe,
-                BillingType = BillingType.Prepaid,
-                BillingFrequency = BillingFrequency.PayAsYouGo,
-                PaymentStatus = PaymentStatus.Pending,
-
-                CreatedAtUtc = DateTime.UtcNow,
-                LastUpdatedAtUtc = DateTime.UtcNow,
-
-                // Make sure nested objects exist for binding
-                LateFees = new(),
-                DiscountA = new(),
-                DiscountB = new()
-            };
-
-            // Keep your PNR/service fee defaults explicit if you want non-zeros
-            // (they default to 0m in the model, so we can rely on that)
+            model = agg.License;
+            model.LateFees ??= new();
+            model.DiscountA ??= new();
+            model.DiscountB ??= new();
         }
         catch (Exception ex)
         {
@@ -572,27 +492,16 @@ else if (!string.IsNullOrWhiteSpace(error))
 
     private async Task HandleSubmit()
     {
-        if (issuerOrgId is null)
-        {
-            Nav.NavigateTo("/platform/error/missing-org", forceLoad: true);
-            return;
-        }
-
         try
         {
             saving = true;
             error = null;
-
-            // Re-enforce the required links just before save
-            model.OrganizationUnifiedId = OrgId;
-            model.CreatedByOrganizationUnifiedId = issuerOrgId;
             model.LastUpdatedAtUtc = DateTime.UtcNow;
-
-            // Use Org Upsert to attach/update the 1:1 License on the org itself
-            var agg = await OrgSvc.UpsertLicenseAgreementAsync(OrgId, model, CancellationToken.None);
-
-            // Success → go back to Org page (or license detail/edit if you have one)
-            Nav.NavigateTo($"/platform/organizations/{OrgId}", forceLoad: true);
+            var ok = await LicenseService.UpdateAsync(model, CancellationToken.None);
+            if (ok)
+            {
+                Nav.NavigateTo(uri: $"/platform/orgs", forceLoad: true);
+            }
         }
         catch (Exception ex)
         {
@@ -606,6 +515,6 @@ else if (!string.IsNullOrWhiteSpace(error))
 
     private void Cancel()
     {
-        Nav.NavigateTo($"/platform/organizations/{OrgId}", forceLoad: true);
+        Nav.NavigateTo($"/licenses/view/{LicenseId}", forceLoad: true);
     }
 }
