@@ -482,6 +482,7 @@ else if (!string.IsNullOrWhiteSpace(error))
         // Route guard: must have a target org
         if (string.IsNullOrWhiteSpace(OrgId))
         {
+            await Task.Delay(millisecondsDelay: 1);
             Nav.NavigateTo("/platform/error/missing-target-org", forceLoad: true);
             return;
         }
