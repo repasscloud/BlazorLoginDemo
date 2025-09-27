@@ -14,7 +14,6 @@
 
 @{ var U = _vm.User!; }
 
-
 <PageTitle>Edit User</PageTitle>
 
 @if (_vm.LoadError is not null)
@@ -32,10 +31,10 @@ else
 {
     @if (!string.IsNullOrWhiteSpace(_topBanner))
     {
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-        @_topBanner
-        <button type="button" class="btn-close" aria-label="Close" @onclick="() => _topBanner = null"></button>
-    </div>
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            @_topBanner
+            <button type="button" class="btn-close" aria-label="Close" @onclick="() => _topBanner = null"></button>
+        </div>
     }
 
     <div class="d-flex align-items-center justify-content-between mb-3">

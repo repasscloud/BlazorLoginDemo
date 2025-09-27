@@ -154,7 +154,7 @@ else if (model is not null)
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Start Date</label>
-                        <InputDate TValue="DateOnly" class="form-control" @bind-Value="model.StartDate" />
+                        <InputDate TValue="DateOnly" class="form-control bg-light" @bind-Value="model.StartDate" readonly />
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Expiry Date</label>
@@ -177,7 +177,7 @@ else if (model is not null)
                             }
                         </InputSelect>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                         <label class="form-label">Payment Method</label>
                         <InputSelect TValue="PaymentMethod" class="form-select" @bind-Value="model.PaymentMethod">
                             @foreach (var v in EnumValues<PaymentMethod>())
@@ -186,6 +186,15 @@ else if (model is not null)
                             }
                         </InputSelect>
                     </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="button" class="btn btn-outline-secondary">
+                                <i class="bi bi-credit-card"></i> Billing
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="col-md-4">
                         <label class="form-label">Billing Type</label>
                         <InputSelect TValue="BillingType" class="form-select" @bind-Value="model.BillingType">
