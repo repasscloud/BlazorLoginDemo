@@ -1,22 +1,22 @@
-@page "/booking-select"
-@rendermode InteractiveServer
-
-@using Microsoft.AspNetCore.Components.Routing
+@page "/booking/select"
+@attribute [Authorize(Policy = "Shared:BookingSelect")]
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 
 <div class="container my-4">
     <div class="row g-3">
 
         <div class="col-md-4">
-            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="booking/airline">
+            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="@GetUrl("airline")">
                 <div class="card-body">
                     <i class="bi bi-airplane display-4 mb-2"></i>
-                    <h5 class="card-title">Flight</h5>
+                    <h5 class="card-title">Airline</h5>
                 </div>
             </NavLink>
         </div>
 
         <div class="col-md-4">
-            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="booking/taxi">
+            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="@GetUrl("taxi")">
                 <div class="card-body">
                     <i class="bi bi-taxi-front display-4 mb-2"></i>
                     <h5 class="card-title">Taxi</h5>
@@ -25,7 +25,7 @@
         </div>
 
         <div class="col-md-4">
-            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="booking/train">
+            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="@GetUrl("train")">
                 <div class="card-body">
                     <i class="bi bi-train-front display-4 mb-2"></i>
                     <h5 class="card-title">Train</h5>
@@ -34,7 +34,7 @@
         </div>
 
         <div class="col-md-4">
-            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="booking/hirecar">
+            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="@GetUrl("hirecar")">
                 <div class="card-body">
                     <i class="bi bi-car-front display-4 mb-2"></i>
                     <h5 class="card-title">Hire Car</h5>
@@ -43,7 +43,7 @@
         </div>
 
         <div class="col-md-4">
-            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="booking/bus">
+            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="@GetUrl("bus")">
                 <div class="card-body">
                     <i class="bi bi-bus-front display-4 mb-2"></i>
                     <h5 class="card-title">Bus</h5>
@@ -52,7 +52,7 @@
         </div>
 
         <div class="col-md-4">
-            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="booking/simcard">
+            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="@GetUrl("simcard")">
                 <div class="card-body">
                     <i class="bi bi-sim display-4 mb-2"></i>
                     <h5 class="card-title">Sim Card</h5>
@@ -61,7 +61,7 @@
         </div>
 
         <div class="col-md-4">
-            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="booking/mixed">
+            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="@GetUrl("mixed")">
                 <div class="card-body">
                     <i class="bi bi-layers display-4 mb-2"></i>
                     <h5 class="card-title">Mixed Booking</h5>
@@ -71,3 +71,39 @@
 
     </div>
 </div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+    private ClaimsPrincipal? _user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateTask;
+        _user = authState.User;
+    }
+
+    private string GetUrl(string type)
+    {
+        if (_user == null) return "#";
+
+        if (_user.IsInRole("Platform.SuperAdmin") ||
+            _user.IsInRole("Platform.SuperUser") ||
+            _user.IsInRole("Platform.Admin") ||
+            _user.IsInRole("Platform.Support.Admin") ||
+            _user.IsInRole("Platform.Support.Agent") ||
+            _user.IsInRole("Tmc.Admin") ||
+            _user.IsInRole("Tmc.BookingsManager") ||
+            _user.IsInRole("Tmc.TravelAgent"))
+        {
+            return $"/booking/tmc/{type}";
+        }
+
+        if (_user.IsInRole("Client.Admin") ||
+            _user.IsInRole("Client.Requestor"))
+        {
+            return $"/booking/client/{type}";
+        }
+
+        return "#";
+    }
+}
