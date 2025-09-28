@@ -232,7 +232,6 @@ else
         var userIdList = SelectedUserIds.ToList();
 await File.WriteAllLinesAsync("/var/useridlist.txt", userIdList);
 
-var quoteId = await Api.CreateTravelQuoteAsync(SelectedClientId, userIdList);
 Nav.NavigateTo($"/flightsearch/{quoteId}");
     }
 }
