@@ -117,14 +117,14 @@ else
 
         if (IsSudo)
         {
-            // TODO: replace 'OrganizationType.<PlatformValue>' with actual enum member name
-            Platforms = (await OrgSvc.SearchAsync(type: OrganizationType.Client /*FIXME*/)).Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
-            {
-                Id = a.Org.Id,
-                Name = a.Org.Name,
-                Type = a.Org.Type,
-                IsActive = a.Org.IsActive
-            }).ToList();
+            Platforms = (await OrgSvc.SearchAsync(type: OrganizationType.Platform))
+                        .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+                        {
+                            Id = a.Org.Id,
+                            Name = a.Org.Name,
+                            Type = a.Org.Type,
+                            IsActive = a.Org.IsActive
+                        }).ToList();
         }
         else if (IsPlatformUser)
         {
