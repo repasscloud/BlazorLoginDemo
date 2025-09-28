@@ -21,14 +21,17 @@ else
 {
     @if (IsSudo)
     {
-        <label>Select Platform</label>
-        <select class="form-select mb-2" @onchange="OnPlatformChanged">
-            <option value="">-- choose --</option>
-            @foreach (var p in Platforms)
-            {
-                <option value="@p.Id">@p.Name</option>
-            }
-        </select>
+        <label>Select Vendor (Platform)</label>
+        <div class="input-group mb-2">
+            <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
+                <option value="">-- choose --</option>
+                @foreach (var v in Vendors)
+                {
+                    <option value="@v.Id">@v.Name</option>
+                }
+            </select>
+            <button class="btn btn-outline-primary" type="button" @onclick="ConfirmVendor" disabled="@VendorLocked">Set</button>
+        </div>
     }
 
     @if (IsSudo || IsPlatformUser)
@@ -75,7 +78,10 @@ else
     bool IsSudo;
     bool IsPlatformUser;
 
-    List<IAdminOrgServiceUnified.OrganizationPickerDto> Platforms = new();
+    string? SelectedVendorId;
+    bool VendorLocked;
+
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Vendors = new();
     List<IAdminOrgServiceUnified.OrganizationPickerDto> Tmcs = new();
     List<IAdminOrgServiceUnified.OrganizationPickerDto> Clients = new();
     List<IAdminUserServiceUnified.UserAggregate> Users = new();
@@ -117,7 +123,7 @@ else
 
         if (IsSudo)
         {
-            Platforms = (await OrgSvc.SearchAsync(type: OrganizationType.Vendor))
+            Vendors = (await OrgSvc.SearchAsync(type: OrganizationType.Vendor))
                         .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
                         {
                             Id = a.Org.Id,
@@ -155,22 +161,20 @@ else
         }
     }
 
-    async Task OnPlatformChanged(ChangeEventArgs e)
+    async Task ConfirmVendor()
     {
-        SelectedPlatformId = e.Value?.ToString();
-        if (!string.IsNullOrEmpty(SelectedPlatformId))
-        {
-            Tmcs = (await OrgSvc.SearchAsync(type: OrganizationType.Tmc, parentOrgId: SelectedPlatformId))
-                   .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
-                   {
-                       Id = a.Org.Id,
-                       Name = a.Org.Name,
-                       Type = a.Org.Type,
-                       IsActive = a.Org.IsActive
-                   }).ToList();
-        }
-        Clients.Clear();
-        Users.Clear();
+        if (string.IsNullOrEmpty(SelectedVendorId)) return;
+
+        VendorLocked = true;
+
+        Tmcs = (await OrgSvc.SearchAsync(type: OrganizationType.Tmc, parentOrgId: SelectedVendorId))
+            .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+            {
+                Id = a.Org.Id,
+                Name = a.Org.Name,
+                Type = a.Org.Type,
+                IsActive = a.Org.IsActive
+            }).ToList();
     }
 
     async Task OnTmcChanged(ChangeEventArgs e)
