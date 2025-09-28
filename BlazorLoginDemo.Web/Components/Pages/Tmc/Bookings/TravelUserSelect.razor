@@ -3,7 +3,6 @@
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using Microsoft.AspNetCore.Components.Authorization
 @using BlazorLoginDemo.Shared.Models.Static.Platform
-
 @attribute [Authorize(Policy = "Shared:BookingSelect")]
 
 @inject IAdminOrgServiceUnified OrgSvc
@@ -21,7 +20,7 @@ else
 {
     @if (IsSudo)
     {
-        <label>Select Vendor (Platform)</label>
+        <label>Select Vendor</label>
         <div class="input-group mb-2">
             <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
                 <option value="">-- choose --</option>
@@ -34,26 +33,35 @@ else
         </div>
     }
 
-    @if (IsSudo || IsPlatformUser)
+    @if (!string.IsNullOrEmpty(SelectedVendorId))
     {
         <label>Select TMC</label>
-        <select class="form-select mb-2" @onchange="OnTmcChanged">
-            <option value="">-- choose --</option>
-            @foreach (var t in Tmcs)
-            {
-                <option value="@t.Id">@t.Name</option>
-            }
-        </select>
+        <div class="input-group mb-2">
+            <select class="form-select" @bind="SelectedTmcId" disabled="@TmcLocked">
+                <option value="">-- choose --</option>
+                @foreach (var t in Tmcs)
+                {
+                    <option value="@t.Id">@t.Name</option>
+                }
+            </select>
+            <button class="btn btn-outline-primary" type="button" @onclick="ConfirmTmc" disabled="@TmcLocked">Set</button>
+        </div>
     }
 
-    <label>Select Client</label>
-    <select class="form-select mb-2" @onchange="OnClientChanged">
-        <option value="">-- choose --</option>
-        @foreach (var c in Clients)
-        {
-            <option value="@c.Id">@c.Name</option>
-        }
-    </select>
+    @if (!string.IsNullOrEmpty(SelectedTmcId))
+    {
+        <label>Select Client</label>
+        <div class="input-group mb-2">
+            <select class="form-select" @bind="SelectedClientId" disabled="@ClientLocked">
+                <option value="">-- choose --</option>
+                @foreach (var c in Clients)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+            <button class="btn btn-outline-primary" type="button" @onclick="ConfirmClient" disabled="@ClientLocked">Set</button>
+        </div>
+    }
 
     @if (Users.Any())
     {
@@ -68,9 +76,9 @@ else
                 </li>
             }
         </ul>
-    }
 
-    <button class="btn btn-primary mt-3" @onclick="CreateQuoteAsync">Continue</button>
+        <button class="btn btn-primary mt-3" @onclick="CreateQuoteAsync">Continue</button>
+    }
 }
 
 @code {
@@ -78,17 +86,19 @@ else
     bool IsSudo;
     bool IsPlatformUser;
 
-    string? SelectedVendorId;
-    bool VendorLocked;
-
     List<IAdminOrgServiceUnified.OrganizationPickerDto> Vendors = new();
     List<IAdminOrgServiceUnified.OrganizationPickerDto> Tmcs = new();
     List<IAdminOrgServiceUnified.OrganizationPickerDto> Clients = new();
     List<IAdminUserServiceUnified.UserAggregate> Users = new();
 
-    string? SelectedPlatformId;
+    string? SelectedVendorId;
     string? SelectedTmcId;
     string? SelectedClientId;
+
+    bool VendorLocked;
+    bool TmcLocked;
+    bool ClientLocked;
+
     HashSet<string> SelectedUserIds = new();
 
     protected override async Task OnInitializedAsync()
@@ -124,65 +134,6 @@ else
         if (IsSudo)
         {
             Vendors = (await OrgSvc.SearchAsync(type: OrganizationType.Vendor))
-                        .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
-                        {
-                            Id = a.Org.Id,
-                            Name = a.Org.Name,
-                            Type = a.Org.Type,
-                            IsActive = a.Org.IsActive
-                        }).ToList();
-        }
-        else if (IsPlatformUser)
-        {
-            SelectedPlatformId = orgId;
-            Tmcs = (await OrgSvc.SearchAsync(type: OrganizationType.Tmc, parentOrgId: SelectedPlatformId))
-                   .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
-                   {
-                       Id = a.Org.Id,
-                       Name = a.Org.Name,
-                       Type = a.Org.Type,
-                       IsActive = a.Org.IsActive
-                   }).ToList();
-        }
-        else
-        {
-            SelectedTmcId = orgId;
-            if (!string.IsNullOrEmpty(SelectedTmcId))
-            {
-                Clients = (await OrgSvc.SearchAsync(type: OrganizationType.Client, parentOrgId: SelectedTmcId))
-                          .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
-                          {
-                              Id = a.Org.Id,
-                              Name = a.Org.Name,
-                              Type = a.Org.Type,
-                              IsActive = a.Org.IsActive
-                          }).ToList();
-            }
-        }
-    }
-
-    async Task ConfirmVendor()
-    {
-        if (string.IsNullOrEmpty(SelectedVendorId)) return;
-
-        VendorLocked = true;
-
-        Tmcs = (await OrgSvc.SearchAsync(type: OrganizationType.Tmc, parentOrgId: SelectedVendorId))
-            .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
-            {
-                Id = a.Org.Id,
-                Name = a.Org.Name,
-                Type = a.Org.Type,
-                IsActive = a.Org.IsActive
-            }).ToList();
-    }
-
-    async Task OnTmcChanged(ChangeEventArgs e)
-    {
-        SelectedTmcId = e.Value?.ToString();
-        if (!string.IsNullOrEmpty(SelectedTmcId))
-        {
-            Clients = (await OrgSvc.SearchAsync(type: OrganizationType.Client, parentOrgId: SelectedTmcId))
                       .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
                       {
                           Id = a.Org.Id,
@@ -191,16 +142,74 @@ else
                           IsActive = a.Org.IsActive
                       }).ToList();
         }
-        Users.Clear();
+        else if (IsPlatformUser)
+        {
+            SelectedVendorId = orgId;
+            VendorLocked = true;
+            await LoadTmcs();
+        }
+        else if (user.IsInRole("Tmc.Admin") || user.IsInRole("Tmc.BookingsManager") || user.IsInRole("Tmc.TravelAgent"))
+        {
+            SelectedTmcId = orgId;
+            TmcLocked = true;
+            await LoadClients();
+        }
+        else
+        {
+            SelectedClientId = orgId;
+            ClientLocked = true;
+            await LoadUsers();
+        }
     }
 
-    async Task OnClientChanged(ChangeEventArgs e)
+    async Task ConfirmVendor()
     {
-        SelectedClientId = e.Value?.ToString();
-        if (!string.IsNullOrEmpty(SelectedClientId))
-        {
-            Users = (await UserSvc.SearchAsync(organizationId: SelectedClientId)).ToList();
-        }
+        if (string.IsNullOrEmpty(SelectedVendorId)) return;
+        VendorLocked = true;
+        await LoadTmcs();
+    }
+
+    async Task ConfirmTmc()
+    {
+        if (string.IsNullOrEmpty(SelectedTmcId)) return;
+        TmcLocked = true;
+        await LoadClients();
+    }
+
+    async Task ConfirmClient()
+    {
+        if (string.IsNullOrEmpty(SelectedClientId)) return;
+        ClientLocked = true;
+        await LoadUsers();
+    }
+
+    async Task LoadTmcs()
+    {
+        Tmcs = (await OrgSvc.SearchAsync(type: OrganizationType.Tmc, parentOrgId: SelectedVendorId))
+               .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+               {
+                   Id = a.Org.Id,
+                   Name = a.Org.Name,
+                   Type = a.Org.Type,
+                   IsActive = a.Org.IsActive
+               }).ToList();
+    }
+
+    async Task LoadClients()
+    {
+        Clients = (await OrgSvc.SearchAsync(type: OrganizationType.Client, parentOrgId: SelectedTmcId))
+                  .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+                  {
+                      Id = a.Org.Id,
+                      Name = a.Org.Name,
+                      Type = a.Org.Type,
+                      IsActive = a.Org.IsActive
+                  }).ToList();
+    }
+
+    async Task LoadUsers()
+    {
+        Users = (await UserSvc.SearchAsync(organizationId: SelectedClientId)).ToList();
     }
 
     void ToggleUserSelection(string userId, bool selected)
