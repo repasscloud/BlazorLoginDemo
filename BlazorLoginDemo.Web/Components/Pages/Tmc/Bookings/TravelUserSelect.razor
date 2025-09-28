@@ -1,0 +1,216 @@
+@page "/bookingselect"
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@using BlazorLoginDemo.Shared.Models.Kernel.Platform
+@using Microsoft.AspNetCore.Components.Authorization
+@using BlazorLoginDemo.Shared.Models.Static.Platform
+
+@attribute [Authorize(Policy = "Shared:BookingSelect")]
+
+@inject IAdminOrgServiceUnified OrgSvc
+@inject IAdminUserServiceUnified UserSvc
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Select Travellers</h3>
+
+@if (Unauthorized)
+{
+    <div class="alert alert-danger">You are not authorized to access this page.</div>
+}
+else
+{
+    @if (IsSudo)
+    {
+        <label>Select Platform</label>
+        <select class="form-select mb-2" @onchange="OnPlatformChanged">
+            <option value="">-- choose --</option>
+            @foreach (var p in Platforms)
+            {
+                <option value="@p.Id">@p.Name</option>
+            }
+        </select>
+    }
+
+    @if (IsSudo || IsPlatformUser)
+    {
+        <label>Select TMC</label>
+        <select class="form-select mb-2" @onchange="OnTmcChanged">
+            <option value="">-- choose --</option>
+            @foreach (var t in Tmcs)
+            {
+                <option value="@t.Id">@t.Name</option>
+            }
+        </select>
+    }
+
+    <label>Select Client</label>
+    <select class="form-select mb-2" @onchange="OnClientChanged">
+        <option value="">-- choose --</option>
+        @foreach (var c in Clients)
+        {
+            <option value="@c.Id">@c.Name</option>
+        }
+    </select>
+
+    @if (Users.Any())
+    {
+        <h5>Available Users</h5>
+        <ul class="list-group">
+            @foreach (var u in Users)
+            {
+                <li class="list-group-item">
+                    <input type="checkbox" value="@u.UserId"
+                           @onchange="@((ChangeEventArgs e) => ToggleUserSelection(u.UserId, (bool)e.Value!))" />
+                    @u.User.DisplayName (@u.User.Email)
+                </li>
+            }
+        </ul>
+    }
+
+    <button class="btn btn-primary mt-3" @onclick="CreateQuoteAsync">Continue</button>
+}
+
+@code {
+    bool Unauthorized;
+    bool IsSudo;
+    bool IsPlatformUser;
+
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Platforms = new();
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Tmcs = new();
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Clients = new();
+    List<IAdminUserServiceUnified.UserAggregate> Users = new();
+
+    string? SelectedPlatformId;
+    string? SelectedTmcId;
+    string? SelectedClientId;
+    HashSet<string> SelectedUserIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (!(user.IsInRole("Sudo") ||
+              user.IsInRole("Platform.SuperAdmin") ||
+              user.IsInRole("Platform.SuperUser") ||
+              user.IsInRole("Platform.Admin") ||
+              user.IsInRole("Platform.Support.Admin") ||
+              user.IsInRole("Platform.Support.Agent") ||
+              user.IsInRole("Tmc.Admin") ||
+              user.IsInRole("Tmc.BookingsManager") ||
+              user.IsInRole("Tmc.TravelAgent")))
+        {
+            Unauthorized = true;
+            return;
+        }
+
+        var orgId = user.FindFirst("OrganizationId")?.Value
+                    ?? user.FindFirst("organizationId")?.Value
+                    ?? user.FindFirst("org")?.Value;
+
+        IsSudo = user.IsInRole("Sudo");
+        IsPlatformUser = user.IsInRole("Platform.SuperAdmin") ||
+                         user.IsInRole("Platform.SuperUser") ||
+                         user.IsInRole("Platform.Admin") ||
+                         user.IsInRole("Platform.Support.Admin") ||
+                         user.IsInRole("Platform.Support.Agent");
+
+        if (IsSudo)
+        {
+            // TODO: replace 'OrganizationType.<PlatformValue>' with actual enum member name
+            Platforms = (await OrgSvc.SearchAsync(type: OrganizationType.Client /*FIXME*/)).Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+            {
+                Id = a.Org.Id,
+                Name = a.Org.Name,
+                Type = a.Org.Type,
+                IsActive = a.Org.IsActive
+            }).ToList();
+        }
+        else if (IsPlatformUser)
+        {
+            SelectedPlatformId = orgId;
+            Tmcs = (await OrgSvc.SearchAsync(type: OrganizationType.Tmc, parentOrgId: SelectedPlatformId))
+                   .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+                   {
+                       Id = a.Org.Id,
+                       Name = a.Org.Name,
+                       Type = a.Org.Type,
+                       IsActive = a.Org.IsActive
+                   }).ToList();
+        }
+        else
+        {
+            SelectedTmcId = orgId;
+            if (!string.IsNullOrEmpty(SelectedTmcId))
+            {
+                Clients = (await OrgSvc.SearchAsync(type: OrganizationType.Client, parentOrgId: SelectedTmcId))
+                          .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+                          {
+                              Id = a.Org.Id,
+                              Name = a.Org.Name,
+                              Type = a.Org.Type,
+                              IsActive = a.Org.IsActive
+                          }).ToList();
+            }
+        }
+    }
+
+    async Task OnPlatformChanged(ChangeEventArgs e)
+    {
+        SelectedPlatformId = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(SelectedPlatformId))
+        {
+            Tmcs = (await OrgSvc.SearchAsync(type: OrganizationType.Tmc, parentOrgId: SelectedPlatformId))
+                   .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+                   {
+                       Id = a.Org.Id,
+                       Name = a.Org.Name,
+                       Type = a.Org.Type,
+                       IsActive = a.Org.IsActive
+                   }).ToList();
+        }
+        Clients.Clear();
+        Users.Clear();
+    }
+
+    async Task OnTmcChanged(ChangeEventArgs e)
+    {
+        SelectedTmcId = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(SelectedTmcId))
+        {
+            Clients = (await OrgSvc.SearchAsync(type: OrganizationType.Client, parentOrgId: SelectedTmcId))
+                      .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+                      {
+                          Id = a.Org.Id,
+                          Name = a.Org.Name,
+                          Type = a.Org.Type,
+                          IsActive = a.Org.IsActive
+                      }).ToList();
+        }
+        Users.Clear();
+    }
+
+    async Task OnClientChanged(ChangeEventArgs e)
+    {
+        SelectedClientId = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(SelectedClientId))
+        {
+            Users = (await UserSvc.SearchAsync(organizationId: SelectedClientId)).ToList();
+        }
+    }
+
+    void ToggleUserSelection(string userId, bool selected)
+    {
+        if (selected) SelectedUserIds.Add(userId);
+        else SelectedUserIds.Remove(userId);
+    }
+
+    async Task CreateQuoteAsync()
+    {
+        if (string.IsNullOrEmpty(SelectedClientId) || SelectedUserIds.Count == 0)
+            return;
+
+        @* var quoteId = await Api.CreateTravelQuoteAsync(SelectedClientId, SelectedUserIds.ToList());
+        Nav.NavigateTo($"/flightsearch/{quoteId}"); *@
+    }
+}

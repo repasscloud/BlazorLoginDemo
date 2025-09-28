@@ -59,6 +59,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FlightOfferSearchResultRecord> FlightOfferSearchResultRecords => Set<FlightOfferSearchResultRecord>();
 
     // ---------------------------
+    // Travel Bookings
+    // ---------------------------
+    public DbSet<TravelQuote> TravelQuotes => Set<TravelQuote>();
+    public DbSet<TravelQuoteUser> TravelQuoteUsers => Set<TravelQuoteUser>();
+
+    // ---------------------------
     // Ref data: Airlines / Loyalty
     // ---------------------------
     public DbSet<Airline> Airlines => Set<Airline>();
@@ -154,7 +160,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .ValueGeneratedOnAdd()
                 .Metadata.SetAfterSaveBehavior(
                     Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
-            
+
             e.HasIndex(x => new { x.Type, x.ParentOrganizationId });
         }); // :contentReference[oaicite:11]{index=11}
 
@@ -427,6 +433,37 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.AvaUserId);
             e.HasIndex(x => x.ClientId);
             e.HasIndex(x => x.FlightOfferSearchRequestDtoId);
+        });
+
+        // ===========================
+        // Travel Bookings
+        // ===========================
+        builder.Entity<TravelQuote>(e =>
+        {
+            e.ToTable("travel_quotes", "ava");
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.Organization)
+                .WithMany()
+                .HasForeignKey(x => x.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.CreatedBy)
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<TravelQuoteUser>(e =>
+        {
+            e.ToTable("travel_quote_users", "ava");
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.TravelQuote)
+                .WithMany(q => q.Travellers)
+                .HasForeignKey(x => x.TravelQuoteId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
