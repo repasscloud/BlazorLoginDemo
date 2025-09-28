@@ -230,7 +230,7 @@ else
         Nav.NavigateTo($"/flightsearch/{quoteId}"); *@
 
         var userIdList = SelectedUserIds.ToList();
-await File.WriteAllLinesAsync("/var/useridlist.txt", userIdList);
+await File.WriteAllLinesAsync("/tmp/tmp-data/useridlist.txt", userIdList);
 
 
     }
