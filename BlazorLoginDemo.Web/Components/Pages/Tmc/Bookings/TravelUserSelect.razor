@@ -117,7 +117,7 @@ else
 
         if (IsSudo)
         {
-            Platforms = (await OrgSvc.SearchAsync(type: OrganizationType.Platform))
+            Platforms = (await OrgSvc.SearchAsync(type: OrganizationType.Vendor))
                         .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
                         {
                             Id = a.Org.Id,
