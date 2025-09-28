@@ -108,6 +108,16 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="nav-item px-3">
+                    <form method="post" action="/auth/logout" class="d-inline">
+                        <AntiforgeryToken />
+                        <button type="submit" class="btn btn-link nav-link p-0 align-baseline">
+                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
+                        </button>
+                    </form>
+
+                </div>
             </Authorized>
         </AuthorizeView>
 
