@@ -4,6 +4,8 @@
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using Microsoft.AspNetCore.Components.Authorization
 @using BlazorLoginDemo.Shared.Models.Static.Platform
+@using System.Text.Json;
+
 @attribute [Authorize(Policy = "Shared:BookingSelect")]
 
 @inject IAdminOrgServiceUnified OrgSvc
@@ -226,5 +228,11 @@ else
 
         @* var quoteId = await Api.CreateTravelQuoteAsync(SelectedClientId, SelectedUserIds.ToList());
         Nav.NavigateTo($"/flightsearch/{quoteId}"); *@
+
+        var userIdList = SelectedUserIds.ToList();
+
+// Write to file
+var json = JsonSerializer.Serialize(userIdList);
+await File.WriteAllTextAsync("/var/useridlist.json", json);
     }
 }
