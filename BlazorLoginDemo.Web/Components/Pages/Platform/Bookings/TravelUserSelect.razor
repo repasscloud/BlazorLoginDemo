@@ -64,7 +64,6 @@ else
                         </div>
                     </div>
                 }
-
                 @if (!string.IsNullOrEmpty(SelectedVendorId) && VendorLocked)
                 {
                     <div class="card shadow-sm mb-4">
@@ -105,114 +104,33 @@ else
                         </div>
                     </div>
                 }
-
                 @if (Users.Any() && ClientLocked)
                 {
                     <div class="card shadow-sm mb-4">
-                        <div class="card-header"><strong>Available Users</strong></div>
-                        <div class="card-body">
-                            <dl class="row mb-0">
-                                <div class="input-group">
-                                    <ul class="list-group">
-                                        @foreach (var u in Users)
-                                        {
-                                            <li class="list-group-item">
-                                                <input type="checkbox" value="@u.UserId"
-                                                    @onchange="@((ChangeEventArgs e) => ToggleUserSelection(u.UserId, (bool)e.Value!))" />
-                                                @u.User.DisplayName (@u.User.Email)
-                                            </li>
-                                        }
-                                    </ul>
-
-                                    <button class="btn btn-primary mt-3" @onclick="CreateQuoteAsync">Continue</button>
-                                </div>
-                            </dl>
-                        </div>
-                    </div>
-
-
-
-
-
-                }
-
-
-
-
-                
-
-            </div>
-        </div>
+    <div class="card-header">
+        <strong>Available Users</strong>
     </div>
-
-
-
-
-
-
-
-
-    @if (IsSudo)
-    {
-        <label>Select Vendor</label>
-        <div class="input-group mb-4">
-            <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
-                <option value="">-- choose --</option>
-                @foreach (var v in Vendors)
-                {
-                    <option value="@v.Id">@v.Name</option>
-                }
-            </select>
-            <button class="btn btn-outline-primary" type="button" @onclick="ConfirmVendor" disabled="@VendorLocked">Set</button>
-        </div>
-    }
-
-    @if (!string.IsNullOrEmpty(SelectedVendorId) && VendorLocked)
-    {
-        <label>Select TMC</label>
-        <div class="input-group mb-4">
-            <select class="form-select" @bind="SelectedTmcId" disabled="@TmcLocked">
-                <option value="">-- choose --</option>
-                @foreach (var t in Tmcs)
-                {
-                    <option value="@t.Id">@t.Name</option>
-                }
-            </select>
-            <button class="btn btn-outline-primary" type="button" @onclick="ConfirmTmc" disabled="@TmcLocked">Set</button>
-        </div>
-    }
-
-    @if (!string.IsNullOrEmpty(SelectedTmcId) && TmcLocked)
-    {
-        <label>Select Client</label>
-        <div class="input-group mb-4">
-            <select class="form-select" @bind="SelectedClientId" disabled="@ClientLocked">
-                <option value="">-- choose --</option>
-                @foreach (var c in Clients)
-                {
-                    <option value="@c.Id">@c.Name</option>
-                }
-            </select>
-            <button class="btn btn-outline-primary" type="button" @onclick="ConfirmClient" disabled="@ClientLocked">Set</button>
-        </div>
-    }
-
-    @if (Users.Any() && ClientLocked)
-    {
-        <h5>Available Users</h5>
+    <div class="card-body">
         <ul class="list-group">
             @foreach (var u in Users)
             {
-                <li class="list-group-item">
-                    <input type="checkbox" value="@u.UserId"
+                <li class="list-group-item d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input me-2"
+                           value="@u.UserId"
                            @onchange="@((ChangeEventArgs e) => ToggleUserSelection(u.UserId, (bool)e.Value!))" />
-                    @u.User.DisplayName (@u.User.Email)
+                    <span>@u.User.DisplayName (@u.User.Email)</span>
                 </li>
             }
         </ul>
 
         <button class="btn btn-primary mt-3" @onclick="CreateQuoteAsync">Continue</button>
-    }
+    </div>
+</div>
+
+                }
+            </div>
+        </div>
+    </div>
 }
 
 @code {
