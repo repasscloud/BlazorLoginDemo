@@ -22,6 +22,41 @@
 }
 else
 {
+
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-xl-8 col-lg-9">
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header"><strong>Select Vendor</strong></div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <div class="input-group">
+                                <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
+                                    <option value="">-- choose --</option>
+                                    @foreach (var v in Vendors)
+                                    {
+                                        <option value="@v.Id">@v.Name</option>
+                                    }
+                                </select>
+                                <button class="btn btn-outline-primary" type="button" @onclick="ConfirmVendor" disabled="@VendorLocked">Set</button>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+
+
+
+
+
     @if (IsSudo)
     {
         <label>Select Vendor</label>
@@ -67,7 +102,7 @@ else
         </div>
     }
 
-    @if (Users.Any())
+    @if (Users.Any() && ClientLocked)
     {
         <h5>Available Users</h5>
         <ul class="list-group">
