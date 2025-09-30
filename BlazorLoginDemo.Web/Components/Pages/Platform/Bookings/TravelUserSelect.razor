@@ -25,7 +25,7 @@ else
     @if (IsSudo)
     {
         <label>Select Vendor</label>
-        <div class="input-group mb-2">
+        <div class="input-group mb-4">
             <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
                 <option value="">-- choose --</option>
                 @foreach (var v in Vendors)
@@ -40,7 +40,7 @@ else
     @if (!string.IsNullOrEmpty(SelectedVendorId) && VendorLocked)
     {
         <label>Select TMC</label>
-        <div class="input-group mb-2">
+        <div class="input-group mb-4">
             <select class="form-select" @bind="SelectedTmcId" disabled="@TmcLocked">
                 <option value="">-- choose --</option>
                 @foreach (var t in Tmcs)
@@ -55,7 +55,7 @@ else
     @if (!string.IsNullOrEmpty(SelectedTmcId))
     {
         <label>Select Client</label>
-        <div class="input-group mb-2">
+        <div class="input-group mb-4">
             <select class="form-select" @bind="SelectedClientId" disabled="@ClientLocked">
                 <option value="">-- choose --</option>
                 @foreach (var c in Clients)
