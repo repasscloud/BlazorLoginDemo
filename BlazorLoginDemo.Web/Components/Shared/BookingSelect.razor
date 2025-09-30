@@ -106,7 +106,7 @@
 
         if (_user.IsInRole("Sudo"))
         {
-            return $"/platform/pnr/create{type}";
+            return $"/platform/pnr/create/{type}";
         }
 
         if (_user.IsInRole("Platform.SuperAdmin") ||
