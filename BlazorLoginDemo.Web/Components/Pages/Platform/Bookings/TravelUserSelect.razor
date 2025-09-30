@@ -21,51 +21,129 @@
 else
 {
 
+    @if (IsSudo)
+    {
+        <div class="alert alert-info">
+            You are logged in as <strong>Sudo</strong>. You can select any Vendor, TMC, Client and User.
+        </div>
+    }
+    else if (IsPlatformUser)
+    {
+        <div class="alert alert-info">
+            You are logged in as a <strong>Platform User</strong>. The Vendor is pre-selected. You can select any TMC, Client and User under this Vendor.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            You are logged in as a <strong>TMC User</strong>. The TMC is pre-selected. You can select any Client and User under this TMC.
+        </div>
+    }
+
     <div class="container py-4">
         <div class="row justify-content-center">
             <div class="col-xl-8 col-lg-9">
 
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header"><strong>Select Vendor</strong></div>
-                    <div class="card-body">
-                        <dl class="row mb-0">
-                            <div class="input-group">
-                                <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
-                                    <option value="">-- choose --</option>
-                                    @foreach (var v in Vendors)
-                                    {
-                                        <option value="@v.Id">@v.Name</option>
-                                    }
-                                </select>
-                                <button class="btn btn-outline-primary" type="button" @onclick="ConfirmVendor" disabled="@VendorLocked">Set</button>
-                            </div>
-                        </dl>
+                @if (IsSudo)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header"><strong>Select Vendor</strong></div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <div class="input-group">
+                                    <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
+                                        <option value="">-- choose --</option>
+                                        @foreach (var v in Vendors)
+                                        {
+                                            <option value="@v.Id">@v.Name</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-outline-primary" type="button" @onclick="ConfirmVendor" disabled="@VendorLocked">Set</button>
+                                </div>
+                            </dl>
+                        </div>
                     </div>
-                </div>
+                }
 
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header"><strong>Select Vendor</strong></div>
-                    <div class="card-body">
-                        <dl class="row mb-0">
-                            <div class="input-group">
-                                <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
-                                    <option value="">-- choose --</option>
-                                    @foreach (var v in Vendors)
-                                    {
-                                        <option value="@v.Id">@v.Name</option>
-                                    }
-                                </select>
-                                <button class="btn btn-outline-primary" type="button" @onclick="ConfirmVendor" disabled="@VendorLocked">Set</button>
-                            </div>
-                        </dl>
+                @if (!string.IsNullOrEmpty(SelectedVendorId) && VendorLocked)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header"><strong>Select TMC</strong></div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <div class="input-group">
+                                    <select class="form-select" @bind="SelectedTmcId" disabled="@TmcLocked">
+                                        <option value="">-- choose --</option>
+                                        @foreach (var t in Tmcs)
+                                        {
+                                            <option value="@t.Id">@t.Name</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-outline-primary" type="button" @onclick="ConfirmTmc" disabled="@TmcLocked">Set</button>
+                                </div>
+                            </dl>
+                        </div>
                     </div>
-                </div>
+                }
+                @if (!string.IsNullOrEmpty(SelectedTmcId) && TmcLocked)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header"><strong>Select Client</strong></div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <div class="input-group">
+                                    <select class="form-select" @bind="SelectedClientId" disabled="@ClientLocked">
+                                        <option value="">-- choose --</option>
+                                        @foreach (var c in Clients)
+                                        {
+                                            <option value="@c.Id">@c.Name</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-outline-primary" type="button" @onclick="ConfirmClient" disabled="@ClientLocked">Set</button>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                }
+
+                @if (Users.Any() && ClientLocked)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header"><strong>Available Users</strong></div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <div class="input-group">
+                                    <ul class="list-group">
+                                        @foreach (var u in Users)
+                                        {
+                                            <li class="list-group-item">
+                                                <input type="checkbox" value="@u.UserId"
+                                                    @onchange="@((ChangeEventArgs e) => ToggleUserSelection(u.UserId, (bool)e.Value!))" />
+                                                @u.User.DisplayName (@u.User.Email)
+                                            </li>
+                                        }
+                                    </ul>
+
+                                    <button class="btn btn-primary mt-3" @onclick="CreateQuoteAsync">Continue</button>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+
+
+
+
+
+                }
+
+
+
+
                 
+
             </div>
         </div>
     </div>
-
-
 
 
 
