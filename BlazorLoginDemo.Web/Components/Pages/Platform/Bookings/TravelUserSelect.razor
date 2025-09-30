@@ -52,7 +52,7 @@ else
         </div>
     }
 
-    @if (!string.IsNullOrEmpty(SelectedTmcId))
+    @if (!string.IsNullOrEmpty(SelectedTmcId) && TmcLocked)
     {
         <label>Select Client</label>
         <div class="input-group mb-4">
