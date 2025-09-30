@@ -133,15 +133,25 @@ else
 
 @code {
     [Parameter] public string? bookingType { get; set; }
-
-    bool Unauthorized;
-    bool IsSudo;
-    bool IsPlatformUser;
-
     private static readonly HashSet<string> AllowedBookingTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "flight", "accomodation", "taxi", "train", "hirecar", "bus", "simcard", "activity", "mixed"
     };
+    public string BookingTypeNormalized { get; private set; } = string.Empty;
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(bookingType) || !AllowedBookingTypes.Contains(bookingType))
+        {
+            Nav.NavigateTo(uri: "/booking/select", forceLoad: true);
+            return;
+        }
+
+        BookingTypeNormalized = bookingType!.ToLowerInvariant();
+    }
+
+    bool Unauthorized;
+    bool IsSudo;
+    bool IsPlatformUser;
 
     List<IAdminOrgServiceUnified.OrganizationPickerDto> Vendors = new();
     List<IAdminOrgServiceUnified.OrganizationPickerDto> Tmcs = new();
@@ -217,22 +227,6 @@ else
             ClientLocked = true;
             await LoadUsers();
         }
-
-        // bookingType not present
-        if (string.IsNullOrWhiteSpace(bookingType))
-        {
-            Nav.NavigateTo(uri: "/booking/select", forceLoad: true);
-            return;
-        }
-
-        // invalid booking type
-        if (!AllowedBookingTypes.Contains(bookingType))
-        {
-            Nav.NavigateTo(uri: "/booking/select", forceLoad: true);
-            return;
-        }
-
-        // bookingType is valid → store
     }
 
     async Task ConfirmVendor()
