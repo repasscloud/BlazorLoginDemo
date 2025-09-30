@@ -14,8 +14,6 @@
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 
-<h3>Select Travellers</h3>
-
 @if (Unauthorized)
 {
     <div class="alert alert-danger">You are not authorized to access this page.</div>
@@ -44,6 +42,25 @@ else
                         </dl>
                     </div>
                 </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header"><strong>Select Vendor</strong></div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <div class="input-group">
+                                <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
+                                    <option value="">-- choose --</option>
+                                    @foreach (var v in Vendors)
+                                    {
+                                        <option value="@v.Id">@v.Name</option>
+                                    }
+                                </select>
+                                <button class="btn btn-outline-primary" type="button" @onclick="ConfirmVendor" disabled="@VendorLocked">Set</button>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+                
             </div>
         </div>
     </div>
