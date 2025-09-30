@@ -16,10 +16,10 @@
         </div>
 
         <div class="col-md-4">
-            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="@GetUrl("hotel")">
+            <NavLink class="card text-center text-decoration-none shadow-sm h-100" href="@GetUrl("accomodation")">
                 <div class="card-body">
                     <i class="bi bi-building display-4 mb-2"></i>
-                    <h5 class="card-title">Hotel</h5>
+                    <h5 class="card-title">Accomodation</h5>
                 </div>
             </NavLink>
         </div>
@@ -106,7 +106,7 @@
 
         if (_user.IsInRole("Sudo"))
         {
-            return $"/booking/sudo/{type}";
+            return $"/platform/pnr/create{type}";
         }
 
         if (_user.IsInRole("Platform.SuperAdmin") ||

@@ -1,5 +1,4 @@
-@page "/platform/pnr/create"
-@page "/platform/pnr"
+@page "/platform/pnr/create/{bookingType}"
 @rendermode InteractiveServer
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
@@ -126,7 +125,6 @@ else
                             <button class="btn btn-primary mt-3" @onclick="CreateQuoteAsync">Continue</button>
                         </div>
                     </div>
-
                 }
             </div>
         </div>
@@ -134,9 +132,16 @@ else
 }
 
 @code {
+    [Parameter] public string? bookingType { get; set; }
+
     bool Unauthorized;
     bool IsSudo;
     bool IsPlatformUser;
+
+    private static readonly HashSet<string> AllowedBookingTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "flight", "accomodation", "taxi", "train", "hirecar", "bus", "simcard", "activity", "mixed"
+    };
 
     List<IAdminOrgServiceUnified.OrganizationPickerDto> Vendors = new();
     List<IAdminOrgServiceUnified.OrganizationPickerDto> Tmcs = new();
@@ -212,6 +217,22 @@ else
             ClientLocked = true;
             await LoadUsers();
         }
+
+        // bookingType not present
+        if (string.IsNullOrWhiteSpace(bookingType))
+        {
+            Nav.NavigateTo(uri: "/booking/select", forceLoad: true);
+            return;
+        }
+
+        // invalid booking type
+        if (!AllowedBookingTypes.Contains(bookingType))
+        {
+            Nav.NavigateTo(uri: "/booking/select", forceLoad: true);
+            return;
+        }
+
+        // bookingType is valid → store
     }
 
     async Task ConfirmVendor()
@@ -281,6 +302,6 @@ else
         // Temporary: write selected user IDs to a temp file for the PNR creation page to read
         // docker exec blazor sh -c "mkdir -p /tmp/tmp-data && chmod 777 /tmp/tmp-data"
         var userIdList = SelectedUserIds.ToList();
-        await File.WriteAllLinesAsync("/tmp/tmp-data/useridlist.txt", userIdList);
+        await File.WriteAllLinesAsync(path: $"/tmp/tmp-data/{bookingType}.txt", userIdList);
     }
 }
