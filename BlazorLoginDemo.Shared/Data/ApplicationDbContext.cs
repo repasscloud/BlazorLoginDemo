@@ -442,24 +442,43 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("travel_quotes", "ava");
             e.HasKey(x => x.Id);
+
+            // client org
             e.HasOne(x => x.Organization)
                 .WithMany()
                 .HasForeignKey(x => x.OrganizationId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // creator
             e.HasOne(x => x.CreatedBy)
                 .WithMany()
                 .HasForeignKey(x => x.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // assigned TMC
+            e.HasOne(x => x.TmcAssigned)
+                .WithMany()
+                .HasForeignKey(x => x.TmcAssignedId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.Property(x => x.CreatedAtUtc)
+                .HasColumnType("timestamptz")
+                .HasDefaultValueSql("now()")
+                .ValueGeneratedOnAdd()
+                .Metadata.SetAfterSaveBehavior(
+                    Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
         });
 
         builder.Entity<TravelQuoteUser>(e =>
         {
             e.ToTable("travel_quote_users", "ava");
             e.HasKey(x => x.Id);
+
             e.HasOne(x => x.TravelQuote)
                 .WithMany(q => q.Travellers)
                 .HasForeignKey(x => x.TravelQuoteId)
                 .OnDelete(DeleteBehavior.Cascade);
+
             e.HasOne(x => x.User)
                 .WithMany()
                 .HasForeignKey(x => x.UserId)

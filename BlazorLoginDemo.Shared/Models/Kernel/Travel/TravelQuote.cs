@@ -9,19 +9,25 @@ public sealed class TravelQuote
     [Key, MaxLength(64)]
     public string Id { get; set; } = NanoidDotNet.Nanoid.Generate();
 
+    // Client organization
     [Required, MaxLength(64)]
     public string OrganizationId { get; set; } = null!;
     public OrganizationUnified Organization { get; set; } = null!;
 
-    // who created this quote
+    // Who created this quote
     [Required, MaxLength(64)]
     public string CreatedByUserId { get; set; } = null!;
     public ApplicationUser CreatedBy { get; set; } = null!;
 
-    // timestamp
+    // Which TMC this quote is assigned to
+    [Required, MaxLength(64)]
+    public string TmcAssignedId { get; set; } = null!;
+    public OrganizationUnified TmcAssigned { get; set; } = null!;
+
+    // Timestamp
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
-    // travellers
+    // Travellers
     public ICollection<TravelQuoteUser> Travellers { get; set; } = new List<TravelQuoteUser>();
 }
 
