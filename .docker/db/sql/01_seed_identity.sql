@@ -135,12 +135,12 @@ BEGIN
       0,               -- CountryOfIssue (NOT NULL) -> align with your enum/country table (e.g., 0=Unknown)
 
       -- Travel / policy defaults (pick safe system defaults)
-      'Any',           -- DefaultFlightSeating (NOT NULL): 'Any'/'Aisle'/'Window' as your app expects
+      'FIRST',         -- DefaultFlightSeating (NOT NULL): 'Any'/'Aisle'/'Window' as your app expects
       FALSE,           -- DefaultFlightSeatingVisible (NOT NULL)
-      'Any',           -- MaxFlightSeating (NOT NULL)
+      'FIRST',         -- MaxFlightSeating (NOT NULL)
       FALSE,           -- MaxFlightSeatingVisible (NOT NULL)
       FALSE,           -- AirlineCodesVisible (NOT NULL)
-      'Economy',       -- CabinClassCoverage (NOT NULL)
+      'ALL_SEGMENTS',  -- CabinClassCoverage (NOT NULL)
       FALSE,           -- CabinClassCoverageVisible (NOT NULL)
       FALSE,           -- NonStopFlightVisible (NOT NULL)
       'AUD',           -- DefaultCurrencyCode (NOT NULL)
