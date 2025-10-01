@@ -25,7 +25,7 @@ else if (!string.IsNullOrWhiteSpace(error))
     <div class="alert alert-danger mb-3">@error</div>
 }
 
-@if (!loading)
+@if (!loading && !string.IsNullOrEmpty(model.OrganizationUnifiedId))
 {
     <EditForm Model="@model" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
@@ -458,7 +458,17 @@ else if (!string.IsNullOrWhiteSpace(error))
 @code {
     [Parameter] public string OrgId { get; set; } = default!;
 
-    private LicenseAgreementUnified model = default!;
+    private LicenseAgreementUnified model = new LicenseAgreementUnified()
+    {
+        // Required members must be set at initialization; they'll be overwritten
+        // later in OnInitializedAsync/HandleSubmit with the real OrgId values.
+        OrganizationUnifiedId = string.Empty,
+        CreatedByOrganizationUnifiedId = string.Empty,
+
+        LateFees = new(),
+        DiscountA = new(),
+        DiscountB = new()
+    };
 
     private bool loading = true;
     private bool saving = false;

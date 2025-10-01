@@ -7,10 +7,13 @@ using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policies;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
+using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 using BlazorLoginDemo.Shared.Services.Kernel;
 using BlazorLoginDemo.Shared.Services.Platform;
 using BlazorLoginDemo.Shared.Services.Policies;
 using BlazorLoginDemo.Shared.Services.Policy;
+using BlazorLoginDemo.Shared.Services.Travel;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -76,7 +79,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration config)
     {
-        // get settings from host's configuration
+        // --- options ---
         services.AddOptions<AmadeusOAuthClientSettings>()
             .Bind(config.GetSection("Amadeus"))
             .ValidateDataAnnotations()
@@ -84,28 +87,44 @@ public static class ServiceCollectionExtensions
                 !string.IsNullOrWhiteSpace(s.ClientId) &&
                 !string.IsNullOrWhiteSpace(s.ClientSecret),
                 "Amadeus:ClientId and Amadeus:ClientSecret must be configured.")
-            .ValidateOnStart();  // throws at startup if invalid (nice fail-fast)
+            .ValidateOnStart();
 
-        // --- inbound API key options for the WebAPI ---
         services.AddOptions<InboundApiKeyOptions>()
-        .Bind(config.GetSection("InboundApiKeyAuth"))
-        .Validate(o =>
-            !string.IsNullOrWhiteSpace(o.HeaderName) &&
-            o.AllowedKeys is { Count: > 0 } &&
-            o.AllowedKeys.All(k => !string.IsNullOrWhiteSpace(k)),
-            "InboundAPiKeyAuth must specify HeaderName and at least one non-empty key.")
-        .ValidateOnStart();
+            .Bind(config.GetSection("InboundApiKeyAuth"))
+            .Validate(o =>
+                !string.IsNullOrWhiteSpace(o.HeaderName) &&
+                o.AllowedKeys is { Count: > 0 } &&
+                o.AllowedKeys.All(k => !string.IsNullOrWhiteSpace(k)),
+                "InboundAPiKeyAuth must specify HeaderName and at least one non-empty key.")
+            .ValidateOnStart();
 
-        // infra used by shared services
-        services.AddHttpClient();  // for IHttpClientFactory
+        // --- infra ---
+        services.AddHttpClient();
         services.AddSingleton(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        // shared services
+        // --- Identity (required by AdminUserServiceUnified) ---
+        services
+            .AddIdentityCore<ApplicationUser>(o =>
+            {
+                o.User.RequireUniqueEmail = true;
+            })
+            .AddRoles<IdentityRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
+
+        // --- shared services ---
         services.AddScoped<ILoggerService, LoggerService>();
         services.AddScoped<IAmadeusAuthService, AmadeusAuthService>();
         services.AddScoped<IAmadeusFlightSearchService, AmadeusFlightSearchService>();
         services.AddScoped<IAirportInfoService, AirportInfoService>();
         services.AddScoped<RequireApiKeyFilter>();
+
+        // --- kernel services ---
+        services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
+        services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
+        services.AddScoped<ITravelQuoteService, TravelQuoteService>();
+
         return services;
     }
 }
