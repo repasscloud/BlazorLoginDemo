@@ -500,21 +500,21 @@ else
                             {
                                 var isSaving = _savingRoles.Contains(r);
                                 <div class="col">
-                                <div class="form-check d-flex align-items-center">
-                                    <input class="form-check-input"
-                                        type="checkbox"
-                                        id="role_@r"
-                                        checked="@_selected.Contains(r)"
-                                        disabled="@isSaving"
-                                        @onchange="@(e => OnToggleRoleAsync(r, e))" />
-                                    <label class="form-check-label ms-2 d-inline-flex align-items-center" for="role_@r">
-                                    @r
-                                    @if (isSaving)
-                                    {
-                                        <span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
-                                    }
-                                    </label>
-                                </div>
+                                    <div class="form-check d-flex align-items-center">
+                                        <input class="form-check-input"
+                                            type="checkbox"
+                                            id="role_@r"
+                                            checked="@_selected.Contains(r)"
+                                            disabled="@isSaving"
+                                            @onchange="@(e => OnToggleRoleAsync(r, e))" />
+                                        <label class="form-check-label ms-2 d-inline-flex align-items-center" for="role_@r">
+                                        @r
+                                        @if (isSaving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+                                        }
+                                        </label>
+                                    </div>
                                 </div>
                             }
                         </div>
@@ -853,3 +853,10 @@ private async Task SaveAsync()
         _vm.User.Organization = null;          // ✅ avoid nav confusion on attach
     }
 }
+
+@* diskutil list
+diskutil eraseDisk free none /dev/disk4
+diskutil unmountDisk /dev/disk4
+sudo dd if=/Users/danijeljw/Downloads/ubuntu-24.04.3-live-server-amd64.iso of=/dev/disk4 bs=1m status=progress
+sync
+diskutil eject /dev/disk4 *@
