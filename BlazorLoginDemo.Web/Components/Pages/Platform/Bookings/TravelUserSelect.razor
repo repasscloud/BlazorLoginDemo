@@ -317,13 +317,7 @@ else
             TravellerUserIds = SelectedUserIds.ToList()
         };
 
-        // pretty JSON
-        string? json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
-
-        // write async
-        await File.WriteAllTextAsync("/tmp/tmp-data/result.json", json);
-
-        @* using HttpResponseMessage? response = await client.PostAsJsonAsync(requestUri: "api/v1/travel/quotes/from-dto", payload, JsonOpts);
+        using HttpResponseMessage? response = await client.PostAsJsonAsync(requestUri: "api/v1/travel/quotes/from-dto", payload, JsonOpts);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -348,9 +342,12 @@ else
         }
 
         IdEnvelope? ok = await response.Content.ReadFromJsonAsync<IdEnvelope>(JsonOpts)
-                ?? throw new InvalidOperationException("Empty response.");
-        string? createdId = ok.Id ?? throw new InvalidOperationException("Missing id.");
+                ?? throw new InvalidOperationException(message: "Empty response.");
+        string? createdId = ok.Id ?? throw new InvalidOperationException(message: "Missing ID.");
 
-        Nav.NavigateTo(uri: $"/platform/pnr/create/{BookingTypeNormalized}/{createdId}", forceLoad: true); *@
+        if (createdId == "Missing ID.")
+            Nav.NavigateTo(uri: "missing-id-error", forceLoad: true);
+
+        Nav.NavigateTo(uri: $"/platform/pnr/create/{BookingTypeNormalized}/{createdId}", forceLoad: true);
     }
 }

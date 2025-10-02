@@ -55,6 +55,187 @@ public class TravelPolicy
     /// </summary>
     public bool? NonStopFlight { get; set; }
 
+    // --- Accommodation ----------------------------------------------------------
+    [Column(TypeName = "numeric(14,2)")] public decimal? MaxHotelNightlyRate { get; set; }
+    public string? DefaultHotelRoomType { get; set; }            // e.g., "STANDARD", "DELUXE"
+    public string? MaxHotelRoomType { get; set; }                 // upper bound if needed
+    public string[] IncludedHotelChains { get; set; } = Array.Empty<string>();
+    public string[] ExcludedHotelChains { get; set; } = Array.Empty<string>();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [RegularExpression(@"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$")]
+    public string? HotelBookingTimeAvailableFrom { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [RegularExpression(@"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$")]
+    public string? HotelBookingTimeAvailableTo { get; set; }
+    public bool? EnableSaturdayHotelBookings { get; set; }
+    public bool? EnableSundayHotelBookings { get; set; }
+
+    [NotMapped]
+    public string IncludedHotelChainsCsv
+    {
+        get => string.Join(", ", IncludedHotelChains);
+        set => IncludedHotelChains = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+    [NotMapped]
+    public string ExcludedHotelChainsCsv
+    {
+        get => string.Join(", ", ExcludedHotelChains);
+        set => ExcludedHotelChains = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+
+    // --- Taxi / Ride-hail -------------------------------------------------------
+    [Column(TypeName = "numeric(14,2)")] public decimal? MaxTaxiFarePerRide { get; set; }
+    public string[] IncludedTaxiVendors { get; set; } = Array.Empty<string>();
+    public string[] ExcludedTaxiVendors { get; set; } = Array.Empty<string>();
+    public decimal? MaxTaxiSurgeMultiplier { get; set; }          // e.g., 1.5 = 150%
+
+    [NotMapped]
+    public string IncludedTaxiVendorsCsv
+    {
+        get => string.Join(", ", IncludedTaxiVendors);
+        set => IncludedTaxiVendors = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+    [NotMapped]
+    public string ExcludedTaxiVendorsCsv
+    {
+        get => string.Join(", ", ExcludedTaxiVendors);
+        set => ExcludedTaxiVendors = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+
+    // --- Train ------------------------------------------------------------------
+    public string? DefaultTrainClass { get; set; }                // e.g., "STANDARD", "FIRST"
+    public string? MaxTrainClass { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal? MaxTrainPrice { get; set; }
+    public string[] IncludedRailOperators { get; set; } = Array.Empty<string>();
+    public string[] ExcludedRailOperators { get; set; } = Array.Empty<string>();
+
+    [NotMapped]
+    public string IncludedRailOperatorsCsv
+    {
+        get => string.Join(", ", IncludedRailOperators);
+        set => IncludedRailOperators = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+    [NotMapped]
+    public string ExcludedRailOperatorsCsv
+    {
+        get => string.Join(", ", ExcludedRailOperators);
+        set => ExcludedRailOperators = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+
+    // --- Hire car ---------------------------------------------------------------
+    [Column(TypeName = "numeric(14,2)")] public decimal? MaxCarHireDailyRate { get; set; }
+    public string[] AllowedCarHireClasses { get; set; } = Array.Empty<string>(); // e.g., "ECONOMY","COMPACT","SUV"
+    public string[] IncludedCarHireVendors { get; set; } = Array.Empty<string>();
+    public string[] ExcludedCarHireVendors { get; set; } = Array.Empty<string>();
+    public bool? RequireInclusiveInsurance { get; set; }          // CDW/LDW etc.
+
+    [NotMapped]
+    public string AllowedCarHireClassesCsv
+    {
+        get => string.Join(", ", AllowedCarHireClasses);
+        set => AllowedCarHireClasses = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+    [NotMapped]
+    public string IncludedCarHireVendorsCsv
+    {
+        get => string.Join(", ", IncludedCarHireVendors);
+        set => IncludedCarHireVendors = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+    [NotMapped]
+    public string ExcludedCarHireVendorsCsv
+    {
+        get => string.Join(", ", ExcludedCarHireVendors);
+        set => ExcludedCarHireVendors = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+
+    // --- Bus / Coach ------------------------------------------------------------
+    [Column(TypeName = "numeric(14,2)")] public decimal? MaxBusFarePerTicket { get; set; }
+    public string[] IncludedBusOperators { get; set; } = Array.Empty<string>();
+    public string[] ExcludedBusOperators { get; set; } = Array.Empty<string>();
+
+    [NotMapped]
+    public string IncludedBusOperatorsCsv
+    {
+        get => string.Join(", ", IncludedBusOperators);
+        set => IncludedBusOperators = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+    [NotMapped]
+    public string ExcludedBusOperatorsCsv
+    {
+        get => string.Join(", ", ExcludedBusOperators);
+        set => ExcludedBusOperators = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+
+    // --- SIM / eSIM -------------------------------------------------------------
+    [Column(TypeName = "numeric(14,2)")] public decimal? MaxSimBundlePrice { get; set; }
+    public decimal? MinSimDataGb { get; set; }                     // e.g., 5 = 5GB
+    public int? MinSimValidityDays { get; set; }
+    public string[] IncludedSimVendors { get; set; } = Array.Empty<string>();
+    public string[] ExcludedSimVendors { get; set; } = Array.Empty<string>();
+
+    [NotMapped]
+    public string IncludedSimVendorsCsv
+    {
+        get => string.Join(", ", IncludedSimVendors);
+        set => IncludedSimVendors = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+    [NotMapped]
+    public string ExcludedSimVendorsCsv
+    {
+        get => string.Join(", ", ExcludedSimVendors);
+        set => ExcludedSimVendors = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+
+    // --- Holiday activity / Excursions -----------------------------------------
+    [Column(TypeName = "numeric(14,2)")] public decimal? MaxActivityPricePerPerson { get; set; }
+    public string[] IncludedActivityProviders { get; set; } = Array.Empty<string>();
+    public string[] ExcludedActivityProviders { get; set; } = Array.Empty<string>();
+    public bool? AllowHighRiskActivities { get; set; }             // e.g., bungee, scuba, etc.
+
+    [NotMapped]
+    public string IncludedActivityProvidersCsv
+    {
+        get => string.Join(", ", IncludedActivityProviders);
+        set => IncludedActivityProviders = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+    [NotMapped]
+    public string ExcludedActivityProvidersCsv
+    {
+        get => string.Join(", ", ExcludedActivityProviders);
+        set => ExcludedActivityProviders = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
+
+
     // --- Booking window / time rules ----------------------------------------
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [RegularExpression(@"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$", ErrorMessage = "Time must be in the format hh:mm:ss.")]
