@@ -252,33 +252,87 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.ToTable("travel_policies", "ava");
             e.HasKey(x => x.Id);
 
-            // NEW: owner org 1..* TravelPolicies
+            // Owner org 1..* TravelPolicies
             e.HasOne(tp => tp.Organization)
-            .WithMany(o => o.TravelPolicies)
-            .HasForeignKey(tp => tp.OrganizationUnifiedId)
-            .OnDelete(DeleteBehavior.Cascade);
+                .WithMany(o => o.TravelPolicies) // ensure OrganizationUnified has ICollection<TravelPolicy> TravelPolicies
+                .HasForeignKey(tp => tp.OrganizationUnifiedId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // existing many-to-many selectors
+            // Many-to-many selectors
             e.HasMany(x => x.Regions)
-            .WithMany()
-            .UsingEntity(j => j.ToTable("travel_policy_regions", "ava"));
+                .WithMany()
+                .UsingEntity(j => j.ToTable("travel_policy_regions", "ava"));
 
             e.HasMany(x => x.Continents)
-            .WithMany()
-            .UsingEntity(j => j.ToTable("travel_policy_continents", "ava"));
+                .WithMany()
+                .UsingEntity(j => j.ToTable("travel_policy_continents", "ava"));
 
             e.HasMany(x => x.Countries)
-            .WithMany()
-            .UsingEntity(j => j.ToTable("travel_policy_countries", "ava"));
+                .WithMany()
+                .UsingEntity(j => j.ToTable("travel_policy_countries", "ava"));
 
-            // arrays
+            // Arrays (PostgreSQL text[])
             e.Property(p => p.IncludedAirlineCodes)
-            .HasColumnType("text[]").IsRequired()
-            .HasDefaultValueSql("'{}'::text[]");
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
+
             e.Property(p => p.ExcludedAirlineCodes)
-            .HasColumnType("text[]").IsRequired()
-            .HasDefaultValueSql("'{}'::text[]");
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
+
+            e.Property(p => p.IncludedHotelChains)
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
+
+            e.Property(p => p.ExcludedHotelChains)
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
+
+            e.Property(p => p.IncludedRailOperators)
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
+
+            e.Property(p => p.ExcludedRailOperators)
+                .HasColumnType("text[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::text[]");
+
+            // Hire car UI caps (new)
+            e.Property(p => p.DefaultCarClass).HasMaxLength(64);
+            e.Property(p => p.MaxCarClass).HasMaxLength(64);
+            e.Property(p => p.MaxCarDailyRate).HasColumnType("numeric(14,2)");
+
+            // Other money caps already annotated; keep numeric(14,2) if you want to enforce here as well:
+            // e.Property(p => p.MaxHotelNightlyRate).HasColumnType("numeric(14,2)");
+            // e.Property(p => p.MaxTrainPrice).HasColumnType("numeric(14,2)");
+            // e.Property(p => p.L1ApprovalAmount).HasColumnType("numeric(14,2)");
+            // e.Property(p => p.L2ApprovalAmount).HasColumnType("numeric(14,2)");
+            // e.Property(p => p.L3ApprovalAmount).HasColumnType("numeric(14,2)");
+
+            // Policy window (new)
+            e.Property(p => p.EffectiveFromUtc).HasColumnType("timestamptz");
+            e.Property(p => p.ExpiresOnUtc).HasColumnType("timestamptz");
+
+            // Auditing (new)
+            e.Property(p => p.CreatedAtUtc)
+                .HasColumnType("timestamptz")
+                .HasDefaultValueSql("timezone('utc', now())")
+                .ValueGeneratedOnAdd();
+
+            // Prevent updates to CreatedAtUtc after insert
+            e.Property(p => p.CreatedAtUtc)
+                .Metadata.SetAfterSaveBehavior(Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
+
+            e.Property(p => p.LastUpdatedUtc)
+                .HasColumnType("timestamptz")
+                .HasDefaultValueSql("timezone('utc', now())");
         });
+
 
         // Disabled countries (your composite PK is fine)
         builder.Entity<TravelPolicyDisabledCountry>(e =>
