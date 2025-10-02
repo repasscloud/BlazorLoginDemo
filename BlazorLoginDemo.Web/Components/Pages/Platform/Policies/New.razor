@@ -1,0 +1,627 @@
+@page "/admin/travelpolicy/new/{OrgId}"
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using System.Linq
+@using BlazorLoginDemo.Shared.Data
+@using BlazorLoginDemo.Shared.Models.Kernel.Platform
+@using BlazorLoginDemo.Shared.Models.Policies
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@using BlazorLoginDemo.Shared.Services.Interfaces.Policy
+@using BlazorLoginDemo.Shared.Services.Interfaces.Policies
+
+@inject IAdminOrgServiceUnified OrgSvc
+@inject ITravelPolicyService PolicySvc
+@inject IContinentService ContinentSvc
+@inject IRegionService    RegionSvc
+@inject ICountryService   CountrySvc
+@inject ITravelPolicyDisabledCountryService DisabledSvc
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+@inject ILogger<NewTravelPolicy> Log
+
+<PageTitle>New Travel Policy</PageTitle>
+
+@if (!Loaded)
+{
+    <div class="text-muted">Loading…</div>
+}
+else if (Error is not null)
+{
+    <div class="alert alert-danger">@Error</div>
+}
+else
+{
+    <EditForm EditContext="@EditCtx" OnValidSubmit="@SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <!-- Top action bar only -->
+        <div class="d-flex justify-content-end gap-2 mb-3">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>Save
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">Cancel</button>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">New Travel Policy</h5>
+                <small class="text-muted">@OrgName</small>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Policy Name</label>
+                        <InputText class="form-control" @bind-Value="Vm.PolicyName" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Default Currency</label>
+                        <InputText class="form-control" @bind-Value="Vm.DefaultCurrencyCode" />
+                        <div class="form-text">ISO 4217, e.g. AUD, NZD, USD.</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Org Id</label>
+                        <InputText class="form-control" @bind-Value="Vm.OrganizationUnifiedId" readonly />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GEO SCOPES -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Geographic scope</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Enabled Continents</label>
+                        <select class="form-select" multiple size="8" @bind="SelectedContinentIds">
+                            @foreach (var c in AllContinents)
+                            {
+                                <option value="@c.Id">@c.Name (@c.IsoCode)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Enabled Regions</label>
+                        <select class="form-select" multiple size="8" @bind="SelectedRegionIds">
+                            @foreach (var r in AllRegions)
+                            {
+                                <option value="@r.Id">@r.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Enabled Countries</label>
+                        <select class="form-select" multiple size="8" @bind="SelectedCountryIds">
+                            @foreach (var c in AllCountries)
+                            {
+                                <option value="@c.Id">@c.Name (@c.IsoCode)</option>
+                            }
+                        </select>
+                        <div class="form-text">These are allowed even if a continent/region is not selected.</div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label">Disabled Countries</label>
+                        <select class="form-select" multiple size="8" @bind="SelectedDisabledCountryIds">
+                            @foreach (var c in AllCountries)
+                            {
+                                <option value="@c.Id">@c.Name (@c.IsoCode)</option>
+                            }
+                        </select>
+                        <div class="form-text">Disabled overrides any enablement above.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FLIGHTS -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Flights</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Max Flight Price</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.MaxFlightPrice" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Default Seating</label>
+                        <InputText class="form-control" @bind-Value="Vm.DefaultFlightSeating" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Seating</label>
+                        <InputText class="form-control" @bind-Value="Vm.MaxFlightSeating" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Non-stop only</label>
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="Vm.NonStopFlight" />
+                            <label class="form-check-label">Require non-stop</label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Included Airline Codes (CSV)</label>
+                        <textarea class="form-control" rows="3" @bind="Vm.IncludedAirlineCodesCsv"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Excluded Airline Codes (CSV)</label>
+                        <textarea class="form-control" rows="3" @bind="Vm.ExcludedAirlineCodesCsv"></textarea>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Seat at ≥6h</label>
+                        <InputText class="form-control" @bind-Value="Vm.MaxFlightSeatingAt6Hours" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Seat at ≥8h</label>
+                        <InputText class="form-control" @bind-Value="Vm.MaxFlightSeatingAt8Hours" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Seat at ≥10h</label>
+                        <InputText class="form-control" @bind-Value="Vm.MaxFlightSeatingAt10Hours" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Seat at ≥14h</label>
+                        <InputText class="form-control" @bind-Value="Vm.MaxFlightSeatingAt14Hours" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Max Price ≥6h</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.MaxFlightPriceAt6Hours" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Price ≥8h</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.MaxFlightPriceAt8Hours" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Price ≥10h</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.MaxFlightPriceAt10Hours" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Price ≥14h</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.MaxFlightPriceAt14Hours" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HOTELS -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Accommodation</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Max Nightly Rate</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.MaxHotelNightlyRate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Default Room Type</label>
+                        <InputText class="form-control" @bind-Value="Vm.DefaultHotelRoomType" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Max Room Type</label>
+                        <InputText class="form-control" @bind-Value="Vm.MaxHotelRoomType" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Included Hotel Chains (CSV)</label>
+                        <textarea class="form-control" rows="3" @bind="Vm.IncludedHotelChainsCsv"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Excluded Hotel Chains (CSV)</label>
+                        <textarea class="form-control" rows="3" @bind="Vm.ExcludedHotelChainsCsv"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HIRE CAR -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Hire Car</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Default Car Class</label>
+                        <InputText class="form-control" @bind-Value="Vm.DefaultCarClass" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Max Car Class</label>
+                        <InputText class="form-control" @bind-Value="Vm.MaxCarClass" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Max Daily Rate</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.MaxCarDailyRate" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RAIL -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Rail</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Max Train Class</label>
+                        <InputText class="form-control" @bind-Value="Vm.MaxTrainClass" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Max Train Price</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.MaxTrainPrice" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Included Rail Operators (CSV)</label>
+                        <textarea class="form-control" rows="3" @bind="Vm.IncludedRailOperatorsCsv"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Excluded Rail Operators (CSV)</label>
+                        <textarea class="form-control" rows="3" @bind="Vm.ExcludedRailOperatorsCsv"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- APPROVALS -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Approvals</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="Vm.AutoApproveToPolicyLimit" />
+                            <label class="form-check-label">Auto-approve to policy limit</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="Vm.RequireManagerApprovalToPolicyLimit" />
+                            <label class="form-check-label">Require manager approval to limit</label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="Vm.L1ApprovalRequired" />
+                            <label class="form-check-label">L1 required</label>
+                        </div>
+                        <InputNumber class="form-control mt-1" @bind-Value="Vm.L1ApprovalAmount" placeholder="L1 amount" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="Vm.L2ApprovalRequired" />
+                            <label class="form-check-label">L2 required</label>
+                        </div>
+                        <InputNumber class="form-control mt-1" @bind-Value="Vm.L2ApprovalAmount" placeholder="L2 amount" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="Vm.L3ApprovalRequired" />
+                            <label class="form-check-label">L3 required</label>
+                        </div>
+                        <InputNumber class="form-control mt-1" @bind-Value="Vm.L3ApprovalAmount" placeholder="L3 amount" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="Vm.BillingContactApprovalToPolicyLimit" />
+                            <label class="form-check-label">Billing contact to limit</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <InputCheckbox class="form-check-input" @bind-Value="Vm.BillingContactApprovalAbovePolicyLimit" />
+                            <label class="form-check-label">Billing contact above limit</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WINDOW -->
+        <div class="card shadow-sm mb-5">
+            <div class="card-header"><h6 class="mb-0">Policy Window</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Effective From (UTC)</label>
+                        <InputDate @bind-Value="Vm.EffectiveFromUtc" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Expires On (UTC)</label>
+                        <InputDate @bind-Value="Vm.ExpiresOnUtc" class="form-control" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string OrgId { get; set; } = default!;
+
+    private bool Loaded;
+    private string? Error;
+    private string OrgName = "";
+    private TravelPolicy? Model;
+    private TravelPolicyVm Vm = new();
+    private EditContext? EditCtx;
+
+    // Catalog data
+    private List<Continent> AllContinents = new();
+    private List<Region>    AllRegions    = new();
+    private List<Country>   AllCountries  = new();
+
+    // Selections
+    private List<int> SelectedContinentIds = new();
+    private List<int> SelectedRegionIds    = new();
+    private List<int> SelectedCountryIds   = new();
+    private List<int> SelectedDisabledCountryIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Load org
+            IAdminOrgServiceUnified.OrgAggregate? agg = await OrgSvc.GetByIdAsync(OrgId);
+            OrgName = agg?.Org?.Name ?? throw new InvalidOperationException($"Organization '{OrgId}' missing name.");
+
+
+            // Load catalogs
+            AllContinents = (await ContinentSvc.GetAllAsync()).ToList();   // ordered in service
+            AllRegions    = (await RegionSvc.GetAllAsync()).ToList();
+            AllCountries  = (await CountrySvc.GetAllAsync()).ToList();
+
+
+            // Find or create policy for org
+            var existing = await PolicySvc.GetForOrganizationAsync(OrgId);
+            Model = existing.FirstOrDefault();
+            if (Model is null)
+            {
+                Model = await PolicySvc.CreateDefaultAsync(new TravelPolicy
+                {
+                    OrganizationUnifiedId = OrgId,
+                    PolicyName = $"{OrgName} Default Travel Policy",
+                    DefaultCurrencyCode = "AUD"
+                });
+            }
+
+            // Build VM
+            Vm = TravelPolicyVm.FromModel(Model);
+
+            // Seed selection lists from navs
+            SelectedContinentIds = Model.Continents?.Select(c => c.Id).ToList() ?? new();
+            SelectedRegionIds    = Model.Regions?.Select(r => r.Id).ToList() ?? new();
+            SelectedCountryIds   = Model.Countries?.Select(c => c.Id).ToList() ?? new();
+
+            // Disabled countries via service
+            SelectedDisabledCountryIds = (await DisabledSvc.GetDisabledCountryIdsAsync(Model.Id)).ToList();
+
+            EditCtx = new EditContext(Vm);
+            Loaded = true;
+        }
+        catch (Exception ex)
+        {
+            Error = ex.GetBaseException().Message;
+            Log.LogError(ex, "Init failed");
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (Model is null) return;
+        try
+        {
+            // Map VM -> entity
+            Vm.Apply(Model);
+
+            // Rebind continents/regions/countries from selections
+            Model.Continents = AllContinents.Where(c => SelectedContinentIds.Contains(c.Id)).ToList();
+            Model.Regions    = AllRegions.Where(r => SelectedRegionIds.Contains(r.Id)).ToList();
+            Model.Countries  = AllCountries.Where(c => SelectedCountryIds.Contains(c.Id)).ToList();
+
+            // Persist core policy
+            Model = await PolicySvc.UpdateAsync(Model);
+
+            // Persist disabled countries atomically
+            await DisabledSvc.SetDisabledCountriesAsync(Model.Id, SelectedDisabledCountryIds);
+
+            // Navigate as needed
+            // Nav.NavigateTo($"/admin/travelpolicy/edit/{Model.Id}");
+        }
+        catch (Exception ex)
+        {
+            Error = ex.GetBaseException().Message;
+            Log.LogError(ex, "Save failed");
+        }
+    }
+
+    private void Cancel() => Nav.NavigateTo($"/admin/organizations/view/{OrgId}");
+
+    // ---------------- VM ----------------
+    private sealed class TravelPolicyVm
+    {
+        [Required] public string PolicyName { get; set; } = string.Empty;
+        [Required] public string OrganizationUnifiedId { get; set; } = string.Empty;
+        [Required] public string DefaultCurrencyCode { get; set; } = "AUD";
+
+        // Flights
+        public decimal MaxFlightPrice { get; set; }
+        public string DefaultFlightSeating { get; set; } = "ECONOMY";
+        public string MaxFlightSeating { get; set; } = "ECONOMY";
+        
+        // before: public bool? NonStopFlight { get; set; }
+        public bool NonStopFlight { get; set; }   // for checkbox
+        public string IncludedAirlineCodesCsv { get; set; } = string.Empty;
+        public string ExcludedAirlineCodesCsv { get; set; } = string.Empty;
+
+        public string? MaxFlightSeatingAt6Hours  { get; set; }
+        public string? MaxFlightSeatingAt8Hours  { get; set; }
+        public string? MaxFlightSeatingAt10Hours { get; set; }
+        public string? MaxFlightSeatingAt14Hours { get; set; }
+        public decimal? MaxFlightPriceAt6Hours   { get; set; }
+        public decimal? MaxFlightPriceAt8Hours   { get; set; }
+        public decimal? MaxFlightPriceAt10Hours  { get; set; }
+        public decimal? MaxFlightPriceAt14Hours  { get; set; }
+
+        // Hotels
+        public decimal? MaxHotelNightlyRate { get; set; }
+        public string?  DefaultHotelRoomType { get; set; }
+        public string?  MaxHotelRoomType { get; set; }
+        public string IncludedHotelChainsCsv { get; set; } = string.Empty;
+        public string ExcludedHotelChainsCsv { get; set; } = string.Empty;
+
+        // Cars
+        public string?  DefaultCarClass { get; set; }
+        public string?  MaxCarClass { get; set; }
+        public decimal? MaxCarDailyRate { get; set; }
+
+        // Rail
+        public string?  MaxTrainClass { get; set; }
+        public decimal? MaxTrainPrice { get; set; }
+        public string IncludedRailOperatorsCsv { get; set; } = string.Empty;
+        public string ExcludedRailOperatorsCsv { get; set; } = string.Empty;
+
+        // Approvals
+        public bool AutoApproveToPolicyLimit { get; set; }
+        public bool RequireManagerApprovalToPolicyLimit { get; set; }
+        public bool L1ApprovalRequired { get; set; }
+        public decimal? L1ApprovalAmount { get; set; }
+        public bool L2ApprovalRequired { get; set; }
+        public decimal? L2ApprovalAmount { get; set; }
+        public bool L3ApprovalRequired { get; set; }
+        public decimal? L3ApprovalAmount { get; set; }
+        public bool BillingContactApprovalToPolicyLimit { get; set; }
+        public bool BillingContactApprovalAbovePolicyLimit { get; set; }
+
+        // Window
+        public DateTime? EffectiveFromUtc { get; set; }
+        public DateTime? ExpiresOnUtc { get; set; }
+
+        // ===== Mapping =====
+        public static TravelPolicyVm FromModel(TravelPolicy m)
+        {
+            return new TravelPolicyVm
+            {
+                PolicyName = m.PolicyName,
+                OrganizationUnifiedId = m.OrganizationUnifiedId,
+                DefaultCurrencyCode = m.DefaultCurrencyCode,
+
+                MaxFlightPrice = m.MaxFlightPrice,
+                DefaultFlightSeating = m.DefaultFlightSeating,
+                MaxFlightSeating = m.MaxFlightSeating,
+                NonStopFlight = m.NonStopFlight ?? false,
+
+                IncludedAirlineCodesCsv = string.Join(", ", m.IncludedAirlineCodes ?? Array.Empty<string>()),
+                ExcludedAirlineCodesCsv = string.Join(", ", m.ExcludedAirlineCodes ?? Array.Empty<string>()),
+
+                MaxFlightSeatingAt6Hours  = m.MaxFlightSeatingAt6Hours,
+                MaxFlightSeatingAt8Hours  = m.MaxFlightSeatingAt8Hours,
+                MaxFlightSeatingAt10Hours = m.MaxFlightSeatingAt10Hours,
+                MaxFlightSeatingAt14Hours = m.MaxFlightSeatingAt14Hours,
+                MaxFlightPriceAt6Hours   = m.MaxFlightPriceAt6Hours,
+                MaxFlightPriceAt8Hours   = m.MaxFlightPriceAt8Hours,
+                MaxFlightPriceAt10Hours  = m.MaxFlightPriceAt10Hours,
+                MaxFlightPriceAt14Hours  = m.MaxFlightPriceAt14Hours,
+
+                MaxHotelNightlyRate = m.MaxHotelNightlyRate,
+                DefaultHotelRoomType = m.DefaultHotelRoomType,
+                MaxHotelRoomType = m.MaxHotelRoomType,
+                IncludedHotelChainsCsv = string.Join(", ", m.IncludedHotelChains ?? Array.Empty<string>()),
+                ExcludedHotelChainsCsv = string.Join(", ", m.ExcludedHotelChains ?? Array.Empty<string>()),
+
+                DefaultCarClass = m.DefaultCarClass,
+                MaxCarClass = m.MaxCarClass,
+                MaxCarDailyRate = m.MaxCarDailyRate,
+
+                MaxTrainClass = m.MaxTrainClass,
+                MaxTrainPrice = m.MaxTrainPrice,
+                IncludedRailOperatorsCsv = m.IncludedRailOperatorsCsv,
+                ExcludedRailOperatorsCsv = m.ExcludedRailOperatorsCsv,
+
+                AutoApproveToPolicyLimit = m.AutoApproveToPolicyLimit,
+                RequireManagerApprovalToPolicyLimit = m.RequireManagerApprovalToPolicyLimit,
+                L1ApprovalRequired = m.L1ApprovalRequired,
+                L1ApprovalAmount = m.L1ApprovalAmount,
+                L2ApprovalRequired = m.L2ApprovalRequired,
+                L2ApprovalAmount = m.L2ApprovalAmount,
+                L3ApprovalRequired = m.L3ApprovalRequired,
+                L3ApprovalAmount = m.L3ApprovalAmount,
+                BillingContactApprovalToPolicyLimit = m.BillingContactApprovalToPolicyLimit,
+                BillingContactApprovalAbovePolicyLimit = m.BillingContactApprovalAbovePolicyLimit,
+
+                EffectiveFromUtc = m.EffectiveFromUtc,
+                ExpiresOnUtc = m.ExpiresOnUtc
+            };
+        }
+
+        public void Apply(TravelPolicy m)
+        {
+            m.PolicyName = (PolicyName ?? string.Empty).Trim();
+            m.OrganizationUnifiedId = OrganizationUnifiedId;
+            m.DefaultCurrencyCode = (DefaultCurrencyCode ?? "AUD").Trim().ToUpperInvariant();
+
+            m.MaxFlightPrice = MaxFlightPrice;
+            m.DefaultFlightSeating = (DefaultFlightSeating ?? "ECONOMY").Trim().ToUpperInvariant();
+            m.MaxFlightSeating = (MaxFlightSeating ?? "ECONOMY").Trim().ToUpperInvariant();
+            m.NonStopFlight = NonStopFlight;
+
+            m.IncludedAirlineCodes = ParseCsv(IncludedAirlineCodesCsv);
+            m.ExcludedAirlineCodes = ParseCsv(ExcludedAirlineCodesCsv);
+
+            m.MaxFlightSeatingAt6Hours  = Norm(MaxFlightSeatingAt6Hours);
+            m.MaxFlightSeatingAt8Hours  = Norm(MaxFlightSeatingAt8Hours);
+            m.MaxFlightSeatingAt10Hours = Norm(MaxFlightSeatingAt10Hours);
+            m.MaxFlightSeatingAt14Hours = Norm(MaxFlightSeatingAt14Hours);
+            m.MaxFlightPriceAt6Hours   = MaxFlightPriceAt6Hours;
+            m.MaxFlightPriceAt8Hours   = MaxFlightPriceAt8Hours;
+            m.MaxFlightPriceAt10Hours  = MaxFlightPriceAt10Hours;
+            m.MaxFlightPriceAt14Hours  = MaxFlightPriceAt14Hours;
+
+            m.MaxHotelNightlyRate = MaxHotelNightlyRate;
+            m.DefaultHotelRoomType = Norm(DefaultHotelRoomType);
+            m.MaxHotelRoomType = Norm(MaxHotelRoomType);
+            m.IncludedHotelChains = ParseCsv(IncludedHotelChainsCsv);
+            m.ExcludedHotelChains = ParseCsv(ExcludedHotelChainsCsv);
+
+            m.DefaultCarClass = Norm(DefaultCarClass);
+            m.MaxCarClass = Norm(MaxCarClass);
+            m.MaxCarDailyRate = MaxCarDailyRate;
+
+            m.MaxTrainClass = Norm(MaxTrainClass);
+            m.MaxTrainPrice = MaxTrainPrice;
+
+            // Rail operators: class exposes Csv helpers already
+            m.IncludedRailOperatorsCsv = IncludedRailOperatorsCsv ?? string.Empty;
+            m.ExcludedRailOperatorsCsv = ExcludedRailOperatorsCsv ?? string.Empty;
+
+            m.AutoApproveToPolicyLimit = AutoApproveToPolicyLimit;
+            m.RequireManagerApprovalToPolicyLimit = RequireManagerApprovalToPolicyLimit;
+            m.L1ApprovalRequired = L1ApprovalRequired;
+            m.L1ApprovalAmount = L1ApprovalAmount;
+            m.L2ApprovalRequired = L2ApprovalRequired;
+            m.L2ApprovalAmount = L2ApprovalAmount;
+            m.L3ApprovalRequired = L3ApprovalRequired;
+            m.L3ApprovalAmount = L3ApprovalAmount;
+            m.BillingContactApprovalToPolicyLimit = BillingContactApprovalToPolicyLimit;
+            m.BillingContactApprovalAbovePolicyLimit = BillingContactApprovalAbovePolicyLimit;
+
+            m.EffectiveFromUtc = EffectiveFromUtc;
+            m.ExpiresOnUtc = ExpiresOnUtc;
+        }
+
+        private static string Norm(string? s) => string.IsNullOrWhiteSpace(s) ? null! : s.Trim().ToUpperInvariant();
+        private static string[] ParseCsv(string? s) =>
+            string.IsNullOrWhiteSpace(s)
+                ? Array.Empty<string>()
+                : s.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                   .Select(x => x.Trim().ToUpperInvariant())
+                   .Where(x => x.Length > 0)
+                   .Distinct()
+                   .ToArray();
+    }
+
+    private sealed class NewTravelPolicy { }
+}

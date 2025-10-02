@@ -402,6 +402,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("regions", "ava");
             e.HasKey(x => x.Id);
+
+            e.HasIndex(x => x.Name).IsUnique();
+            e.Property(x => x.Name).IsRequired().HasMaxLength(16);
         });
 
         builder.Entity<AirportInfo>(e =>
