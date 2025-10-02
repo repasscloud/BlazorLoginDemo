@@ -1,10 +1,13 @@
 @page "/platform/pnr/create/{bookingType}"
 @rendermode InteractiveServer
+@using BlazorLoginDemo.Shared.Models.Kernel.Travel
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using Microsoft.AspNetCore.Components.Authorization
 @using BlazorLoginDemo.Shared.Models.Static.Platform
 @using System.Text.Json;
+@using System.Runtime.InteropServices.Marshalling
+@using Microsoft.AspNetCore.Mvc
 
 @attribute [Authorize(Policy = "Shared:BookingSelect")]
 
@@ -12,6 +15,7 @@
 @inject IAdminUserServiceUnified UserSvc
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IHttpClientFactory HttpClientFactory
 
 @if (Unauthorized)
 {
@@ -165,6 +169,7 @@ else
     string? SelectedVendorId;
     string? SelectedTmcId;
     string? SelectedClientId;
+    string? myUserId;
 
     bool VendorLocked;
     bool TmcLocked;
@@ -231,6 +236,9 @@ else
             ClientLocked = true;
             await LoadUsers();
         }
+
+        // assign the currently using user user's id
+        myUserId = user.GetUserId();
     }
 
     async Task ConfirmVendor()
@@ -289,17 +297,60 @@ else
         else SelectedUserIds.Remove(userId);
     }
 
+    static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
+    public sealed record ErrorEnvelope(string? Error);
+    public sealed record IdEnvelope(string? Id);
+
     async Task CreateQuoteAsync()
     {
         if (string.IsNullOrEmpty(SelectedClientId) || SelectedUserIds.Count == 0)
             return;
 
-        @* var quoteId = await Api.CreateTravelQuoteAsync(SelectedClientId, SelectedUserIds.ToList());
-        Nav.NavigateTo($"/flightsearch/{quoteId}"); *@
+        HttpClient? client = HttpClientFactory.CreateClient("AvaApi");
 
-        // Temporary: write selected user IDs to a temp file for the PNR creation page to read
-        // docker exec blazor sh -c "mkdir -p /tmp/tmp-data && chmod 777 /tmp/tmp-data"
-        var userIdList = SelectedUserIds.ToList();
-        await File.WriteAllLinesAsync(path: $"/tmp/tmp-data/{bookingType}.txt", userIdList);
+        TravelQuoteDto? payload = new TravelQuoteDto
+        {
+            QuoteType = BookingTypeNormalized,
+            CreatedByUserId = myUserId!,
+            TmcAssignedId = SelectedTmcId!,
+            OrganizationId = SelectedClientId!,
+            TravellerUserIds = SelectedUserIds.ToList()
+        };
+
+        // pretty JSON
+        string? json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+
+        // write async
+        await File.WriteAllTextAsync("/tmp/tmp-data/result.json", json);
+
+        @* using HttpResponseMessage? response = await client.PostAsJsonAsync(requestUri: "api/v1/travel/quotes/from-dto", payload, JsonOpts);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            string? raw = await response.Content.ReadAsStringAsync();
+            string msg = $"HTTP {(int)response.StatusCode}";
+
+            try
+            {
+                ErrorEnvelope? e = JsonSerializer.Deserialize<ErrorEnvelope>(raw, JsonOpts);
+                if (!string.IsNullOrWhiteSpace(e?.Error)) msg = e!.Error!;
+                else
+                {
+                    ProblemDetails? p = JsonSerializer.Deserialize<ProblemDetails>(raw, JsonOpts);
+                    if (!string.IsNullOrWhiteSpace(p?.Detail)) msg = p!.Detail!;
+                    else if (!string.IsNullOrWhiteSpace(p?.Title)) msg = p!.Title!;
+                    else if (!string.IsNullOrWhiteSpace(raw)) msg = raw;
+                }
+            }
+            catch { if (!string.IsNullOrWhiteSpace(raw)) msg = raw; }
+
+            throw new InvalidOperationException(msg);
+        }
+
+        IdEnvelope? ok = await response.Content.ReadFromJsonAsync<IdEnvelope>(JsonOpts)
+                ?? throw new InvalidOperationException("Empty response.");
+        string? createdId = ok.Id ?? throw new InvalidOperationException("Missing id.");
+
+        Nav.NavigateTo(uri: $"/platform/pnr/create/{BookingTypeNormalized}/{createdId}", forceLoad: true); *@
     }
 }

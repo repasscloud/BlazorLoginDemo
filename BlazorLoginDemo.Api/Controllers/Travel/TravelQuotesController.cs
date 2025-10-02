@@ -7,7 +7,7 @@ using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 namespace BlazorLoginDemo.Api.Controllers.Travel;
 
 [Route("api/v1/travel/quotes")]
-[ServiceFilter(typeof(RequireApiKeyFilter))]
+// [ServiceFilter(typeof(RequireApiKeyFilter))]
 [ApiController]
 public sealed class TravelQuotesController : ControllerBase
 {
