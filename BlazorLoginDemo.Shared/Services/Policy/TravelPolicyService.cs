@@ -33,7 +33,8 @@ public sealed class TravelPolicyService : ITravelPolicyService
         if (string.IsNullOrWhiteSpace(policy.Id))
             policy.Id = NanoidDotNet.Nanoid.Generate(NanoidDotNet.Nanoid.Alphabets.LettersAndDigits.ToUpper(), 14);
 
-        NormalizeAirlineCodes(policy);
+        // NormalizeAirlineCodes(policy);
+        NormalizePolicyLists(policy);
 
         // verify org exists
         var orgExists = await _db.Organizations.AsNoTracking().AnyAsync(o => o.Id == policy.OrganizationUnifiedId, ct);
@@ -97,7 +98,8 @@ public sealed class TravelPolicyService : ITravelPolicyService
         var orgExists = await _db.Organizations.AsNoTracking().AnyAsync(o => o.Id == policy.OrganizationUnifiedId, ct);
         if (!orgExists) throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found.");
 
-        NormalizeAirlineCodes(policy);
+        // NormalizeAirlineCodes(policy);
+        NormalizePolicyLists(policy);
 
         _db.Attach(policy);
         _db.Entry(policy).State = EntityState.Modified;
@@ -172,5 +174,56 @@ public sealed class TravelPolicyService : ITravelPolicyService
             .Distinct()
             .Except(policy.IncludedAirlineCodes)
             .ToArray();
+    }
+
+    private static void NormalizePolicyLists(TravelPolicy policy)
+    {
+        // Generic cleaners
+        static string[] Clean(string[]? arr) =>
+            (arr ?? Array.Empty<string>())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim().ToUpperInvariant())
+                .Distinct()
+                .ToArray();
+
+        static (string[] inc, string[] exc) CleanIncludeExclude(string[]? inc, string[]? exc)
+        {
+            var included = Clean(inc);
+            var excluded = Clean(exc).Except(included).ToArray();
+            return (included, excluded);
+        }
+
+        // Flights
+        (policy.IncludedAirlineCodes, policy.ExcludedAirlineCodes) =
+            CleanIncludeExclude(policy.IncludedAirlineCodes, policy.ExcludedAirlineCodes);
+
+        // Accommodation
+        (policy.IncludedHotelChains, policy.ExcludedHotelChains) =
+            CleanIncludeExclude(policy.IncludedHotelChains, policy.ExcludedHotelChains);
+
+        // Taxi / Ride-hail
+        (policy.IncludedTaxiVendors, policy.ExcludedTaxiVendors) =
+            CleanIncludeExclude(policy.IncludedTaxiVendors, policy.ExcludedTaxiVendors);
+
+        // Train
+        (policy.IncludedRailOperators, policy.ExcludedRailOperators) =
+            CleanIncludeExclude(policy.IncludedRailOperators, policy.ExcludedRailOperators);
+
+        // Hire car
+        policy.AllowedCarHireClasses = Clean(policy.AllowedCarHireClasses);
+        (policy.IncludedCarHireVendors, policy.ExcludedCarHireVendors) =
+            CleanIncludeExclude(policy.IncludedCarHireVendors, policy.ExcludedCarHireVendors);
+
+        // Bus / Coach
+        (policy.IncludedBusOperators, policy.ExcludedBusOperators) =
+            CleanIncludeExclude(policy.IncludedBusOperators, policy.ExcludedBusOperators);
+
+        // SIM / eSIM
+        (policy.IncludedSimVendors, policy.ExcludedSimVendors) =
+            CleanIncludeExclude(policy.IncludedSimVendors, policy.ExcludedSimVendors);
+
+        // Holiday activity
+        (policy.IncludedActivityProviders, policy.ExcludedActivityProviders) =
+            CleanIncludeExclude(policy.IncludedActivityProviders, policy.ExcludedActivityProviders);
     }
 }
