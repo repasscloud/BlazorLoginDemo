@@ -42,6 +42,9 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         await _logger.LogInfoAsync($"Creating TravelPolicy '{policy.PolicyName}' for Org '{policy.OrganizationUnifiedId}'");
 
+        policy.CreatedAtUtc = DateTime.UtcNow;
+        policy.LastUpdatedUtc = DateTime.UtcNow;
+
         await _db.TravelPolicies.AddAsync(policy, ct);
         await _db.SaveChangesAsync(ct);
         return policy;
@@ -100,6 +103,8 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         // NormalizeAirlineCodes(policy);
         NormalizePolicyLists(policy);
+
+        policy.LastUpdatedUtc = DateTime.UtcNow;
 
         _db.Attach(policy);
         _db.Entry(policy).State = EntityState.Modified;
