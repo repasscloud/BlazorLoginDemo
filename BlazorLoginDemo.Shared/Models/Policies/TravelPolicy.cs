@@ -30,6 +30,14 @@ public class TravelPolicy
     /// </summary>
     public decimal MaxFlightPrice { get; set; } = 0m;
 
+    // --- Policy effective window -------------------------------------------------
+    public DateTime? EffectiveFromUtc { get; set; }
+    public DateTime? ExpiresOnUtc { get; set; }
+
+    // --- Auditing ---------------------------------------------------------------
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime LastUpdatedUtc { get; set; } = DateTime.UtcNow;
+
     // --- Flight particulars --------------------------------------------------
     [CabinTypeValidation]
     [DefaultValue("ECONOMY")]
@@ -140,6 +148,10 @@ public class TravelPolicy
     public string[] IncludedCarHireVendors { get; set; } = Array.Empty<string>();
     public string[] ExcludedCarHireVendors { get; set; } = Array.Empty<string>();
     public bool? RequireInclusiveInsurance { get; set; }          // CDW/LDW etc.
+    public string? DefaultCarClass { get; set; }           // e.g., ECONOMY
+    public string? MaxCarClass { get; set; }               // e.g., FULLSIZE
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal? MaxCarDailyRate { get; set; }          // aligns with UI field
 
     [NotMapped]
     public string AllowedCarHireClassesCsv
