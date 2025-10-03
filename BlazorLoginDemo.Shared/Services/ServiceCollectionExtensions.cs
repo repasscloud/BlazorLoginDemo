@@ -70,6 +70,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRegionService, RegionService>();
         services.AddScoped<IContinentService, ContinentService>();
         services.AddScoped<ICountryService, CountryService>();
+        services.AddScoped<ITravelPolicyDisabledCountryService, TravelPolicyDisabledCountryService>();
         services.AddScoped<IAirportInfoService, AirportInfoService>();
         return services;
     }
@@ -124,6 +125,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
         services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
         services.AddScoped<ITravelQuoteService, TravelQuoteService>();
+
+        // --- geographic services ---
+        services.AddScoped<IRegionService, RegionService>();
+        services.AddScoped<IContinentService, ContinentService>();
+        services.AddScoped<ICountryService, CountryService>();
 
         return services;
     }
