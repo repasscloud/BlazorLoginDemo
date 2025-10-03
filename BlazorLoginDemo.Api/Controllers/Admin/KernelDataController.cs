@@ -3,9 +3,9 @@ using BlazorLoginDemo.Shared.Models.Static;
 using BlazorLoginDemo.Shared.Services.Kernel;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BlazorLoginDemo.Api.Controllers;
+namespace BlazorLoginDemo.Api.Controllers.Admin;
 
-[Route("api/v1/kerneldata")]
+[Route("api/v1/admin/kerneldata")]
 [ApiController]
 // [ServiceFilter(typeof(RequireApiKeyFilter))] // <- uncomment to add header -based key for security (call Vicky Pollard)
 public sealed class KernelDataController : ControllerBase
