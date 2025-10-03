@@ -53,7 +53,6 @@ public sealed class ContinentService : IContinentService
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.IsoCode == isoCode, ct);
     }
-
     public async Task<IReadOnlyList<Continent>> GetAllAsync(CancellationToken ct = default)
         => await _db.Set<Continent>()
             .AsNoTracking()
