@@ -1,0 +1,250 @@
+region,regionId,continent,continentIso,continentId,country,countryIso,flag
+APAC,1,Oceania,OC,1,American Samoa,AS,🇦🇸
+APAC,1,Oceania,OC,1,Antarctica,AQ,🇦🇶
+APAC,1,Oceania,OC,1,Australia,AU,🇦🇺
+APAC,1,Oceania,OC,1,Christmas Island,CX,🇨🇽
+APAC,1,Oceania,OC,1,"Cocos (Keeling) Islands",CC,🇨🇨
+APAC,1,Oceania,OC,1,Cook Islands,CK,🇨🇰
+APAC,1,Oceania,OC,1,Fiji,FJ,🇫🇯
+APAC,1,Oceania,OC,1,French Polynesia,PF,🇵🇫
+APAC,1,Oceania,OC,1,French Southern Territories,TF,🇹🇫
+APAC,1,Oceania,OC,1,Guam,GU,🇬🇺
+APAC,1,Oceania,OC,1,Heard Island and McDonald Islands,HM,🇭🇲
+APAC,1,Oceania,OC,1,Marshall Islands,MH,🇲🇭
+APAC,1,Oceania,OC,1,Micronesia,FM,🇫🇲
+APAC,1,Oceania,OC,1,New Caledonia,NC,🇳🇨
+APAC,1,Oceania,OC,1,New Zealand,NZ,🇳🇿
+APAC,1,Oceania,OC,1,Niue,NU,🇳🇺
+APAC,1,Oceania,OC,1,Norfolk Island,NF,🇳🇫
+APAC,1,Oceania,OC,1,Northern Mariana Islands,MP,🇲🇵
+APAC,1,Oceania,OC,1,Palau,PW,🇵🇼
+APAC,1,Oceania,OC,1,Papua New Guinea,PG,🇵🇬
+APAC,1,Oceania,OC,1,Pitcairn,PN,🇵🇳
+APAC,1,Oceania,OC,1,Samoa,WS,🇼🇸
+APAC,1,Oceania,OC,1,Solomon Islands,SB,🇸🇧
+APAC,1,Oceania,OC,1,United States Minor Outlying Islands,UM,🇺🇲
+APAC,1,Oceania,OC,1,Vanuatu,VU,🇻🇺
+APAC,1,Oceania,OC,1,Wallis and Futuna,WF,🇼🇫
+APAC,1,Asia,AS,2,Bangladesh,BD,🇧🇩
+APAC,1,Asia,AS,2,Bhutan,BT,🇧🇹
+APAC,1,Asia,AS,2,British Indian Ocean Territory,IO,🇮🇴
+APAC,1,Asia,AS,2,Brunei Darussalam,BN,🇧🇳
+APAC,1,Asia,AS,2,Cambodia,KH,🇰🇭
+APAC,1,Asia,AS,2,China,CN,🇨🇳
+APAC,1,Asia,AS,2,Hong Kong,HK,🇭🇰
+APAC,1,Asia,AS,2,India,IN,🇮🇳
+APAC,1,Asia,AS,2,Indonesia,ID,🇮🇩
+APAC,1,Asia,AS,2,Japan,JP,🇯🇵
+APAC,1,Asia,AS,2,"Korea (Republic of)",KR,🇰🇷
+APAC,1,Asia,AS,2,"Korea (Democratic People's Republic of)",KP,🇰🇵
+APAC,1,Asia,AS,2,Kyrgyzstan,KG,🇰🇬
+APAC,1,Asia,AS,2,Laos,LA,🇱🇦
+APAC,1,Asia,AS,2,Macao,MO,🇲🇴
+APAC,1,Asia,AS,2,Malaysia,MY,🇲🇾
+APAC,1,Asia,AS,2,Maldives,MV,🇲🇻
+APAC,1,Asia,AS,2,Mongolia,MN,🇲🇳
+APAC,1,Asia,AS,2,Myanmar,MM,🇲🇲
+APAC,1,Asia,AS,2,Nepal,NP,🇳🇵
+APAC,1,Asia,AS,2,Pakistan,PK,🇵🇰
+APAC,1,Asia,AS,2,Philippines,PH,🇵🇭
+APAC,1,Asia,AS,2,Singapore,SG,🇸🇬
+APAC,1,Asia,AS,2,Sri Lanka,LK,🇱🇰
+APAC,1,Asia,AS,2,Taiwan,TW,🇹🇼
+APAC,1,Asia,AS,2,Tajikistan,TJ,🇹🇯
+APAC,1,Asia,AS,2,Thailand,TH,🇹🇭
+APAC,1,Asia,AS,2,Timor-Leste,TL,🇹🇱
+APAC,1,Asia,AS,2,Turkmenistan,TM,🇹🇲
+APAC,1,Asia,AS,2,Uzbekistan,UZ,🇺🇿
+APAC,1,Asia,AS,2,Viet Nam,VN,🇻🇳
+NA,2,North America,NA,3,Canada,CA,🇨🇦
+NA,2,North America,NA,3,United States of America,US,🇺🇸
+NA,2,North America,NA,3,Mexico,MX,🇲🇽
+NA,2,North America,NA,3,Bermuda,BM,🇧🇲
+NA,2,North America,NA,3,Cayman Islands,KY,🇰🇾
+EMEA,3,Europe,EU,4,Åland Islands,AX,🇦🇽
+EMEA,3,Europe,EU,4,Albania,AL,🇦🇱
+EMEA,3,Europe,EU,4,Andorra,AD,🇦🇩
+EMEA,3,Europe,EU,4,Austria,AT,🇦🇹
+EMEA,3,Europe,EU,4,Belarus,BY,🇧🇾
+EMEA,3,Europe,EU,4,Belgium,BE,🇧🇪
+EMEA,3,Europe,EU,4,Bosnia and Herzegovina,BA,🇧🇦
+EMEA,3,Europe,EU,4,Bouvet Island,BV,🇧🇻
+EMEA,3,Europe,EU,4,Bulgaria,BG,🇧🇬
+EMEA,3,Europe,EU,4,Croatia,HR,🇭🇷
+EMEA,3,Europe,EU,4,Cyprus,CY,🇨🇾
+EMEA,3,Europe,EU,4,Czech Republic,CZ,🇨🇿
+EMEA,3,Europe,EU,4,Denmark,DK,🇩🇰
+EMEA,3,Europe,EU,4,Estonia,EE,🇪🇪
+EMEA,3,Europe,EU,4,Falkland Islands,FK,🇫🇰
+EMEA,3,Europe,EU,4,Faroe Islands,FO,🇫🇴
+EMEA,3,Europe,EU,4,Finland,FI,🇫🇮
+EMEA,3,Europe,EU,4,France,FR,🇫🇷
+EMEA,3,Europe,EU,4,Germany,DE,🇩🇪
+EMEA,3,Europe,EU,4,Gibraltar,GI,🇬🇮
+EMEA,3,Europe,EU,4,Greece,GR,🇬🇷
+EMEA,3,Europe,EU,4,Greenland,GL,🇬🇱
+EMEA,3,Europe,EU,4,Guernsey,GG,🇬🇬
+EMEA,3,Europe,EU,4,Iceland,IS,🇮🇸
+EMEA,3,Europe,EU,4,Ireland,IE,🇮🇪
+EMEA,3,Europe,EU,4,Isle of Man,IM,🇮🇲
+EMEA,3,Europe,EU,4,Italy,IT,🇮🇹
+EMEA,3,Europe,EU,4,Jersey,JE,🇯🇪
+EMEA,3,Europe,EU,4,Latvia,LV,🇱🇻
+EMEA,3,Europe,EU,4,Liechtenstein,LI,🇱🇮
+EMEA,3,Europe,EU,4,Lithuania,LT,🇱🇹
+EMEA,3,Europe,EU,4,Luxembourg,LU,🇱🇺
+EMEA,3,Europe,EU,4,Macedonia,MK,🇲🇰
+EMEA,3,Europe,EU,4,Malta,MT,🇲🇹
+EMEA,3,Europe,EU,4,Moldova,MD,🇲🇩
+EMEA,3,Europe,EU,4,Monaco,MC,🇲🇨
+EMEA,3,Europe,EU,4,Montenegro,ME,🇲🇪
+EMEA,3,Europe,EU,4,Netherlands,NL,🇳🇱
+EMEA,3,Europe,EU,4,Norway,NO,🇳🇴
+EMEA,3,Europe,EU,4,Poland,PL,🇵🇱
+EMEA,3,Europe,EU,4,Portugal,PT,🇵🇹
+EMEA,3,Europe,EU,4,Romania,RO,🇷🇴
+EMEA,3,Europe,EU,4,Russia,RU,🇷🇺
+EMEA,3,Europe,EU,4,San Marino,SM,🇸🇲
+EMEA,3,Europe,EU,4,Serbia,RS,🇷🇸
+EMEA,3,Europe,EU,4,Slovakia,SK,🇸🇰
+EMEA,3,Europe,EU,4,Slovenia,SI,🇸🇮
+EMEA,3,Europe,EU,4,Spain,ES,🇪🇸
+EMEA,3,Europe,EU,4,Svalbard,SJ,🇸🇯
+EMEA,3,Europe,EU,4,Sweden,SE,🇸🇪
+EMEA,3,Europe,EU,4,Switzerland,CH,🇨🇭
+EMEA,3,Europe,EU,4,Ukraine,UA,🇺🇦
+EMEA,3,Europe,EU,4,United Kingdom,GB,🇬🇧
+EMEA,3,Europe,EU,4,Vatican City,VA,🇻🇦
+EMEA,3,Europe,EU,4,South Georgia and the South Sandwich Islands,GS,🇬🇸
+EMEA,3,Middle East,ME,5,Afghanistan,AF,🇦🇫
+EMEA,3,Middle East,ME,5,Armenia,AM,🇦🇲
+EMEA,3,Middle East,ME,5,Azerbaijan,AZ,🇦🇿
+EMEA,3,Middle East,ME,5,Bahrain,BH,🇧🇭
+EMEA,3,Middle East,ME,5,Georgia,GE,🇬🇪
+EMEA,3,Middle East,ME,5,Israel,IL,🇮🇱
+EMEA,3,Middle East,ME,5,Jordan,JO,🇯🇴
+EMEA,3,Middle East,ME,5,Kazakhstan,KZ,🇰🇿
+EMEA,3,Middle East,ME,5,Kuwait,KW,🇰🇼
+EMEA,3,Middle East,ME,5,Lebanon,LB,🇱🇧
+EMEA,3,Middle East,ME,5,Syria,SY,🇸🇾
+EMEA,3,Middle East,ME,5,Turkey,TR,🇹🇷
+EMEA,3,Middle East,ME,5,United Arab Emirates,AE,🇦🇪
+EMEA,3,Africa,AF,6,Algeria,DZ,🇩🇿
+EMEA,3,Africa,AF,6,Angola,AO,🇦🇴
+EMEA,3,Africa,AF,6,Benin,BJ,🇧🇯
+EMEA,3,Africa,AF,6,Botswana,BW,🇧🇼
+EMEA,3,Africa,AF,6,Burkina Faso,BF,🇧🇫
+EMEA,3,Africa,AF,6,Burundi,BI,🇧🇮
+EMEA,3,Africa,AF,6,Cabo Verde,CV,🇨🇻
+EMEA,3,Africa,AF,6,Cameroon,CM,🇨🇲
+EMEA,3,Africa,AF,6,Central African Republic,CF,🇨🇫
+EMEA,3,Africa,AF,6,Chad,TD,🇹🇩
+EMEA,3,Africa,AF,6,Comoros,KM,🇰🇲
+EMEA,3,Africa,AF,6,"Congo (Democratic Republic of the)",CD,🇨🇩
+EMEA,3,Africa,AF,6,Congo,CG,🇨🇬
+EMEA,3,Africa,AF,6,"Côte d'Ivoire",CI,🇨🇮
+EMEA,3,Africa,AF,6,Djibouti,DJ,🇩🇯
+EMEA,3,Africa,AF,6,Egypt,EG,🇪🇬
+EMEA,3,Africa,AF,6,Equatorial Guinea,GQ,🇬🇶
+EMEA,3,Africa,AF,6,Eritrea,ER,🇪🇷
+EMEA,3,Africa,AF,6,Ethiopia,ET,🇪🇹
+EMEA,3,Africa,AF,6,Gabon,GA,🇬🇦
+EMEA,3,Africa,AF,6,Gambia,GM,🇬🇲
+EMEA,3,Africa,AF,6,Ghana,GH,🇬🇭
+EMEA,3,Africa,AF,6,Guinea,GN,🇬🇳
+EMEA,3,Africa,AF,6,Guinea-Bissau,GW,🇬🇼
+EMEA,3,Africa,AF,6,Kenya,KE,🇰🇪
+EMEA,3,Africa,AF,6,Lesotho,LS,🇱🇸
+EMEA,3,Africa,AF,6,Liberia,LR,🇱🇷
+EMEA,3,Africa,AF,6,Libya,LY,🇱🇾
+EMEA,3,Africa,AF,6,Madagascar,MG,🇲🇬
+EMEA,3,Africa,AF,6,Malawi,MW,🇲🇼
+EMEA,3,Africa,AF,6,Mali,ML,🇲🇱
+EMEA,3,Africa,AF,6,Mauritania,MR,🇲🇷
+EMEA,3,Africa,AF,6,Mauritius,MU,🇲🇺
+EMEA,3,Africa,AF,6,Mayotte,YT,🇾🇹
+EMEA,3,Africa,AF,6,Morocco,MA,🇲🇦
+EMEA,3,Africa,AF,6,Mozambique,MZ,🇲🇿
+EMEA,3,Africa,AF,6,Namibia,NA,🇳🇦
+EMEA,3,Africa,AF,6,Niger,NE,🇳🇪
+EMEA,3,Africa,AF,6,Nigeria,NG,🇳🇬
+EMEA,3,Africa,AF,6,Réunion,RE,🇷🇪
+EMEA,3,Africa,AF,6,Rwanda,RW,🇷🇼
+EMEA,3,Africa,AF,6,Saint Helena,SH,🇸🇭
+EMEA,3,Africa,AF,6,Sao Tome and Principe,ST,🇸🇹
+EMEA,3,Africa,AF,6,Senegal,SN,🇸🇳
+EMEA,3,Africa,AF,6,Seychelles,SC,🇸🇨
+EMEA,3,Africa,AF,6,Sierra Leone,SL,🇸🇱
+EMEA,3,Africa,AF,6,Somalia,SO,🇸🇴
+EMEA,3,Africa,AF,6,South Africa,ZA,🇿🇦
+EMEA,3,Africa,AF,6,South Sudan,SS,🇸🇸
+EMEA,3,Africa,AF,6,Sudan,SD,🇸🇩
+EMEA,3,Africa,AF,6,Swaziland,SZ,🇸🇿
+EMEA,3,Africa,AF,6,Tanzania,TZ,🇹🇿
+EMEA,3,Africa,AF,6,Togo,TG,🇹🇬
+EMEA,3,Africa,AF,6,Tunisia,TN,🇹🇳
+EMEA,3,Africa,AF,6,Western Sahara,EH,🇪🇭
+EMEA,3,Africa,AF,6,Uganda,UG,🇺🇬
+EMEA,3,Africa,AF,6,Zambia,ZM,🇿🇲
+EMEA,3,Africa,AF,6,Zimbabwe,ZW,🇿🇼
+LATAM,4,South America,SA,7,Anguilla,AI,🇦🇮
+LATAM,4,South America,SA,7,Antigua and Barbuda,AG,🇦🇬
+LATAM,4,South America,SA,7,Argentina,AR,🇦🇷
+LATAM,4,South America,SA,7,Aruba,AW,🇦🇼
+LATAM,4,South America,SA,7,Bahamas,BS,🇧🇸
+LATAM,4,South America,SA,7,Barbados,BB,🇧🇧
+LATAM,4,South America,SA,7,Belize,BZ,🇧🇿
+LATAM,4,South America,SA,7,"Bolivia (Plurinational State of)",BO,🇧🇴
+LATAM,4,South America,SA,7,Brazil,BR,🇧🇷
+LATAM,4,South America,SA,7,Chile,CL,🇨🇱
+LATAM,4,South America,SA,7,Colombia,CO,🇨🇴
+LATAM,4,South America,SA,7,Costa Rica,CR,🇨🇷
+LATAM,4,South America,SA,7,Cuba,CU,🇨🇺
+LATAM,4,South America,SA,7,Curaçao,CW,🇨🇼
+LATAM,4,South America,SA,7,Dominica,DM,🇩🇲
+LATAM,4,South America,SA,7,Dominican Republic,DO,🇩🇴
+LATAM,4,South America,SA,7,Ecuador,EC,🇪🇨
+LATAM,4,South America,SA,7,El Salvador,SV,🇸🇻
+LATAM,4,South America,SA,7,French Guiana,GF,🇬🇫
+LATAM,4,South America,SA,7,Grenada,GD,🇬🇩
+LATAM,4,South America,SA,7,Guadeloupe,GP,🇬🇵
+LATAM,4,South America,SA,7,Guatemala,GT,🇬🇹
+LATAM,4,South America,SA,7,Guyana,GY,🇬🇾
+LATAM,4,South America,SA,7,Haiti,HT,🇭🇹
+LATAM,4,South America,SA,7,Honduras,HN,🇭🇳
+LATAM,4,South America,SA,7,Jamaica,JM,🇯🇲
+LATAM,4,South America,SA,7,Martinique,MQ,🇲🇶
+LATAM,4,South America,SA,7,Montserrat,MS,🇲🇸
+LATAM,4,South America,SA,7,Nicaragua,NI,🇳🇮
+LATAM,4,South America,SA,7,Panama,PA,🇵🇦
+LATAM,4,South America,SA,7,Paraguay,PY,🇵🇾
+LATAM,4,South America,SA,7,Peru,PE,🇵🇪
+LATAM,4,South America,SA,7,Puerto Rico,PR,🇵🇷
+LATAM,4,South America,SA,7,Saint Barthélemy,BL,🇧🇱
+LATAM,4,South America,SA,7,Saint Kitts And Nevis,KN,🇰🇳
+LATAM,4,South America,SA,7,Saint Lucia,LC,🇱🇨
+LATAM,4,South America,SA,7,Saint Martin,MF,🇲🇫
+LATAM,4,South America,SA,7,Saint Pierre and Miquelon,PM,🇵🇲
+LATAM,4,South America,SA,7,Saint Vincent and The Grenadines,VC,🇻🇨
+LATAM,4,South America,SA,7,"Sint Maarten (Dutch part)",SX,🇸🇽
+LATAM,4,South America,SA,7,Suriname,SR,🇸🇷
+LATAM,4,South America,SA,7,Trinidad and Tobago,TT,🇹🇹
+LATAM,4,South America,SA,7,Uruguay,UY,🇺🇾
+LATAM,4,South America,SA,7,Venezuela,VE,🇻🇪
+LATAM,4,South America,SA,7,Virgin Islands (British),VG,🇻🇬
+LATAM,4,South America,SA,7,Virgin Islands (U.S.),VI,🇻🇮
+EMEA,3,Europe,EU,4,"Bonaire, Sint Eustatius and Saba",BQ,🇧🇶
+EMEA,3,Europe,EU,4,Hungary,HU,🇭🇺
+EMEA,3,Middle East,ME,5,Iraq,IQ,🇮🇶
+EMEA,3,Middle East,ME,5,"Iran (Islamic Republic of)",IR,🇮🇷
+APAC,1,Oceania,OC,1,Kiribati,KI,🇰🇮
+APAC,1,Oceania,OC,1,Nauru,NR,🇳🇷
+EMEA,3,Middle East,ME,5,Oman,OM,🇴🇲
+EMEA,3,Middle East,ME,5,"Palestine, State of",PS,🇵🇸
+EMEA,3,Middle East,ME,5,Qatar,QA,🇶🇦
+EMEA,3,Middle East,ME,5,Saudia Arabia,SA,🇸🇦
+NA,2,North America,NA,3,Turks and Caicos Islands,TC,🇹🇨
+APAC,1,Oceania,OC,1,Tonga,TO,🇹🇴
+APAC,1,Oceania,OC,1,Tuvalu,TV,🇹🇻
+EMEA,3,Middle East,ME,5,Yemen,YE,🇾🇪
+EMEA,3,Europe,EU,4,Kosovo,XK,🇽🇰
