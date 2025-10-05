@@ -61,7 +61,7 @@ else
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Org Id</label>
-                        <InputText class="form-control" @bind-Value="Vm.OrganizationUnifiedId" readonly />
+                        <InputText class="form-control bg-light" @bind-Value="Vm.OrganizationUnifiedId" readonly />
                     </div>
                 </div>
             </div>
@@ -72,15 +72,7 @@ else
             <div class="card-header"><h6 class="mb-0">Geographic scope</h6></div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Enabled Continents</label>
-                        <select class="form-select" multiple size="8" @bind="SelectedContinentIds">
-                            @foreach (var c in AllContinents)
-                            {
-                                <option value="@c.Id.ToString()">@c.Name (@c.IsoCode)</option>
-                            }
-                        </select>
-                    </div>
+                    <!-- Regions -->
                     <div class="col-md-4">
                         <label class="form-label">Enabled Regions</label>
                         <select class="form-select" multiple size="8" @bind="SelectedRegionIds">
@@ -90,6 +82,17 @@ else
                             }
                         </select>
                     </div>
+                    <!-- Continents -->
+                    <div class="col-md-4">
+                        <label class="form-label">Enabled Continents</label>
+                        <select class="form-select" multiple size="8" @bind="SelectedContinentIds">
+                            @foreach (var c in AllContinents)
+                            {
+                                <option value="@c.Id.ToString()">@c.Name (@c.IsoCode)</option>
+                            }
+                        </select>
+                    </div>
+                    <!-- Countries -->
                     <div class="col-md-4">
                         <label class="form-label">Enabled Countries</label>
                         <select class="form-select" multiple size="8" @bind="SelectedCountryIds">
@@ -100,7 +103,7 @@ else
                         </select>
                         <div class="form-text">These are allowed even if a continent/region is not selected.</div>
                     </div>
-
+                    <!-- Disabled Countries -->
                     <div class="col-md-12">
                         <label class="form-label">Disabled Countries</label>
                         <select class="form-select" multiple size="8" @bind="SelectedDisabledCountryIds">
@@ -133,10 +136,12 @@ else
                         <InputText class="form-control" @bind-Value="Vm.MaxFlightSeating" />
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Non-stop only</label>
-                        <div class="form-check">
+                        <label class="form-label">Non-Stop only</label>
+                        <div class="form-check form-switch mt-2">
                             <InputCheckbox class="form-check-input" @bind-Value="Vm.NonStopFlight" />
-                            <label class="form-check-label">Require non-stop</label>
+                            <label class="form-check-label" title="@(Vm.NonStopFlight ? "Required" : "Optional")">
+                                <span aria-hidden="true">@(Vm.NonStopFlight ? " ✅" : " ❌")</span>
+                            </label>
                         </div>
                     </div>
 
@@ -267,54 +272,110 @@ else
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <div class="form-check">
+                        <label class="form-label">Auto-approve up to policy limit</label>
+                        <div class="form-check form-switch mt-2">
                             <InputCheckbox class="form-check-input" @bind-Value="Vm.AutoApproveToPolicyLimit" />
-                            <label class="form-check-label">Auto-approve to policy limit</label>
+                            <label class="form-check-label" title="@(Vm.AutoApproveToPolicyLimit ? "AutoApproveToPolicyLimitActive" : "AutoApproveToPolicyLimitInactive")">
+                                <span aria-hidden="true">@(Vm.AutoApproveToPolicyLimit ? " ✅" : " ❌")</span>
+                            </label>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="form-check">
+                        <label class="form-label">Require manager approval to limit</label>
+                        <div class="form-check form-switch mt-2">
                             <InputCheckbox class="form-check-input" @bind-Value="Vm.RequireManagerApprovalToPolicyLimit" />
-                            <label class="form-check-label">Require manager approval to limit</label>
+                            <label class="form-check-label" title="@(Vm.RequireManagerApprovalToPolicyLimit ? "ManagerApprovalActive" : "ManagerApprovalInactive")">
+                                <span aria-hidden="true">@(Vm.RequireManagerApprovalToPolicyLimit ? " ✅" : " ❌")</span>
+                            </label>
                         </div>
                     </div>
 
                     <div class="col-md-3">
-                        <div class="form-check">
-                            <InputCheckbox class="form-check-input" @bind-Value="Vm.L1ApprovalRequired" />
-                            <label class="form-check-label">L1 required</label>
-                        </div>
-                        <InputNumber class="form-control mt-1" @bind-Value="Vm.L1ApprovalAmount" placeholder="L1 amount" />
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="form-check">
-                            <InputCheckbox class="form-check-input" @bind-Value="Vm.L2ApprovalRequired" />
-                            <label class="form-check-label">L2 required</label>
-                        </div>
-                        <InputNumber class="form-control mt-1" @bind-Value="Vm.L2ApprovalAmount" placeholder="L2 amount" />
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="form-check">
-                            <InputCheckbox class="form-check-input" @bind-Value="Vm.L3ApprovalRequired" />
-                            <label class="form-check-label">L3 required</label>
-                        </div>
-                        <InputNumber class="form-control mt-1" @bind-Value="Vm.L3ApprovalAmount" placeholder="L3 amount" />
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="form-check">
+                        <label class="form-label">Billing Contact to Limit Approval</label>
+                        <div class="form-check form-switch mt-2">
                             <InputCheckbox class="form-check-input" @bind-Value="Vm.BillingContactApprovalToPolicyLimit" />
-                            <label class="form-check-label">Billing contact to limit</label>
+                            <label class="form-check-label" title="@(Vm.BillingContactApprovalToPolicyLimit ? "BillingContactToLimitApprovalActive" : "BillingContactToLimitApprovalInactive")">
+                                <span aria-hidden="true">@(Vm.BillingContactApprovalToPolicyLimit ? " ✅" : " ❌")</span>
+                            </label>
                         </div>
                     </div>
+
                     <div class="col-md-3">
-                        <div class="form-check">
+                        <label class="form-label">Billing Contact Above Limit Approval</label>
+                        <div class="form-check form-switch mt-2">
                             <InputCheckbox class="form-check-input" @bind-Value="Vm.BillingContactApprovalAbovePolicyLimit" />
-                            <label class="form-check-label">Billing contact above limit</label>
+                            <label class="form-check-label" title="@(Vm.BillingContactApprovalAbovePolicyLimit ? "BillingContactAboveLimitApprovalActive" : "BillingContactAboveLimitApprovalInactive")">
+                                <span aria-hidden="true">@(Vm.BillingContactApprovalAbovePolicyLimit ? " ✅" : " ❌")</span>
+                            </label>
                         </div>
                     </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">L1 required</label>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                            <!-- switch -->
+                            <div class="form-check form-switch m-0">
+                                <InputCheckbox class="form-check-input" @bind-Value="Vm.L1ApprovalRequired" />
+                            </div>
+                            <!-- green tick / red x -->
+                            <span class="ms-1" title="@(Vm.L1ApprovalRequired ? "L1Required" : "L1NotRequired")">
+                                @(Vm.L1ApprovalRequired ? "✅" : "❌")
+                            </span>
+                            <!-- amount -->
+                            <div class="input-group input-group-sm flex-grow-1">
+                                <span class="input-group-text">$</span>
+                                <InputNumber @bind-Value="Vm.L1ApprovalAmount"
+                                            class="form-control"
+                                            placeholder="L1 amount"
+                                            disabled="@(!Vm.L1ApprovalRequired)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">L2 required</label>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                            <!-- switch -->
+                            <div class="form-check form-switch m-0">
+                                <InputCheckbox class="form-check-input" @bind-Value="Vm.L2ApprovalRequired" />
+                            </div>
+                            <!-- green tick / red x -->
+                            <span class="ms-1" title="@(Vm.L2ApprovalRequired ? "L2Required" : "L2NotRequired")">
+                                @(Vm.L2ApprovalRequired ? "✅" : "❌")
+                            </span>
+                            <!-- amount -->
+                            <div class="input-group input-group-sm flex-grow-1">
+                                <span class="input-group-text">$</span>
+                                <InputNumber @bind-Value="Vm.L2ApprovalAmount"
+                                            class="form-control"
+                                            placeholder="L2 amount"
+                                            disabled="@(!Vm.L2ApprovalRequired)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">L3 required</label>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                            <!-- switch -->
+                            <div class="form-check form-switch m-0">
+                                <InputCheckbox class="form-check-input" @bind-Value="Vm.L3ApprovalRequired" />
+                            </div>
+                            <!-- green tick / red x -->
+                            <span class="ms-1" title="@(Vm.L3ApprovalRequired ? "L3Required" : "L3NotRequired")">
+                                @(Vm.L3ApprovalRequired ? "✅" : "❌")
+                            </span>
+                            <!-- amount -->
+                            <div class="input-group input-group-sm flex-grow-1">
+                                <span class="input-group-text">$</span>
+                                <InputNumber @bind-Value="Vm.L3ApprovalAmount"
+                                            class="form-control"
+                                            placeholder="L3 amount"
+                                            disabled="@(!Vm.L3ApprovalRequired)" />
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
