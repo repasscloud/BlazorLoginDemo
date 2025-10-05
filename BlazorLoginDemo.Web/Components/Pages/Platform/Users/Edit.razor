@@ -12,7 +12,7 @@
 @inject IAdminOrgServiceUnified OrgSvc
 @inject NavigationManager Nav
 
-@{ var U = _vm.User!; }
+@{ ApplicationUser? U = _vm.User!; }
 
 <PageTitle>Edit User</PageTitle>
 
@@ -853,10 +853,3 @@ private async Task SaveAsync()
         _vm.User.Organization = null;          // ✅ avoid nav confusion on attach
     }
 }
-
-@* diskutil list
-diskutil eraseDisk free none /dev/disk4
-diskutil unmountDisk /dev/disk4
-sudo dd if=/Users/danijeljw/Downloads/ubuntu-24.04.3-live-server-amd64.iso of=/dev/disk4 bs=1m status=progress
-sync
-diskutil eject /dev/disk4 *@
