@@ -207,6 +207,26 @@ git add .
 git commit -m "bump v${NEW_VER}"
 git push
 
+# ── 🌱 11) Seed the DB with additional data ──────────────────────────────────
+echo
+echo "🌱 11) Seed the DB with additional data"
+curl -X 'GET' \
+  'http://localhost:8090/api/v1/test/create-org-data' \
+  -H 'accept: */*'
+docker cp .scripts/sql/update_organizations_from_csv_v2.sql "$pgContainerName":/update_organizations_from_csv_v2.sql
+docker exec -i "$pgContainerName" \
+  psql "postgresql://$dbUser:$dbPass@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
+  -v ON_ERROR_STOP=1 -f /update_organizations_from_csv_v2.sql
+docker cp .scripts/sql/link_organizations_hierarchy.sql "$pgContainerName":/link_organizations_hierarchy.sql
+docker exec -i "$pgContainerName" \
+  psql "postgresql://$dbUser:$dbPass@127.0.0.1:$dbPort/$dbName?sslmode=disable" \
+  -v ON_ERROR_STOP=1 -f /link_organizations_hierarchy.sql
+curl -X 'GET' \
+  'http://localhost:8090/api/v1/test/create-user-data' \
+  -H 'accept: */*'
+
+
+
 # ── 🏁 Done ───────────────────────────────────────────────────────────────────
 echo
 echo "✅ Done."
