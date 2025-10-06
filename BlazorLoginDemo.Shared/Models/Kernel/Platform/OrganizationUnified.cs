@@ -88,6 +88,8 @@ public sealed class OrganizationUnified
     // ------------------------------
     // Policies
     // ------------------------------
+    public string? DefaultTravelPolicyId { get; set; }
+    public string? DefaultExpensePolicyId { get; set; }
     public ICollection<TravelPolicy> TravelPolicies { get; set; } = new List<TravelPolicy>();
     public ICollection<ExpensePolicy> ExpensePolicies { get; set; } = new List<ExpensePolicy>();
 
