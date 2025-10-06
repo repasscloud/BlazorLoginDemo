@@ -541,8 +541,6 @@ public class TravelPolicy
         var withinPolicy = !cap.HasValue || fareTotal <= cap.GetValueOrDefault();
         return withinPolicy && AutoApproveToPolicyLimit;
     }
-
-
 }
 
 // Who to notify for approval. Your calling code maps these to groups/emails.
