@@ -407,50 +407,50 @@
         </div>
     </div>
 
-  <!-- Policies -->
-  <div class="card mb-3">
-    <div class="card-header d-flex align-items-center justify-content-between">
-        <span>Policies</span>
-        <div class="btn-group">
-            <button type="button" class="btn btn-outline-primary" @onclick="GoBack">Travel Policies</button>
-            <button type="submit" class="btn btn-primary">Expense Policies</button>
+    <!-- Policies -->
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Policies</span>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-primary" @onclick="GoBack">Travel Policies</button>
+                <button type="submit" class="btn btn-primary">Expense Policies</button>
+            </div>
+        </div>
+        <div class="card-body row">
+            <div class="col-md-6">
+                <label class="form-label">Travel Policies</label>
+                <ul class="list-group">
+                    @if (_vm.Organization.TravelPolicies?.Any() == true)
+                    {
+                        @foreach (TravelPolicy p in _vm.Organization.TravelPolicies)
+                        {
+                            <li class="list-group-item">@p.PolicyName</li>
+                        }
+                    }
+                    else
+                    {
+                        <li class="list-group-item text-muted">None</li>
+                    }
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Expense Policies</label>
+                <ul class="list-group">
+                    @if (_vm.Organization.ExpensePolicies?.Any() == true)
+                    {
+                        @foreach (var p in _vm.Organization.ExpensePolicies)
+                        {
+                            <li class="list-group-item">@p</li>
+                        }
+                    }
+                    else
+                    {
+                        <li class="list-group-item text-muted">None</li>
+                    }
+                </ul>
+            </div>
         </div>
     </div>
-    <div class="card-body row">
-      <div class="col-md-6">
-        <label class="form-label">Travel Policies</label>
-        <ul class="list-group">
-            @if (_vm.Organization.TravelPolicies?.Any() == true)
-            {
-                @foreach (var p in _vm.Organization.TravelPolicies)
-                {
-                    <li class="list-group-item">@p</li>
-                }
-            }
-            else
-            {
-                <li class="list-group-item text-muted">None</li>
-            }
-        </ul>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Expense Policies</label>
-        <ul class="list-group">
-          @if (_vm.Organization.ExpensePolicies?.Any() == true)
-          {
-            @foreach (var p in _vm.Organization.ExpensePolicies)
-            {
-              <li class="list-group-item">@p</li>
-            }
-          }
-          else
-          {
-            <li class="list-group-item text-muted">None</li>
-          }
-        </ul>
-      </div>
-    </div>
-  </div>
 
     <!-- Licensing -->
     <div class="card mb-3">
