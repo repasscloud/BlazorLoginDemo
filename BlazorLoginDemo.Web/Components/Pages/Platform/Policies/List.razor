@@ -2,8 +2,10 @@
 
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
+@using BlazorLoginDemo.Shared.Services.Interfaces.Policy
 
 @inject IAdminOrgServiceUnified AdminOrgService
+@inject ITravelPolicyService TravelPolicyService
 @inject NavigationManager Nav
 
 <h3 class="mb-3">Travel Policies</h3>
@@ -42,12 +44,13 @@ else
                                 <th>Effective From</th>
                                 <th>Expires On</th>
                                 <th>Active</th>
+                                <th>Default</th>
                                 <th>Updated</th>
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                        @foreach (var p in _policies)
+                        @foreach (TravelPolicy p in _policies)
                         {
                             <tr>
                                 <td class="fw-medium">@p.PolicyName</td>
@@ -61,6 +64,16 @@ else
                                     else
                                     {
                                         <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (_org?.Org.DefaultTravelPolicyId == p.Id)
+                                    {
+                                        <span class="badge bg-primary">Default</span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetAsDefaultPolicyAsync(p.Id, OrganizationId))">Set As Default</button>
                                     }
                                 </td>
                                 <td>@((p.LastUpdatedUtc).ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
@@ -97,4 +110,17 @@ else
     }
 
     void GoBack() => Nav.NavigateTo("/platform/organizations");
+
+    private async Task SetAsDefaultPolicyAsync(string policyId, string orgId)
+    {
+        if (_org is null || _org.Org.Id != orgId)
+            return;
+
+        bool result = await TravelPolicyService.SetAsDefaultPolicyAsync(orgId, policyId);
+        if (result)
+        {
+            _org.Org.DefaultTravelPolicyId = policyId;
+            StateHasChanged();
+        }
+   }
 }
