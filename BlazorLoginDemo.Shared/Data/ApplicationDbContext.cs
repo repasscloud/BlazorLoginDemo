@@ -127,9 +127,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             // Use a shadow FK named "ApplicationUserId" to avoid touching the token class now
             e.Property<string>("ApplicationUserId");
             e.HasOne<ApplicationUser>()
-             .WithMany(u => u.RefreshTokens)
-             .HasForeignKey("ApplicationUserId")
-             .OnDelete(DeleteBehavior.Cascade);
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey("ApplicationUserId")
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<AmadeusOAuthToken>(t =>
@@ -451,14 +451,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             e.Property<string>("ApplicationUserId");
             e.HasOne<ApplicationUser>()
-             .WithMany(u => u.LoyaltyAccounts)
-             .HasForeignKey("ApplicationUserId")
-             .OnDelete(DeleteBehavior.Cascade);
+                .WithMany(u => u.LoyaltyAccounts)
+                .HasForeignKey("ApplicationUserId")
+                .OnDelete(DeleteBehavior.Cascade);
 
             e.HasOne(x => x.Program)
-             .WithMany()
-             .HasForeignKey(x => x.LoyaltyProgramId)
-             .OnDelete(DeleteBehavior.Restrict);
+                .WithMany()
+                .HasForeignKey(x => x.LoyaltyProgramId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             e.HasIndex("ApplicationUserId", nameof(AvaUserLoyaltyAccount.LoyaltyProgramId)).IsUnique();
             e.Property(x => x.MembershipNumber).HasMaxLength(64).IsRequired();
