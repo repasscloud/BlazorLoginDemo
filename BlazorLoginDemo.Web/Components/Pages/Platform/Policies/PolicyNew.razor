@@ -520,7 +520,6 @@ else
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -587,7 +586,10 @@ else
     private string MaxFuel { get => _maxFuel; set { _maxFuel = value; UpdateDefault(); } }
 
     void UpdateDefault()
-        => Vm.DefaultCarClass = AcrissType.AcrissCodec.Encode(DefCat, DefBody, DefTrans, DefFuel);
+    {
+        Vm.DefaultCarClass = AcrissType.AcrissCodec.Encode(DefCat, DefBody, DefTrans, DefFuel);
+        Vm.MaxCarClass     = AcrissType.AcrissCodec.Encode(MaxCat, MaxBody, MaxTrans, MaxFuel);
+    }
 
     protected override async Task OnInitializedAsync()
     {
