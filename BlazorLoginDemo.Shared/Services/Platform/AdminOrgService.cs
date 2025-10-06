@@ -109,6 +109,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             .AsSplitQuery()  // avoids cartesian explosion with Includes
             .Include(o => o.Domains)
             .Include(o => o.LicenseAgreement)
+            .Include(o => o.TravelPolicies)   // load the travel policies #36
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
         await _logger.LogInfoAsync("Retrieved organization by ID: " + id);
