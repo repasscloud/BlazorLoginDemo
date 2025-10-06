@@ -3,70 +3,16 @@
 
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Low')]
 param(
-    [switch]$ShowJson   = $false,   # remove Mandatory
-    [string]$CsvPath    = $(Join-Path -Path $PSScriptRoot -ChildPath "data/airports.csv"),
-    [string]$ApiUrl     = "http://localhost:8090/api/v1/kerneldata/airport-info",
-    [string]$BulkApiUrl = "http://localhost:8090/api/v1/kerneldata/airport-info/bulk-upsert",
-    [string]$ApiKey     = "abc123",
-    [int]$Batch         = 0
+    [Parameter(Mandatory=$true)]
+    [string]$CsvPath     = $(Join-Path -Path $PSScriptRoot -ChildPath "data/airports.csv"),
+
+    [string]$ApiUrl      = "http://localhost:8090/api/v1/kerneldata/airport-info",
+    [string]$BulkApiUrl  = "http://localhost:8090/api/v1/kerneldata/airport-info/bulk-upsert",
+    [string]$ApiKey      = "abc123",
+
+    # If > 0, process in batches of this size using BulkApiUrl; else do one-by-one posts.
+    [int]$Batch = 0
 )
-
-
-# === Dry-run plumbing: if -ShowJson is set, intercept the first Invoke-RestMethod call ===
-if ($ShowJson) {
-    $script:__DryRun = $true
-    $script:__DryRunFired = $false
-
-    function Invoke-RestMethod {
-        [CmdletBinding()]
-        param(
-            [Parameter(Mandatory = $true)]
-            [string]$Uri,
-
-            [ValidateSet('GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','TRACE')]
-            [string]$Method = 'GET',
-
-            [object]$Body,
-            [hashtable]$Headers,
-            [string]$ContentType,
-
-            # Capture any other pass-through parameters without interfering
-            [Parameter(ValueFromRemainingArguments = $true)]
-            $Remaining
-        )
-
-        if ($script:__DryRun -and -not $script:__DryRunFired) {
-            Write-Host "=== DRY RUN: No request will be sent ==="
-            Write-Host ("Method : {0}" -f $Method)
-            Write-Host ("URL    : {0}" -f $Uri)
-            Write-Host "Headers:"
-            if ($null -ne $Headers) {
-                $Headers | ConvertTo-Json -Depth 10 | Write-Output
-            } else {
-                Write-Output "{}"
-            }
-            Write-Host "Body:"
-            if ($PSBoundParameters.ContainsKey('Body')) {
-                if ($Body -is [string]) {
-                    # Already a JSON string. Show as-is.
-                    Write-Output $Body
-                } else {
-                    # Likely an object. Show JSON rendering.
-                    $Body | ConvertTo-Json -Depth 20 | Write-Output
-                }
-            } else {
-                Write-Output "(no body)"
-            }
-            Write-Host "=== End preview. Exiting due to -ShowJson ==="
-            $script:__DryRunFired = $true
-            exit 0
-        }
-
-        # If somehow still called in non-dry mode, pass through to the builtin.
-        Microsoft.PowerShell.Utility\Invoke-RestMethod @PSBoundParameters
-    }
-}
-# === End dry-run plumbing ===
 
 Set-StrictMode -Version Latest
 
@@ -163,34 +109,6 @@ if (-not $rows -or $rows.Count -eq 0) {
     return
 }
 
-
-# === DRY RUN: deterministic and side-effect free ===
-if ($ShowJson) {
-    $method = 'POST'
-    if ($Batch -gt 0) {
-        $targetUrl = $BulkApiUrl
-        # Build the first batch payload exactly as normal code would
-        $take = [Math]::Min($Batch, [int]$rows.Count)
-        $batchRows = $rows | Select-Object -First $take
-        $batchPayload = foreach ($row in $batchRows) { New-AirportPayload -Row $row }
-        $body = $batchPayload | ConvertTo-Json -Depth 20 -Compress
-    } else {
-        $targetUrl = $ApiUrl
-        $payload = New-AirportPayload -Row $rows[0]
-        $body = $payload | ConvertTo-Json -Depth 20 -Compress
-    }
-
-    Write-Host "=== DRY RUN: No request will be sent ==="
-    Write-Host ("Method : {0}" -f $method)
-    Write-Host ("URL    : {0}" -f $targetUrl)
-    Write-Host "Headers:"
-    $headers | ConvertTo-Json -Depth 10 | Write-Output
-    Write-Host "Body:"
-    Write-Output $body
-    Write-Host "=== End preview. Exiting due to -ShowJson ==="
-    exit 0
-}
-# === END DRY RUN ===
 $sent   = 0
 $failed = 0
 
