@@ -333,7 +333,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasDefaultValueSql("timezone('utc', now())");
         });
 
-
         // Disabled countries (your composite PK is fine)
         builder.Entity<TravelPolicyDisabledCountry>(e =>
         {
@@ -350,7 +349,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(x => x.CountryId)
             .OnDelete(DeleteBehavior.Restrict);
         });
-
 
         // Disabled country junction
         builder.Entity<TravelPolicyDisabledCountry>(e =>
