@@ -126,7 +126,7 @@
 
         try
         {
-            var req = new BlazorLoginDemo.Shared.Services.Interfaces.Platform.IAdminOrgServiceUnified.CreateOrgRequest(
+            IAdminOrgServiceUnified.CreateOrgRequest? req = new BlazorLoginDemo.Shared.Services.Interfaces.Platform.IAdminOrgServiceUnified.CreateOrgRequest(
                 Name: _vm.Name.Trim(),
                 Type: _vm.Type, // enum value
                 ParentOrganizationId: string.IsNullOrWhiteSpace(_vm.ParentOrganizationId) ? null : _vm.ParentOrganizationId.Trim(),
@@ -134,7 +134,7 @@
                 Domains: _vm.Domains.Select(d => d.Trim().ToLowerInvariant()).Where(d => !string.IsNullOrWhiteSpace(d)).Distinct().ToList()
             );
 
-            var aggregate = await AdminOrgService.CreateAsync(req);
+            IAdminOrgServiceUnified.OrgAggregate? aggregate = await AdminOrgService.CreateAsync(req);
             Nav.NavigateTo($"/platform/organizations/{aggregate.Org.Id}");
         }
         catch (Exception ex)

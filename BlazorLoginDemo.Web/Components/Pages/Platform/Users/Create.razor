@@ -163,7 +163,7 @@
 
 @code {
     // State
-    private CreateUserVm vm = new();
+    private CreateUserVm vm = new CreateUserVm();
     private string? error;
     private string? successId;
     private bool isSubmitting;
@@ -225,7 +225,7 @@
 
         try
         {
-            var req = new IAdminUserServiceUnified.CreateUserRequest(
+            IAdminUserServiceUnified.CreateUserRequest req = new IAdminUserServiceUnified.CreateUserRequest(
                 Email: vm.Email!,
                 Password: vm.Password!,
                 FirstName: vm.FirstName,
