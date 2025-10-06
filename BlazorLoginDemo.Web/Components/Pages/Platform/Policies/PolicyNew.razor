@@ -247,61 +247,118 @@ else
             <div class="card-body">
                 <!-- Default Car -->
                 <div class="row g-3">
-  <!-- 10-wide: four selects 3/3/3/3 -->
-  <div class="col-md-10">
-    <div class="row g-3">
-      <div class="col-md-3">
-        <label class="form-label">Default Category</label>
-        <InputSelect id="defaultCarCategoryChoice" class="form-select" @bind-Value="DefCat">
-          @foreach (var opt in AcrissType.CategoryOptions)
-          {
-            <option value="@opt.code.ToString()">@opt.label</option>
-          }
-        </InputSelect>
-      </div>
+                    <!-- 10-wide: four selects 3/3/3/3 -->
+                    <div class="col-md-10">
+                        <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Default Category</label>
+                            <InputSelect id="defaultCarCategoryChoice" class="form-select" @bind-Value="DefCat">
+                                @foreach (var opt in AcrissType.CategoryOptions)
+                                {
+                                    <option value="@opt.code.ToString()">@opt.label</option>
+                                }
+                            </InputSelect>
+                        </div>
 
-      <div class="col-md-3">
-        <label class="form-label">Default Body</label>
-        <InputSelect id="defaultCarBodyChoice" class="form-select" @bind-Value="DefBody">
-          @foreach (var opt in AcrissType.BodyOptions)
-          {
-            <option value="@opt.code.ToString()">@opt.label</option>
-          }
-        </InputSelect>
-      </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Default Body</label>
+                            <InputSelect id="defaultCarBodyChoice" class="form-select" @bind-Value="DefBody">
+                                @foreach (var opt in AcrissType.BodyOptions)
+                                {
+                                    <option value="@opt.code.ToString()">@opt.label</option>
+                                }
+                            </InputSelect>
+                        </div>
 
-      <div class="col-md-3">
-        <label class="form-label">Default Transmission</label>
-        <InputSelect id="defaultCarTransmissionChoice" class="form-select" @bind-Value="DefTrans">
-          @foreach (var opt in AcrissType.TransmissionOptions)
-          {
-            <option value="@opt.code.ToString()">@opt.label</option>
-          }
-        </InputSelect>
-      </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Default Transmission</label>
+                            <InputSelect id="defaultCarTransmissionChoice" class="form-select" @bind-Value="DefTrans">
+                                @foreach (var opt in AcrissType.TransmissionOptions)
+                                {
+                                    <option value="@opt.code.ToString()">@opt.label</option>
+                                }
+                            </InputSelect>
+                        </div>
 
-      <div class="col-md-3">
-        <label class="form-label">Default Fuel</label>
-        <InputSelect id="defaultCarFuelChoice" class="form-select" @bind-Value="DefFuel">
-          @foreach (var opt in AcrissType.FuelOptions)
-          {
-            <option value="@opt.code.ToString()">@opt.label</option>
-          }
-        </InputSelect>
-      </div>
-    </div>
-  </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Default Fuel</label>
+                            <InputSelect id="defaultCarFuelChoice" class="form-select" @bind-Value="DefFuel">
+                                @foreach (var opt in AcrissType.FuelOptions)
+                                {
+                                    <option value="@opt.code.ToString()">@opt.label</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        </div>
+                    </div>
 
-  <!-- 2-wide: full-width textbox -->
-  <div class="col-md-2">
-    <div class="row g-3">
-      <div class="col-12">
-        <label class="form-label">Default Car Class</label>
-        <InputText class="form-control bg-light" @bind-Value="Vm.DefaultCarClass" readonly />
-      </div>
-    </div>
-  </div>
-</div>
+                    <!-- 2-wide: full-width textbox -->
+                    <div class="col-md-2">
+                        <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Default Car Class</label>
+                            <InputText class="form-control bg-light" @bind-Value="Vm.DefaultCarClass" readonly />
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Max Car -->
+                <div class="row g-3">
+                    <!-- 10-wide: four selects 3/3/3/3 -->
+                    <div class="col-md-10">
+                        <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Max Category</label>
+                            <InputSelect id="maxCarCategoryChoice" class="form-select" @bind-Value="MaxCat">
+                                @foreach (var opt in AcrissType.CategoryOptions)
+                                {
+                                    <option value="@opt.code.ToString()">@opt.label</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Body</label>
+                            <InputSelect id="maxCarBodyChoice" class="form-select" @bind-Value="MaxBody">
+                                @foreach (var opt in AcrissType.BodyOptions)
+                                {
+                                    <option value="@opt.code.ToString()">@opt.label</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Transmission</label>
+                            <InputSelect id="maxCarTransmissionChoice" class="form-select" @bind-Value="MaxTrans">
+                                @foreach (var opt in AcrissType.TransmissionOptions)
+                                {
+                                    <option value="@opt.code.ToString()">@opt.label</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Fuel</label>
+                            <InputSelect id="maxCarFuelChoice" class="form-select" @bind-Value="MaxFuel">
+                                @foreach (var opt in AcrissType.FuelOptions)
+                                {
+                                    <option value="@opt.code.ToString()">@opt.label</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        </div>
+                    </div>
+
+                    <!-- 2-wide: full-width textbox -->
+                    <div class="col-md-2">
+                        <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Max Car Class</label>
+                            <InputText class="form-control bg-light" @bind-Value="Vm.MaxCarClass" readonly />
+                        </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Max Car -->
                 @* <div class="row g-3">
@@ -514,12 +571,20 @@ else
     private string _defBody = default!;
     private string _defTrans = default!;
     private string _defFuel = default!;
+    private string _maxCat = default!;
+    private string _maxBody = default!;
+    private string _maxTrans = default!;
+    private string _maxFuel = default!;
 
     // setters recompute Vm.DefaultCarClass so it updates live
     private string DefCat  { get => _defCat;  set { _defCat  = value; UpdateDefault(); } }
     private string DefBody { get => _defBody; set { _defBody = value; UpdateDefault(); } }
     private string DefTrans{ get => _defTrans;set { _defTrans= value; UpdateDefault(); } }
     private string DefFuel { get => _defFuel; set { _defFuel = value; UpdateDefault(); } }
+    private string MaxCat  { get => _maxCat;  set { _maxCat  = value; UpdateDefault(); } }
+    private string MaxBody { get => _maxBody; set { _maxBody = value; UpdateDefault(); } }
+    private string MaxTrans{ get => _maxTrans;set { _maxTrans= value; UpdateDefault(); } }
+    private string MaxFuel { get => _maxFuel; set { _maxFuel = value; UpdateDefault(); } }
 
     void UpdateDefault()
         => Vm.DefaultCarClass = AcrissType.AcrissCodec.Encode(DefCat, DefBody, DefTrans, DefFuel);
@@ -573,7 +638,9 @@ else
 
             // seed dropdowns from existing value (or fallbacks)
             var (c,b,t,f) = AcrissType.AcrissCodec.Decode(Vm.DefaultCarClass, fb);
+            var (c2,b2,t2,f2) = AcrissType.AcrissCodec.Decode(Vm.MaxCarClass, fb);
             _defCat  = c; _defBody = b; _defTrans = t; _defFuel = f;
+            _maxCat  = c2; _maxBody = b2; _maxTrans = t2; _maxFuel = f2;
 
             // ensure text box shows a valid 4-letter code at load
             UpdateDefault();
