@@ -52,12 +52,12 @@ public static class AcrissType
 
     public static readonly (char code, string label)[] TransmissionOptions =
     [
-        ('M', "Manual"),
         ('A', "Automatic"),
-        ('N', "Manual 4WD"),
-        ('C', "Manual AWD"),
         ('B', "Automatic 4WD"),
-        ('D', "Automatic AWD")
+        ('D', "Automatic AWD"),
+        ('M', "Manual"),
+        ('N', "Manual 4WD"),
+        ('C', "Manual AWD")        
     ];
 
     public static readonly (char code, string label)[] FuelOptions =
