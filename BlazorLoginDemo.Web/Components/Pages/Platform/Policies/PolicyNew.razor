@@ -1,4 +1,4 @@
-@page "/admin/travelpolicy/new/{OrgId}"
+@page "/platform/travelpolicy/new/{OrgId}"
 @rendermode InteractiveServer
 
 @using System.ComponentModel.DataAnnotations
@@ -568,6 +568,31 @@ else
     private TravelPolicyVm Vm = new();
     private EditContext? EditCtx;
 
+    // Utc DateTime tz conversion
+    public DateTime? EffectiveFromUtc { get; set; }
+    public DateTime? ExpiresOnUtc { get; set; }
+
+    // Bind UI to these. They convert to midnight UTC.
+    public DateOnly? EffectiveFromDate
+    {
+        get => EffectiveFromUtc.HasValue
+            ? DateOnly.FromDateTime(EffectiveFromUtc.Value)
+            : (DateOnly?)null;
+        set => EffectiveFromUtc = value.HasValue
+            ? DateTime.SpecifyKind(value.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc)
+            : null;
+    }
+
+    public DateOnly? ExpiresOnDate
+    {
+        get => ExpiresOnUtc.HasValue
+            ? DateOnly.FromDateTime(ExpiresOnUtc.Value)
+            : (DateOnly?)null;
+        set => ExpiresOnUtc = value.HasValue
+            ? DateTime.SpecifyKind(value.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc)
+            : null;
+    }
+
     // Catalog data
     private List<Continent> AllContinents = new();
     private List<Region>    AllRegions    = new();
@@ -692,13 +717,13 @@ else
             Model.Countries  = AllCountries.Where(c => countryIds.Contains(c.Id)).ToList();
 
             // Persist core policy
-            Model = await PolicySvc.UpdateAsync(Model);
+            Model = await PolicySvc.CreateAsync(Model);
 
             // Persist disabled countries atomically
             await DisabledSvc.SetDisabledCountriesAsync(Model.Id, disabledIds);
 
             // Navigate as needed
-            // Nav.NavigateTo($"/admin/travelpolicy/edit/{Model.Id}");
+            Nav.NavigateTo(uri: $"/platform/travelpolicy/edit/{Model.Id}");
         }
         catch (Exception ex)
         {
@@ -707,7 +732,7 @@ else
         }
     }
 
-    private void Cancel() => Nav.NavigateTo($"/admin/organizations/view/{OrgId}");
+    private void Cancel() => Nav.NavigateTo(uri: $"/platform/organizations/view/{OrgId}");
 
     // ---------------- VM ----------------
     private sealed class TravelPolicyVm
