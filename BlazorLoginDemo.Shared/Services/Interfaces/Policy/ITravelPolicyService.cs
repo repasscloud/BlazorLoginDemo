@@ -23,6 +23,7 @@ public interface ITravelPolicyService
 
     // UTIL
     Task<bool> ExistsAsync(string id, CancellationToken ct = default);
+    Task<bool> SetAsDefaultPolicyAsync(string policyId, string organizationId, bool isNew = false, CancellationToken ct = default);
 
 
     // RESOLUTION: flatten Regions/Continents/Countries minus DisabledCountries -> Countries

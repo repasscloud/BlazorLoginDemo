@@ -153,6 +153,45 @@ public sealed class TravelPolicyService : ITravelPolicyService
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.TravelPolicies.AsNoTracking().AnyAsync(x => x.Id == id, ct);
 
+    public async Task<bool> SetAsDefaultPolicyAsync(string policyId, string organizationId, bool isNew = false, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(policyId))
+            throw new ArgumentException("policyId must be provided.", nameof(policyId));
+        if (string.IsNullOrWhiteSpace(organizationId))
+            throw new ArgumentException("organizationId must be provided.", nameof(organizationId));
+
+        var org = await _db.Organizations.FindAsync([organizationId], ct)
+                ?? throw new InvalidOperationException($"Organization '{organizationId}' not found.");
+
+        var current = org.DefaultTravelPolicyId;
+
+        // If current is empty:
+        if (string.IsNullOrWhiteSpace(current))
+        {
+            if (isNew)
+            {
+                org.DefaultTravelPolicyId = policyId;
+                await _db.SaveChangesAsync(ct);
+                return true; // set on first policy creation
+            }
+            return false; // not new, nothing set yet -> do not set
+        }
+
+        // If already set to this policy:
+        if (string.Equals(current, policyId, StringComparison.Ordinal))
+            return true;
+
+        // If a different default exists:
+        if (isNew)
+            return false; // new policy cannot override an existing default
+
+        // Not new + a default exists -> override
+        org.DefaultTravelPolicyId = policyId;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
+
     // -----------------------------
     // RESOLUTION (countries only for UI)
     // -----------------------------
