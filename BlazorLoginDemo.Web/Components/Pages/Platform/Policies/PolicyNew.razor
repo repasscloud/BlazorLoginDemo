@@ -6,6 +6,7 @@
 @using BlazorLoginDemo.Shared.Data
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Models.Policies
+@using BlazorLoginDemo.Shared.Models.Static
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Services.Interfaces.Policy
 @using BlazorLoginDemo.Shared.Services.Interfaces.Policies
@@ -129,11 +130,21 @@ else
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Default Seating</label>
-                        <InputText class="form-control" @bind-Value="Vm.DefaultFlightSeating" />
+                        <InputSelect id="defaultFlightSeatingChoice" class="form-select" @bind-Value="Vm.DefaultFlightSeating">
+                            @foreach ((string code, string label) c in FareType.BookingClassOptions)
+                            {
+                                <option value="@c.code">@c.label</option>
+                            }
+                        </InputSelect>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Max Seating</label>
-                        <InputText class="form-control" @bind-Value="Vm.MaxFlightSeating" />
+                        <InputSelect id="maxFlightSeatingChoice" class="form-select" @bind-Value="Vm.MaxFlightSeating">
+                            @foreach ((string code, string label) c in FareType.BookingClassOptions)
+                            {
+                                <option value="@c.code">@c.label</option>
+                            }
+                        </InputSelect>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Non-Stop only</label>
@@ -200,13 +211,23 @@ else
                         <label class="form-label">Max Nightly Rate</label>
                         <InputNumber class="form-control" @bind-Value="Vm.MaxHotelNightlyRate" />
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Default Room Type</label>
-                        <InputText class="form-control" @bind-Value="Vm.DefaultHotelRoomType" />
+                        <InputSelect id="defaultRoomChoice" class="form-select" @bind-Value="Vm.DefaultHotelRoomType">
+                            @foreach ((string code, string label) c in HotelRoomType.HotelRoomOptions)
+                            {
+                                <option value="@c.code">@c.label</option>
+                            }
+                        </InputSelect>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Max Room Type</label>
-                        <InputText class="form-control" @bind-Value="Vm.MaxHotelRoomType" />
+                        <InputSelect id="maxRoomChoice" class="form-select" @bind-Value="Vm.MaxHotelRoomType">
+                            @foreach ((string code, string label) c in HotelRoomType.HotelRoomOptions)
+                            {
+                                <option value="@c.code">@c.label</option>
+                            }
+                        </InputSelect>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Included Hotel Chains (CSV)</label>
@@ -224,12 +245,68 @@ else
         <div class="card shadow-sm mb-3">
             <div class="card-header"><h6 class="mb-0">Hire Car</h6></div>
             <div class="card-body">
+                <!-- Default Car -->
                 <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label">Default Category</label>
+                        <InputSelect id="defaultCarCategoryChoice" class="form-select" @bind-Value="DefCat">
+                            @foreach (var opt in AcrissType.CategoryOptions)
+                            {
+                                <option value="@opt.code.ToString()">@opt.label</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Default Body</label>
+                        <InputSelect id="defaultCarBodyChoice" class="form-select" @bind-Value="DefBody">
+                            @foreach (var opt in AcrissType.BodyOptions)
+                            {
+                                <option value="@opt.code.ToString()">@opt.label</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Default Transmission</label>
+                        <InputSelect id="defaultCarTransmissionChoice" class="form-select" @bind-Value="DefTrans">
+                            @foreach (var opt in AcrissType.TransmissionOptions)  @* note: TransmissionOptions *@
+                            {
+                                <option value="@opt.code.ToString()">@opt.label</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Default Fuel</label>
+                        <InputSelect id="defaultCarFuelChoice" class="form-select" @bind-Value="DefFuel">
+                            @foreach (var opt in AcrissType.FuelOptions)
+                            {
+                                <option value="@opt.code.ToString()">@opt.label</option>
+                            }
+                        </InputSelect>
+                    </div>
+
                     <div class="col-md-4">
+                        <label class="form-label">Default Car Class</label>
+                        <InputText class="form-control" @bind-Value="Vm.DefaultCarClass" readonly />
+                    </div>
+                </div>
+                <!-- Max Car -->
+                @* <div class="row g-3">
+                    <div class="col-md-2">
                         <label class="form-label">Default Car Class</label>
                         <InputText class="form-control" @bind-Value="Vm.DefaultCarClass" />
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
+                        <label class="form-label">Max Car Class</label>
+                        <InputText class="form-control" @bind-Value="Vm.MaxCarClass" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Default Car Class</label>
+                        <InputText class="form-control" @bind-Value="Vm.DefaultCarClass" />
+                    </div>
+                    <div class="col-md-2">
                         <label class="form-label">Max Car Class</label>
                         <InputText class="form-control" @bind-Value="Vm.MaxCarClass" />
                     </div>
@@ -237,7 +314,7 @@ else
                         <label class="form-label">Max Daily Rate</label>
                         <InputNumber class="form-control" @bind-Value="Vm.MaxCarDailyRate" />
                     </div>
-                </div>
+                </div> *@
             </div>
         </div>
 
@@ -420,6 +497,22 @@ else
     private string[] SelectedCountryIds   = Array.Empty<string>();
     private string[] SelectedDisabledCountryIds = Array.Empty<string>();
 
+    // car hire
+    // one-char strings bound to the four selects
+    private string _defCat = default!;
+    private string _defBody = default!;
+    private string _defTrans = default!;
+    private string _defFuel = default!;
+
+    // setters recompute Vm.DefaultCarClass so it updates live
+    private string DefCat  { get => _defCat;  set { _defCat  = value; UpdateDefault(); } }
+    private string DefBody { get => _defBody; set { _defBody = value; UpdateDefault(); } }
+    private string DefTrans{ get => _defTrans;set { _defTrans= value; UpdateDefault(); } }
+    private string DefFuel { get => _defFuel; set { _defFuel = value; UpdateDefault(); } }
+
+    void UpdateDefault()
+        => Vm.DefaultCarClass = AcrissType.AcrissCodec.Encode(DefCat, DefBody, DefTrans, DefFuel);
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -457,6 +550,22 @@ else
             // Disabled countries via service
             SelectedDisabledCountryIds = (await DisabledSvc.GetDisabledCountryIdsAsync(Model.Id))
                 .Select(id => id.ToString()).ToArray();
+
+            // hire car
+            // fallbacks = first option from each list
+            var fb = (
+                AcrissType.CategoryOptions[0].code,
+                AcrissType.BodyOptions[0].code,
+                AcrissType.TransmissionOptions[0].code,
+                AcrissType.FuelOptions[0].code
+            );
+
+            // seed dropdowns from existing value (or fallbacks)
+            var (c,b,t,f) = AcrissType.AcrissCodec.Decode(Vm.DefaultCarClass, fb);
+            _defCat  = c; _defBody = b; _defTrans = t; _defFuel = f;
+
+            // ensure text box shows a valid 4-letter code at load
+            UpdateDefault();
 
             EditCtx = new EditContext(Vm);
             Loaded = true;
