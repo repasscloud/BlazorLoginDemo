@@ -190,15 +190,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             // Owning org (1:1 per org)
             e.HasOne(x => x.Organization)
-             .WithOne(o => o.LicenseAgreement)
-             .HasForeignKey<OrganizationUnified>(o => o.LicenseAgreementId)
-             .OnDelete(DeleteBehavior.SetNull);
+                .WithOne(o => o.LicenseAgreement)
+                .HasForeignKey<OrganizationUnified>(o => o.LicenseAgreementId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // Issuer org (many agreements can be issued by one org)
             e.HasOne(x => x.CreatedByOrganization)
-             .WithMany()
-             .HasForeignKey(x => x.CreatedByOrganizationUnifiedId)
-             .OnDelete(DeleteBehavior.Restrict);
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByOrganizationUnifiedId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Owned: DiscountA
             e.OwnsOne(x => x.DiscountA, d =>
@@ -239,9 +239,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.DefaultCurrency).HasMaxLength(3);
 
             e.HasOne(x => x.Organization)
-             .WithMany(o => o.ExpensePolicies)
-             .HasForeignKey(x => x.OrganizationUnifiedId)
-             .OnDelete(DeleteBehavior.Cascade);
+                .WithMany(o => o.ExpensePolicies)
+                .HasForeignKey(x => x.OrganizationUnifiedId)
+                .OnDelete(DeleteBehavior.Cascade);
         }); // :contentReference[oaicite:14]{index=14}
 
         // ===========================
@@ -340,14 +340,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasKey(x => new { x.TravelPolicyId, x.CountryId });
 
             e.HasOne(x => x.TravelPolicy)
-            .WithMany(tp => tp.DisabledCountries)
-            .HasForeignKey(x => x.TravelPolicyId)
-            .OnDelete(DeleteBehavior.Cascade);
+                .WithMany(tp => tp.DisabledCountries)
+                .HasForeignKey(x => x.TravelPolicyId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             e.HasOne(x => x.Country)
-            .WithMany()
-            .HasForeignKey(x => x.CountryId)
-            .OnDelete(DeleteBehavior.Restrict);
+                .WithMany()
+                .HasForeignKey(x => x.CountryId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Disabled country junction
