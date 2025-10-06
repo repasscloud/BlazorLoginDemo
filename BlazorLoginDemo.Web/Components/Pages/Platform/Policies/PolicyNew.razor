@@ -247,7 +247,7 @@ else
             <div class="card-body">
                 <!-- Default Car -->
                 <div class="row g-3">
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Default Category</label>
                         <InputSelect id="defaultCarCategoryChoice" class="form-select" @bind-Value="DefCat">
                             @foreach (var opt in AcrissType.CategoryOptions)
@@ -257,7 +257,7 @@ else
                         </InputSelect>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Default Body</label>
                         <InputSelect id="defaultCarBodyChoice" class="form-select" @bind-Value="DefBody">
                             @foreach (var opt in AcrissType.BodyOptions)
@@ -267,7 +267,7 @@ else
                         </InputSelect>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Default Transmission</label>
                         <InputSelect id="defaultCarTransmissionChoice" class="form-select" @bind-Value="DefTrans">
                             @foreach (var opt in AcrissType.TransmissionOptions)  @* note: TransmissionOptions *@
@@ -277,7 +277,7 @@ else
                         </InputSelect>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Default Fuel</label>
                         <InputSelect id="defaultCarFuelChoice" class="form-select" @bind-Value="DefFuel">
                             @foreach (var opt in AcrissType.FuelOptions)
@@ -287,7 +287,7 @@ else
                         </InputSelect>
                     </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Default Car Class</label>
                         <InputText class="form-control" @bind-Value="Vm.DefaultCarClass" readonly />
                     </div>
