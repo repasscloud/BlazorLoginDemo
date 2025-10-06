@@ -2,7 +2,6 @@ namespace BlazorLoginDemo.Shared.Models.Static;
 
 public static class FareType
 {
-
     public static readonly (string code, string label)[] BookingClassOptions =
     [
         ("ECONOMY", "Economy"),
