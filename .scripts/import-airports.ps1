@@ -5,8 +5,8 @@
 param(
     [switch]$ShowJson   = $false,   # remove Mandatory
     [string]$CsvPath    = $(Join-Path -Path $PSScriptRoot -ChildPath "data/airports.csv"),
-    [string]$ApiUrl     = "http://localhost:8090/api/v1/kerneldata/airport-info",
-    [string]$BulkApiUrl = "http://localhost:8090/api/v1/kerneldata/airport-info/bulk-upsert",
+    [string]$ApiUrl     = "http://localhost:8090/api/v1/admin/kerneldata/airport-info",
+    [string]$BulkApiUrl = "http://localhost:8090/api/v1/admin/kerneldata/airport-info/bulk-upsert",
     [string]$ApiKey     = "abc123",
     [int]$Batch         = 0
 )
