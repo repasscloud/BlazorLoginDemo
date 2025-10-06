@@ -164,27 +164,28 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
         await _db.SaveChangesAsync(ct);
         var loaded = await _db.Users.Include(u => u.Organization).FirstAsync(u => u.Id == user.Id, ct);
         return new IAdminUserServiceUnified.UserAggregate(loaded.Id, loaded, loaded.Organization);
-    }public async Task<(bool Ok, string? Error)> SetPasswordAsync(string email, string newPassword)
-{
-    var user = await _userManager.FindByEmailAsync(email);
-    if (user == null)
-        return (false, $"User with email {email} not found.");
-
-    // Remove old password if exists
-    if (await _userManager.HasPasswordAsync(user))
-    {
-        var remove = await _userManager.RemovePasswordAsync(user);
-        if (!remove.Succeeded)
-            return (false, string.Join("; ", remove.Errors.Select(e => e.Description)));
     }
 
-    var add = await _userManager.AddPasswordAsync(user, newPassword);
-    if (!add.Succeeded)
-        return (false, string.Join("; ", add.Errors.Select(e => e.Description)));
+    public async Task<(bool Ok, string? Error)> SetPasswordAsync(string email, string newPassword)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+            return (false, $"User with email {email} not found.");
 
-    return (true, null);
-}
+        // Remove old password if exists
+        if (await _userManager.HasPasswordAsync(user))
+        {
+            var remove = await _userManager.RemovePasswordAsync(user);
+            if (!remove.Succeeded)
+                return (false, string.Join("; ", remove.Errors.Select(e => e.Description)));
+        }
 
+        var add = await _userManager.AddPasswordAsync(user, newPassword);
+        if (!add.Succeeded)
+            return (false, string.Join("; ", add.Errors.Select(e => e.Description)));
+
+        return (true, null);
+    }
 
     public async Task<bool> UpdateUserAsync(ApplicationUser req, CancellationToken ct = default)
     {
