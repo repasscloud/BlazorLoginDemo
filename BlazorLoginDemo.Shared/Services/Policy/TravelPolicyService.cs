@@ -42,6 +42,18 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         await _logger.LogInfoAsync($"Creating TravelPolicy '{policy.PolicyName}' for Org '{policy.OrganizationUnifiedId}'");
 
+        // on generate new travel policy, always create a new policy ID to prevent clashes, which do happen - junk
+        policy.Id = NanoidDotNet.Nanoid.Generate(NanoidDotNet.Nanoid.Alphabets.LettersAndDigits.ToUpper(), 14);
+
+        // normalise dates safety net
+        static DateTime? EnsureUtc(DateTime? d) =>
+            d is null ? null :
+            d.Value.Kind == DateTimeKind.Utc ? d :
+            DateTime.SpecifyKind(d.Value, DateTimeKind.Utc);
+
+        policy.EffectiveFromUtc = EnsureUtc(policy.EffectiveFromUtc);
+        policy.ExpiresOnUtc     = EnsureUtc(policy.ExpiresOnUtc);
+
         policy.CreatedAtUtc = DateTime.UtcNow;
         policy.LastUpdatedUtc = DateTime.UtcNow;
 
@@ -103,6 +115,15 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         // NormalizeAirlineCodes(policy);
         NormalizePolicyLists(policy);
+
+        // normalise dates safety net
+        static DateTime? EnsureUtc(DateTime? d) =>
+            d is null ? null :
+            d.Value.Kind == DateTimeKind.Utc ? d :
+            DateTime.SpecifyKind(d.Value, DateTimeKind.Utc);
+
+        policy.EffectiveFromUtc = EnsureUtc(policy.EffectiveFromUtc);
+        policy.ExpiresOnUtc     = EnsureUtc(policy.ExpiresOnUtc);
 
         policy.LastUpdatedUtc = DateTime.UtcNow;
 
