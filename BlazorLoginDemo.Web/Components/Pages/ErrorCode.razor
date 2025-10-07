@@ -1,0 +1,46 @@
+@page "/error/{ErrorCode}"
+@inject IErrorCodeService ErrorCodeService
+
+@code {
+    [Parameter] public string? ErrorCode { get; set; }
+    private ErrorCodeUnified? Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(ErrorCode))
+            Error = await ErrorCodeService.GetErrorAsync(ErrorCode);
+    }
+}
+
+@if (Error is null)
+{
+    <div class="alert alert-danger mt-4">
+        <h4 class="alert-heading">Unknown Error</h4>
+        <p>No details were found for error code: <strong>@ErrorCode</strong>.</p>
+    </div>
+}
+else
+{
+    <div class="card mt-4">
+        <div class="card-header bg-danger text-white">
+            <h4>@Error.Title (@Error.ErrorCode)</h4>
+        </div>
+        <div class="card-body">
+            <p>@Error.Message</p>
+
+            @if (!string.IsNullOrEmpty(Error.Resolution))
+            {
+                <div class="alert alert-info">
+                    <strong>Resolution:</strong> @Error.Resolution
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Error.ContactSupportLink))
+            {
+                <a class="btn btn-primary" href="@Error.ContactSupportLink" target="_blank">
+                    Contact Support
+                </a>
+            }
+        </div>
+    </div>
+}

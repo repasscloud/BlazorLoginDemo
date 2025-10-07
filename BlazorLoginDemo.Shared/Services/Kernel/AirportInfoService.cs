@@ -1,5 +1,6 @@
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Static;
+using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
 
 namespace BlazorLoginDemo.Shared.Services.Kernel;

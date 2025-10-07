@@ -1,7 +1,7 @@
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Static;
 
-namespace BlazorLoginDemo.Shared.Services.Kernel;
+namespace BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 
 public interface IAirportInfoService
 {
