@@ -5,6 +5,10 @@ using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using BlazorLoginDemo.Shared.Models.Kernel.Billing;
+using BlazorLoginDemo.Shared.Models.Static.Billing;
+using static BlazorLoginDemo.Shared.Models.Kernel.Billing.LicenseAgreementUnified;
+//using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 
 namespace BlazorLoginDemo.Api.Controllers.Test;
 
@@ -17,17 +21,20 @@ public class TestDataController : ControllerBase
     private readonly IAdminUserServiceUnified _adminUserServiceUnified;
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IAdminLicenseAgreementServiceUnified _licenseSvc;
 
     public TestDataController(
         IAdminOrgServiceUnified adminOrgServiceUnified,
         IAdminUserServiceUnified adminUserServiceUnified,
         ApplicationDbContext db,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IAdminLicenseAgreementServiceUnified licenseSvc)
     {
         _adminOrgServiceUnified = adminOrgServiceUnified;
         _adminUserServiceUnified = adminUserServiceUnified;
         _db = db;
         _userManager = userManager;
+        _licenseSvc = licenseSvc;
     }
 
     private sealed class CreateOrganizationVm
@@ -45,7 +52,7 @@ public class TestDataController : ControllerBase
     public async Task<IActionResult> SetupTestOrgData()
     {
         var _vm = new CreateOrganizationVm();
-        
+
         _vm.Name = "RePass Cloud Pty Ltd";
         _vm.Type = Shared.Models.Static.Platform.OrganizationType.Vendor;
         _vm.ParentOrganizationId = null;
@@ -161,7 +168,7 @@ public class TestDataController : ControllerBase
             RoleName = "Client.Requestor",
             ManagerUserId = null
         };
-        
+
         var req2 = new IAdminUserServiceUnified.CreateUserRequest(
             Email: vm2.Email!,
             Password: vm2.Password!,
@@ -184,6 +191,116 @@ public class TestDataController : ControllerBase
             ok = "OK",
             userId1 = usrId1,
             userId2 = usrId2,
+            now = DateTime.UtcNow
+        });
+    }
+    
+    [HttpGet("create-org-license")]
+    public async Task<IActionResult> CreateOrgLicenses(CancellationToken ct)
+    {
+        // Look up org IDs by name as created in your other test routes
+        var platformOrgId = await _db.Organizations
+            .Where(o => o.Name == "RePass Cloud Pty Ltd")
+            .Select(o => o.Id)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+
+        var tmcOrgId = await _db.Organizations
+            .Where(o => o.Name == "New World Travel Management")
+            .Select(o => o.Id)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+
+        var clientOrgId = await _db.Organizations
+            .Where(o => o.Name == "MCDONALD'S AUSTRALIA LIMITED")
+            .Select(o => o.Id)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+
+        if (string.IsNullOrWhiteSpace(platformOrgId) ||
+            string.IsNullOrWhiteSpace(tmcOrgId) ||
+            string.IsNullOrWhiteSpace(clientOrgId))
+        {
+            return BadRequest(new { ok = false, error = "Required organizations not found" });
+        }
+
+        // Common dates
+        var start = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var expiry = start.AddYears(1);
+
+        // 1) License for Platform itself (issuer = Platform)
+        var modelPlatform = new LicenseAgreementUnified
+        {
+            OrganizationUnifiedId = platformOrgId,
+            CreatedByOrganizationUnifiedId = platformOrgId,
+            StartDate = start,
+            ExpiryDate = expiry,
+            AutoRenew = true,
+            BillingType = BillingType.Prepaid,
+            BillingFrequency = BillingFrequency.Monthly,
+            AccessFee = 0m,
+            AccessFeeScope = BillingPeriodScope.Monthly,
+            PaymentStatus = PaymentStatus.Pending,
+            PrepaidBalance = 0m,
+            GracePeriodDays = 0
+        };
+
+        // 2) License for TMC (issuer = Platform)
+        var modelTmc = new LicenseAgreementUnified
+        {
+            OrganizationUnifiedId = tmcOrgId,
+            CreatedByOrganizationUnifiedId = platformOrgId,
+            StartDate = start,
+            ExpiryDate = expiry,
+            AutoRenew = true,
+            BillingType = BillingType.Prepaid,
+            BillingFrequency = BillingFrequency.Monthly,
+            AccessFee = 199m,
+            AccessFeeScope = BillingPeriodScope.Monthly,
+            PaymentStatus = PaymentStatus.Pending,
+            PrepaidBalance = 1000m,
+            GracePeriodDays = 7
+        };
+
+        // 3) License for Client (issuer = TMC)
+        var modelClient = new LicenseAgreementUnified
+        {
+            OrganizationUnifiedId = clientOrgId,
+            CreatedByOrganizationUnifiedId = tmcOrgId,
+            StartDate = start,
+            ExpiryDate = expiry,
+            AutoRenew = true,
+            BillingType = BillingType.Postpaid,
+            BillingFrequency = BillingFrequency.Monthly,
+            AccessFee = 49m,
+            AccessFeeScope = BillingPeriodScope.Monthly,
+            PaymentStatus = PaymentStatus.Pending,
+            MinimumMonthlySpend = 500m,
+            GracePeriodDays = 5
+        };
+
+        // Use Upsert for idempotent test seeding
+        var agg1 = await _licenseSvc.UpsertForOrganizationAsync(
+            modelPlatform.OrganizationUnifiedId,
+            modelPlatform.CreatedByOrganizationUnifiedId,
+            modelPlatform, ct);
+
+        var agg2 = await _licenseSvc.UpsertForOrganizationAsync(
+            modelTmc.OrganizationUnifiedId,
+            modelTmc.CreatedByOrganizationUnifiedId,
+            modelTmc, ct);
+
+        var agg3 = await _licenseSvc.UpsertForOrganizationAsync(
+            modelClient.OrganizationUnifiedId,
+            modelClient.CreatedByOrganizationUnifiedId,
+            modelClient, ct);
+
+        return Ok(new
+        {
+            ok = true,
+            platformLicenseId = agg1.License.Id,
+            tmcLicenseId = agg2.License.Id,
+            clientLicenseId = agg3.License.Id,
             now = DateTime.UtcNow
         });
     }

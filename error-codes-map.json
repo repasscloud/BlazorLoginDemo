@@ -1,0 +1,147 @@
+[ { "group": "Authentication & Session", "prefixes": [ { "prefix": "AUTH", "used_for": "Authentication failures and credentials 
+      issues (login, SSO, token validation)." }, { "prefix": "MFA", "used_for": "Multi-factor authentication setup, enforcement, 
+      and recovery." }, { "prefix": "SESS", "used_for": "Session lifecycle events such as expiry, invalidation, or CSRF failures." 
+      }
+    ]
+  },
+  { "group": "Permissions, Roles, Assignments", "prefixes": [ { "prefix": "PERM", "used_for": "Authorization denials due to missing 
+      privileges or scopes." }, { "prefix": "ROLE", "used_for": "Role presence, mapping, and grant/revoke operations." }, { 
+      "prefix": "ASSIGN", "used_for": "User/org/TMC/policy assignment and membership prerequisites." }
+    ]
+  },
+  { "group": "Tenant, Organization, Licensing, Contracts", "prefixes": [ { "prefix": "TEN", "used_for": "Tenant state and lifecycle 
+      (inactive, suspended, not provisioned)." },
+      { "prefix": "ORG",  "used_for": "Organization discovery and validation (missing, mismatched, duplicated)." },
+      { "prefix": "LIC",  "used_for": "Licensing and subscription state (missing, expired, limits reached)." },
+      { "prefix": "CNTR", "used_for": "Commercial and vendor contracts (missing, expired, invalid terms)." }
+    ]
+  },
+  {
+    "group": "Financial, Billing, Payments, Invoices, Tax/FX",
+    "prefixes": [
+      { "prefix": "FIN",  "used_for": "Billing profile and account prerequisites." },
+      { "prefix": "PAY",  "used_for": "Payment authorization, capture, settlement, and fraud checks." },
+      { "prefix": "INVC", "used_for": "Invoice lifecycle (missing, overdue, mismatch)." },
+      { "prefix": "TAX",  "used_for": "Tax configuration and jurisdiction rules." },
+      { "prefix": "FX",   "used_for": "Foreign exchange rates availability and conversion issues." }
+    ]
+  },
+  {
+    "group": "Data Validation & Input",
+    "prefixes": [
+      { "prefix": "VAL", "used_for": "Generic request validation, schema, and semantic checks." }
+    ]
+  },
+  {
+    "group": "Documents & Identity",
+    "prefixes": [
+      { "prefix": "DOC", "used_for": "Traveler docs (passport, visa) and file uploads/verification." }
+    ]
+  },
+  {
+    "group": "Policy & Governance",
+    "prefixes": [
+      { "prefix": "POL", "used_for": "Travel policy assignment, expiry, and violation handling." }
+    ]
+  },
+  {
+    "group": "Quotes & Requests",
+    "prefixes": [
+      { "prefix": "QUOTE", "used_for": "Travel quote build, routing, and type selection errors." }
+    ]
+  },
+  {
+    "group": "Booking Flows",
+    "prefixes": [
+      { "prefix": "BOOK-FLT", "used_for": "Flight availability, seat map, fare rules, and ticketing prechecks." },
+      { "prefix": "BOOK-HTL", "used_for": "Hotel availability, rate parity, and room/plan selection." },
+      { "prefix": "BOOK-CAR", "used_for": "Hire car availability, class, depot constraints." },
+      { "prefix": "BOOK-TRN", "used_for": "Train availability and routing." },
+      { "prefix": "BOOK-BUS", "used_for": "Bus/coach availability and scheduling." },
+      { "prefix": "BOOK-SIM", "used_for": "eSIM package selection and region support." },
+      { "prefix": "BOOK-ACT", "used_for": "Activities, tours, and experiences capacity and timing." }
+    ]
+  },
+  {
+    "group": "Itinerary, PNR, Ticketing",
+    "prefixes": [
+      { "prefix": "PNR",  "used_for": "PNR creation/update in GDS providers." },
+      { "prefix": "TICK", "used_for": "Ticketing issuance, reissue, and void failures." },
+      { "prefix": "ITIN", "used_for": "Itinerary sync and traveler profile propagation." }
+    ]
+  },
+  {
+    "group": "Search & Inventory",
+    "prefixes": [
+      { "prefix": "SRCH", "used_for": "Supplier search timeouts and filter inconsistencies." },
+      { "prefix": "INVN", "used_for": "Inventory staleness and cache invalidation issues." }
+    ]
+  },
+  {
+    "group": "Integrations & External Providers",
+    "prefixes": [
+      { "prefix": "INT-AMAD",  "used_for": "Amadeus integration and upstream errors." },
+      { "prefix": "INT-SABRE", "used_for": "Sabre integration and upstream errors." },
+      { "prefix": "INT-NDC",   "used_for": "NDC API integration issues." },
+      { "prefix": "INT-PAY",   "used_for": "Payment gateway/provider availability and API errors." },
+      { "prefix": "INT-MAPS",  "used_for": "Maps, geocoding, and place-resolution failures." }
+    ]
+  },
+  {
+    "group": "Notifications",
+    "prefixes": [
+      { "prefix": "NOTIF-EMAIL", "used_for": "Email delivery and provider failures." },
+      { "prefix": "NOTIF-SMS",   "used_for": "SMS delivery and credit/quota issues." },
+      { "prefix": "NOTIF-PUSH",  "used_for": "Mobile push registration and delivery failures." }
+    ]
+  },
+  {
+    "group": "Mobile",
+    "prefixes": [
+      { "prefix": "MOB", "used_for": "Mobile-only flows: device registration, offline mode, app versioning." }
+    ]
+  },
+  {
+    "group": "Files & Storage",
+    "prefixes": [
+      { "prefix": "FILE-UP",   "used_for": "File uploads to object storage or temporary stores." },
+      { "prefix": "FILE-DL",   "used_for": "File downloads and signed URL generation." },
+      { "prefix": "FILE-TYPE", "used_for": "Unsupported formats, MIME/type validation." }
+    ]
+  },
+  {
+    "group": "API, Webhooks, Idempotency",
+    "prefixes": [
+      { "prefix": "API",    "used_for": "Generic API contract/status errors (400/401/403/404/409/etc)." },
+      { "prefix": "WH",     "used_for": "Webhook delivery, retries, and endpoint responses." },
+      { "prefix": "IDEMP",  "used_for": "Idempotency key conflicts and duplicate submissions." }
+    ]
+  },
+  {
+    "group": "System, Infra, Config, DB, Cache, Queue, Rate Limiting",
+    "prefixes": [
+      { "prefix": "SYS",   "used_for": "Unhandled exceptions and generic server errors." },
+      { "prefix": "CONF",  "used_for": "Missing or invalid configuration and feature flags." },
+      { "prefix": "ENV",   "used_for": "Environment gating and dependency mismatches." },
+      { "prefix": "DB",    "used_for": "Database connectivity, timeouts, and migrations." },
+      { "prefix": "CACHE", "used_for": "Cache availability and coherence errors." },
+      { "prefix": "QUEUE", "used_for": "Message broker publish/consume failures." },
+      { "prefix": "RATE",  "used_for": "Rate limiting and quota enforcement." }
+    ]
+  },
+  {
+    "group": "Audit & Compliance",
+    "prefixes": [
+      { "prefix": "AUD",  "used_for": "Audit write/read failures and retention issues." },
+      { "prefix": "COMP", "used_for": "Policy and regulatory compliance checks and attestations." }
+    ]
+  },
+  {
+    "group": "Geography & Profiles",
+    "prefixes": [
+      { "prefix": "GEO",  "used_for": "Country/region support and geofence restrictions." },
+      { "prefix": "PROF", "used_for": "Traveler profile completeness and validation." }
+    ]
+  }
+]
+

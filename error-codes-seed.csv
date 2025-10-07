@@ -1,0 +1,81 @@
+ErrorCode,Title,Message,Resolution,IsClientFacing,IsInternalFacing
+AUTH001,Invalid credentials,Username or password is incorrect,Reset password or use SSO,true,false
+AUTH002,Account locked,Too many failed attempts,Wait 15 minutes or contact admin,true,false
+AUTH003,Token expired,Access token is expired,Refresh session or sign in again,true,false
+AUTH004,SSO configuration missing,Tenant SSO not configured,Admin: configure SSO for tenant,false,true
+MFA001,MFA required,Multi‑factor authentication is required,Enroll MFA or use recovery codes,true,false
+SESS001,Session expired,Your session has ended,Sign in again,true,false
+PERM001,Permission denied,You lack required permission for this action,Request role assignment from admin,true,false
+ROLE001,Role missing,Required role not assigned,Admin: assign role to user,false,true
+ASSIGN001,User not assigned to organization,User lacks organization membership,Admin: assign user to org,true,false
+ASSIGN002,User not assigned to TMC,No TMC membership for selected workflow,Admin: assign user to TMC,false,true
+ASSIGN003,Policy not assigned,No travel policy for this user or org,Admin: assign a travel policy,true,false
+TEN001,Tenant inactive,Tenant is disabled,Contact support,true,true
+ORG001,Organization not found,Target organization does not exist,Verify organization id,true,true
+LIC001,License missing,License not provisioned for tenant,Admin: provision license,true,false
+LIC002,License expired,License is past validity,Renew license or contact billing,true,false
+CNTR001,Contract missing,No active contract with vendor,Set up contract or pick another vendor,true,false
+FIN001,Billing account missing,No billing profile for tenant/org,Create billing profile,true,false
+FIN002,Billing account expired,Billing method expired,Update billing method,true,false
+PAY001,Payment declined,Payment gateway declined the transaction,Try another card or contact bank,true,false
+PAY002,Payment authorization failed,3‑D Secure or auth step failed,Retry with valid authentication,true,false
+INVC001,Invoice not found,Invoice id not found,Verify invoice id,true,false
+INVC002,Invoice overdue,Invoice is past due,Settle invoice or contact finance,true,false
+FX001,Rate unavailable,Foreign exchange rate not available,Retry later or set fixed corporate rate,true,false
+TAX001,Tax profile missing,No tax settings for tenant/region,Admin: configure tax profile,true,false
+VAL001,Invalid input,Request body failed validation,Fix highlighted fields and retry,true,false
+VAL002,Missing required field,A required field is missing,Provide all required fields,true,false
+VAL003,Invalid date range,Start date after end date,Correct the dates,true,false
+DOC001,Passport missing,Traveler passport is missing,Upload passport details,true,false
+DOC002,Visa invalid,Visa not valid for route,Provide valid visa details,true,false
+DOC003,Document upload failed,File upload failed,Retry with supported format,true,false
+POL001,Policy expired,Assigned policy has expired,Admin: renew or reassign policy,true,false
+POL002,Policy violation,Request violates travel policy,Adjust request or submit justification,true,false
+QUOTE001,Quote build failed,Could not create travel quote,Retry or contact support,true,false
+QUOTE002,Unknown booking type,Booking type not supported,Pick a supported type,true,false
+BOOK-FLT001,Flight not found,No flights match the criteria,Change dates or airports,true,false
+BOOK-FLT002,Seat allocation failed,Seat map unavailable or full,Pick another seat or fare,true,false
+BOOK-HTL001,Hotel not available,No rooms for selected dates,Adjust dates or hotel,true,false
+BOOK-HTL002,Rate mismatch,Quoted rate no longer available,Refresh search and re‑quote,true,false
+BOOK-CAR001,Car not available,No vehicles for selected class,Pick another class or vendor,true,false
+BOOK-TRN001,Train not available,No trains for selected route/date,Adjust route or date,true,false
+BOOK-BUS001,Coach not available,No coach service for selection,Change time or operator,true,false
+BOOK-SIM001,eSIM package unavailable,Selected eSIM not available for region,Pick another package,true,false
+BOOK-ACT001,Activity sold out,Activity has no availability,Choose another timeslot,true,false
+PNR001,PNR creation failed,Could not create PNR with GDS,Retry or contact support,true,false
+TICK001,Ticketing failed,Airline ticketing did not complete,Retry or escalate to agent,true,false
+ITIN001,Itinerary sync failed,Failed to sync itinerary to profile,Retry later,true,false
+SRCH001,Search timeout,Supplier search did not return in time,Refine filters or retry,true,false
+INVN001,Inventory stale,Cached inventory out of date,Refresh results,true,false
+INT-AMAD001,Amadeus API error,Upstream returned error,Check vendor status page,true,false
+INT-SABRE001,Sabre API error,Upstream returned error,Check vendor status page,true,false
+INT-NDC001,NDC API error,Upstream returned error,Retry later,true,false
+INT-PAY001,Payment gateway unavailable,Provider outage,Retry or fail over,true,false
+INT-MAPS001,Maps/geocode failed,Could not resolve address,Verify address,true,false
+NOTIF-EMAIL001,Email not sent,SMTP or provider failure,Retry or check sender domain,true,true
+NOTIF-SMS001,SMS not sent,SMS provider error,Retry or check credits,true,true
+NOTIF-PUSH001,Push failed,Push notification service error,Re-register device,true,false
+MOB001,Device not registered,Device must be registered,Register device in settings,true,false
+MOB002,Offline mode,No network connectivity,Reconnect and retry,true,false
+MOB003,App version unsupported,App version is outdated,Update app from store,true,false
+FILE-UP001,Upload failed,Storage rejected file,Retry with smaller or supported file,true,false
+FILE-DL001,Download failed,File could not be retrieved,Retry later,true,false
+FILE-TYPE001,Unsupported file type,File type is not allowed,Use a supported format,true,false
+API400,Bad request,Malformed request,Fix payload and retry,true,false
+API401,Unauthorized,No or invalid auth,Provide valid credentials,true,false
+API403,Forbidden,Not allowed to access this resource,Request access,true,false
+API404,Not found,Resource does not exist,Verify id,true,false
+API409,Conflict,Resource state conflicts with request,Refresh and retry,true,false
+WH001,Webhook delivery failed,Endpoint returned failure,Retry with backoff,true,false
+IDEMP001,Duplicate request,Idempotency conflict detected,Use a new idempotency key,true,false
+SYS500,Unexpected server error,Unhandled exception,Retry or contact support,true,true
+CONF001,Configuration missing,A required configuration is missing,Admin: add config,false,true
+ENV001,Environment mismatch,Feature not enabled in this environment,Enable feature flag,false,true
+DB001,Database unavailable,DB connection failed,Check DB health,true,true
+CACHE001,Cache unavailable,Cache server unreachable,Fail over to DB or retry,false,true
+QUEUE001,Queue publish failed,Message broker unavailable,Retry with backoff,false,true
+RATE001,Rate limited,Too many requests,Wait and retry with backoff,true,false
+AUD001,Audit write failed,Could not persist audit record,Retry or notify admin,false,true
+COMP001,Policy compliance required,Compliance check failed,Provide justification or adjust request,true,false
+GEO001,Country unsupported,Destination not supported by policy,Pick a supported destination,true,false
+PROF001,Profile incomplete,Required traveler profile fields missing,Complete profile in settings,true,false

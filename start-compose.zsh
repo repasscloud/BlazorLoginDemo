@@ -224,8 +224,9 @@ docker exec -i "$pgContainerName" \
 curl -X 'GET' \
   'http://localhost:8090/api/v1/test/create-user-data' \
   -H 'accept: */*'
-
-
+curl -X 'GET' \
+  'http://localhost:8090/api/v1/test/create-org-license' \
+  -H 'accept: */*'
 
 # ── 🏁 Done ───────────────────────────────────────────────────────────────────
 echo
