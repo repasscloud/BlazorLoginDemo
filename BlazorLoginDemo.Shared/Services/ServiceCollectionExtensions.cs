@@ -50,6 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
         services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
+        services.AddScoped<IErrorCodeService, ErrorCodeService>();
         return services;
     }
     

@@ -23,6 +23,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // Core / Logs
     // ---------------------------
     public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
+    public DbSet<ErrorCodeUnified> ErrorCodes => Set<ErrorCodeUnified>();
 
     // ---------------------------
     // Org / Tenancy (Unified)
@@ -82,6 +83,38 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("ava_system_logs", "avasyslog");
             e.HasKey(x => x.Id);
+        });
+
+        builder.Entity<ErrorCodeUnified>(e =>
+        {
+            e.ToTable("ava_error_codes", "ava");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.ErrorCode).IsUnique();
+
+            e.Property(x => x.ErrorCode)
+                .IsRequired()
+                .HasMaxLength(50);
+            e.Property(x => x.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+            e.Property(x => x.Message)
+                .IsRequired()
+                .HasMaxLength(2000);
+            e.Property(x => x.Resolution)
+                .HasMaxLength(2000);
+            e.Property(x => x.ContactSupportLink)
+                .HasMaxLength(500);
+
+            e.Property(x => x.IsClientFacing)
+                .HasDefaultValue(true);
+            e.Property(x => x.IsInternalFacing)
+                .HasDefaultValue(false);
+
+            e.Property(x => x.CreatedOnUtc)
+                .HasColumnType("timestamp with time zone")
+                .ValueGeneratedOnAdd()
+                .Metadata.SetAfterSaveBehavior(
+                    Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
         });
 
         // ===========================
