@@ -3,7 +3,7 @@ AUTH001,Invalid credentials,Username or password is incorrect,Reset password or 
 AUTH002,Account locked,Too many failed attempts,Wait 15 minutes or contact admin,true,false
 AUTH003,Token expired,Access token is expired,Refresh session or sign in again,true,false
 AUTH004,SSO configuration missing,Tenant SSO not configured,Admin: configure SSO for tenant,false,true
-MFA001,MFA required,Multi‑factor authentication is required,Enroll MFA or use recovery codes,true,false
+MFA001,MFA required,Multi-factor authentication is required,Enroll MFA or use recovery codes,true,false
 SESS001,Session expired,Your session has ended,Sign in again,true,false
 PERM001,Permission denied,You lack required permission for this action,Request role assignment from admin,true,false
 ROLE001,Role missing,Required role not assigned,Admin: assign role to user,false,true
@@ -18,7 +18,7 @@ CNTR001,Contract missing,No active contract with vendor,Set up contract or pick 
 FIN001,Billing account missing,No billing profile for tenant/org,Create billing profile,true,false
 FIN002,Billing account expired,Billing method expired,Update billing method,true,false
 PAY001,Payment declined,Payment gateway declined the transaction,Try another card or contact bank,true,false
-PAY002,Payment authorization failed,3‑D Secure or auth step failed,Retry with valid authentication,true,false
+PAY002,Payment authorization failed,3D Secure or auth step failed,Retry with valid authentication,true,false
 INVC001,Invoice not found,Invoice id not found,Verify invoice id,true,false
 INVC002,Invoice overdue,Invoice is past due,Settle invoice or contact finance,true,false
 FX001,Rate unavailable,Foreign exchange rate not available,Retry later or set fixed corporate rate,true,false
@@ -36,7 +36,7 @@ QUOTE002,Unknown booking type,Booking type not supported,Pick a supported type,t
 BOOK-FLT001,Flight not found,No flights match the criteria,Change dates or airports,true,false
 BOOK-FLT002,Seat allocation failed,Seat map unavailable or full,Pick another seat or fare,true,false
 BOOK-HTL001,Hotel not available,No rooms for selected dates,Adjust dates or hotel,true,false
-BOOK-HTL002,Rate mismatch,Quoted rate no longer available,Refresh search and re‑quote,true,false
+BOOK-HTL002,Rate mismatch,Quoted rate no longer available,Refresh search and re-quote,true,false
 BOOK-CAR001,Car not available,No vehicles for selected class,Pick another class or vendor,true,false
 BOOK-TRN001,Train not available,No trains for selected route/date,Adjust route or date,true,false
 BOOK-BUS001,Coach not available,No coach service for selection,Change time or operator,true,false

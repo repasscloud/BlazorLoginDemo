@@ -89,7 +89,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("ava_error_codes", "ava");
             e.HasKey(x => x.Id);
-            e.HasIndex(x => x.ErrorCode).IsUnique();
+            e.HasIndex(x => x.ErrorCode)
+                .IsUnique();
 
             e.Property(x => x.ErrorCode)
                 .IsRequired()
@@ -111,8 +112,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasDefaultValue(false);
 
             e.Property(x => x.CreatedOnUtc)
+                .IsRequired()
                 .HasColumnType("timestamp with time zone")
-                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("now()")          // DB sets UTC automatically
+                .ValueGeneratedOnAdd();
+
+            e.Property(x => x.CreatedOnUtc)
                 .Metadata.SetAfterSaveBehavior(
                     Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
         });
