@@ -126,6 +126,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
         services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
         services.AddScoped<ITravelQuoteService, TravelQuoteService>();
+        services.AddScoped<IErrorCodeService, ErrorCodeService>();
 
         // --- geographic services ---
         services.AddScoped<IRegionService, RegionService>();
