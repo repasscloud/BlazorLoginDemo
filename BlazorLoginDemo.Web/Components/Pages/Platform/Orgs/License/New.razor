@@ -465,9 +465,9 @@ else if (!string.IsNullOrWhiteSpace(error))
         OrganizationUnifiedId = string.Empty,
         CreatedByOrganizationUnifiedId = string.Empty,
 
-        LateFees = new(),
-        DiscountA = new(),
-        DiscountB = new()
+        LateFees = new LateFeeSettings(),
+        DiscountA = new PeriodScopedFlatDiscount(),
+        DiscountB = new PeriodScopedPercentDiscount()
     };
 
     private bool loading = true;
@@ -482,8 +482,8 @@ else if (!string.IsNullOrWhiteSpace(error))
 
     private static string DisplayName<TEnum>(TEnum value) where TEnum : struct, Enum
     {
-        var mem  = typeof(TEnum).GetMember(value.ToString());
-        var attr = mem.FirstOrDefault()?.GetCustomAttribute<DisplayAttribute>();
+        MemberInfo[]? mem  = typeof(TEnum).GetMember(value.ToString());
+        DisplayAttribute? attr = mem.FirstOrDefault()?.GetCustomAttribute<DisplayAttribute>();
         return attr?.GetName() ?? value.ToString();
     }
 
@@ -493,7 +493,7 @@ else if (!string.IsNullOrWhiteSpace(error))
         if (string.IsNullOrWhiteSpace(OrgId))
         {
             await Task.Delay(millisecondsDelay: 1);
-            Nav.NavigateTo("/platform/error/missing-target-org", forceLoad: true);
+            Nav.NavigateTo(uri: "/platform/error/missing-target-org", forceLoad: true);
             return;
         }
     }
@@ -503,16 +503,16 @@ else if (!string.IsNullOrWhiteSpace(error))
         try
         {
             // Current authenticated user
-            var auth = await Auth.GetAuthenticationStateAsync();
-            var principal = auth.User;
+            AuthenticationState? auth = await Auth.GetAuthenticationStateAsync();
+            ClaimsPrincipal? principal = auth.User;
             if (principal?.Identity?.IsAuthenticated != true)
             {
-                Nav.NavigateTo("/Identity/Account/Login", forceLoad: true);
+                Nav.NavigateTo(uri: "/Identity/Account/Login", forceLoad: true);
                 return;
             }
 
-            var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier)
-                        ?? principal.FindFirstValue("sub");
+            string? userId = principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? principal.FindFirstValue(claimType: "sub");
             if (string.IsNullOrWhiteSpace(userId))
             {
                 Nav.NavigateTo("/platform/error/no-userid", forceLoad: true);
@@ -520,11 +520,11 @@ else if (!string.IsNullOrWhiteSpace(error))
             }
 
             // Load current user aggregate (to get their Organization)
-            var me = await UserSvc.GetByIdAsync(userId, CancellationToken.None);
+            IAdminUserServiceUnified.UserAggregate? me = await UserSvc.GetByIdAsync(userId, CancellationToken.None);
             if (me?.User is null || string.IsNullOrWhiteSpace(me.User.OrganizationId))
             {
                 // No issuer organization on the current user → hard stop
-                Nav.NavigateTo("/platform/error/missing-org", forceLoad: true);
+                Nav.NavigateTo(uri: "/platform/error/missing-org", forceLoad: true);
                 return;
             }
 
@@ -532,7 +532,7 @@ else if (!string.IsNullOrWhiteSpace(error))
             issuerOrgName = me.Organization?.Name ?? issuerOrgId;
 
             // Ensure the target org exists (defensive UX)
-            var exists = await OrgSvc.ExistsAsync(OrgId, CancellationToken.None);
+            bool exists = await OrgSvc.ExistsAsync(OrgId, CancellationToken.None);
             if (!exists)
             {
                 Nav.NavigateTo($"/platform/error/org-not-found/{OrgId}", forceLoad: true);
@@ -540,15 +540,15 @@ else if (!string.IsNullOrWhiteSpace(error))
             }
 
             // Prefill the model with required FKs + sensible defaults
-            var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+            DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
             model = new LicenseAgreementUnified
             {
                 OrganizationUnifiedId = OrgId,                // licensee — target org
                 CreatedByOrganizationUnifiedId = issuerOrgId, // issuer — current user's org
 
                 StartDate = today,
-                ExpiryDate = today.AddYears(1),
-                RenewalDate = today.AddYears(1).AddDays(-30),
+                ExpiryDate = today.AddYears(value: 1),
+                RenewalDate = today.AddYears(value: 1).AddDays(value: -30),
                 AutoRenew = false,
 
                 PaymentTerms = PaymentTerms.Net0,
@@ -561,9 +561,9 @@ else if (!string.IsNullOrWhiteSpace(error))
                 LastUpdatedAtUtc = DateTime.UtcNow,
 
                 // Make sure nested objects exist for binding
-                LateFees = new(),
-                DiscountA = new(),
-                DiscountB = new()
+                LateFees = new LateFeeSettings(),
+                DiscountA = new PeriodScopedFlatDiscount(),
+                DiscountB = new PeriodScopedPercentDiscount()
             };
 
             // Keep your PNR/service fee defaults explicit if you want non-zeros
@@ -584,7 +584,7 @@ else if (!string.IsNullOrWhiteSpace(error))
     {
         if (issuerOrgId is null)
         {
-            Nav.NavigateTo("/platform/error/missing-org", forceLoad: true);
+            Nav.NavigateTo(uri: "/platform/error/user-not-assigned-to-org", forceLoad: true);
             return;
         }
 
@@ -599,10 +599,10 @@ else if (!string.IsNullOrWhiteSpace(error))
             model.LastUpdatedAtUtc = DateTime.UtcNow;
 
             // Use Org Upsert to attach/update the 1:1 License on the org itself
-            var agg = await OrgSvc.UpsertLicenseAgreementAsync(OrgId, model, CancellationToken.None);
+            IAdminOrgServiceUnified.OrgAggregate? agg = await OrgSvc.UpsertLicenseAgreementAsync(OrgId, model, CancellationToken.None);
 
             // Success → go back to Org page (or license detail/edit if you have one)
-            Nav.NavigateTo($"/platform/organizations/{OrgId}", forceLoad: true);
+            Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}", forceLoad: true);
         }
         catch (Exception ex)
         {
@@ -616,6 +616,6 @@ else if (!string.IsNullOrWhiteSpace(error))
 
     private void Cancel()
     {
-        Nav.NavigateTo($"/platform/organizations/{OrgId}", forceLoad: true);
+        Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}", forceLoad: true);
     }
 }

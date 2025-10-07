@@ -11,7 +11,7 @@
     // Matches "{*route:nonfile}" so Blazor can pass "fish" etc.
     [Parameter] public string? route { get; set; }
 
-    // ✅ Set 404 status during SSR before headers are sent (no circuit crash)
+    // Set 404 status during SSR before headers are sent (no circuit crash)
     protected override void OnInitialized()
     {
         var ctx = Http?.HttpContext;
@@ -38,7 +38,7 @@
                         <p class="text-muted mb-2"><small>Requested path: <code>@("/" + route)</code></small></p>
                     }
                     <p class="lead text-muted mb-4">
-                        Oops! The page you’re looking for doesn’t exist or has been moved.
+                        Oops! The page you're looking for doesn't exist or has been moved.
                     </p>
                     <a href="/" class="btn btn-primary btn-lg">
                         <i class="bi bi-house-door-fill me-2"></i> Go Home
