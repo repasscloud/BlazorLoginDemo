@@ -1,6 +1,6 @@
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Static;
-using BlazorLoginDemo.Shared.Services.Kernel;
+using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlazorLoginDemo.Api.Controllers.Admin;
