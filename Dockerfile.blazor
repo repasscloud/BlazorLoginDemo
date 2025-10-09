@@ -1,0 +1,69 @@
+# syntax=docker/dockerfile:1.7
+
+########################
+# BUILD
+########################
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+ARG CONFIG=Release
+ARG CSPROJ_WEB=BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+ARG CSPROJ_SHARED=BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+
+WORKDIR /src
+
+# restore cache layer
+COPY ${CSPROJ_SHARED} BlazorLoginDemo.Shared/
+COPY ${CSPROJ_WEB}    BlazorLoginDemo.Web/
+RUN dotnet restore BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj -p:RestoreUseStaticGraphEvaluation=true
+
+# copy sources explicitly
+COPY BlazorLoginDemo.Shared/ BlazorLoginDemo.Shared/
+COPY BlazorLoginDemo.Web/    BlazorLoginDemo.Web/
+
+# publish blazor app
+RUN dotnet publish BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj \
+    -c ${CONFIG} -o /out/app \
+    -p:PublishReadyToRun=true -p:PublishTrimmed=false
+
+# health probe sources
+COPY tools/HealthProbe/ tools/HealthProbe/
+# framework-dependent probe DLL (no trim, no self-contained)
+RUN dotnet publish tools/HealthProbe/HealthProbe.csproj \
+    -c ${CONFIG} -o /out/healthprobe
+
+# precreate empty dirs to copy into chiseled runtime
+RUN mkdir -p /out/dpkeys /out/tmp
+
+########################
+# RUNTIME (CHISELED)
+########################
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble-chiseled-extra AS final
+
+ARG APP_DLL=BlazorLoginDemo.Web.dll
+ARG APP_UID=64198
+ARG APP_GID=64198
+
+ENV ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_FORWARDEDHEADERS_ENABLED=true \
+    DOTNET_EnableDiagnostics=0 \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true \
+    DOTNET_SYSTEM_NET_HTTP_SOCKETSHTTPHANDLER_HTTP2UNENCRYPTEDSUPPORT=0 \
+    ASPNETCORE_TEMP=/tmp \
+    ASPNETCORE_DATA_PROTECTION__KEYS__PATH=/home/app/.aspnet/DataProtection-Keys
+
+WORKDIR /app
+
+# app + probe with correct ownership
+COPY --chown=${APP_UID}:${APP_GID} --from=build /out/app/        /app/
+COPY --chown=${APP_UID}:${APP_GID} --from=build /out/healthprobe /app/healthprobe/
+
+# create writable dirs by copying pre-made empty dirs (no shell in chiseled)
+COPY --chown=${APP_UID}:${APP_GID} --from=build /out/dpkeys/ /home/app/.aspnet/DataProtection-Keys/
+COPY --chown=${APP_UID}:${APP_GID} --from=build /out/tmp/    /tmp/
+
+USER ${APP_UID}:${APP_GID}
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=10 \
+  CMD ["dotnet","/app/healthprobe/HealthProbe.dll","--url","http://127.0.0.1:8080/healthz","--timeout","2s"]
+
+ENTRYPOINT ["dotnet","/app/BlazorLoginDemo.Web.dll"]

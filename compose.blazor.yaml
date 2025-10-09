@@ -1,0 +1,43 @@
+services:
+  blazor:
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: Dockerfile.blazor
+      args:
+        CSPROJ_WEB: BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+        CSPROJ_SHARED: BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+        APP_DLL: BlazorLoginDemo.Web.dll
+    image: blazor-app:dev
+    container_name: blazor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:8080}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: ${DOTNET_SYSTEM_GLOBALIZATION_INVARIANT:-true}
+      ConnectionStrings__DefaultConnection: ${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+      API__BASEADDRESS: ${API__BASEADDRESS}
+      OUTBOUNDAPIKEYAUTH__HEADERNAME: ${OUTBOUNDAPIKEYAUTH__HEADERNAME}
+      OUTBOUNDAPIKEYAUTH__KEY: ${OUTBOUNDAPIKEYAUTH__KEY}
+      AdminEmail: ${ADMINEMAIL}
+      AdminPassword: ${ADMINPASSWORD}
+    # chiseled has no curl; Dockerfile supplies a probe binary
+    healthcheck:
+      test: [ "CMD", "/app/healthprobe/HealthProbe", "--url", "http://127.0.0.1:8080/healthz", "--timeout", "2s" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - web-dataprotection:/home/app/.aspnet/DataProtection-Keys:rw
+    # runtime hardening
+    read_only: true
+    cap_drop: [ "ALL" ]
+    security_opt: [ "no-new-privileges:true" ]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+
+volumes:
+  web-dataprotection: {}
+
