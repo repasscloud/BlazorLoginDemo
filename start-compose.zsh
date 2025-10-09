@@ -11,7 +11,7 @@ set -euo pipefail
 
 # ── 🔧 Config: container names, DB creds, and target file ─────────────────────
 pgContainerName='pgsql'
-aspContainerName='blazor'
+aspContainerName='blazor2'
 pgadminContainerName='pgadmin'
 dbPort=5432
 dbUser='demodb'
@@ -106,7 +106,7 @@ case "$ACTION" in
     c_TIME=$(date +"%Y-%m-%d_%H-%M-%S")
     git add .
     git commit -m "$c_TIME"
-    docker compose up -d --build blazor
+    docker compose up -d --build "$aspContainerName"
     exit 0
     ;;
   *)
@@ -188,7 +188,7 @@ docker exec -i "$pgContainerName" \
 # ── 🚀 7) Start Blazor app ───────────────────────────────────────────────────
 echo
 echo "🚀 7) Start Blazor app"
-docker compose up -d blazor
+docker compose up -d "$aspContainerName"
 
 # ── 🚀 8) Start Api app ───────────────────────────────────────────────────
 echo
