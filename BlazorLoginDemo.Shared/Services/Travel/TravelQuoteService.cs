@@ -231,8 +231,100 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             CreatedByUserId = dto.CreatedByUserId.Trim(),
         };
 
-        foreach (var uid in dto.TravellerUserIds.Distinct(StringComparer.Ordinal))
-            q.Travellers.Add(new TravelQuoteUser { UserId = uid });
+        // foreach (var uid in dto.TravellerUserIds.Distinct(StringComparer.Ordinal))
+        //     q.Travellers.Add(new TravelQuoteUser { UserId = uid });
+        
+        // De-dupe travellers, fetch policy IDs, exclude users with no policy.
+        // Keep integrity lists for auditing.
+        var policyIdsForIntegrity = new List<string?>();                           // includes nulls
+        var distinctPolicyIds      = new HashSet<string>(StringComparer.Ordinal);  // non-null only
+        var excludedUserIds        = new List<string>();                           // users dropped due to null policy
+
+        if (dto?.TravellerUserIds is not null)
+        {
+            var seenTravellers = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var uid in dto.TravellerUserIds)
+            {
+                if (uid is null) continue;                 // skip nulls
+                if (!seenTravellers.Add(uid)) continue;    // de-dupe
+
+                string? travelPolicyId = await _userSvc.GetUserTravelPolicyIdAsync(uid, ct);
+                policyIdsForIntegrity.Add(travelPolicyId);
+
+                if (travelPolicyId is null)
+                {
+                    excludedUserIds.Add(uid);              // record exclusion
+                    continue;                              // drop this uid from the quote
+                }
+
+                distinctPolicyIds.Add(travelPolicyId);
+                q.Travellers.Add(new TravelQuoteUser { UserId = uid });
+            }
+        }
+
+        // policyIdsForIntegrity: all fetched IDs (nulls included) for checks
+        // distinctPolicyIds: unique non-null policy IDs
+        // excludedUserIds: which users were removed due to missing policy
+        _log.LogError("Quote DTO translation: {TravellerCount} travellers, {DistinctPolicyCount} distinct non-null policies, {ExcludedUserCount} users excluded due to missing policy.",
+            dto?.TravellerUserIds?.Count() ?? 0,
+            distinctPolicyIds.Count,
+            excludedUserIds.Count);
+        foreach (string e in excludedUserIds)
+            _log.LogError(" - Excluded user ID: {UserId}", e);
+
+        // obtain all travel policies referenced by travellers
+        // Build pL with only currently-effective policies (UTC checks, inclusive bounds)
+        if (distinctPolicyIds.Count > 1)
+            _log.LogWarning("Quote has travellers with multiple distinct travel policies: {PolicyIds}", string.Join(", ", distinctPolicyIds));
+
+        var pL = new List<TravelPolicy>();
+        var nowUtc = DateTime.UtcNow;
+
+        foreach (var pid in distinctPolicyIds)
+        {
+            var policy = await _db.TravelPolicies.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == pid, ct);
+
+            if (policy is null)
+            {
+                _log.LogWarning("Travel policy '{PolicyId}' referenced by travellers not found in DB.", pid);
+                continue;
+            }
+
+            // Normalize to UTC kind if EF materialized as Unspecified
+            DateTime? eff = policy.EffectiveFromUtc is DateTime e
+                ? DateTime.SpecifyKind(e, DateTimeKind.Utc)
+                : null;
+
+            DateTime? exp = policy.ExpiresOnUtc is DateTime x
+                ? DateTime.SpecifyKind(x, DateTimeKind.Utc)
+                : null;
+
+            // Rule:
+            // 1) EffectiveFromUtc null OR now >= EffectiveFromUtc
+            // 2) ExpiresOnUtc null OR now <= ExpiresOnUtc
+            bool effectiveOk = !eff.HasValue || nowUtc >= eff.Value;
+            bool expiresOk   = !exp.HasValue || nowUtc <= exp.Value;
+
+            if (effectiveOk && expiresOk)
+            {
+                pL.Add(policy);
+            }
+            else
+            {
+                if (!effectiveOk)
+                    _log.LogWarning("Travel policy '{PolicyId}' not yet effective. EffectiveFromUtc={EffectiveFromUtc:o}", pid, eff);
+
+                if (!expiresOk)
+                    _log.LogWarning("Travel policy '{PolicyId}' expired. ExpiresOnUtc={ExpiresOnUtc:o}", pid, exp);
+            }
+        }
+
+        if (pL.Count == 0)
+            throw new InvalidOperationException("No travellers with valid/effective travel policies found.");
+
+        
 
         return q;
     }

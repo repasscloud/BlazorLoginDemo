@@ -342,6 +342,18 @@ internal sealed class AdminUserServiceUnified : IAdminUserServiceUnified
         return (true, null);
     }
 
+    public async Task<string?> GetUserTravelPolicyIdAsync(string userId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return null;
+
+        return await _userManager.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.TravelPolicyId)
+            .FirstOrDefaultAsync(ct);
+    }
+
     // -------------- ROLES --------------
     public async Task<IReadOnlyList<string>> GetAllRolesAsync(CancellationToken ct = default)
     {

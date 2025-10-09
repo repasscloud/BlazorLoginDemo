@@ -28,6 +28,18 @@ public sealed class TravelQuote
     public string TmcAssignedId { get; set; } = null!;
     public OrganizationUnified TmcAssigned { get; set; } = null!;
 
+    // note: optional internal note about this quote
+    [MaxLength(4096)]
+    public string? Note { get; set; }
+
+    // approvals managed by system workflows (workflows will always use the lowest common denominator)
+    public bool ApprovalLevel0 { get; set; } = false;
+    public bool ApprovalLevel1 { get; set; } = false;
+    public bool ApprovalLevel2 { get; set; } = false;
+    public bool ApprovalLevel3 { get; set; } = false;
+    public bool ApprovalLevel4 { get; set; } = false;
+    public bool ApprovalLevel5 { get; set; } = false;
+
     // Timestamp
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

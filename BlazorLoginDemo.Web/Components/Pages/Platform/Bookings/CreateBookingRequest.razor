@@ -1,0 +1,405 @@
+@page "/travel/flights"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@inject NavigationManager Nav
+
+<!-- FlightSearch.razor -->
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12 col-lg-10">
+            <h2 class="mb-1">Search Flights</h2>
+            <p class="text-muted mb-3">Clean Bootstrap layout. Placeholder data. Wire services later.</p>
+        </div>
+        <div class="col-12 col-lg-2 text-lg-end">
+            <button type="button" class="btn btn-outline-secondary w-100" @onclick="ResetAll">Reset</button>
+        </div>
+    </div>
+
+    <EditForm Model="@Vm" OnValidSubmit="@OnValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="alert alert-danger" />
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <!-- Trip type -->
+                <div class="mb-3">
+                    <div class="btn-group" role="group" aria-label="Trip type">
+                        <input type="radio" class="btn-check" name="tripType" id="tripOne"
+                               checked="@(Vm.TripType == TripType.OneWay)" @onchange="() => SetTripType(TripType.OneWay)" />
+                        <label class="btn btn-outline-primary" for="tripOne">One-way</label>
+
+                        <input type="radio" class="btn-check" name="tripType" id="tripReturn"
+                               checked="@(Vm.TripType == TripType.Return)" @onchange="() => SetTripType(TripType.Return)" />
+                        <label class="btn btn-outline-primary" for="tripReturn">Return</label>
+
+                        <input type="radio" class="btn-check" name="tripType" id="tripMulti"
+                               checked="@(Vm.TripType == TripType.MultiCity)" @onchange="() => SetTripType(TripType.MultiCity)" />
+                        <label class="btn btn-outline-primary" for="tripMulti">Multi-city</label>
+                    </div>
+                </div>
+
+                <!-- Origin / Destination -->
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-5">
+                        <label class="form-label">From</label>
+                        <InputSelect class="form-select" @bind-Value="Vm.Origin">
+                            <option value="">Select origin</option>
+                            @foreach (var ap in Airports)
+                            {
+                                <option value="@ap.Code">@ap.Code — @ap.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => Vm.Origin" />
+                    </div>
+
+                    <div class="col-12 col-md-2 d-grid">
+                        <button type="button" class="btn btn-outline-secondary" title="Swap" @onclick="SwapAirports">Swap</button>
+                    </div>
+
+                    <div class="col-12 col-md-5">
+                        <label class="form-label">To</label>
+                        <InputSelect class="form-select" @bind-Value="Vm.Destination">
+                            <option value="">Select destination</option>
+                            @foreach (var ap in Airports)
+                            {
+                                <option value="@ap.Code">@ap.Code — @ap.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => Vm.Destination" />
+                    </div>
+                </div>
+
+                <!-- Dates -->
+                <div class="row g-3 mt-1">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Depart</label>
+                        <InputDate TValue="DateOnly" class="form-control" @bind-Value="Vm.DepartDate" />
+                        <ValidationMessage For="() => Vm.DepartDate" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Return</label>
+                        <InputDate TValue="DateOnly?" class="form-control" @bind-Value="Vm.ReturnDate" disabled="@(Vm.TripType != TripType.Return)" />
+                        @if (Vm.TripType != TripType.Return)
+                        {
+                            <div class="form-text">Return disabled for One-way and Multi-city.</div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Pax + Cabin -->
+                <div class="row g-3 mt-1">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Adults</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.Adults" />
+                        <ValidationMessage For="() => Vm.Adults" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Children</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.Children" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Infants</label>
+                        <InputNumber class="form-control" @bind-Value="Vm.Infants" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Cabin</label>
+                        <InputSelect class="form-select" @bind-Value="Vm.Cabin">
+                            @foreach (var c in Enum.GetValues<CabinClass>())
+                            {
+                                <option value="@c">@c</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced filters -->
+        <div class="accordion mb-3" id="advFilters">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="advHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advCollapse"
+                            aria-expanded="false" aria-controls="advCollapse">
+                        Advanced filters
+                    </button>
+                </h2>
+                <div id="advCollapse" class="accordion-collapse collapse" aria-labelledby="advHeading" data-bs-parent="#advFilters">
+                    <div class="accordion-body">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Airlines</label>
+                                <InputSelect class="form-select" @bind-Value="Vm.PreferredAirline">
+                                    <option value="">Any</option>
+                                    @foreach (var a in Airlines)
+                                    {
+                                        <option value="@a.Code">@a.Name</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Stops</label>
+                                <InputSelect class="form-select" @bind-Value="Vm.MaxStops">
+                                    <option value="-1">Any</option>
+                                    <option value="0">Nonstop only</option>
+                                    <option value="1">Up to 1 stop</option>
+                                    <option value="2">Up to 2 stops</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Time window (local)</label>
+                                <div class="input-group">
+                                    <InputText class="form-control" type="time"
+                                               Value="@EarliestDepartLocalStr"
+                                               ValueChanged="@(v => EarliestDepartLocalStr = v)"
+                                               ValueExpression="() => EarliestDepartLocalStr" />
+                                    <span class="input-group-text">to</span>
+                                    <InputText class="form-control" type="time"
+                                               Value="@LatestDepartLocalStr"
+                                               ValueChanged="@(v => LatestDepartLocalStr = v)"
+                                               ValueExpression="() => LatestDepartLocalStr" />
+                                </div>
+                                <div class="form-text">Optional. 24-hour HH:mm.</div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <div class="form-check mt-4">
+                                    <InputCheckbox class="form-check-input" @bind-Value="Vm.RefundableOnly" />
+                                    <label class="form-check-label">Refundable only</label>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <div class="form-check mt-4">
+                                    <InputCheckbox class="form-check-input" @bind-Value="Vm.IncludeBaggage" />
+                                    <label class="form-check-label">Include checked baggage</label>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Sort by</label>
+                                <InputSelect class="form-select" @bind-Value="Vm.Sort">
+                                    @foreach (var s in Enum.GetValues<SortOption>())
+                                    {
+                                        <option value="@s">@s</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="d-grid d-sm-flex gap-2 mb-3">
+            <button type="submit" class="btn btn-primary">Search</button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="PopulateMockResults">Quick demo results</button>
+        </div>
+    </EditForm>
+
+    <!-- Results -->
+    <div class="card" hidden="@(!Results.Any())">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>Results (<span>@Results.Count</span>)</div>
+            <div class="text-muted small">Mock data for layout only</div>
+        </div>
+        <div class="list-group list-group-flush">
+            @foreach (var r in Results)
+            {
+                <div class="list-group-item">
+                    <div class="row align-items-center">
+                        <div class="col-12 col-md-3">
+                            <div class="fw-semibold">@r.Origin → @r.Destination</div>
+                            <div class="text-muted small">@r.DepartLocal:hh\\:mm — @r.ArriveLocal:hh\\:mm</div>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="text-muted small">Airline</div>
+                            <div>@r.AirlineName</div>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="text-muted small">Stops</div>
+                            <div>@(r.Stops == 0 ? "Nonstop" : $"{r.Stops} stop(s)")</div>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <div class="text-muted small">Duration</div>
+                            <div>@r.Duration.ToString("hh\\:mm")</div>
+                        </div>
+                        <div class="col-6 col-md-2 text-md-end">
+                            <div class="text-muted small">From</div>
+                            <div class="fs-5">$@r.Price.ToString("0")</div>
+                        </div>
+                        <div class="col-12 col-md-1 d-grid">
+                            <button class="btn btn-sm btn-outline-primary">Select</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="text-center text-muted py-5" hidden="@(Results.Any())">
+        No results yet. Use “Search” or “Quick demo results”.
+    </div>
+</div>
+
+@code {
+    // VM
+    public class FlightSearchVm
+    {
+        [Required, MinLength(2)]
+        public string? Origin { get; set; }
+
+        [Required, MinLength(2)]
+        public string? Destination { get; set; }
+
+        [Required]
+        public DateOnly DepartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+
+        public DateOnly? ReturnDate { get; set; }
+
+        [Range(1, 9)]
+        public int Adults { get; set; } = 1;
+
+        [Range(0, 8)]
+        public int Children { get; set; } = 0;
+
+        [Range(0, 8)]
+        public int Infants { get; set; } = 0;
+
+        public CabinClass Cabin { get; set; } = CabinClass.Economy;
+
+        public TripType TripType { get; set; } = TripType.OneWay;
+
+        // Advanced
+        public string? PreferredAirline { get; set; }
+        public int MaxStops { get; set; } = -1;
+        public bool RefundableOnly { get; set; }
+        public bool IncludeBaggage { get; set; }
+        public SortOption Sort { get; set; } = SortOption.Price;
+
+        // Time window (optional)
+        public TimeOnly? EarliestDepartLocal { get; set; }
+        public TimeOnly? LatestDepartLocal { get; set; }
+    }
+
+    // String proxies for <input type="time"> via InputText
+    private string? EarliestDepartLocalStr
+    {
+        get => Vm.EarliestDepartLocal?.ToString("HH\\:mm", CultureInfo.InvariantCulture);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value)) { Vm.EarliestDepartLocal = null; return; }
+            if (TimeOnly.TryParseExact(value, "HH\\:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t))
+                Vm.EarliestDepartLocal = t;
+        }
+    }
+    private string? LatestDepartLocalStr
+    {
+        get => Vm.LatestDepartLocal?.ToString("HH\\:mm", CultureInfo.InvariantCulture);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value)) { Vm.LatestDepartLocal = null; return; }
+            if (TimeOnly.TryParseExact(value, "HH\\:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t))
+                Vm.LatestDepartLocal = t;
+        }
+    }
+
+    public enum TripType { OneWay, Return, MultiCity }
+    public enum CabinClass { Economy, PremiumEconomy, Business, First }
+    public enum SortOption { Price, Duration, DepartTime, ArriveTime }
+
+    public record Airport(string Code, string Name);
+    public record Airline(string Code, string Name);
+
+    public class FlightResult
+    {
+        public string Origin { get; init; } = default!;
+        public string Destination { get; init; } = default!;
+        public string AirlineCode { get; init; } = default!;
+        public string AirlineName { get; init; } = default!;
+        public int Stops { get; init; }
+        public TimeSpan Duration { get; init; }
+        public TimeSpan DepartLocal { get; init; }
+        public TimeSpan ArriveLocal { get; init; }
+        public decimal Price { get; init; }
+    }
+
+    private FlightSearchVm Vm = new();
+
+    private readonly List<Airport> Airports = new()
+    {
+        new("SYD","Sydney Kingsford Smith"),
+        new("MEL","Melbourne Tullamarine"),
+        new("BNE","Brisbane"),
+        new("ADL","Adelaide"),
+        new("PER","Perth"),
+        new("CBR","Canberra"),
+        new("AKL","Auckland"),
+        new("CHC","Christchurch"),
+        new("WLG","Wellington"),
+        new("SIN","Singapore Changi"),
+        new("LAX","Los Angeles"),
+        new("NRT","Tokyo Narita")
+    };
+
+    private readonly List<Airline> Airlines = new()
+    {
+        new("QF","Qantas"),
+        new("JQ","Jetstar"),
+        new("VA","Virgin Australia"),
+        new("NZ","Air New Zealand"),
+        new("SQ","Singapore Airlines")
+    };
+
+    private List<FlightResult> Results = new();
+
+    private void SetTripType(TripType t)
+    {
+        Vm.TripType = t;
+        if (t != TripType.Return) Vm.ReturnDate = null;
+        StateHasChanged();
+    }
+
+    private void SwapAirports()
+        => (Vm.Origin, Vm.Destination) = (Vm.Destination, Vm.Origin);
+
+    private void ResetAll()
+    {
+        Vm = new FlightSearchVm();
+        Results.Clear();
+    }
+
+    private void OnValidSubmit() => PopulateMockResults();
+
+    private void PopulateMockResults()
+    {
+        var rnd = new Random(1234);
+        var list = Enumerable.Range(1, 6).Select(i =>
+        {
+            var dur = TimeSpan.FromMinutes(rnd.Next(60, 720));
+            var dep = TimeSpan.FromMinutes(rnd.Next(360, 1200)); // 06:00–20:00
+            var stops = rnd.Next(0, 3);
+            var airline = Airlines[rnd.Next(Airlines.Count)];
+            return new FlightResult
+            {
+                Origin = Vm.Origin ?? "SYD",
+                Destination = Vm.Destination ?? "MEL",
+                AirlineCode = airline.Code,
+                AirlineName = airline.Name,
+                Stops = stops,
+                Duration = dur,
+                DepartLocal = dep,
+                ArriveLocal = dep + dur,
+                Price = 120 + rnd.Next(40, 900)
+            };
+        }).ToList();
+
+        Results = Vm.Sort switch
+        {
+            SortOption.Price      => list.OrderBy(r => r.Price).ToList(),
+            SortOption.Duration   => list.OrderBy(r => r.Duration).ToList(),
+            SortOption.DepartTime => list.OrderBy(r => r.DepartLocal).ToList(),
+            SortOption.ArriveTime => list.OrderBy(r => r.ArriveLocal).ToList(),
+            _                     => list.OrderBy(r => r.Price).ToList()
+        };
+    }
+}
