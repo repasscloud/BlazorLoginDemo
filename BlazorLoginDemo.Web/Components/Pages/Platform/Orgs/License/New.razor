@@ -493,7 +493,7 @@ else if (!string.IsNullOrWhiteSpace(error))
         if (string.IsNullOrWhiteSpace(OrgId))
         {
             await Task.Delay(millisecondsDelay: 1);
-            Nav.NavigateTo(uri: "/platform/error/missing-target-org", forceLoad: true);
+            Nav.NavigateTo(uri: "/error/assign004", forceLoad: true);
             return;
         }
     }
@@ -515,7 +515,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                         ?? principal.FindFirstValue(claimType: "sub");
             if (string.IsNullOrWhiteSpace(userId))
             {
-                Nav.NavigateTo("/platform/error/no-userid", forceLoad: true);
+                Nav.NavigateTo("/error/auth005", forceLoad: true);
                 return;
             }
 
@@ -524,7 +524,7 @@ else if (!string.IsNullOrWhiteSpace(error))
             if (me?.User is null || string.IsNullOrWhiteSpace(me.User.OrganizationId))
             {
                 // No issuer organization on the current user → hard stop
-                Nav.NavigateTo(uri: "/platform/error/missing-org", forceLoad: true);
+                Nav.NavigateTo(uri: "/error/ASSIGN005", forceLoad: true);
                 return;
             }
 
@@ -535,7 +535,7 @@ else if (!string.IsNullOrWhiteSpace(error))
             bool exists = await OrgSvc.ExistsAsync(OrgId, CancellationToken.None);
             if (!exists)
             {
-                Nav.NavigateTo($"/platform/error/org-not-found/{OrgId}", forceLoad: true);
+                Nav.NavigateTo($"/org001?message=Copy+this+number+to+provide+when+using+Contact+Support+button%3A+{OrgId}", forceLoad: true);
                 return;
             }
 
@@ -584,7 +584,7 @@ else if (!string.IsNullOrWhiteSpace(error))
     {
         if (issuerOrgId is null)
         {
-            Nav.NavigateTo(uri: "/platform/error/user-not-assigned-to-org", forceLoad: true);
+            Nav.NavigateTo(uri: "/error/org002", forceLoad: true);
             return;
         }
 

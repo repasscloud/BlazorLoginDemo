@@ -6,6 +6,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.WebUtilities
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
@@ -14,24 +15,18 @@
     @if (!_isAuthChecked)
     {
         <div class="container py-5">
-            <div class="text-center text-muted">Loading…</div>
+            <div class="text-center">
+                <div class="spinner-border" role="status" aria-hidden="true"></div>
+                <div class="mt-3">Loading…</div>
+            </div>
         </div>
     }
     else if (!_isAuthenticated)
     {
         <div class="container py-5">
-            <div class="row justify-content-center">
-                <div class="col-lg-7">
-                    <div class="card border-danger">
-                        <div class="card-header bg-danger text-white">Login required</div>
-                        <div class="card-body">
-                            <p class="mb-4">
-                                Please sign in to submit a support ticket.
-                            </p>
-                            <a class="btn btn-primary" href="/login">Go to Login</a>
-                        </div>
-                    </div>
-                </div>
+            <div class="alert alert-warning">
+                <h5 class="alert-heading mb-2">Sign in required</h5>
+                <p class="mb-0">You must be signed in to contact support.</p>
             </div>
         </div>
     }
@@ -51,27 +46,28 @@
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label" for="userId">User ID</label>
-                                        <InputText id="userId" class="form-control bg-light" @bind-Value="_vm.UserId" placeholder="none" readonly />
+                                        <InputText id="userId" class="form-control bg-light" @bind-Value="_vm.UserId" readonly />
+                                        <div class="form-text">Auto-detected from your session if available.</div>
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label" for="orgId">Org ID</label>
-                                        <InputText id="orgId" class="form-control bg-light" @bind-Value="_vm.OrgId" placeholder="none" readonly />
+                                        <label class="form-label" for="orgId">Organization ID</label>
+                                        <InputText id="orgId" class="form-control bg-light" @bind-Value="_vm.OrgId" readonly />
+                                        <div class="form-text">Optional. Include if relevant to your request.</div>
                                     </div>
 
                                     <div class="col-12">
-                                        <label class="form-label">Subject</label>
-                                        <InputText class="form-control" @bind-Value="_vm.Subject" placeholder="Brief summary of the issue…" />
+                                        <label class="form-label" for="subject">Subject</label>
+                                        <InputText id="subject" class="form-control" @bind-Value="_vm.Subject" />
                                     </div>
 
-                                    <!-- Category -->
                                     <div class="col-md-4">
-                                        <label class="form-label" for="categoryGroup">Category</label>
+                                        <label class="form-label" for="categoryGroup">Category Group</label>
                                         <InputSelect id="categoryGroup"
                                                     class="form-select"
                                                     @bind-Value="_selectedCategoryGroup"
                                                     @onchange="OnCategoryGroupChanged">
-                                            <option value="@DefaultGroupKey">— Select Category —</option>
+                                            <option value="@DefaultGroupKey">— Select Category Group —</option>
                                             @foreach (var g in _categoryGroups)
                                             {
                                                 <option value="@g.Key">@g.Label</option>
@@ -84,14 +80,16 @@
                                         <label class="form-label" for="subcategory">Sub-Category</label>
                                         <InputSelect id="subcategory" class="form-select" @bind-Value="_vm.Category">
                                             <option value="@NoSubcatValue">— Select Sub-Category —</option>
-                                            @foreach (var c in SubcategoriesForSelected)
+                                            @foreach (var item in SubcategoriesForSelected)
                                             {
-                                                <option value="@c.Value">@c.Label</option>
+                                                <option value="@item.Value">@item.Label</option>
                                             }
                                         </InputSelect>
+                                        <div class="form-text">
+                                            Sub-category is applied only if it belongs to the chosen group.
+                                        </div>
                                     </div>
 
-                                    <!-- Priority -->
                                     <div class="col-md-4">
                                         <label class="form-label" for="priority">Priority</label>
                                         <InputSelect id="priority" class="form-select" @bind-Value="_vm.Priority">
@@ -103,25 +101,30 @@
                                     </div>
 
                                     <div class="col-12">
-                                        <label class="form-label">Description</label>
-                                        <InputTextArea class="form-control" @bind-Value="_vm.Description" placeholder="Describe the problem, steps to reproduce, expected vs actual…" rows="6" />
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label">Callback Email (optional)</label>
-                                        <InputText type="email" class="form-control" @bind-Value="_vm.CallbackEmail" placeholder="name@example.com" />
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label">Related Page URL (optional)</label>
-                                        <InputText class="form-control" @bind-Value="_vm.PageUrl" placeholder="https://www.com/path/that/errored" />
-                                        @* if came from error page with ?pageUrl=xxx already filled this *@
+                                        <label class="form-label" for="description">Description</label>
+                                        <InputTextArea id="description" class="form-control" rows="6" @bind-Value="_vm.Description" />
                                     </div>
 
                                     <div class="col-12">
                                         <div class="form-check">
-                                            <input type="checkbox" class="form-check-input" id="diagChk" @bind="_vm.IncludeDiagnostics" />
-                                            <label class="form-check-label" for="diagChk">Include diagnostics</label>
+                                            <InputCheckbox id="diag" class="form-check-input" @bind-Value="_vm.IncludeDiagnostics" />
+                                            <label class="form-check-label" for="diag">Include diagnostics</label>
+                                        </div>
+                                        <div class="form-text">
+                                            Attaches non-sensitive client info such as browser, route, and timestamps.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="callbackEmail">Callback Email</label>
+                                        <InputText id="callbackEmail" class="form-control" @bind-Value="_vm.CallbackEmail" />
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="pageUrl">Related URL</label>
+                                        <InputText id="pageUrl" class="form-control" @bind-Value="_vm.PageUrl" />
+                                        <div class="form-text">
+                                            Filled from <code>relatedurl</code> or <code>pageUrl</code> query string.
                                         </div>
                                     </div>
 
@@ -137,26 +140,29 @@
                                                         <span class="text-truncate" style="max-width: 70%;">
                                                             @f.Name (@(FormatSize(f.Size)))
                                                         </span>
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => RemoveFile(f)">Remove</button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFile(f)">Remove</button>
                                                     </li>
                                                 }
                                             </ul>
                                         }
-                                        @* <div class="form-text">Accepted: any common file. Max size handled server-side.</div> *@
-                                    </div>
-
-                                    <div class="col-12 d-flex justify-content-end gap-2">
-                                        <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">
-                                            @if (_isSubmitting)
-                                            {
-                                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                            }
-                                            Submit Ticket
-                                        </button>
-                                        <a class="btn btn-outline-secondary" href="javascript:history.back()">Cancel</a>
                                     </div>
                                 </div>
+
+                                <div class="mt-4 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary" disabled="_isSubmitting">
+                                        @if (_isSubmitting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        }
+                                        Submit Ticket
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="Back">Cancel</button>
+                                </div>
                             </EditForm>
+                        </div>
+
+                        <div class="card-footer text-muted small">
+                            Query keys are case-insensitive. <code>+</code> treated as space. SubCategory applied only if it belongs to the chosen Category Group.
                         </div>
                     </div>
                 </div>
@@ -183,29 +189,34 @@
     // Top-level category groups (short labels); subcats are the real saved values.
     private readonly CategoryGroup[] _categoryGroups =
     [
-        new("techops",   "Technical / Ops", new[]
+        new(DefaultGroupKey, "Uncategorized", new[]
         {
-            new DropdownOption("bug",                    "Bug / Defect"),
-            new DropdownOption("incident-outage",        "Incident / Outage"),
-            new DropdownOption("performance",            "Performance / Slowness"),
-            new DropdownOption("access-login",           "Access / Login / SSO"),
-            new DropdownOption("user-provisioning",      "User Provisioning / Deprovisioning"),
-            new DropdownOption("config-setup",           "Configuration / Setup"),
-            new DropdownOption("integration-api",        "Integrations / API / Webhooks"),
-            new DropdownOption("data-import-export",     "Data Import / Export"),
-            new DropdownOption("reporting",              "Reporting / Analytics"),
-            new DropdownOption("security-compliance",    "Security / Privacy / Compliance"),
+            new DropdownOption(NoSubcatValue, "— None —"),
         }),
 
-        new("travel",    "Travel / TMC", new[]
+        new("platform", "Platform / UI", new[]
         {
-            new DropdownOption("travel-policy",                 "Travel Policy / Approvals"),
-            new DropdownOption("booking-issue",                 "Booking Issue (Flight/Hotel/Car)"),
-            new DropdownOption("ticketing-pnr",                 "Ticketing / PNR"),
-            new DropdownOption("refunds-exchanges-farerules",   "Refunds / Exchanges / Fare Rules"),
-            new DropdownOption("traveler-profiles",             "Traveler Profiles"),
-            new DropdownOption("duty-of-care",                  "Duty of Care / Traveler Safety"),
-            new DropdownOption("gds-ndc",                       "GDS / NDC Content"),
+            new DropdownOption("ui-bug",              "UI / Rendering Bug"),
+            new DropdownOption("nav-routing",         "Navigation / Routing"),
+            new DropdownOption("auth-session",        "Authentication / Session"),
+            new DropdownOption("perf-slow",           "Performance / Slowness"),
+            new DropdownOption("accessibility",       "Accessibility"),
+        }),
+
+        new("data", "Data / Integrations", new[]
+        {
+            new DropdownOption("import-export",       "Import / Export"),
+            new DropdownOption("integration-api",     "API / Integration"),
+            new DropdownOption("reporting-analytics", "Reporting / Analytics"),
+            new DropdownOption("db-migration",        "DB Migration / Schema"),
+        }),
+
+        new("tmc", "TMC / Travel", new[]
+        {
+            new DropdownOption("policy",              "Travel Policy"),
+            new DropdownOption("quote",               "Travel Quote"),
+            new DropdownOption("booking",             "Booking"),
+            new DropdownOption("region-country",      "Region / Country / Taxonomy"),
         }),
 
         new("commercial","Vendor / Commercial", new[]
@@ -221,18 +232,9 @@
             new DropdownOption("payment-issue",    "Payment Issue / Refund"),
             new DropdownOption("contract-po",      "Contract / PO / Order"),
             new DropdownOption("pricing-quote",    "Pricing / Quote"),
-        }),
-
-        new("misc",      "Enablement / Misc", new[]
-        {
-            new DropdownOption("implementation",   "Implementation / Project"),
-            new DropdownOption("training",         "Training / Enablement"),
-            new DropdownOption("support-sla",      "Support / SLA"),
-            new DropdownOption("general-question", "General Question"),
-        }),
+        })
     ];
 
-    // Backing state for column 1 (filter only; not saved)
     private string _selectedCategoryGroup = DefaultGroupKey;
 
     // Filtered subcategory list for column 2
@@ -247,7 +249,7 @@
             _vm.Category = NoSubcatValue; // reset to sentinel if current value not in this group
     }
 
-    private readonly DropdownOption[] _priorities = 
+    private readonly DropdownOption[] _priorities =
     [
         new DropdownOption("low", "Low"),
         new DropdownOption("normal", "Normal"),
@@ -271,17 +273,11 @@
         if (_isAuthenticated)
         {
             _vm.UserId ??= user.Identity?.Name
-                ?? GetFirstClaim(user, ClaimTypes.NameIdentifier, "sub", "nameid");
+                ?? GetFirstClaim(user, ClaimTypes.NameIdentifier)
+                ?? GetFirstClaim(user, ClaimTypes.Email);
 
-            _vm.OrgId ??= GetFirstClaim(user,
-                "org_id", "organization", "OrganizationId", "org", "tenant", "tenant_id");
+            _vm.CallbackEmail ??= GetFirstClaim(user, ClaimTypes.Email);
         }
-
-        // if _vm.Category already has a value, pick the matching group; else leave "none"
-        var grp = _categoryGroups.FirstOrDefault(g => g.Items.Any(i =>
-            string.Equals(i.Value, _vm.Category, StringComparison.OrdinalIgnoreCase)));
-        if (grp is not null)
-            _selectedCategoryGroup = grp.Key;
     }
 
     protected override void OnParametersSet()
@@ -290,6 +286,89 @@
         {
             _vm.PageUrl = IncomingPageUrl;
         }
+        ApplyQueryDefaults();
+    }
+
+    private void ApplyQueryDefaults()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (string.IsNullOrEmpty(uri.Query))
+            return;
+
+        var q = QueryHelpers.ParseQuery(uri.Query);
+
+        string? Get(string key)
+        {
+            foreach (var kv in q)
+                if (string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase))
+                    return kv.Value.ToString();
+            return null;
+        }
+
+        static string Clean(string? s) =>
+            string.IsNullOrWhiteSpace(s) ? string.Empty : s.Replace('+', ' ').Trim();
+
+        // Subject
+        var message = Get("message");
+        if (!string.IsNullOrWhiteSpace(message) && string.IsNullOrWhiteSpace(_vm.Subject))
+            _vm.Subject = Clean(message);
+
+        // Category group match by key or label
+        var cat = Get("category");
+        string? matchedGroupKey = null;
+        if (!string.IsNullOrWhiteSpace(cat))
+        {
+            var c = Clean(cat);
+            matchedGroupKey = _categoryGroups
+                .FirstOrDefault(g =>
+                    string.Equals(g.Key, c, StringComparison.OrdinalIgnoreCase) ||
+                    g.Label.Contains(c, StringComparison.OrdinalIgnoreCase))?.Key;
+
+            if (!string.IsNullOrWhiteSpace(matchedGroupKey))
+                _selectedCategoryGroup = matchedGroupKey!;
+        }
+
+        // Subcategory only if category matched and the subcategory belongs to it
+        var sub = Get("subcategory");
+        if (!string.IsNullOrWhiteSpace(sub) && !string.IsNullOrWhiteSpace(matchedGroupKey))
+        {
+            var s = Clean(sub);
+            var match = _categoryGroups
+                .FirstOrDefault(g => g.Key == matchedGroupKey)
+                ?.Items
+                .FirstOrDefault(i =>
+                    string.Equals(i.Value, s, StringComparison.OrdinalIgnoreCase) ||
+                    i.Label.Contains(s, StringComparison.OrdinalIgnoreCase));
+
+            if (match is not null)
+                _vm.Category = match.Value; // canonical subcategory value
+            // else: skip per requirement
+        }
+
+        // Priority mapping by value or label
+        var pr = Get("priority");
+        if (!string.IsNullOrWhiteSpace(pr) && string.IsNullOrWhiteSpace(_vm.Priority))
+        {
+            var p = Clean(pr);
+            var pm = _priorities.FirstOrDefault(i =>
+                        string.Equals(i.Value, p, StringComparison.OrdinalIgnoreCase) ||
+                        i.Label.Contains(p, StringComparison.OrdinalIgnoreCase));
+            if (pm is not null) _vm.Priority = pm.Value;
+        }
+
+        // Related URL: prefer relatedurl, else alias pageUrl if not already set
+        var relatedUrl = Get("relatedurl");
+        if (!string.IsNullOrWhiteSpace(relatedUrl) && string.IsNullOrWhiteSpace(_vm.PageUrl))
+            _vm.PageUrl = Clean(relatedUrl);
+
+        var pageUrl = Get("pageUrl");
+        if (string.IsNullOrWhiteSpace(_vm.PageUrl) && !string.IsNullOrWhiteSpace(pageUrl))
+            _vm.PageUrl = Clean(pageUrl);
+
+        // Description
+        var desc = Get("description");
+        if (!string.IsNullOrWhiteSpace(desc) && string.IsNullOrWhiteSpace(_vm.Description))
+            _vm.Description = Clean(desc);
     }
 
     private async Task SubmitAsync()
@@ -301,12 +380,7 @@
             //  - Fields from _vm
             //  - _userId, _orgId
             //  - Files from _files (use IBrowserFile.OpenReadStream() and StreamContent)
-            //
-            // Example placeholder:
-            await Task.Delay(600);
-
-            // On success, navigate or show toast
-            Nav.NavigateTo("/support/thanks", forceLoad: true);
+            await Task.Delay(600); // placeholder
         }
         finally
         {
@@ -314,34 +388,24 @@
         }
     }
 
+    private void Back() => Nav.NavigateTo(Nav.Uri, forceLoad: false);
+
     private void OnFilesSelected(InputFileChangeEventArgs e)
     {
-        foreach (var file in e.GetMultipleFiles())
-        {
-            _files.Add(file);
-        }
+        foreach (var f in e.GetMultipleFiles())
+            _files.Add(f);
     }
 
-    private void RemoveFile(IBrowserFile file)
-    {
-        _files.Remove(file);
-    }
+    private void RemoveFile(IBrowserFile f) => _files.Remove(f);
 
-    private static string? GetFirstClaim(ClaimsPrincipal user, params string[] types)
-    {
-        foreach (var t in types)
-        {
-            var v = user.FindFirst(t)?.Value;
-            if (!string.IsNullOrWhiteSpace(v)) return v;
-        }
-        return null;
-    }
+    private static string? GetFirstClaim(ClaimsPrincipal user, string type) =>
+        user.Claims.FirstOrDefault(c => c.Type == type)?.Value;
 
     private static string FormatSize(long bytes)
     {
-        string[] units = { "B", "KB", "MB", "GB" };
+        string[] units = ["B","KB","MB","GB","TB"];
         double size = bytes;
-        var unit = 0;
+        int unit = 0;
         while (size >= 1024 && unit < units.Length - 1)
         {
             size /= 1024;
@@ -350,11 +414,11 @@
         return $"{size:0.##} {units[unit]}";
     }
 
-    private sealed class TicketVm
+    class TicketVm
     {
         public string? Subject { get; set; }
-        public string Category { get; set; } = "bug";  // default
-        public string Priority { get; set; } = "normal";  // default
+        public string Category { get; set; } = "bug";        // holds subcategory value
+        public string Priority { get; set; } = "normal";
         public string? Description { get; set; }
 
         public bool IncludeDiagnostics { get; set; } = true;
@@ -363,8 +427,5 @@
 
         public string? UserId { get; set; }
         public string? OrgId  { get; set; }
-
-        public string CategoryLabel => string.IsNullOrWhiteSpace(Category) || Category == "Unspecified" ? "Uncategorized" : Category;
-        public string PriorityLabel => string.IsNullOrWhiteSpace(Priority) ? "Normal" : Priority;
     }
 }

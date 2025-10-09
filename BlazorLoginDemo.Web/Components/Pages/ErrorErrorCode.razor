@@ -1,48 +1,137 @@
 @page "/error/{ErrorCode}"
 @using BlazorLoginDemo.Shared.Models.Kernel.SysVar
 @using BlazorLoginDemo.Shared.Services.Interfaces.Kernel
+@using BlazorLoginDemo.Shared.Services.Helpers
 @inject IErrorCodeService ErrorCodeService
+@inject NavigationManager Nav
 
 @code {
-    [Parameter] public string? ErrorCode { get; set; }
+    [Parameter] public string ErrorCode { get; set; } = default!;
+
+    // Optional contextual message (?Message=... or ?message=...)
+    [SupplyParameterFromQuery(Name = "Message")] public string? ContextMessage { get; set; }
+    [SupplyParameterFromQuery(Name = "message")] public string? ContextMessageLower { get; set; }
+
+    private string? EffectiveContext =>
+        !string.IsNullOrWhiteSpace(ContextMessage) ? ContextMessage :
+        !string.IsNullOrWhiteSpace(ContextMessageLower) ? ContextMessageLower :
+        null;
+
     private ErrorCodeUnified? Error;
 
-    protected override async Task OnInitializedAsync()
+    private string? ErrorUrl =>
+        string.IsNullOrWhiteSpace(Error?.ContactSupportLink)
+            ? null
+            : ContactUrlHelper.NormalizeSupportContactUrl(Error.ContactSupportLink!).ToString();
+
+    protected override async Task OnParametersSetAsync()
     {
-        if (!string.IsNullOrWhiteSpace(ErrorCode))
-            Error = await ErrorCodeService.GetErrorAsync(ErrorCode);
+        Error = await ErrorCodeService.GetErrorAsync(ErrorCode);
     }
 }
 
-@if (Error is null)
-{
-    <div class="alert alert-danger mt-4">
-        <h4 class="alert-heading">Unknown Error</h4>
-        <p>No details were found for error code: <strong>@ErrorCode</strong>.</p>
-    </div>
-}
-else
-{
-    <div class="card mt-4">
-        <div class="card-header bg-danger text-white">
-            <h4>@Error.Title (@Error.ErrorCode)</h4>
-        </div>
-        <div class="card-body">
-            <p>@Error.Message</p>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-9 col-xl-8">
 
-            @if (!string.IsNullOrEmpty(Error.Resolution))
-            {
-                <div class="alert alert-info">
-                    <strong>Resolution:</strong> @Error.Resolution
+            <div class="text-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="text-danger mb-2" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.03.053.03.119 0 .172a.145.145 0 0 1-.125.066H1.204a.145.145 0 0 1-.125-.066.176.176 0 0 1 0-.172L7.936 2.016zM8 4.58a.5.5 0 0 0-.496.438l-.35 4.2a.5.5 0 0 0 .496.546h.7a.5.5 0 0 0 .496-.546l-.35-4.2A.5.5 0 0 0 8 4.58zm.002 6.918a.905.905 0 1 0 0 1.81.905.905 0 0 0 0-1.81z"/>
+                </svg>
+                <h1 class="h3 mb-1">Something went wrong</h1>
+                <p class="text-muted mb-0">An application error occurred.</p>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small opacity-75">Code</span>
+                            <span class="badge text-bg-dark">@ErrorCode</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            @if (Error?.IsClientFacing == true)
+                            {
+                                <span class="badge text-bg-secondary">Client-facing</span>
+                            }
+                            @if (Error?.IsInternalFacing == true)
+                            {
+                                <span class="badge text-bg-dark">Internal</span>
+                            }
+                        </div>
+                    </div>
                 </div>
-            }
 
-            @if (!string.IsNullOrEmpty(Error.ContactSupportLink))
-            {
-                <a class="btn btn-primary" href="@Error.ContactSupportLink" target="_blank">
-                    Contact Support
-                </a>
-            }
+                <div class="card-body">
+                    @if (Error is null)
+                    {
+                        <h2 class="h4 mb-2">Unknown error</h2>
+                        <p class="mb-3">
+                            No details were found for <span class="badge text-bg-dark">@ErrorCode</span>.
+                        </p>
+
+                        @if (!string.IsNullOrWhiteSpace(EffectiveContext))
+                        {
+                            <div class="alert alert-warning mb-0">
+                                <strong>Context:</strong> @EffectiveContext
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <h2 class="h4 mb-2">@Error.Title</h2>
+                        <p class="mb-3">@Error.Message</p>
+
+                        @if (!string.IsNullOrWhiteSpace(EffectiveContext))
+                        {
+                            <div class="alert alert-warning">
+                                <strong>Context:</strong> @EffectiveContext
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(Error.Resolution))
+                        {
+                            <div class="alert alert-info">
+                                <strong>Resolution:</strong> @Error.Resolution
+                            </div>
+                        }
+
+                        <div class="d-flex flex-wrap gap-2">
+                            @if (!string.IsNullOrWhiteSpace(Error.ContactSupportLink))
+                            {
+                                <a class="btn btn-primary" href="@ErrorUrl" target="_blank" rel="noopener">
+                                    Contact Support
+                                </a>
+                            }
+                            <a class="btn btn-outline-secondary" href="javascript:history.back()">Go Back</a>
+                            <a class="btn btn-outline-secondary" href="/">Home</a>
+                        </div>
+                    }
+                </div>
+
+                <div class="card-footer d-flex flex-wrap justify-content-between align-items-center">
+                    <div class="small text-muted">
+                        Created (UTC):
+                        @if (Error is not null && Error.CreatedOnUtc != default)
+                        { <span>@Error.CreatedOnUtc.ToString("yyyy-MM-dd HH:mm:ss 'UTC'")</span> }
+                        else
+                        { <span>—</span> }
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center text-muted mt-3">
+                Try refreshing the page. If this persists, use the support link above.
+            </div>
         </div>
     </div>
-}
+</div>
+
+@* 
+    Notes:
+    - This page is intended to be used for both client-facing and internal errors.
+    - It does not require authentication, as it may be shown when auth fails.
+    - It uses only Bootstrap 5.3 classes, no custom CSS.
+    - The error code is passed in the URL path, e.g. /error/ERR001
+    - An optional context message can be passed via query string, e.g. /error/ERR001?message=Additional%20info
+*@
