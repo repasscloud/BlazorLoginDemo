@@ -1,0 +1,844 @@
+@page "/platform/bookings/create-v5"
+@page "/platform/bookings/create-v5/{TravelQuoteId?}"
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+@inject NavigationManager Nav
+
+<!-- CreateBookingRequestV4 (unified style) -->
+
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <h2 class="h4 m-0">Flight Search</h2>
+                <small class="text-muted">Build a request then run search.</small>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary" @onclick="ResetAll" title="Reset">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset
+            </button>
+            <button class="btn btn-primary" @onclick="SubmitSearch" disabled="@(!IsFormValid)">
+                <i class="bi bi-search"></i> Search
+            </button>
+        </div>
+    </div>
+
+    <hr class="my-3" />
+
+    <!-- Top meta row -->
+    <div class="row g-3 mb-3">
+        <div class="col-auto">
+            <span class="badge text-bg-light text-secondary">Quote</span>
+            <span class="ms-2 fw-medium">@DisplayQuoteId</span>
+        </div>
+        <div class="col-auto">
+            <span class="badge text-bg-light text-secondary">Tenant</span>
+            <span class="ms-2 text-muted">@Config.TenantName</span>
+        </div>
+        <div class="col-auto">
+            <span class="badge text-bg-light text-secondary">Policy</span>
+            <span class="ms-2 text-muted">@Config.PolicyName</span>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-xl-9">
+            <div class="card shadow-sm">
+                <div class="card-body p-3 p-lg-4">
+
+                    <!-- Trip type -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-body-emphasis">Trip</label>
+                        <div class="btn-group" role="group" aria-label="Trip type">
+                            @foreach (var t in Enum.GetValues<TripType>())
+                            {
+                                var id = $"trip_{t}";
+                                var isChecked = Vm.Trip == t;
+                                <input type="radio" class="btn-check" name="trip" id="@id" checked="@isChecked"
+                                       @onchange="() => SetTripType(t)" />
+                                <label class="btn btn-outline-primary" for="@id">@TripLabel(t)</label>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- From / To / Dates / Pax -->
+                    <div class="row g-3">
+                        <!-- FROM -->
+                        <div class="col-12 col-lg-6">
+                            <label class="form-label fw-semibold text-body-emphasis">From</label>
+                            <div class="dropdown w-100">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-airplane"></i></span>
+                                    <input class="form-control"
+                                           placeholder="Type code or name"
+                                           @bind="OriginQuery"
+                                           @bind:event="oninput"
+                                           @onfocus="() => ShowOriginList = true"
+                                           @onkeydown="OnOriginKeyDown"
+                                           @onblur="HideOriginListDeferred" />
+                                </div>
+                                <div class="dropdown-menu w-100 shadow-sm @((ShowOriginList && FilteredOrigins.Count > 0) ? "show" : "")"
+                                     style="max-height:260px;overflow:auto;">
+                                    @foreach (var ap in FilteredOrigins)
+                                    {
+                                        <button type="button"
+                                                class="dropdown-item d-flex justify-content-between align-items-center"
+                                                @onclick="() => PickOrigin(ap)">
+                                            <span>
+                                                <span class="badge text-bg-secondary me-2">@ap.Code</span>@ap.NameFormatted
+                                            </span>
+                                            @if (Vm.Origin == ap.Code)
+                                            {
+                                                <span class="text-muted small"><i class="bi bi-check2"></i></span>
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                            <div class="form-text">Airport list limited to policy-enabled origins.</div>
+                        </div>
+
+                        <!-- TO -->
+                        <div class="col-12 col-lg-6">
+                            <label class="form-label fw-semibold text-body-emphasis">To</label>
+                            <div class="dropdown w-100">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                                    <input class="form-control"
+                                           placeholder="Type code or name"
+                                           @bind="DestinationQuery"
+                                           @bind:event="oninput"
+                                           @onfocus="() => ShowDestinationList = true"
+                                           @onkeydown="OnDestinationKeyDown"
+                                           @onblur="HideDestinationListDeferred" />
+                                </div>
+                                <div class="dropdown-menu w-100 shadow-sm @((ShowDestinationList && FilteredDestinations.Count > 0) ? "show" : "")"
+                                     style="max-height:260px;overflow:auto;">
+                                    @foreach (var ap in FilteredDestinations)
+                                    {
+                                        <button type="button"
+                                                class="dropdown-item d-flex justify-content-between align-items-center"
+                                                @onclick="() => PickDestination(ap)">
+                                            <span>
+                                                <span class="badge text-bg-secondary me-2">@ap.Code</span>@ap.NameFormatted
+                                            </span>
+                                            @if (Vm.Destination == ap.Code)
+                                            {
+                                                <span class="text-muted small"><i class="bi bi-check2"></i></span>
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                            <div class="form-text">Airport list limited to policy-enabled destinations.</div>
+                        </div>
+
+                        <!-- DATES -->
+                        <div class="col-12 col-md-6 col-xxl-3">
+                            <label class="form-label fw-semibold text-body-emphasis">Depart</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                                <input type="date" class="form-control"
+                                       value="@BindDate(Vm.DepartDate)"
+                                       @onchange="e => Vm.DepartDate = ParseDate(e.Value?.ToString())"
+                                       readonly="@Config.HasFixedTimes" />
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xxl-3">
+                            <label class="form-label fw-semibold text-body-emphasis">Return</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                                <input type="date" class="form-control"
+                                       value="@BindDate(Vm.ReturnDate)"
+                                       @onchange="e => Vm.ReturnDate = ParseDate(e.Value?.ToString())"
+                                       disabled="@(Vm.Trip == TripType.OneWay)"
+                                       readonly="@Config.HasFixedTimes" />
+                            </div>
+                        </div>
+
+                        <!-- Pax -->
+                        <div class="col-12 col-md-6 col-xxl-3">
+                            <label class="form-label fw-semibold text-body-emphasis">Passengers</label>
+                            <div class="input-group">
+                                <button class="btn btn-outline-secondary" type="button" @onclick="() => AdjustAdults(-1)" disabled="@(Vm.Adults <= 1)"><i class="bi bi-dash"></i></button>
+                                <span class="input-group-text">Adults</span>
+                                <input type="number" class="form-control text-center" min="1" max="9" value="@Vm.Adults"
+                                       @onchange="e => Vm.Adults = CoerceInt(e.Value, 1, 9)" />
+                                <button class="btn btn-outline-secondary" type="button" @onclick="() => AdjustAdults(1)" disabled="@(Vm.Adults >= 9)"><i class="bi bi-plus"></i></button>
+                            </div>
+                            <div class="form-text">Ages 12+.</div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xxl-3">
+                            <label class="form-label fw-semibold text-body-emphasis">Children</label>
+                            <div class="input-group">
+                                <button class="btn btn-outline-secondary" type="button" @onclick="() => AdjustChildren(-1)" disabled="@(Vm.Children <= 0)"><i class="bi bi-dash"></i></button>
+                                <span class="input-group-text">0–11</span>
+                                <input type="number" class="form-control text-center" min="0" max="9" value="@Vm.Children"
+                                       @onchange="e => Vm.Children = CoerceInt(e.Value, 0, 9)" />
+                                <button class="btn btn-outline-secondary" type="button" @onclick="() => AdjustChildren(1)" disabled="@(Vm.Children >= 9)"><i class="bi bi-plus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <!-- Timing and cabin -->
+                    <div class="row g-3">
+                        <!-- Time windows -->
+                        <div class="col-12 col-lg-6">
+                            <label class="form-label fw-semibold text-body-emphasis">Time preferences</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-clock"></i></span>
+                                        <input type="time" class="form-control"
+                                               value="@Vm.DepartEarliest"
+                                               @onchange="e => Vm.DepartEarliest = e.Value?.ToString() ?? string.Empty"
+                                               readonly="@Config.HasFixedTimes" />
+                                    </div>
+                                    <div class="form-text">Earliest depart</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-clock-history"></i></span>
+                                        <input type="time" class="form-control"
+                                               value="@Vm.DepartLatest"
+                                               @onchange="e => Vm.DepartLatest = e.Value?.ToString() ?? string.Empty"
+                                               readonly="@Config.HasFixedTimes" />
+                                    </div>
+                                    <div class="form-text">Latest depart</div>
+                                </div>
+                                @if (Vm.Trip == TripType.Return)
+                                {
+                                    <div class="col-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-clock"></i></span>
+                                            <input type="time" class="form-control"
+                                                   value="@Vm.ReturnEarliest"
+                                                   @onchange="e => Vm.ReturnEarliest = e.Value?.ToString() ?? string.Empty"
+                                                   readonly="@Config.HasFixedTimes" />
+                                        </div>
+                                        <div class="form-text">Earliest return</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-clock-history"></i></span>
+                                            <input type="time" class="form-control"
+                                                   value="@Vm.ReturnLatest"
+                                                   @onchange="e => Vm.ReturnLatest = e.Value?.ToString() ?? string.Empty"
+                                                   readonly="@Config.HasFixedTimes" />
+                                        </div>
+                                        <div class="form-text">Latest return</div>
+                                    </div>
+                                }
+                            </div>
+                            @if (Config.HasFixedTimes)
+                            {
+                                <div class="alert alert-light border mt-3 mb-0">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Time windows supplied by policy. Read-only.
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Cabin class -->
+                        <div class="col-12 col-lg-6">
+                            <label class="form-label fw-semibold text-body-emphasis">Cabin</label>
+                            <div class="btn-group flex-wrap" role="group" aria-label="Cabin">
+                                @foreach (var c in Enum.GetValues<CabinClass>().Where(c => c <= Config.MaxCabin))
+                                {
+                                    var key = CabinKey(c);
+                                    var id = $"cabin_{key}";
+                                    var isChecked = Vm.Cabin == c;
+                                    <input type="radio" class="btn-check" name="cabin" id="@id" checked="@isChecked"
+                                           @onchange="() => Vm.Cabin = c" />
+                                    <label class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" for="@id">
+                                        <i class="@CabinIcon(c)"></i>
+                                        <span>@CabinLabel(c)</span>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <!-- Carriers and alliances -->
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-6">
+                            <label class="form-label fw-semibold text-body-emphasis">Airlines</label>
+                            @if (Config.AvailableAirlines.Count == 0)
+                            {
+                                <div class="alert alert-light border">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    No specific airlines constrained by policy. You may still select alliance preferences.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="row row-cols-1 row-cols-md-2 g-2">
+                                    @foreach (var a in Config.AvailableAirlines)
+                                    {
+                                        var id = $"air_{a.Code}";
+                                        <div class="col">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="@id"
+                                                       checked="@Vm.Airlines.Contains(a.Code)"
+                                                       @onchange="e => ToggleAirline(a.Code, e.Value is true)" />
+                                                <label class="form-check-label d-flex align-items-center gap-2" for="@id">
+                                                    <span class="badge text-bg-secondary">@a.Code</span>
+                                                    <span>@a.Name</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <div class="col-12 col-lg-6">
+                            <label class="form-label fw-semibold text-body-emphasis">Alliances & rewards</label>
+                            <div class="row row-cols-1 row-cols-md-2 g-2">
+                                @foreach (var al in Enum.GetValues<Alliance>())
+                                {
+                                    var id = $"al_{al}";
+                                    <div class="col">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="@id"
+                                                   checked="@Vm.Alliances.Contains(al)"
+                                                   @onchange="e => ToggleAlliance(al, e.Value is true)" />
+                                            <label class="form-check-label" for="@id">@AllianceLabel(al)</label>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer actions -->
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div class="text-muted small">
+                    @if (!IsFormValid)
+                    {
+                        <span><i class="bi bi-exclamation-triangle me-1"></i>Complete required fields.</span>
+                    }
+                    else
+                    {
+                        <span><i class="bi bi-check2-circle me-1"></i>Ready to search.</span>
+                    }
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" @onclick="ResetAll">Clear</button>
+                    <button class="btn btn-primary" @onclick="SubmitSearch" disabled="@(!IsFormValid)">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="col-12 col-xl-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="fw-semibold text-body-emphasis">Summary</div>
+                        <span class="badge text-bg-light">VM</span>
+                    </div>
+
+                    <dl class="row mb-0 small">
+                        <dt class="col-5">Trip</dt>
+                        <dd class="col-7">@TripLabel(Vm.Trip)</dd>
+
+                        <dt class="col-5">From</dt>
+                        <dd class="col-7">@Vm.Origin</dd>
+
+                        <dt class="col-5">To</dt>
+                        <dd class="col-7">@Vm.Destination</dd>
+
+                        <dt class="col-5">Depart</dt>
+                        <dd class="col-7">@FormatDate(Vm.DepartDate)</dd>
+
+                        @if (Vm.Trip == TripType.Return)
+                        {
+                            <dt class="col-5">Return</dt>
+                            <dd class="col-7">@FormatDate(Vm.ReturnDate)</dd>
+                        }
+
+                        <dt class="col-5">Pax</dt>
+                        <dd class="col-7">@Vm.Adults A, @Vm.Children C</dd>
+
+                        <dt class="col-5">Cabin</dt>
+                        <dd class="col-7">@CabinLabel(Vm.Cabin)</dd>
+
+                        <dt class="col-5">Times</dt>
+                        <dd class="col-7">
+                            @Vm.DepartEarliest–@Vm.DepartLatest
+                            @if (Vm.Trip == TripType.Return) { <span> / @Vm.ReturnEarliest–@Vm.ReturnLatest</span> }
+                        </dd>
+
+                        <dt class="col-5">Airlines</dt>
+                        <dd class="col-7">@((Vm.Airlines.Count == 0) ? "Any" : string.Join(", ", Vm.Airlines))</dd>
+
+                        <dt class="col-5">Alliances</dt>
+                        <dd class="col-7">@((Vm.Alliances.Count == 0) ? "None" : string.Join(", ", Vm.Alliances.Select(AllianceLabel)))</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // ===== Parameters =====
+    [Parameter] public string? TravelQuoteId { get; set; }
+
+    // Also allow query-string usage if preferred later.
+    [SupplyParameterFromQuery] public string? tq { get; set; }
+
+    // ===== View Model =====
+    private SearchVm Vm { get; set; } = new();
+
+    // ===== Page State =====
+    private PageConfig Config { get; set; } = PageConfig.Empty();
+    private IConfigService _service = default!;
+
+    // origin/destination dropdown state
+    private bool ShowOriginList { get; set; }
+    private bool ShowDestinationList { get; set; }
+    private string OriginQuery { get; set; } = string.Empty;
+    private string DestinationQuery { get; set; } = string.Empty;
+    private List<AirportItem> FilteredOrigins { get; set; } = new();
+    private List<AirportItem> FilteredDestinations { get; set; } = new();
+
+    // ===== Lifecycle =====
+    protected override async Task OnParametersSetAsync()
+    {
+        // Route param wins, else fall back to ?tq=
+        var id = !string.IsNullOrWhiteSpace(TravelQuoteId) ? TravelQuoteId : tq;
+
+        // Select real vs dummy data source
+        _service = string.IsNullOrWhiteSpace(id)
+            ? new DummyConfigService()
+            : new PlaceholderConfigService(); // replace with real implementation later
+
+        Config = await _service.LoadAsync(id ?? string.Empty);
+
+        // Initialize VM from config where required defaults exist
+        InitializeVmFromConfig();
+
+        // Build formatted airport lists from service-enabled sets
+        RebuildAirportIndexes();
+
+        // Initial filter
+        ApplyOriginFilter();
+        ApplyDestinationFilter();
+    }
+
+    // ===== Commands =====
+    private void SubmitSearch()
+    {
+        if (!IsFormValid) return;
+
+        // Forward VM to API (placeholder)
+        // Nav.NavigateTo($"/platform/search/run?origin={Vm.Origin}&destination={Vm.Destination}...");
+    }
+
+    private void ResetAll()
+    {
+        Vm = new();
+        OriginQuery = string.Empty;
+        DestinationQuery = string.Empty;
+        ApplyOriginFilter();
+        ApplyDestinationFilter();
+    }
+
+    private void SetTripType(TripType t)
+    {
+        Vm.Trip = t;
+        if (t == TripType.OneWay)
+        {
+            Vm.ReturnDate = null;
+            Vm.ReturnEarliest = string.Empty;
+            Vm.ReturnLatest = string.Empty;
+        }
+    }
+
+    private void ToggleAirline(string code, bool on)
+    {
+        if (on)
+        {
+            if (!Vm.Airlines.Contains(code)) Vm.Airlines.Add(code);
+        }
+        else
+        {
+            Vm.Airlines.Remove(code);
+        }
+    }
+
+    private void ToggleAlliance(Alliance a, bool on)
+    {
+        if (on)
+        {
+            if (!Vm.Alliances.Contains(a)) Vm.Alliances.Add(a);
+        }
+        else
+        {
+            Vm.Alliances.Remove(a);
+        }
+    }
+
+    private void AdjustAdults(int delta)
+    {
+        Vm.Adults = Math.Clamp(Vm.Adults + delta, 1, 9);
+    }
+
+    private void AdjustChildren(int delta)
+    {
+        Vm.Children = Math.Clamp(Vm.Children + delta, 0, 9);
+    }
+
+    // ===== Validation =====
+    private bool IsFormValid =>
+        !string.IsNullOrWhiteSpace(Vm.Origin)
+        && !string.IsNullOrWhiteSpace(Vm.Destination)
+        && Vm.Origin != Vm.Destination
+        && Vm.DepartDate is not null
+        && (Vm.Trip == TripType.OneWay || Vm.ReturnDate is not null);
+
+    // ===== Airport filtering =====
+    private void RebuildAirportIndexes()
+    {
+        _originIndex = Config.EnabledOrigins
+            .Select(FormatAirport)
+            .OrderBy(a => a.Code)
+            .ToList();
+
+        _destIndex = Config.EnabledDestinations
+            .Select(FormatAirport)
+            .OrderBy(a => a.Code)
+            .ToList();
+    }
+
+    private void ApplyOriginFilter()
+    {
+        var q = (OriginQuery ?? string.Empty).Trim();
+        FilteredOrigins = FilterAirports(_originIndex, q);
+        ShowOriginList = FilteredOrigins.Count > 0 && q.Length >= 0;  // or just > 0
+    }
+
+    private void ApplyDestinationFilter()
+    {
+        var q = (DestinationQuery ?? string.Empty).Trim();
+        FilteredDestinations = FilterAirports(_destIndex, q);
+        ShowDestinationList = FilteredDestinations.Count > 0 && q.Length >= 0;  // or just > 0
+    }
+
+    private static List<AirportItem> FilterAirports(List<AirportItem> all, string query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return all.Take(25).ToList();
+        query = query.ToUpperInvariant();
+        return all
+            .Where(a => a.Code.Contains(query, StringComparison.OrdinalIgnoreCase)
+                     || a.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
+                     || a.Country.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Take(25)
+            .ToList();
+    }
+
+    private void PickOrigin(AirportItem a)
+    {
+        Vm.Origin = a.Code;
+        OriginQuery = $"{a.Code} — {a.Name}";
+        ShowOriginList = false;
+    }
+
+    private void PickDestination(AirportItem a)
+    {
+        Vm.Destination = a.Code;
+        DestinationQuery = $"{a.Code} — {a.Name}";
+        ShowDestinationList = false;
+    }
+
+    private async void HideOriginListDeferred(FocusEventArgs _)
+    {
+        await Task.Delay(100);
+        ShowOriginList = false;
+        StateHasChanged();
+    }
+
+    private async void HideDestinationListDeferred(FocusEventArgs _)
+    {
+        await Task.Delay(100);
+        ShowDestinationList = false;
+        StateHasChanged();
+    }
+
+    private void OnOriginKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Escape")
+        {
+            ShowOriginList = false;
+        }
+    }
+
+    private void OnDestinationKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Escape")
+        {
+            ShowDestinationList = false;
+        }
+    }
+
+    // ===== Helpers: labels, formatting, parsing =====
+    private static string TripLabel(TripType t) => t switch
+    {
+        TripType.OneWay => "One-Way",
+        TripType.Return => "Return",
+        _ => t.ToString()
+    };
+
+    private static string CabinLabel(CabinClass c) => c switch
+    {
+        CabinClass.Economy => "Economy",
+        CabinClass.PremiumEconomy => "Premium Economy",
+        CabinClass.Business => "Business",
+        CabinClass.First => "First",
+        _ => c.ToString()
+    };
+
+    private static string CabinKey(CabinClass c) => c.ToString().ToLowerInvariant();
+
+    private static string CabinIcon(CabinClass c) => c switch
+    {
+        CabinClass.Economy => "bi bi-person-seat",
+        CabinClass.PremiumEconomy => "bi bi-person-seat",
+        CabinClass.Business => "bi bi-person-vip",
+        CabinClass.First => "bi bi-gem",
+        _ => "bi bi-person"
+    };
+
+    private static string AllianceLabel(Alliance a) => a switch
+    {
+        Alliance.Oneworld => "oneworld",
+        Alliance.StarAlliance => "Star Alliance",
+        Alliance.SkyTeam => "SkyTeam",
+        _ => a.ToString()
+    };
+
+    private string BindDate(DateTime? dt) =>
+        dt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private DateTime? ParseDate(string? v)
+    {
+        if (DateTime.TryParse(v, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var d))
+        {
+            return d.Date;
+        }
+        return null;
+    }
+
+    private string FormatDate(DateTime? dt) =>
+        dt?.ToString("ddd, dd MMM yyyy", CultureInfo.InvariantCulture) ?? "-";
+
+    private string DisplayQuoteId => string.IsNullOrWhiteSpace(TravelQuoteId ?? tq) ? "(preview)" : (TravelQuoteId ?? tq)!;
+
+    private static int CoerceInt(object? value, int min, int max)
+    {
+        if (value is null) return min;
+        if (value is int i) return Math.Clamp(i, min, max);
+
+        var s = Convert.ToString(value, CultureInfo.InvariantCulture);
+        if (int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
+            return Math.Clamp(n, min, max);
+
+        return min;
+    }
+
+    // ===== Initialize from config =====
+    private void InitializeVmFromConfig()
+    {
+        // Preselect cabin to min of current vs allowed max
+        if (Vm.Cabin > Config.MaxCabin)
+            Vm.Cabin = Config.MaxCabin;
+
+        if (Config.HasFixedTimes)
+        {
+            Vm.DepartEarliest = Config.FixedDepartEarliest;
+            Vm.DepartLatest = Config.FixedDepartLatest;
+            Vm.ReturnEarliest = Config.FixedReturnEarliest;
+            Vm.ReturnLatest = Config.FixedReturnLatest;
+        }
+
+        // Seed dates if provided
+        if (Config.SeedDepartDate is not null) Vm.DepartDate = Config.SeedDepartDate;
+        if (Config.SeedReturnDate is not null) Vm.ReturnDate = Config.SeedReturnDate;
+
+        // Optionally seed airlines
+        if (Config.PreferredAirlines.Count > 0)
+        {
+            Vm.Airlines = Config.PreferredAirlines.Distinct().ToList();
+        }
+    }
+
+    // ===== Backing indexes for airports =====
+    private List<AirportItem> _originIndex = new();
+    private List<AirportItem> _destIndex = new();
+
+    private static AirportItem FormatAirport(Airport a) =>
+        new(a.Code,
+            a.Name,
+            a.City,
+            a.Country,
+            $"{a.Code} — {a.Name}{(string.IsNullOrWhiteSpace(a.City) ? "" : $", {a.City}")}{(string.IsNullOrWhiteSpace(a.Country) ? "" : $", {a.Country}")}");
+
+    // ===== Data contracts =====
+    private enum TripType { OneWay = 1, Return = 2 }
+
+    private enum CabinClass { Economy = 0, PremiumEconomy = 1, Business = 2, First = 3 }
+
+    private enum Alliance { Oneworld = 1, StarAlliance = 2, SkyTeam = 3 }
+
+    private sealed class SearchVm
+    {
+        [Required] public string Origin { get; set; } = string.Empty;
+        [Required] public string Destination { get; set; } = string.Empty;
+
+        public TripType Trip { get; set; } = TripType.OneWay;
+
+        public DateTime? DepartDate { get; set; } = DateTime.Today.AddDays(7);
+        public DateTime? ReturnDate { get; set; } = null;
+
+        public int Adults { get; set; } = 1;
+        public int Children { get; set; } = 0;
+
+        public CabinClass Cabin { get; set; } = CabinClass.Economy;
+
+        // Time windows; become read-only when supplied by policy
+        public string DepartEarliest { get; set; } = string.Empty; // "HH:mm"
+        public string DepartLatest { get; set; } = string.Empty;
+        public string ReturnEarliest { get; set; } = string.Empty;
+        public string ReturnLatest { get; set; } = string.Empty;
+
+        public List<string> Airlines { get; set; } = new();      // list of airline IATA codes
+        public List<Alliance> Alliances { get; set; } = new();   // reward programs
+    }
+
+    private sealed record Airport(string Code, string Name, string City, string Country);
+
+    private sealed record Airline(string Code, string Name);
+
+    private sealed record AirportItem(string Code, string Name, string City, string Country, string NameFormatted);
+
+    private sealed class PageConfig
+    {
+        public string TenantName { get; init; } = "—";
+        public string PolicyName { get; init; } = "—";
+
+        public List<Airport> EnabledOrigins { get; init; } = new();
+        public List<Airport> EnabledDestinations { get; init; } = new();
+
+        public List<Airline> AvailableAirlines { get; init; } = new();
+
+        public List<string> PreferredAirlines { get; init; } = new();
+
+        public CabinClass MaxCabin { get; init; } = CabinClass.First;
+
+        public bool HasFixedTimes { get; init; }
+        public string FixedDepartEarliest { get; init; } = string.Empty;
+        public string FixedDepartLatest { get; init; } = string.Empty;
+        public string FixedReturnEarliest { get; init; } = string.Empty;
+        public string FixedReturnLatest { get; init; } = string.Empty;
+
+        public DateTime? SeedDepartDate { get; init; }
+        public DateTime? SeedReturnDate { get; init; }
+
+        public static PageConfig Empty() => new();
+    }
+
+    // ===== Service abstraction =====
+    private interface IConfigService
+    {
+        Task<PageConfig> LoadAsync(string travelQuoteId);
+    }
+
+    // Placeholder to wire in your actual API-backed service later.
+    private sealed class PlaceholderConfigService : IConfigService
+    {
+        public Task<PageConfig> LoadAsync(string travelQuoteId)
+        {
+            // TODO: replace with real HTTP/API call using travelQuoteId
+            // For now mirror dummy but with "locked" times to demonstrate read-only
+            var cfg = new PageConfig
+            {
+                TenantName = "Contoso Travel",
+                PolicyName = $"Quote {travelQuoteId}",
+                EnabledOrigins = DummyAirports().Where(a => a.Code is "SYD" or "MEL" or "BNE").ToList(),
+                EnabledDestinations = DummyAirports().Where(a => a.Code is "AKL" or "WLG" or "CHC" or "ZQN").ToList(),
+                AvailableAirlines = new() { new("QF", "Qantas"), new("NZ", "Air New Zealand") },
+                PreferredAirlines = new() { "QF" },
+                MaxCabin = CabinClass.Business,
+                HasFixedTimes = true,
+                FixedDepartEarliest = "07:00",
+                FixedDepartLatest = "10:30",
+                FixedReturnEarliest = "14:00",
+                FixedReturnLatest = "20:00",
+                SeedDepartDate = DateTime.Today.AddDays(10),
+                SeedReturnDate = DateTime.Today.AddDays(14)
+            };
+            return Task.FromResult(cfg);
+        }
+    }
+
+    // Dummy service used when no TravelQuoteId provided, so you can see full UI.
+    private sealed class DummyConfigService : IConfigService
+    {
+        public Task<PageConfig> LoadAsync(string _)
+        {
+            var cfg = new PageConfig
+            {
+                TenantName = "Demo Tenant",
+                PolicyName = "Sample Policy",
+                EnabledOrigins = DummyAirports().Where(a => a.Country == "AU").ToList(),
+                EnabledDestinations = DummyAirports().Where(a => a.Country is "NZ" or "SG" or "US").ToList(),
+                AvailableAirlines = new()
+                {
+                    new("QF", "Qantas"), new("VA", "Virgin Australia"), new("SQ", "Singapore Airlines"),
+                    new("NZ", "Air New Zealand"), new("UA", "United")
+                },
+                PreferredAirlines = new() { "SQ", "QF" },
+                MaxCabin = CabinClass.First,
+                HasFixedTimes = false,
+                SeedDepartDate = DateTime.Today.AddDays(7),
+                SeedReturnDate = DateTime.Today.AddDays(12)
+            };
+            return Task.FromResult(cfg);
+        }
+    }
+
+    // ===== Dummy data =====
+    private static List<Airport> DummyAirports() => new()
+    {
+        new("SYD","Sydney Kingsford Smith","Sydney","AU"),
+        new("MEL","Melbourne Tullamarine","Melbourne","AU"),
+        new("BNE","Brisbane","Brisbane","AU"),
+        new("PER","Perth","Perth","AU"),
+        new("ADL","Adelaide","Adelaide","AU"),
+        new("AKL","Auckland","Auckland","NZ"),
+        new("WLG","Wellington","Wellington","NZ"),
+        new("CHC","Christchurch","Christchurch","NZ"),
+        new("ZQN","Queenstown","Queenstown","NZ"),
+        new("SIN","Singapore Changi","Singapore","SG"),
+        new("LAX","Los Angeles","Los Angeles","US"),
+        new("SFO","San Francisco","San Francisco","US")
+    };
+}
