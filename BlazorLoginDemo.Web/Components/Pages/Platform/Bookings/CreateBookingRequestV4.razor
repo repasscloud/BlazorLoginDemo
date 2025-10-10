@@ -1,0 +1,723 @@
+@page "/platform/bookings/create-v4"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@inject NavigationManager Nav
+
+<!-- CreateBookingRequestV3.razor -->
+
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <h2 class="h4 m-0">Flight Search</h2>
+            </div>
+        </div>
+        <div class="d-none d-md-flex align-items-center gap-2">
+            <span class="border rounded-pill px-2 py-1 small"><i class="bi bi-shield-check me-1"></i> Policy Aware</span>
+            <span class="border rounded-pill px-2 py-1 small"><i class="bi bi-lightning-charge me-1"></i>Fast Lookup</span>
+        </div>
+    </div>
+    <EditForm class="mt-3" Model="@Vm" OnValidSubmit="@OnSearch">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="alert alert-danger" />
+        <div class="card shadow-sm">
+            <div class="card-body p-3 p-lg-4">
+                <!-- Trip type -->
+                <div class="mb-3">
+                    <div class="btn-group" role="group" aria-label="Trip type">
+                        <input type="radio" class="btn-check" name="tripType" id="tripOne" checked="@(Vm.TripType == TripType.OneWay)" @onchange="() => SetTripType(TripType.OneWay)" />
+                        <label class="btn btn-outline-primary" for="tripOne">One-Way</label>
+                        <input type="radio" class="btn-check" name="tripType" id="tripReturn" checked="@(Vm.TripType == TripType.Return)" @onchange="() => SetTripType(TripType.Return)" />
+                        <label class="btn btn-outline-primary" for="tripReturn">Return</label>
+                    </div>
+                </div>
+                <!-- From / To / Dates / Pax -->
+                <div class="row g-3">
+                    <!-- FROM -->
+                    <div class="col-12 col-lg-3">
+                        <label class="form-label">From</label>
+                        <div class="position-relative">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                                <input class="form-control" placeholder="Type code or name" @bind="OriginQuery" @bind:event="oninput" @onfocus="() => ShowOriginList = true" @onkeydown="OnOriginKeyDown" @onblur="HideOriginListDeferred" />
+                            </div>
+                            <div class="dropdown-menu w-100 shadow-sm @(ShowOriginList && FilteredOrigins.Count > 0 ? "show" : "")" style="max-height:260px;overflow:auto;">
+                                @foreach (var ap in FilteredOrigins)
+                                {
+                                    <button type="button" class="dropdown-item d-flex justify-content-between align-items-center" @onclick="() => PickOrigin(ap)">
+                                        <span><span class="badge text-bg-secondary me-2">@ap.Code</span>@ap.Name</span>
+                                        @if (Vm.Origin == ap.Code) { <span class="text-muted small">selected</span> }
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        <ValidationMessage For="() => Vm.Origin" />
+                    </div>
+                <!-- TO -->
+                <div class="col-12 col-lg-3">
+                    <label class="form-label">To</label>
+                    <div class="position-relative">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-geo"></i></span>
+                            <input class="form-control"
+                                placeholder="Type code or name"
+                                @bind="DestinationQuery"
+                                @bind:event="oninput"
+                                @onfocus="() => ShowDestinationList = true"
+                                @onkeydown="OnDestinationKeyDown"
+                                @onblur="HideDestinationListDeferred" />
+                        </div>
+                        <div class="dropdown-menu w-100 shadow-sm @(ShowDestinationList && FilteredDestinations.Count > 0 ? "show" : "")" style="max-height:260px;overflow:auto;">
+                            @foreach (var ap in FilteredDestinations)
+                            {
+                                <button type="button" class="dropdown-item d-flex justify-content-between align-items-center"
+                                    @onclick="() => PickDestination(ap)">
+                                    <span><span class="badge text-bg-secondary me-2">@ap.Code</span>@ap.Name</span>
+                                    @if (Vm.Destination == ap.Code) { <span class="text-muted small">selected</span> }
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <ValidationMessage For="() => Vm.Destination" />
+                </div>
+                <!-- DEPART -->
+                <div class="col-6 col-lg-2">
+                    <label class="form-label">Depart</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-calendar2"></i></span>
+                        <InputDate TValue="DateOnly" class="form-control" @bind-Value="Vm.DepartDate" />
+                    </div>
+                    <ValidationMessage For="() => Vm.DepartDate" />
+                </div>
+                <!-- RETURN -->
+                <div class="col-6 col-lg-2">
+                    <label class="form-label">Return</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-calendar2"></i></span>
+                        <InputDate TValue="DateOnly?" class="form-control" @bind-Value="Vm.ReturnDate" disabled="@(Vm.TripType != TripType.Return)" />
+                    </div>
+                    @if (Vm.TripType != TripType.Return)
+                    {
+                        <div class="form-text">Disabled for One-Way.</div>
+                    }
+                </div>
+                <!-- PAX -->
+                <div class="col-6 col-lg-2">
+                    <label class="form-label">Pax</label>
+                    <InputNumber class="form-control" @bind-Value="Vm.Pax" Min="1" />
+                    <ValidationMessage For="() => Vm.Pax" />
+                </div>
+            </div>
+            <!-- Selection pills -->
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <span class="badge rounded-pill text-bg-secondary">@Vm.TripType</span>
+                @if (Vm.Origin != null) { <span class="badge rounded-pill text-bg-light border"><strong>@Vm.Origin</strong></span>; }
+                @if (Vm.Destination != null) { <span class="badge rounded-pill text-bg-light border"><strong>@Vm.Destination</strong></span>; }
+                @if (Vm.RefundableOnly)
+                {
+                    <button type="button" class="badge rounded-pill text-bg-success shadow-sm d-inline-flex align-items-center gap-1 border-0 px-3" title="Refundable only" @onclick="() => Vm.RefundableOnly = false">
+                        <i class="bi bi-cash-coin"></i>
+                        <span class="fw-semibold">Refundable</span>
+                        <span aria-hidden="true">×</span>
+                    </button>
+                }
+                @if (Vm.IncludeBaggage)
+                {
+                    <button type="button" class="badge rounded-pill text-bg-info shadow-sm d-inline-flex align-items-center gap-1 border-0 px-3" title="Include checked baggage" @onclick="() => Vm.IncludeBaggage = false">
+                        <i class="bi bi-bag-check"></i>
+                        <span class="fw-semibold">Baggage</span>
+                        <span aria-hidden="true">×</span>
+                    </button>
+                }
+                @foreach (var a in Vm.SelectedAirlines)
+                {
+                    <button type="button" class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1" title="@a" @onclick="() => ToggleAirline(a, false)">
+                        <img src="@GetAirlineLogoUrl(a)" alt="@a" class="rounded-circle bg-white" style="height:14px;width:14px;padding:1px;" />
+                        <span class="fw-semibold">@a</span>
+                        <span aria-hidden="true">×</span>
+                    </button>
+                }
+                @foreach (var s in Vm.SelectedStops.OrderBy(x => x))
+                {
+                    var lbl = StopsOptions.First(o => o.Value == s).Label;
+                    <button type="button" class="@GetStopPillClass(s)" style="outline:0; box-shadow:none;" @onclick="() => ToggleStop(s, false)">@lbl ×</button>
+                }
+                @foreach (var k in Vm.SelectedExtras.ToArray())
+                {
+                    @RenderExtraPill(k)
+                }
+                @foreach (var a in Vm.SelectedAlliances)
+                {
+                    var aName = Alliances.First(x => string.Equals(x.Key, a, StringComparison.OrdinalIgnoreCase)).Name;
+                    <button type="button" class="badge rounded-pill text-bg-primary shadow-sm d-inline-flex align-items-center gap-1 border-0 px-3" title="@aName" @onclick="() => ToggleAlliance(a, false)">
+                        <img src="@GetAllianceLogoUrl(a)" alt="@aName" class="rounded-circle bg-white" style="height:14px;width:14px;padding:1px;" />
+                        <span class="fw-semibold">@aName</span>
+                        <span aria-hidden="true">×</span>
+                    </button>
+                }
+                @{
+                    var sel = CabinFilters.First(f => f.Key == CabinKey(Vm.Cabin));
+                }
+                <button type="button" class="@sel.PillClass" title="Cabin">
+                    @if (!string.IsNullOrWhiteSpace(sel.IconCss)) { <i class="@sel.IconCss"></i> }
+                    <span class="fw-semibold">@sel.Label</span>
+                </button>
+            </div>
+            <!-- Advanced filters -->
+            <div class="accordion mt-3" id="advFilters">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="advHeading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advCollapse" aria-expanded="false" aria-controls="advCollapse">
+                            Advanced filters
+                        </button>
+                    </h2>
+                    <div id="advCollapse" class="accordion-collapse collapse" aria-labelledby="advHeading" data-bs-parent="#advFilters">
+                        <div class="accordion-body">
+                            <!-- Responsive 1/2/3/4 columns -->
+                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xxl-4 g-3">
+                                <!-- Airlines (checkboxes with logos) -->
+                                    <div class="col">
+                                        <label class="form-label fw-semibold text-body-emphasis">Airlines</label>
+                                        <div class="vstack gap-2">
+                                            @foreach (var a in Airlines)
+                                            {
+                                                var id = $"air_{a.Code}";
+                                                <div class="form-check d-flex align-items-center gap-2">
+                                                    <input class="form-check-input mt-0" type="checkbox" id="@id" checked="@Vm.SelectedAirlines.Contains(a.Code)" @onchange="e => ToggleAirline(a.Code, (bool?)e.Value == true)" />
+                                                    <label class="form-check-label d-flex align-items-center" for="@id">
+                                                        <img src="@GetAirlineLogoUrl(a.Code)" alt="@a.Code" style="height:18px;width:18px" class="me-2" />
+                                                        <span>@a.Name (@a.Code)</span>
+                                                    </label>
+                                                </div>
+                                            }
+                                            @* <div class="form-text">Leave blank for all airlines.</div> *@
+                                        </div>
+                                    </div>
+                                    <!-- Stops (multi-select checkboxes) -->
+                                    <div class="col">
+                                        <label class="form-label fw-semibold text-body-emphasis">Stops</label>
+                                        <div class="vstack gap-2">
+                                            @foreach (var s in StopsOptions)
+                                            {
+                                                var id = $"st_{s.Value}";
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="@id" checked="@Vm.SelectedStops.Contains(s.Value)" @onchange="e => ToggleStop(s.Value, (bool?)e.Value == true)" />
+                                                    <label class="form-check-label" for="@id">@s.Label</label>
+                                                </div>
+                                            }
+                                            @* <div class="form-text">Select any. None = any stops.</div> *@
+                                        </div>
+                                    </div>
+                                    <!-- Core check options -->
+                                    <div class="col">
+                                        <label class="form-label fw-semibold text-body-emphasis">Fare options</label>
+                                            <div class="vstack gap-2">
+                                                <div class="form-check d-flex align-items-center gap-2">
+                                                    <InputCheckbox class="form-check-input mt-0" @bind-Value="Vm.RefundableOnly" id="chkRefund" />
+                                                    <label class="form-check-label d-flex align-items-center gap-2" for="chkRefund">
+                                                        <i class="bi bi-cash-coin"></i>
+                                                        <span>Refundable only</span>
+                                                    </label>
+                                                </div>
+                                                <div class="form-check d-flex align-items-center gap-2">
+                                                    <InputCheckbox class="form-check-input mt-0" @bind-Value="Vm.IncludeBaggage" id="chkBaggage" />
+                                                    <label class="form-check-label d-flex align-items-center gap-2" for="chkBaggage">
+                                                        <i class="bi bi-bag-check"></i>
+                                                        <span>Include checked baggage</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Extra TMC filters -->
+                                        <div class="col">
+                                            <label class="form-label fw-semibold text-body-emphasis">Fare & carrier</label>
+                                            <div class="vstack gap-2">
+                                                <!-- Fare & carrier -->
+                                                @foreach (var f in FareCarrierFilters)
+                                                {
+                                                    var id = $"f_{f.Key}";
+                                                    <div class="form-check d-flex align-items-center gap-2">
+                                                        <input class="form-check-input mt-0" type="checkbox" id="@id" checked="@Vm.SelectedExtras.Contains(f.Key)" @onchange="e => ToggleExtra(f.Key, (bool?)e.Value == true)" />
+                                                        <label class="form-check-label d-flex align-items-center gap-2" for="@id">
+                                                            @if (!string.IsNullOrWhiteSpace(f.IconCss)) { <i class="@f.IconCss"></i> }
+                                                            else if (!string.IsNullOrWhiteSpace(f.IconUrl)) { <img src="@f.IconUrl" alt="" style="height:16px;width:16px" /> }
+                                                            <span>@f.Label</span>
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <label class="form-label fw-semibold text-body-emphasis">Trip timing & comfort</label>
+                                            <div class="vstack gap-2">
+                                                <!-- Trip timing & comfort -->
+                                                @foreach (var f in TripTimingComfortFilters)
+                                                {
+                                                    var id = $"f_{f.Key}";
+                                                    <div class="form-check d-flex align-items-center gap-2">
+                                                        <input class="form-check-input mt-0" type="checkbox" id="@id" checked="@Vm.SelectedExtras.Contains(f.Key)" @onchange="e => ToggleExtra(f.Key, (bool?)e.Value == true)" />
+                                                        <label class="form-check-label d-flex align-items-center gap-2" for="@id">
+                                                            @if (!string.IsNullOrWhiteSpace(f.IconCss)) { <i class="@f.IconCss"></i> }
+                                                            else if (!string.IsNullOrWhiteSpace(f.IconUrl)) { <img src="@f.IconUrl" alt="" style="height:16px;width:16px" /> }
+                                                            <span>@f.Label</span>
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <label class="form-label fw-semibold text-body-emphasis">Airline alliances</label>
+                                            <div class="vstack gap-2">
+                                                @foreach (var al in Alliances)
+                                                {
+                                                    var id = $"alli_{al.Key}";
+                                                    <div class="form-check d-flex align-items-center gap-2">
+                                                        <input class="form-check-input mt-0" type="checkbox" id="@id" checked="@Vm.SelectedAlliances.Contains(al.Key)" @onchange="e => ToggleAlliance(al.Key, (bool?)e.Value == true)" />
+                                                        <label class="form-check-label d-flex align-items-center" for="@id">
+                                                            <img src="@GetAllianceLogoUrl(al.Key)" alt="@al.Name" style="height:18px;width:18px" class="me-2" />
+                                                            <span>@al.Name</span>
+                                                        </label>
+                                                    </div>
+                                                }
+                                                @* <div class="form-text">Select any alliances. None = any alliance.</div> *@
+                                            </div>
+                                        </div>
+                                        <!-- Seating Class -->
+                                        <div class="col">
+                                            <label class="form-label fw-semibold text-body-emphasis">Max Cabin</label>
+                                            <div class="vstack gap-2">
+                                                @foreach (var cf in CabinFilters)
+                                                {
+                                                    var id = $"cabin_{cf.Key}";
+                                                    <div class="form-check d-flex align-items-center gap-2">
+                                                        <input class="form-check-input mt-0" type="radio" name="cabin" id="@id" checked="@(CabinKey(Vm.Cabin) == cf.Key)" @onchange="() => Vm.Cabin = CabinFromKey(cf.Key)" />
+                                                        <label class="form-check-label d-flex align-items-center gap-2" for="@id">
+                                                            @if (!string.IsNullOrWhiteSpace(cf.IconCss)) { <i class="@cf.IconCss"></i> }
+                                                            <span>@cf.Label</span>
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                        <!-- Flight time window -->
+                                        <div class="col">
+                                            <label class="form-label fw-semibold text-body-emphasis">Departure time window (local)</label>
+                                            <div class="input-group">
+                                                <InputText class="form-control" type="time" step="60" Value="@EarliestDepartLocalStr" ValueChanged="@(v => EarliestDepartLocalStr = v)" ValueExpression="() => EarliestDepartLocalStr" />
+                                                <span class="input-group-text">to</span>
+                                                <InputText class="form-control" type="time" step="60" Value="@LatestDepartLocalStr" ValueChanged="@(v => LatestDepartLocalStr = v)" ValueExpression="() => LatestDepartLocalStr" />
+                                            </div>
+                                        @* <div class="form-text">24-hour HH:mm. Optional.</div> *@
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- CTA -->
+                <div class="d-grid d-sm-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search me-1"></i>Search
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="ResetAll">Reset</button>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    // ===== ViewModel =====
+    public class BookingSearchVm
+    {
+        [Required, MinLength(2)]
+        public string? Origin { get; set; }           // airport CODE
+        [Required, MinLength(2)]
+        public string? Destination { get; set; }      // airport CODE
+
+        [Required]
+        public DateOnly DepartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+        public DateOnly? ReturnDate { get; set; }
+
+        [Range(1, 9)]
+        public int Pax { get; set; } = 1;
+
+        public TripType TripType { get; set; } = TripType.OneWay;
+        public CabinClass Cabin { get; set; } = CabinClass.Economy;
+
+        // Filters
+        public HashSet<string> SelectedAirlines { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public HashSet<int> SelectedStops { get; } = new(); // 0=Nonstop,1,2,3,4=3+ stops
+        public HashSet<string> SelectedExtras { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public bool RefundableOnly { get; set; }
+        public bool IncludeBaggage { get; set; }
+
+        public TimeOnly? EarliestDepartLocal { get; set; }
+        public TimeOnly? LatestDepartLocal { get; set; }
+
+        public HashSet<string> SelectedAlliances { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    public enum TripType { OneWay, Return }
+    public enum CabinClass { Economy, PremiumEconomy, Business, First }
+
+    public record Airport(string Code, string Name);
+    public record Airline(string Code, string Name);
+    public record StopOption(int Value, string Label);
+    //public record BoolFilter(string Key, string Label);
+
+    private BookingSearchVm Vm = new();
+
+    // ===== Typeahead state =====
+    private string? OriginQuery { get => _originQuery; set { _originQuery = value; FilterOrigin(); } }
+    private string? DestinationQuery { get => _destinationQuery; set { _destinationQuery = value; FilterDestination(); } }
+    private string? _originQuery;
+    private string? _destinationQuery;
+
+    private bool ShowOriginList { get; set; }
+    private bool ShowDestinationList { get; set; }
+    private List<Airport> FilteredOrigins { get; set; } = new();
+    private List<Airport> FilteredDestinations { get; set; } = new();
+
+    // ===== Catalogs =====
+    private readonly List<Airport> Airports = new()
+    {
+        new("SYD","Sydney Kingsford Smith"),
+        new("MEL","Melbourne Tullamarine"),
+        new("BNE","Brisbane"),
+        new("ADL","Adelaide"),
+        new("PER","Perth"),
+        new("CBR","Canberra"),
+        new("AKL","Auckland"),
+        new("CHC","Christchurch"),
+        new("WLG","Wellington"),
+        new("SIN","Singapore Changi"),
+        new("LAX","Los Angeles"),
+        new("NRT","Tokyo Narita"),
+        new("LHR","London Heathrow"),
+        new("JFK","New York JFK"),
+    };
+
+    private readonly List<Airline> Airlines = new()
+    {
+        new("QF","Qantas"),
+        new("JQ","Jetstar"),
+        new("VA","Virgin Australia"),
+        new("NZ","Air New Zealand"),
+        new("SQ","Singapore Airlines"),
+        new("BA","British Airways")
+    };
+
+    private readonly List<StopOption> StopsOptions = new()
+    {
+        new(0, "Non-Stop"),
+        new(1, "1 Stop"),
+        new(2, "2 Stops"),
+        new(3, "3 Stops"),
+        new(4, "3+ Stops"),
+    };
+
+    public record ExtraFilter(
+        string Key,
+        string Label,
+        string? IconCss = null,  // e.g., "bi bi-wifi"
+        string? IconUrl = null, // optional image url instead of icon css
+        string PillClass = "badge rounded-pill text-bg-secondary shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"
+    );
+
+    // Group 1: Fare & carrier rules
+    private readonly List<ExtraFilter> FareCarrierFilters = new()
+    {
+        new("Changeable", "Changeable without fee", IconCss: "bi bi-arrow-repeat"),
+        new("Cancelable", "Cancelable for credit/refund", IconCss: "bi bi-x-circle"),
+        new("NoBasic", "Exclude Basic/Light fares", IconCss: "bi bi-slash-circle"),
+        new("CorpOnly", "Contract fares only", IconCss: "bi bi-briefcase"),
+        new("IncludeLcc", "Include low-cost carriers", IconCss: "bi bi-cash-coin"),
+    };
+
+    // Group 2: Trip timing & comfort
+    private readonly List<ExtraFilter> TripTimingComfortFilters = new()
+    {
+        new("Wifi", "Wi-Fi available", IconCss: "bi bi-wifi", PillClass: "badge rounded-pill text-bg-info shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"),
+        new("Power", "Power outlet available", IconCss: "bi bi-plug", PillClass: "badge rounded-pill text-bg-info shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"),
+        new("NoRedEye", "Avoid red-eye (22:00–06:00)", IconCss: "bi bi-moon-stars", PillClass: "badge rounded-pill text-bg-warning text-dark shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"),
+        new("NoOvernightLayover", "Avoid overnight layovers", IconCss: "bi bi-moon", PillClass: "badge rounded-pill text-bg-warning text-dark shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"),
+        new("NoShortConn", "Avoid short connections (<45m)", IconCss: "bi bi-hourglass-split"),
+        new("NoLongConn", "Avoid long layovers (>4h)", IconCss: "bi bi-hourglass"),
+        new("NoTurboprop", "Exclude turboprops / small RJs", IconCss: "bi bi-airplane"),
+        new("LowerEmissions", "Lower-emissions flights only", IconCss: "bi bi-leaf", PillClass: "badge rounded-pill text-bg-success shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"),
+    };
+
+    private readonly List<ExtraFilter> CabinFilters = new()
+    {
+        new("CabinEconomy", "Economy", IconCss: "bi bi-cash-coin", PillClass: "badge rounded-pill text-bg-secondary shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"),
+        new("CabinPremiumEconomy", "Premium Economy", IconCss: "bi bi-gem", PillClass: "badge rounded-pill text-bg-info shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"),
+        new("CabinBusiness", "Business", IconCss: "bi bi-briefcase", PillClass: "badge rounded-pill text-bg-primary shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"),
+        new("CabinFirst", "First Class", IconCss: "bi bi-star-fill", PillClass: "badge rounded-pill text-bg-warning text-dark shadow-sm border-0 d-inline-flex align-items-center gap-1 px-3"),
+    };
+
+    private static string CabinKey(CabinClass c) => c switch
+    {
+        CabinClass.Economy => "CabinEconomy",
+        CabinClass.PremiumEconomy => "CabinPremiumEconomy",
+        CabinClass.Business => "CabinBusiness",
+        CabinClass.First => "CabinFirst",
+        _ => "CabinEconomy"
+    };
+
+    private static CabinClass CabinFromKey(string key) => key switch
+    {
+        "CabinEconomy" => CabinClass.Economy,
+        "CabinPremiumEconomy" => CabinClass.PremiumEconomy,
+        "CabinBusiness" => CabinClass.Business,
+        "CabinFirst" => CabinClass.First,
+        _ => CabinClass.Economy
+    };
+
+    public record Alliance(string Key, string Name);
+
+    private readonly List<Alliance> Alliances = new()
+    {
+        new("oneworld",     "oneworld"),
+        new("skyteam",      "SkyTeam"),
+        new("staralliance", "Star Alliance"),
+    };
+
+    private static string GetAllianceLogoUrl(string key)
+        => $"https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_alliance/{key.ToLowerInvariant()}.svg";
+
+    private void ToggleAlliance(string key, bool on)
+    {
+        if (on) Vm.SelectedAlliances.Add(key);
+        else Vm.SelectedAlliances.Remove(key);
+    }
+
+    // ===== Time proxies for <InputText type=time> =====
+    @* private string? EarliestDepartLocalStr
+    {
+        get => Vm.EarliestDepartLocal?.ToString("HH\\:mm", CultureInfo.InvariantCulture);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value)) { Vm.EarliestDepartLocal = null; return; }
+            if (TimeOnly.TryParseExact(value, "HH\\:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t))
+                Vm.EarliestDepartLocal = t;
+        }
+    }
+    private string? LatestDepartLocalStr
+    {
+        get => Vm.LatestDepartLocal?.ToString("HH\\:mm", CultureInfo.InvariantCulture);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value)) { Vm.LatestDepartLocal = null; return; }
+            if (TimeOnly.TryParseExact(value, "HH\\:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t))
+                Vm.LatestDepartLocal = t;
+        }
+    } *@
+
+    // ===== Typeahead logic =====
+    private void FilterOrigin()
+    {
+        var q = (OriginQuery ?? string.Empty).Trim();
+        ShowOriginList = true;
+        FilteredOrigins = FilterAirports(q);
+    }
+    private void FilterDestination()
+    {
+        var q = (DestinationQuery ?? string.Empty).Trim();
+        ShowDestinationList = true;
+        FilteredDestinations = FilterAirports(q);
+    }
+    private List<Airport> FilterAirports(string q)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+            return Airports.Take(12).ToList();
+
+        return Airports
+            .Where(a =>
+                a.Code.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                a.Name.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(a => a.Code.StartsWith(q, StringComparison.OrdinalIgnoreCase) || a.Name.StartsWith(q, StringComparison.OrdinalIgnoreCase))
+            .ThenBy(a => a.Code)
+            .Take(12)
+            .ToList();
+    }
+    private void PickOrigin(Airport ap)
+    {
+        Vm.Origin = ap.Code;
+        OriginQuery = $"{ap.Code} — {ap.Name}";
+        ShowOriginList = false;
+    }
+    private void PickDestination(Airport ap)
+    {
+        Vm.Destination = ap.Code;
+        DestinationQuery = $"{ap.Code} — {ap.Name}";
+        ShowDestinationList = false;
+    }
+    private async Task HideOriginListDeferred() { await Task.Delay(150); ShowOriginList = false; StateHasChanged(); }
+    private async Task HideDestinationListDeferred() { await Task.Delay(150); ShowDestinationList = false; StateHasChanged(); }
+    private void OnOriginKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && FilteredOrigins.Count > 0) { PickOrigin(FilteredOrigins[0]); }
+        else if (e.Key == "Escape") { ShowOriginList = false; }
+    }
+    private void OnDestinationKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && FilteredDestinations.Count > 0) { PickDestination(FilteredDestinations[0]); }
+        else if (e.Key == "Escape") { ShowDestinationList = false; }
+    }
+
+    // ===== Interaction =====
+    private void SetTripType(TripType t)
+    {
+        Vm.TripType = t;
+        if (t != TripType.Return) Vm.ReturnDate = null;
+    }
+
+    private void ToggleAirline(string code, bool on)
+    {
+        if (on) Vm.SelectedAirlines.Add(code);
+        else Vm.SelectedAirlines.Remove(code);
+    }
+
+    private void ToggleStop(int value, bool on)
+    {
+        if (on) Vm.SelectedStops.Add(value);
+        else Vm.SelectedStops.Remove(value);
+    }
+
+    private void ToggleExtra(string key, bool on)
+    {
+        if (on) Vm.SelectedExtras.Add(key);
+        else Vm.SelectedExtras.Remove(key);
+    }
+
+    private void ResetAll()
+    {
+        Vm = new BookingSearchVm();
+        OriginQuery = null;
+        DestinationQuery = null;
+        FilteredOrigins.Clear();
+        FilteredDestinations.Clear();
+    }
+
+    // ===== Airline logo helper =====
+    private static string GetAirlineLogoUrl(string code)
+        => $"https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_vectors/{(code ?? "").Trim().ToUpperInvariant()}.svg";
+
+    private void OnSearch()
+    {
+        var query = new Dictionary<string, object?>()
+        {
+            ["from"] = Vm.Origin,
+            ["to"] = Vm.Destination,
+            ["depart"] = Vm.DepartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ["return"] = Vm.ReturnDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ["trip"] = Vm.TripType.ToString(),
+            ["pax"] = Vm.Pax,
+            ["cabin"] = Vm.Cabin.ToString(),
+            ["refund"] = Vm.RefundableOnly ? "1" : null,
+            ["baggage"] = Vm.IncludeBaggage ? "1" : null,
+            ["air"] = Vm.SelectedAirlines.Count > 0 ? string.Join(",", Vm.SelectedAirlines) : null,
+            ["stops"] = Vm.SelectedStops.Count > 0 ? string.Join(",", Vm.SelectedStops.OrderBy(x => x)) : null,
+            ["extras"] = Vm.SelectedExtras.Count > 0 ? string.Join(",", Vm.SelectedExtras) : null,
+            ["tstart"] = Vm.EarliestDepartLocal?.ToString("HH\\:mm"),
+            ["tend"] = Vm.LatestDepartLocal?.ToString("HH\\:mm")
+        };
+
+        var uri = Nav.GetUriWithQueryParameters("/platform/bookings/results", query!);
+        Nav.NavigateTo(uri);
+    }
+
+    // ====== Helper =====
+    private static string GetStopPillClass(int s) => s switch
+    {
+        0 => "badge rounded-pill text-bg-success shadow-sm fw-semibold border-0",
+        1 => "badge rounded-pill text-bg-info shadow-sm fw-semibold border-0",
+        2 => "badge rounded-pill text-bg-warning text-dark shadow-sm fw-semibold border-0",
+        3 => "badge rounded-pill text-bg-danger shadow-sm fw-semibold border-0",
+        _ => "badge rounded-pill bg-dark text-white shadow-sm fw-semibold border-0",
+    };
+
+    private ExtraFilter? FindFilterMeta(string key) =>
+        FareCarrierFilters.FirstOrDefault(x => x.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
+        ?? TripTimingComfortFilters.FirstOrDefault(x => x.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+
+
+    private RenderFragment RenderExtraPill(string key) => builder =>
+    {
+        var f = FindFilterMeta(key);
+        if (f is null) return;
+        var i = 0;
+        builder.OpenElement(i++, "button");
+        builder.AddAttribute(i++, "type", "button");
+        builder.AddAttribute(i++, "class", f.PillClass);
+        builder.AddAttribute(i++, "title", f.Label);
+        builder.AddAttribute(i++, "onclick", EventCallback.Factory.Create(this, () => Vm.SelectedExtras.Remove(key)));
+
+        if (!string.IsNullOrWhiteSpace(f.IconCss))
+        {
+            builder.OpenElement(i++, "i");
+            builder.AddAttribute(i++, "class", f.IconCss);
+            builder.CloseElement();
+        }
+        else if (!string.IsNullOrWhiteSpace(f.IconUrl))
+        {
+            builder.OpenElement(i++, "img");
+            builder.AddAttribute(i++, "src", f.IconUrl);
+            builder.AddAttribute(i++, "alt", "");
+            builder.AddAttribute(i++, "style", "height:14px;width:14px");
+            builder.CloseElement();
+        }
+
+        builder.OpenElement(i++, "span");
+        builder.AddContent(i++, f.Label);
+        builder.CloseElement();
+
+        builder.OpenElement(i++, "span");
+        builder.AddAttribute(i++, "aria-hidden", "true");
+        builder.AddContent(i++, " ×");
+        builder.CloseElement();
+
+        builder.CloseElement();
+    };
+
+    private List<ExtraFilter> ExtraFilters => FareCarrierFilters.Concat(TripTimingComfortFilters).ToList();
+
+    // Accept multiple time formats and avoid clearing on partial input
+    private static readonly string[] TimeFormats = { "HH\\:mm", "H\\:mm", "HH\\:mm\\:ss" };
+
+    private string? EarliestDepartLocalStr
+    {
+        get => Vm.EarliestDepartLocal?.ToString("HH\\:mm", CultureInfo.InvariantCulture);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value)) { Vm.EarliestDepartLocal = null; return; }
+            if (TimeOnly.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out var t) ||
+                TimeOnly.TryParseExact(value, TimeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out t))
+            {
+                Vm.EarliestDepartLocal = t;
+            }
+            // else: ignore invalid/partial keystrokes to prevent UI from blanking
+        }
+    }
+
+    private string? LatestDepartLocalStr
+    {
+        get => Vm.LatestDepartLocal?.ToString("HH\\:mm", CultureInfo.InvariantCulture);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value)) { Vm.LatestDepartLocal = null; return; }
+            if (TimeOnly.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out var t) ||
+                TimeOnly.TryParseExact(value, TimeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out t))
+            {
+                Vm.LatestDepartLocal = t;
+            }
+            // else: ignore invalid/partial keystrokes to prevent UI from blanking
+        }
+    }
+
+}
