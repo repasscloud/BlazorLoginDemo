@@ -2,6 +2,7 @@
 @page "/platform/bookings/create-v5/{TravelQuoteId?}"
 @rendermode InteractiveServer
 
+@using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
 @using System.Globalization
 @using Microsoft.AspNetCore.Components
@@ -17,7 +18,7 @@
         <div class="d-flex align-items-center gap-3">
             <div>
                 <h2 class="h4 m-0">Flight Search</h2>
-                <small class="text-muted">Build a request then run search.</small>
+                <small class="text-muted">Build a request then run Search.</small>
             </div>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -59,8 +60,8 @@
                         <div class="btn-group" role="group" aria-label="Trip type">
                             @foreach (var t in Enum.GetValues<TripType>())
                             {
-                                var id = $"trip_{t}";
-                                var isChecked = Vm.Trip == t;
+                                string id = $"trip_{t}";
+                                bool isChecked = Vm.Trip == t;
                                 <input type="radio" class="btn-check" name="trip" id="@id" checked="@isChecked"
                                        @onchange="() => SetTripType(t)" />
                                 <label class="btn btn-outline-primary" for="@id">@TripLabel(t)</label>
@@ -143,39 +144,38 @@
                         </div>
 
                         <!-- DATES -->
-<!-- DATES -->
-<div class="col-12 col-md-6 col-xxl-3">
-    <label class="form-label fw-semibold text-body-emphasis">Depart</label>
-    <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
-<input type="date" class="form-control"
-       value="@BindDate(Vm.DepartDate)"
-       min="@DepartMinAttr"
-       @oninput="e => { Vm.DepartDate = ParseDate(e.Value?.ToString()); ValidateDates(); }"
-       @onchange="e => { Vm.DepartDate = ParseDate(e.Value?.ToString()); ValidateDates(); }" />
-    </div>
-    @if (!string.IsNullOrEmpty(DepartError))
-    {
-        <div class="form-text text-danger">@DepartError</div>
-    }
-</div>
+                        <div class="col-12 col-md-6 col-xxl-3">
+                            <label class="form-label fw-semibold text-body-emphasis">Depart</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                                <input type="date" class="form-control"
+                                       value="@BindDate(Vm.DepartDate)"
+                                       min="@DepartMinAttr"
+                                       @oninput="e => { Vm.DepartDate = ParseDate(e.Value?.ToString()); ValidateDates(); }"
+                                       @onchange="e => { Vm.DepartDate = ParseDate(e.Value?.ToString()); ValidateDates(); }" />
+                            </div>
+                            @if (!string.IsNullOrEmpty(DepartError))
+                            {
+                                <div class="form-text text-danger">@DepartError</div>
+                            }
+                        </div>
 
-<div class="col-12 col-md-6 col-xxl-3">
-    <label class="form-label fw-semibold text-body-emphasis">Return</label>
-    <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
-<input type="date" class="form-control"
-       value="@BindDate(Vm.ReturnDate)"
-       min="@ReturnMinAttr"
-       disabled="@(Vm.Trip == TripType.OneWay)"
-       @oninput="e => { Vm.ReturnDate = ParseDate(e.Value?.ToString()); ValidateDates(); }"
-       @onchange="e => { Vm.ReturnDate = ParseDate(e.Value?.ToString()); ValidateDates(); }" />
-    </div>
-    @if (!string.IsNullOrEmpty(ReturnError))
-    {
-        <div class="form-text text-danger">@ReturnError</div>
-    }
-</div>
+                        <div class="col-12 col-md-6 col-xxl-3">
+                            <label class="form-label fw-semibold text-body-emphasis">Return</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                                <input type="date" class="form-control"
+                                       value="@BindDate(Vm.ReturnDate)"
+                                       min="@ReturnMinAttr"
+                                       disabled="@(Vm.Trip == TripType.OneWay)"
+                                       @oninput="e => { Vm.ReturnDate = ParseDate(e.Value?.ToString()); ValidateDates(); }"
+                                       @onchange="e => { Vm.ReturnDate = ParseDate(e.Value?.ToString()); ValidateDates(); }" />
+                            </div>
+                            @if (!string.IsNullOrEmpty(ReturnError))
+                            {
+                                <div class="form-text text-danger">@ReturnError</div>
+                            }
+                        </div>
 
 
 
@@ -266,23 +266,17 @@
                         </div>
 
                         <!-- Cabin class -->
-                        <div class="col-12 col-lg-6">
-                            <label class="form-label fw-semibold text-body-emphasis">Cabin</label>
-                            <div class="btn-group flex-wrap" role="group" aria-label="Cabin">
-                                @foreach (var c in Enum.GetValues<CabinClass>().Where(c => c <= Config.MaxCabin))
-                                {
-                                    string key = CabinKey(c);
-                                    string id = $"cabin_{key}";
-                                    bool isChecked = Vm.Cabin == c;
-                                    <input type="radio" class="btn-check" name="cabin" id="@id" checked="@isChecked"
-                                           @onchange="() => Vm.Cabin = c" />
-                                    <label class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" for="@id">
-                                        <i class="@CabinIcon(c)"></i>
-                                        <span>@CabinLabel(c)</span>
-                                    </label>
-                                }
-                            </div>
-                        </div>
+<div class="col-12 col-lg-6">
+    <label class="form-label fw-semibold text-body-emphasis">Cabin</label>
+    <InputSelect class="form-select" @bind-Value="Vm.Cabin">
+        @foreach (var c in Enum.GetValues<CabinClass>().Where(c => c <= Config.MaxCabin))
+        {
+            <option value="@c">@CabinLabel(c)</option>
+        }
+    </InputSelect>
+    <div class="form-text">Policy allows up to @CabinLabel(Config.MaxCabin).</div>
+</div>
+
                     </div>
 
                     <hr class="my-4" />
@@ -378,10 +372,10 @@
                         <dd class="col-7">@TripLabel(Vm.Trip)</dd>
 
                         <dt class="col-5">From</dt>
-                        <dd class="col-7">@Vm.Origin</dd>
+                        <dd class="col-7">@(!string.IsNullOrWhiteSpace(Vm.Origin) ? Vm.Origin : "\u00A0")</dd>
 
                         <dt class="col-5">To</dt>
-                        <dd class="col-7">@Vm.Destination</dd>
+                        <dd class="col-7">@(!string.IsNullOrWhiteSpace(Vm.Destination) ? Vm.Destination : "\u00A0")</dd>
 
                         <dt class="col-5">Depart</dt>
                         <dd class="col-7">@FormatDate(Vm.DepartDate)</dd>
@@ -400,8 +394,8 @@
 
                         <dt class="col-5">Times</dt>
                         <dd class="col-7">
-                            @Vm.DepartEarliest–@Vm.DepartLatest
-                            @if (Vm.Trip == TripType.Return) { <span> / @Vm.ReturnEarliest–@Vm.ReturnLatest</span> }
+                            @Vm.DepartEarliest-@Vm.DepartLatest
+                            @if (Vm.Trip == TripType.Return) { <span> / @Vm.ReturnEarliest-@Vm.ReturnLatest</span> }
                         </dd>
 
                         <dt class="col-5">Airlines</dt>
@@ -487,14 +481,14 @@
     }
 
     // ===== Commands =====
-private void SubmitSearch()
-{
-    ValidateDates();
-    if (!IsFormValid) return;
+    private void SubmitSearch()
+    {
+        ValidateDates();
+        if (!IsFormValid) return;
 
-    // Forward VM to API (placeholder)
-    // Nav.NavigateTo($"/platform/search/run?origin={Vm.Origin}&destination={Vm.Destination}...");
-}
+        // Forward VM to API (placeholder)
+        // Nav.NavigateTo($"/platform/search/run?origin={Vm.Origin}&destination={Vm.Destination}...");
+    }
 
     private void ResetAll()
     {
@@ -551,19 +545,13 @@ private void SubmitSearch()
     }
 
     // ===== Validation =====
-private bool IsFormValid =>
-    !string.IsNullOrWhiteSpace(Vm.Origin)
-    && !string.IsNullOrWhiteSpace(Vm.Destination)
-    && Vm.Origin != Vm.Destination
-    && Vm.DepartDate is not null
-    && (Vm.Trip == TripType.OneWay || Vm.ReturnDate is not null)
-    && !HasDateErrors;
-    @* private bool IsFormValid =>
+    private bool IsFormValid =>
         !string.IsNullOrWhiteSpace(Vm.Origin)
         && !string.IsNullOrWhiteSpace(Vm.Destination)
         && Vm.Origin != Vm.Destination
         && Vm.DepartDate is not null
-        && (Vm.Trip == TripType.OneWay || Vm.ReturnDate is not null); *@
+        && (Vm.Trip == TripType.OneWay || Vm.ReturnDate is not null)
+        && !HasDateErrors;
 
     // ===== Errors =====
     private string? DepartError { get; set; }
@@ -571,31 +559,29 @@ private bool IsFormValid =>
     private bool HasDateErrors => !string.IsNullOrEmpty(DepartError) || !string.IsNullOrEmpty(ReturnError);
 
     // Validate dates against policy min and logical ordering
-// Validate dates against policy min and logical ordering
-private void ValidateDates()
-{
-    DepartError = null;
-    ReturnError = null;
-
-    // Require a depart date
-    if (Vm.DepartDate is null)
+    private void ValidateDates()
     {
-        DepartError = "Select a depart date.";
-        return;
+        DepartError = null;
+        ReturnError = null;
+
+        // Require a depart date
+        if (Vm.DepartDate is null)
+        {
+            DepartError = "Select a depart date.";
+            return;
+        }
+
+        // Enforce policy minimum for depart if present
+        if (HasAdvance && Vm.DepartDate.Value.Date < MinDepartDate.Date)
+            DepartError = $"Earliest allowed depart is {MinDepartDate:ddd, dd MMM yyyy}.";
+
+        // Return checks only if return is in play and chosen
+        if (Vm.Trip == TripType.Return && Vm.ReturnDate is not null)
+        {
+            if (Vm.ReturnDate.Value.Date < Vm.DepartDate.Value.Date)
+                ReturnError = "Return date cannot be before depart date.";
+        }
     }
-
-    // Enforce policy minimum for depart if present
-    if (HasAdvance && Vm.DepartDate.Value.Date < MinDepartDate.Date)
-        DepartError = $"Earliest allowed depart is {MinDepartDate:ddd, dd MMM yyyy}.";
-
-    // Return checks only if return is in play and chosen
-    if (Vm.Trip == TripType.Return && Vm.ReturnDate is not null)
-    {
-        if (Vm.ReturnDate.Value.Date < Vm.DepartDate.Value.Date)
-            ReturnError = "Return date cannot be before depart date.";
-    }
-}
-
 
     // ===== Airport filtering =====
     private void RebuildAirportIndexes()
@@ -769,7 +755,6 @@ private void ValidateDates()
         return d < min.Date ? min.Date : d;
     }
 
-
     // ===== Initialize from config =====
     private void InitializeVmFromConfig()
     {
@@ -864,11 +849,11 @@ private void ValidateDates()
         public string TenantName { get; init; } = "—";
         public string PolicyName { get; init; } = "—";
 
-        public List<Airport> EnabledOrigins { get; init; } = new();
-        public List<Airport> EnabledDestinations { get; init; } = new();
+        public List<Airport> EnabledOrigins { get; init; } = new List<Airport>();
+        public List<Airport> EnabledDestinations { get; init; } = new List<Airport>();
 
-        public List<Airline> AvailableAirlines { get; init; } = new();
-        public List<string> PreferredAirlines { get; init; } = new();
+        public List<Airline> AvailableAirlines { get; init; } = new List<Airline>();
+        public List<string> PreferredAirlines { get; init; } = new List<string>();
 
         public CabinClass MaxCabin { get; init; } = CabinClass.First;
 
