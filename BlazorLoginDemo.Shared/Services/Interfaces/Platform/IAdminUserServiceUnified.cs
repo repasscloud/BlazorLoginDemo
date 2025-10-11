@@ -61,6 +61,8 @@ public interface IAdminUserServiceUnified
 
     Task<(bool Ok, string? Error)> SetPasswordAsync(string email, string newPassword, CancellationToken ct = default);
 
+    Task<string?> GetUserTravelPolicyIdAsync(string userId, CancellationToken ct = default);
+
     // ---- ROLES ----
     Task<IReadOnlyList<string>> GetAllRolesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<string>> GetUserRolesAsync(string userId, CancellationToken ct = default);

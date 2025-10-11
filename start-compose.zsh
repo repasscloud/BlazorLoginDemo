@@ -11,7 +11,7 @@ set -euo pipefail
 
 # ── 🔧 Config: container names, DB creds, and target file ─────────────────────
 pgContainerName='pgsql'
-aspContainerName='blazor2'
+aspContainerName='blazor'
 pgadminContainerName='pgadmin'
 dbPort=5432
 dbUser='demodb'
