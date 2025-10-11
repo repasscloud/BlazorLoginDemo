@@ -547,11 +547,18 @@ else
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Effective From (UTC)</label>
-                        <InputDate @bind-Value="Vm.EffectiveFromUtc" class="form-control" />
+                        <InputDate TValue="DateTime?" Value="Vm.EffectiveFromUtc"
+                                   ValueChanged="@(EventCallback.Factory.Create<DateTime?>(this, OnEffectiveChanged))"
+                                   ValueExpression="() => Vm.EffectiveFromUtc"
+                                   class="form-control" />
                     </div>
+
                     <div class="col-md-4">
                         <label class="form-label">Expires On (UTC)</label>
-                        <InputDate @bind-Value="Vm.ExpiresOnUtc" class="form-control" />
+                        <InputDate TValue="DateTime?" Value="Vm.ExpiresOnUtc"
+                                   ValueChanged="@(EventCallback.Factory.Create<DateTime?>(this, OnExpiresChanged))"
+                                   ValueExpression="() => Vm.ExpiresOnUtc"
+                                   class="form-control" />
                     </div>
                 </div>
             </div>
@@ -919,4 +926,24 @@ else
     }
 
     private sealed class NewTravelPolicy { }
+
+    private bool _expiresManuallyEdited;
+
+    private Task OnEffectiveChanged(DateTime? newValue)
+    {
+        Vm.EffectiveFromUtc = newValue;
+
+        if (!_expiresManuallyEdited)
+            Vm.ExpiresOnUtc = newValue?.AddYears(1);
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnExpiresChanged(DateTime? newValue)
+    {
+        // Any manual change locks future auto-updates
+        _expiresManuallyEdited = true;
+        Vm.ExpiresOnUtc = newValue;
+        return Task.CompletedTask;
+    }
 }
