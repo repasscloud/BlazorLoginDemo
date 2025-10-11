@@ -412,7 +412,7 @@
         <div class="card-header d-flex align-items-center justify-content-between">
             <span>Policies</span>
             <div class="btn-group">
-                <button type="button" class="btn btn-outline-primary" @onclick="GoBack">Travel Policies</button>
+                <button type="button" class="btn btn-outline-primary" @onclick="ViewTravelPolicies">Travel Policies</button>
                 <button type="submit" class="btn btn-primary">Expense Policies</button>
             </div>
         </div>
@@ -1061,6 +1061,12 @@
     public void ViewLicense(string licenseId)
     {
         Nav.NavigateTo(uri: $"/platform/licenses/{licenseId}/license/edit");
+        return;
+    }
+
+    public void ViewTravelPolicies()
+    {
+        Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrgId}", forceLoad: true);
         return;
     }
 }

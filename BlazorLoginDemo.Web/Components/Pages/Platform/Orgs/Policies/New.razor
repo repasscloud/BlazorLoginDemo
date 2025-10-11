@@ -10,12 +10,13 @@
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Services.Interfaces.Policy
 @using BlazorLoginDemo.Shared.Services.Interfaces.Policies
+@using Microsoft.AspNetCore.Components.Web
 
 @inject IAdminOrgServiceUnified OrgSvc
 @inject ITravelPolicyService PolicySvc
 @inject IContinentService ContinentSvc
-@inject IRegionService    RegionSvc
-@inject ICountryService   CountrySvc
+@inject IRegionService RegionSvc
+@inject ICountryService CountrySvc
 @inject ITravelPolicyDisabledCountryService DisabledSvc
 @inject NavigationManager Nav
 @inject ILogger<NewTravelPolicy> Log

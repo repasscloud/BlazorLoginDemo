@@ -1,4 +1,5 @@
 @page "/platform/travelpolicy/list/{OrganizationId}"
+@rendermode InteractiveServer
 
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
@@ -25,8 +26,8 @@ else
                 <small class="text-muted">Policies assigned to this organization</small>
             </div>
             <div class="btn-group">
-                <button class="btn btn-outline-secondary" @onclick="GoBack">Back</button>
-                <button class="btn btn-primary" @onclick="GoBack">Edit</button>
+                <button class="btn btn-outline-secondary" @onclick="GoBack">Back to Orgs</button>
+                <button class="btn btn-primary" @onclick="GoToEditOrg">Edit Org</button>
             </div>
         </div>
 
@@ -79,7 +80,7 @@ else
                                 </td>
                                 <td>@((p.LastUpdatedUtc).ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
                                 <td class="text-end">
-                                    <a class="btn btn-sm btn-primary"
+                                    <a class="btn btn-primary"
                                        href="@($"/platform/travelpolicy/edit/{p.Id}")">
                                         Edit
                                     </a>
@@ -110,7 +111,7 @@ else
         _loading = false;
     }
 
-    void GoBack() => Nav.NavigateTo("/platform/organizations");
+    private void GoBack() => Nav.NavigateTo("/platform/organizations");
 
     private async Task SetAsDefaultPolicyAsync(string policyId, string orgId)
     {
@@ -124,4 +125,6 @@ else
             StateHasChanged();
         }
    }
+
+   private void GoToEditOrg() => Nav.NavigateTo($"/platform/organizations/{OrganizationId}/edit");
 }

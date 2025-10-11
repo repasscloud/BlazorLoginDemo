@@ -228,6 +228,12 @@ curl -X 'GET' \
   'http://localhost:8090/api/v1/test/create-org-license' \
   -H 'accept: */*'
 pwsh -File .scripts/import-error-codes-seed.v3.ps1
+region_country_data_import_log=".docker/db/pwsh/import.log"
+[[ -e "$region_country_data_import_log" ]] && rm -f -- "$region_country_data_import_log"
+pwsh -File .docker/db/pwsh/01-import-regions.ps1
+pwsh -File .docker/db/pwsh/02-import-continents.ps1
+pwsh -File .docker/db/pwsh/03-import-countries.ps1
+
 # ── 🏁 Done ───────────────────────────────────────────────────────────────────
 echo
 echo "✅ Done."
