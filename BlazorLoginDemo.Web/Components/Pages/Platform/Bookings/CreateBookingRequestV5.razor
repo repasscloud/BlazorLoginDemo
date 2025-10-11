@@ -143,41 +143,41 @@
                         </div>
 
                         <!-- DATES -->
-                        <div class="col-12 col-md-6 col-xxl-3">
-                            <label class="form-label fw-semibold text-body-emphasis">Depart</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
-                                <input type="date" class="form-control"
-                                    value="@BindDate(Vm.DepartDate)"
-                                    min="@DepartMinAttr"
-                                    @onchange="e =>
-                                    {
-                                        var picked = ParseDate(e.Value?.ToString());
-                                        Vm.DepartDate = HasAdvance ? EnforceMin(picked, MinDepartDate) : picked;
+<!-- DATES -->
+<div class="col-12 col-md-6 col-xxl-3">
+    <label class="form-label fw-semibold text-body-emphasis">Depart</label>
+    <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+<input type="date" class="form-control"
+       value="@BindDate(Vm.DepartDate)"
+       min="@DepartMinAttr"
+       @oninput="e => { Vm.DepartDate = ParseDate(e.Value?.ToString()); ValidateDates(); }"
+       @onchange="e => { Vm.DepartDate = ParseDate(e.Value?.ToString()); ValidateDates(); }" />
+    </div>
+    @if (!string.IsNullOrEmpty(DepartError))
+    {
+        <div class="form-text text-danger">@DepartError</div>
+    }
+</div>
 
-                                        // keep return >= depart
-                                        if (Vm.Trip == TripType.Return && Vm.ReturnDate is not null && Vm.DepartDate is not null && Vm.ReturnDate.Value.Date < Vm.DepartDate.Value.Date)
-                                            Vm.ReturnDate = Vm.DepartDate;
-                                    }" />
-                            </div>
-                        </div>
+<div class="col-12 col-md-6 col-xxl-3">
+    <label class="form-label fw-semibold text-body-emphasis">Return</label>
+    <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+<input type="date" class="form-control"
+       value="@BindDate(Vm.ReturnDate)"
+       min="@ReturnMinAttr"
+       disabled="@(Vm.Trip == TripType.OneWay)"
+       @oninput="e => { Vm.ReturnDate = ParseDate(e.Value?.ToString()); ValidateDates(); }"
+       @onchange="e => { Vm.ReturnDate = ParseDate(e.Value?.ToString()); ValidateDates(); }" />
+    </div>
+    @if (!string.IsNullOrEmpty(ReturnError))
+    {
+        <div class="form-text text-danger">@ReturnError</div>
+    }
+</div>
 
-                        <div class="col-12 col-md-6 col-xxl-3">
-                            <label class="form-label fw-semibold text-body-emphasis">Return</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
-                                <input type="date" class="form-control"
-                                    value="@BindDate(Vm.ReturnDate)"
-                                    min="@ReturnMinAttr"
-                                    disabled="@(Vm.Trip == TripType.OneWay)"
-                                    @onchange="e =>
-                                    {
-                                        var picked = ParseDate(e.Value?.ToString());
-                                        var minRet = Vm.DepartDate ?? (HasAdvance ? MinDepartDate : DateTime.Today);
-                                        Vm.ReturnDate = EnforceMin(picked, minRet);
-                                    }" />
-                            </div>
-                        </div>
+
 
 
                         <!-- Pax -->
@@ -482,16 +482,19 @@
         // Initial filter
         ApplyOriginFilter();
         ApplyDestinationFilter();
+
+        ValidateDates();
     }
 
     // ===== Commands =====
-    private void SubmitSearch()
-    {
-        if (!IsFormValid) return;
+private void SubmitSearch()
+{
+    ValidateDates();
+    if (!IsFormValid) return;
 
-        // Forward VM to API (placeholder)
-        // Nav.NavigateTo($"/platform/search/run?origin={Vm.Origin}&destination={Vm.Destination}...");
-    }
+    // Forward VM to API (placeholder)
+    // Nav.NavigateTo($"/platform/search/run?origin={Vm.Origin}&destination={Vm.Destination}...");
+}
 
     private void ResetAll()
     {
@@ -548,13 +551,13 @@
     }
 
     // ===== Validation =====
-    private bool IsFormValid =>
-        !string.IsNullOrWhiteSpace(Vm.Origin)
-        && !string.IsNullOrWhiteSpace(Vm.Destination)
-        && Vm.Origin != Vm.Destination
-        && Vm.DepartDate is not null
-        && (Vm.Trip == TripType.OneWay || Vm.ReturnDate is not null)
-        && !HasDateErrors;
+private bool IsFormValid =>
+    !string.IsNullOrWhiteSpace(Vm.Origin)
+    && !string.IsNullOrWhiteSpace(Vm.Destination)
+    && Vm.Origin != Vm.Destination
+    && Vm.DepartDate is not null
+    && (Vm.Trip == TripType.OneWay || Vm.ReturnDate is not null)
+    && !HasDateErrors;
     @* private bool IsFormValid =>
         !string.IsNullOrWhiteSpace(Vm.Origin)
         && !string.IsNullOrWhiteSpace(Vm.Destination)
@@ -568,25 +571,31 @@
     private bool HasDateErrors => !string.IsNullOrEmpty(DepartError) || !string.IsNullOrEmpty(ReturnError);
 
     // Validate dates against policy min and logical ordering
-    private void ValidateDates()
+// Validate dates against policy min and logical ordering
+private void ValidateDates()
+{
+    DepartError = null;
+    ReturnError = null;
+
+    // Require a depart date
+    if (Vm.DepartDate is null)
     {
-        DepartError = null;
-        ReturnError = null;
-
-        var hasAdvance = HasAdvance; // you already have this helper
-        var minDepart = hasAdvance ? MinDepartDate : (DateTime?)null;
-
-        // Depart >= policy min (if provided)
-        if (minDepart is not null && Vm.DepartDate is not null && Vm.DepartDate.Value.Date < minDepart.Value.Date)
-            DepartError = $"Earliest allowed depart is {minDepart.Value:ddd, dd MMM yyyy}.";
-
-        // Return >= Depart (only when Return is in play)
-        if (Vm.Trip == TripType.Return && Vm.DepartDate is not null && Vm.ReturnDate is not null)
-        {
-            if (Vm.ReturnDate.Value.Date < Vm.DepartDate.Value.Date)
-                ReturnError = "Return date cannot be before depart date.";
-        }
+        DepartError = "Select a depart date.";
+        return;
     }
+
+    // Enforce policy minimum for depart if present
+    if (HasAdvance && Vm.DepartDate.Value.Date < MinDepartDate.Date)
+        DepartError = $"Earliest allowed depart is {MinDepartDate:ddd, dd MMM yyyy}.";
+
+    // Return checks only if return is in play and chosen
+    if (Vm.Trip == TripType.Return && Vm.ReturnDate is not null)
+    {
+        if (Vm.ReturnDate.Value.Date < Vm.DepartDate.Value.Date)
+            ReturnError = "Return date cannot be before depart date.";
+    }
+}
+
 
     // ===== Airport filtering =====
     private void RebuildAirportIndexes()
@@ -888,28 +897,35 @@
     {
         public Task<PageConfig> LoadAsync(string travelQuoteId)
         {
-            // TODO: replace with real HTTP/API call using travelQuoteId
-            // For now mirror dummy but with "locked" times to demonstrate read-only
+            // Simulate a policy with a 10-day advance minimum when a quote id is provided
             PageConfig cfg = new PageConfig
             {
                 TenantName = "Contoso Travel",
                 PolicyName = $"Quote {travelQuoteId}",
                 EnabledOrigins = DummyAirports().Where(a => a.Code is "SYD" or "MEL" or "BNE").ToList(),
                 EnabledDestinations = DummyAirports().Where(a => a.Code is "AKL" or "WLG" or "CHC" or "ZQN").ToList(),
-                AvailableAirlines = new() { new ("QF", "Qantas"), new ("NZ", "Air New Zealand") },
+                AvailableAirlines = new() { new("QF", "Qantas"), new("NZ", "Air New Zealand") },
                 PreferredAirlines = new() { "QF" },
                 MaxCabin = CabinClass.Business,
+
+                // IMPORTANT: enforce policy min
+                DaysInAdvanceBookingRequired = 10,
+
+                // Times may still be fixed; they affect time inputs only
                 HasFixedTimes = true,
                 FixedDepartEarliest = "07:00",
                 FixedDepartLatest = "10:30",
                 FixedReturnEarliest = "14:00",
                 FixedReturnLatest = "20:00",
+
+                // Optional seeds; InitializeVmFromConfig will bump to Min if needed
                 SeedDepartDate = DateTime.Today.AddDays(10),
                 SeedReturnDate = DateTime.Today.AddDays(14)
             };
             return Task.FromResult(cfg);
         }
     }
+
 
     // Dummy service used when no TravelQuoteId provided, so you can see full UI.
     private sealed class DummyConfigService : IConfigService
@@ -931,7 +947,8 @@
                 MaxCabin = CabinClass.First,
                 HasFixedTimes = false,
                 SeedDepartDate = DateTime.Today.AddDays(7),
-                SeedReturnDate = DateTime.Today.AddDays(12)
+                SeedReturnDate = DateTime.Today.AddDays(12),
+                DaysInAdvanceBookingRequired = 7,
             };
             return Task.FromResult(cfg);
         }
