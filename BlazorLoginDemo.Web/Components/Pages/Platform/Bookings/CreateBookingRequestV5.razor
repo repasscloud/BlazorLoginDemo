@@ -55,7 +55,7 @@
 
                     <!-- Trip type -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold text-body-emphasis">Trip</label>
+                        @* <label class="form-label fw-semibold text-body-emphasis">Trip</label> *@
                         <div class="btn-group" role="group" aria-label="Trip type">
                             @foreach (var t in Enum.GetValues<TripType>())
                             {
@@ -76,11 +76,12 @@
                             <div class="dropdown w-100">
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-airplane"></i></span>
+                                    <!-- FROM input -->
                                     <input class="form-control"
                                            placeholder="Type code or name"
                                            @bind="OriginQuery"
                                            @bind:event="oninput"
-                                           @onfocus="() => ShowOriginList = true"
+                                           @onfocus="() => { OriginFocused = true; }"
                                            @onkeydown="OnOriginKeyDown"
                                            @onblur="HideOriginListDeferred" />
                                 </div>
@@ -111,11 +112,12 @@
                             <div class="dropdown w-100">
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                                    <!-- TO input -->
                                     <input class="form-control"
                                            placeholder="Type code or name"
                                            @bind="DestinationQuery"
                                            @bind:event="oninput"
-                                           @onfocus="() => ShowDestinationList = true"
+                                           @onfocus="() => { DestinationFocused = true; }"
                                            @onkeydown="OnDestinationKeyDown"
                                            @onblur="HideDestinationListDeferred" />
                                 </div>
@@ -146,22 +148,37 @@
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
                                 <input type="date" class="form-control"
-                                       value="@BindDate(Vm.DepartDate)"
-                                       @onchange="e => Vm.DepartDate = ParseDate(e.Value?.ToString())"
-                                       readonly="@Config.HasFixedTimes" />
+                                    value="@BindDate(Vm.DepartDate)"
+                                    min="@DepartMinAttr"
+                                    @onchange="e =>
+                                    {
+                                        var picked = ParseDate(e.Value?.ToString());
+                                        Vm.DepartDate = HasAdvance ? EnforceMin(picked, MinDepartDate) : picked;
+
+                                        // keep return >= depart
+                                        if (Vm.Trip == TripType.Return && Vm.ReturnDate is not null && Vm.DepartDate is not null && Vm.ReturnDate.Value.Date < Vm.DepartDate.Value.Date)
+                                            Vm.ReturnDate = Vm.DepartDate;
+                                    }" />
                             </div>
                         </div>
+
                         <div class="col-12 col-md-6 col-xxl-3">
                             <label class="form-label fw-semibold text-body-emphasis">Return</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
                                 <input type="date" class="form-control"
-                                       value="@BindDate(Vm.ReturnDate)"
-                                       @onchange="e => Vm.ReturnDate = ParseDate(e.Value?.ToString())"
-                                       disabled="@(Vm.Trip == TripType.OneWay)"
-                                       readonly="@Config.HasFixedTimes" />
+                                    value="@BindDate(Vm.ReturnDate)"
+                                    min="@ReturnMinAttr"
+                                    disabled="@(Vm.Trip == TripType.OneWay)"
+                                    @onchange="e =>
+                                    {
+                                        var picked = ParseDate(e.Value?.ToString());
+                                        var minRet = Vm.DepartDate ?? (HasAdvance ? MinDepartDate : DateTime.Today);
+                                        Vm.ReturnDate = EnforceMin(picked, minRet);
+                                    }" />
                             </div>
                         </div>
+
 
                         <!-- Pax -->
                         <div class="col-12 col-md-6 col-xxl-3">
@@ -254,9 +271,9 @@
                             <div class="btn-group flex-wrap" role="group" aria-label="Cabin">
                                 @foreach (var c in Enum.GetValues<CabinClass>().Where(c => c <= Config.MaxCabin))
                                 {
-                                    var key = CabinKey(c);
-                                    var id = $"cabin_{key}";
-                                    var isChecked = Vm.Cabin == c;
+                                    string key = CabinKey(c);
+                                    string id = $"cabin_{key}";
+                                    bool isChecked = Vm.Cabin == c;
                                     <input type="radio" class="btn-check" name="cabin" id="@id" checked="@isChecked"
                                            @onchange="() => Vm.Cabin = c" />
                                     <label class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" for="@id">
@@ -304,17 +321,18 @@
                         </div>
 
                         <div class="col-12 col-lg-6">
-                            <label class="form-label fw-semibold text-body-emphasis">Alliances & rewards</label>
+                            <label class="form-label fw-semibold text-body-emphasis">Alliances &amp; Rewards</label>
                             <div class="row row-cols-1 row-cols-md-2 g-2">
                                 @foreach (var al in Enum.GetValues<Alliance>())
                                 {
-                                    var id = $"al_{al}";
+                                    string id = $"al_{al}";
                                     <div class="col">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="@id"
-                                                   checked="@Vm.Alliances.Contains(al)"
-                                                   @onchange="e => ToggleAlliance(al, e.Value is true)" />
-                                            <label class="form-check-label" for="@id">@AllianceLabel(al)</label>
+                                        <div class="form-check d-flex align-items-center gap-2">
+                                            <input class="form-check-input mt-0" type="checkbox" id="@id"
+                                                checked="@Vm.Alliances.Contains(al)"
+                                                @onchange="e => ToggleAlliance(al, e.Value is true)" />
+                                            <img src="@AllianceIconUrl(al)" alt="@AllianceLabel(al)" width="20" height="20" class="rounded" />
+                                            <label class="form-check-label mb-0" for="@id">@AllianceLabel(al)</label>
                                         </div>
                                     </div>
                                 }
@@ -352,7 +370,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <div class="fw-semibold text-body-emphasis">Summary</div>
-                        <span class="badge text-bg-light">VM</span>
+                        @* <span class="badge text-bg-light">VM</span> *@
                     </div>
 
                     <dl class="row mb-0 small">
@@ -412,13 +430,35 @@
     private PageConfig Config { get; set; } = PageConfig.Empty();
     private IConfigService _service = default!;
 
-    // origin/destination dropdown state
+    // ===== Origin/Destination Dropdown State =====
     private bool ShowOriginList { get; set; }
     private bool ShowDestinationList { get; set; }
-    private string OriginQuery { get; set; } = string.Empty;
-    private string DestinationQuery { get; set; } = string.Empty;
-    private List<AirportItem> FilteredOrigins { get; set; } = new();
-    private List<AirportItem> FilteredDestinations { get; set; } = new();
+    private bool OriginFocused = false;
+    private bool DestinationFocused = false;
+    private string _originQuery = string.Empty;
+    private string OriginQuery
+    {
+        get => _originQuery;
+        set
+        {
+            _originQuery = value ?? "";
+            ApplyOriginFilter();
+        }
+    }
+
+    private string _destinationQuery = string.Empty;
+    private string DestinationQuery
+    {
+        get => _destinationQuery;
+        set
+        {
+            _destinationQuery = value ?? "";
+            ApplyDestinationFilter();
+        }
+    }
+
+    private List<AirportItem> FilteredOrigins { get; set; } = new List<AirportItem>();
+    private List<AirportItem> FilteredDestinations { get; set; } = new List<AirportItem>();
 
     // ===== Lifecycle =====
     protected override async Task OnParametersSetAsync()
@@ -455,7 +495,7 @@
 
     private void ResetAll()
     {
-        Vm = new();
+        Vm = new SearchVm();
         OriginQuery = string.Empty;
         DestinationQuery = string.Empty;
         ApplyOriginFilter();
@@ -513,7 +553,40 @@
         && !string.IsNullOrWhiteSpace(Vm.Destination)
         && Vm.Origin != Vm.Destination
         && Vm.DepartDate is not null
-        && (Vm.Trip == TripType.OneWay || Vm.ReturnDate is not null);
+        && (Vm.Trip == TripType.OneWay || Vm.ReturnDate is not null)
+        && !HasDateErrors;
+    @* private bool IsFormValid =>
+        !string.IsNullOrWhiteSpace(Vm.Origin)
+        && !string.IsNullOrWhiteSpace(Vm.Destination)
+        && Vm.Origin != Vm.Destination
+        && Vm.DepartDate is not null
+        && (Vm.Trip == TripType.OneWay || Vm.ReturnDate is not null); *@
+
+    // ===== Errors =====
+    private string? DepartError { get; set; }
+    private string? ReturnError { get; set; }
+    private bool HasDateErrors => !string.IsNullOrEmpty(DepartError) || !string.IsNullOrEmpty(ReturnError);
+
+    // Validate dates against policy min and logical ordering
+    private void ValidateDates()
+    {
+        DepartError = null;
+        ReturnError = null;
+
+        var hasAdvance = HasAdvance; // you already have this helper
+        var minDepart = hasAdvance ? MinDepartDate : (DateTime?)null;
+
+        // Depart >= policy min (if provided)
+        if (minDepart is not null && Vm.DepartDate is not null && Vm.DepartDate.Value.Date < minDepart.Value.Date)
+            DepartError = $"Earliest allowed depart is {minDepart.Value:ddd, dd MMM yyyy}.";
+
+        // Return >= Depart (only when Return is in play)
+        if (Vm.Trip == TripType.Return && Vm.DepartDate is not null && Vm.ReturnDate is not null)
+        {
+            if (Vm.ReturnDate.Value.Date < Vm.DepartDate.Value.Date)
+                ReturnError = "Return date cannot be before depart date.";
+        }
+    }
 
     // ===== Airport filtering =====
     private void RebuildAirportIndexes()
@@ -531,16 +604,16 @@
 
     private void ApplyOriginFilter()
     {
-        var q = (OriginQuery ?? string.Empty).Trim();
+        var q = (OriginQuery ?? "").Trim();
         FilteredOrigins = FilterAirports(_originIndex, q);
-        ShowOriginList = FilteredOrigins.Count > 0 && q.Length >= 0;  // or just > 0
+        ShowOriginList = OriginFocused && q.Length >= 1 && FilteredOrigins.Count > 0;
     }
 
     private void ApplyDestinationFilter()
     {
-        var q = (DestinationQuery ?? string.Empty).Trim();
+        var q = (DestinationQuery ?? "").Trim();
         FilteredDestinations = FilterAirports(_destIndex, q);
-        ShowDestinationList = FilteredDestinations.Count > 0 && q.Length >= 0;  // or just > 0
+        ShowDestinationList = DestinationFocused && q.Length >= 1 && FilteredDestinations.Count > 0;
     }
 
     private static List<AirportItem> FilterAirports(List<AirportItem> all, string query)
@@ -571,14 +644,16 @@
 
     private async void HideOriginListDeferred(FocusEventArgs _)
     {
-        await Task.Delay(100);
+        await Task.Delay(120);
+        OriginFocused = false;
         ShowOriginList = false;
         StateHasChanged();
     }
 
     private async void HideDestinationListDeferred(FocusEventArgs _)
     {
-        await Task.Delay(100);
+        await Task.Delay(120);
+        DestinationFocused = false;
         ShowDestinationList = false;
         StateHasChanged();
     }
@@ -620,10 +695,10 @@
 
     private static string CabinIcon(CabinClass c) => c switch
     {
-        CabinClass.Economy => "bi bi-person-seat",
-        CabinClass.PremiumEconomy => "bi bi-person-seat",
-        CabinClass.Business => "bi bi-person-vip",
-        CabinClass.First => "bi bi-gem",
+        CabinClass.Economy => "bi bi-cash-coin",
+        CabinClass.PremiumEconomy => "bi bi-gem",
+        CabinClass.Business => "bi bi-briefcase",
+        CabinClass.First => "bi bi-star-fill",
         _ => "bi bi-person"
     };
 
@@ -647,6 +722,14 @@
         return null;
     }
 
+    private static string AllianceIconUrl(Alliance a) => a switch
+    {
+        Alliance.Oneworld     => "https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_alliance/oneworld.svg",
+        Alliance.StarAlliance => "https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_alliance/star_alliance_logo_cropped.svg",
+        Alliance.SkyTeam      => "https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_alliance/skyteam.svg",
+        _ => ""
+    };
+
     private string FormatDate(DateTime? dt) =>
         dt?.ToString("ddd, dd MMM yyyy", CultureInfo.InvariantCulture) ?? "-";
 
@@ -663,6 +746,20 @@
 
         return min;
     }
+
+    private bool HasAdvance => (Config.DaysInAdvanceBookingRequired ?? 0) > 0;
+    private DateTime MinDepartDate => DateTime.Today.AddDays(Config.DaysInAdvanceBookingRequired ?? 0);
+    private string MinDateStr(DateTime dt) => dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    private string? DepartMinAttr => HasAdvance ? MinDateStr(MinDepartDate) : null;
+    private string? ReturnMinAttr => HasAdvance ? MinDateStr((Vm.DepartDate ?? MinDepartDate)) : null;
+
+    private static DateTime? EnforceMin(DateTime? dt, DateTime min)
+    {
+        if (dt is null) return null;
+        var d = dt.Value.Date;
+        return d < min.Date ? min.Date : d;
+    }
+
 
     // ===== Initialize from config =====
     private void InitializeVmFromConfig()
@@ -688,18 +785,32 @@
         {
             Vm.Airlines = Config.PreferredAirlines.Distinct().ToList();
         }
+
+        if (HasAdvance)
+        {
+            // If no seed, default to min. If seed earlier than min, bump to min.
+            Vm.DepartDate = EnforceMin(Vm.DepartDate ?? MinDepartDate, MinDepartDate);
+
+            if (Vm.Trip == TripType.Return)
+            {
+                // Ensure return not before depart
+                var baseMinReturn = Vm.DepartDate ?? MinDepartDate;
+                Vm.ReturnDate = EnforceMin(Vm.ReturnDate, baseMinReturn);
+            }
+        }
+
     }
 
     // ===== Backing indexes for airports =====
-    private List<AirportItem> _originIndex = new();
-    private List<AirportItem> _destIndex = new();
+    private List<AirportItem> _originIndex = new List<AirportItem>();
+    private List<AirportItem> _destIndex = new List<AirportItem>();
 
     private static AirportItem FormatAirport(Airport a) =>
-        new(a.Code,
+        new AirportItem(a.Code,
             a.Name,
             a.City,
             a.Country,
-            $"{a.Code} — {a.Name}{(string.IsNullOrWhiteSpace(a.City) ? "" : $", {a.City}")}{(string.IsNullOrWhiteSpace(a.Country) ? "" : $", {a.Country}")}");
+            NameFormatted: $"{a.Code} — {a.Name}{(string.IsNullOrWhiteSpace(a.City) ? "" : $", {a.City}")}{(string.IsNullOrWhiteSpace(a.Country) ? "" : $", {a.Country}")}");
 
     // ===== Data contracts =====
     private enum TripType { OneWay = 1, Return = 2 }
@@ -729,8 +840,8 @@
         public string ReturnEarliest { get; set; } = string.Empty;
         public string ReturnLatest { get; set; } = string.Empty;
 
-        public List<string> Airlines { get; set; } = new();      // list of airline IATA codes
-        public List<Alliance> Alliances { get; set; } = new();   // reward programs
+        public List<string> Airlines { get; set; } = new List<string>();      // list of airline IATA codes
+        public List<Alliance> Alliances { get; set; } = new List<Alliance>();   // reward programs
     }
 
     private sealed record Airport(string Code, string Name, string City, string Country);
@@ -748,10 +859,11 @@
         public List<Airport> EnabledDestinations { get; init; } = new();
 
         public List<Airline> AvailableAirlines { get; init; } = new();
-
         public List<string> PreferredAirlines { get; init; } = new();
 
         public CabinClass MaxCabin { get; init; } = CabinClass.First;
+
+        public int? DaysInAdvanceBookingRequired { get; init; }
 
         public bool HasFixedTimes { get; init; }
         public string FixedDepartEarliest { get; init; } = string.Empty;
@@ -762,7 +874,7 @@
         public DateTime? SeedDepartDate { get; init; }
         public DateTime? SeedReturnDate { get; init; }
 
-        public static PageConfig Empty() => new();
+        public static PageConfig Empty() => new PageConfig();
     }
 
     // ===== Service abstraction =====
@@ -778,13 +890,13 @@
         {
             // TODO: replace with real HTTP/API call using travelQuoteId
             // For now mirror dummy but with "locked" times to demonstrate read-only
-            var cfg = new PageConfig
+            PageConfig cfg = new PageConfig
             {
                 TenantName = "Contoso Travel",
                 PolicyName = $"Quote {travelQuoteId}",
                 EnabledOrigins = DummyAirports().Where(a => a.Code is "SYD" or "MEL" or "BNE").ToList(),
                 EnabledDestinations = DummyAirports().Where(a => a.Code is "AKL" or "WLG" or "CHC" or "ZQN").ToList(),
-                AvailableAirlines = new() { new("QF", "Qantas"), new("NZ", "Air New Zealand") },
+                AvailableAirlines = new() { new ("QF", "Qantas"), new ("NZ", "Air New Zealand") },
                 PreferredAirlines = new() { "QF" },
                 MaxCabin = CabinClass.Business,
                 HasFixedTimes = true,
@@ -804,7 +916,7 @@
     {
         public Task<PageConfig> LoadAsync(string _)
         {
-            var cfg = new PageConfig
+            PageConfig cfg = new PageConfig
             {
                 TenantName = "Demo Tenant",
                 PolicyName = "Sample Policy",
