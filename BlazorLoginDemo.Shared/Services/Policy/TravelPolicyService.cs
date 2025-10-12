@@ -187,10 +187,10 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         // Not new + a default exists -> override
         org.DefaultTravelPolicyId = policyId;
+        org.LastUpdatedUtc = DateTime.UtcNow;  // update last edit
         await _db.SaveChangesAsync(ct);
         return true;
     }
-
 
     // -----------------------------
     // RESOLUTION (countries only for UI)
