@@ -192,6 +192,41 @@ public sealed class TravelPolicyService : ITravelPolicyService
         return true;
     }
 
+    public async Task<bool> SetPolicyAsDefaultAsync(string policyId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(policyId))
+            throw new ArgumentException("policyId must be provided.", nameof(policyId));
+
+        var tp = await _db.TravelPolicies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == policyId, ct);
+
+        if (tp is null)
+        {
+            await _logger.LogErrorAsync(message: $"TravelPolicy '{policyId}' not found.");
+            return false;
+        }
+
+        var org = await _db.Organizations
+            .FirstOrDefaultAsync(o => o.Id == tp.OrganizationUnifiedId, ct);
+
+        if (org is null)
+        {
+            await _logger.LogErrorAsync(message: $"Organization '{tp.OrganizationUnifiedId}' from TravelPolicy '{policyId}' not found.");
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(org.DefaultExpensePolicyId))
+            await _logger.LogInfoAsync(message: $"Organization '{org.Id}' default Travel Policy updated from '{tp.OrganizationUnifiedId}' to '{policyId}'.");
+        else
+            await _logger.LogInfoAsync(message: $"Organization '{org.Id}' default Travel Policy set to '{policyId}'.");
+
+        org.DefaultTravelPolicyId = policyId;
+        org.LastUpdatedUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     // -----------------------------
     // RESOLUTION (countries only for UI)
     // -----------------------------

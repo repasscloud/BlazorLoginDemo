@@ -75,7 +75,7 @@ else
                                     }
                                     else
                                     {
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetAsDefaultPolicyAsync(p.Id, OrganizationId))">Set As Default</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetAsDefaultPolicyAsync(p.Id))">Set As Default</button>
                                     }
                                 </td>
                                 <td>@((p.LastUpdatedUtc).ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
@@ -115,16 +115,12 @@ else
 
     private void GoBack() => Nav.NavigateTo(uri: "/platform/organizations");
 
-    private async Task SetAsDefaultPolicyAsync(string policyId, string orgId)
+    private async Task SetAsDefaultPolicyAsync(string policyId)
     {
-        if (_org is null || _org.Org.Id != orgId)
-            return;
-
-        bool result = await TravelPolicyService.SetAsDefaultPolicyAsync(policyId, orgId);
+        bool result = await TravelPolicyService.SetPolicyAsDefaultAsync(policyId);
         if (result)
         {
-            _org.Org.DefaultTravelPolicyId = policyId;
-            StateHasChanged();
+            Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrganizationId}", forceLoad: true);
         }
    }
 
@@ -133,7 +129,7 @@ else
    private async Task DeleteTravelPolicyByIdAsync(string travelPolicyId)
    {
         await TravelPolicyService.DeleteAsync(id: travelPolicyId);
-        StateHasChanged();
+        Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrganizationId}", forceLoad: true);
    }
 
    private void ViewEditTravelPolicyById(string travelPolicyId)
