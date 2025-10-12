@@ -573,7 +573,7 @@ else
     private string? Error;
     private string OrgName = "";
     private TravelPolicy? Model;
-    private TravelPolicyVm Vm = new();
+    private TravelPolicyVm Vm = new TravelPolicyVm();
     private EditContext? EditCtx;
 
     // Utc DateTime tz conversion
@@ -602,9 +602,9 @@ else
     }
 
     // Catalog data
-    private List<Continent> AllContinents = new();
-    private List<Region>    AllRegions    = new();
-    private List<Country>   AllCountries  = new();
+    private List<Continent> AllContinents = new List<Continent>();
+    private List<Region>    AllRegions    = new List<Region>();
+    private List<Country>   AllCountries  = new List<Country>();
 
     // Selections
     private string[] SelectedContinentIds = Array.Empty<string>();
@@ -645,24 +645,57 @@ else
         {
             // Load org
             IAdminOrgServiceUnified.OrgAggregate? agg = await OrgSvc.GetByIdAsync(OrgId);
-            OrgName = agg?.Org?.Name ?? throw new InvalidOperationException($"Organization '{OrgId}' missing name.");
+            OrgName = agg?.Org?.Name ?? throw new InvalidOperationException(message: $"Organization '{OrgId}' missing name.");
 
             // Load catalogs
-            AllContinents = (await ContinentSvc.GetAllAsync()).ToList();   // ordered in service
+            AllContinents = (await ContinentSvc.GetAllAsync()).ToList();  // ordered in service
             AllRegions    = (await RegionSvc.GetAllAsync()).ToList();
             AllCountries  = (await CountrySvc.GetAllAsync()).ToList();
 
-            // Find or create policy for org
-            var existing = await PolicySvc.GetForOrganizationAsync(OrgId);
-            Model = existing.FirstOrDefault();
+            // load all policies for the org
+            var existing = await PolicySvc.GetForOrganizationAsync(OrgId) ?? Array.Empty<TravelPolicy>();
+
+            // pick model for the UI if you want to show something; oldest as a stable choice
+            Model = existing.OrderBy(p => p.LastUpdatedUtc).FirstOrDefault();
+
+            // create only if none exist
             if (Model is null)
             {
+                // first policy gets the “Default …” name
+                string? baseName = $"{OrgName} Default Travel Policy";
+                string? uniqueName = EnsureUniqueName(baseName, existing.Select(p => p.PolicyName));
+
+                // use CreateDefaultAsync for first policy only
                 Model = await PolicySvc.CreateDefaultAsync(new TravelPolicy
                 {
                     OrganizationUnifiedId = OrgId,
-                    PolicyName = $"{OrgName} Default Travel Policy",
+                    PolicyName = uniqueName,
                     DefaultCurrencyCode = "AUD"
                 });
+
+                // mark as org default via the separate default-mapping model
+                await PolicySvc.SetAsDefaultPolicyAsync(Model.Id, OrgId, isNew: true);
+            }
+            else
+            {
+                // there are existing policies → create a dated non-default if you need a new one “now”
+                // call this only on explicit user action, not on render
+                string? baseName = $"{OrgName} Travel Policy {DateTime.UtcNow:yyyyMMdd}";
+                string? uniqueName = EnsureUniqueName(baseName, existing.Select(p => p.PolicyName));
+
+                TravelPolicy? created = await PolicySvc.CreateAsync(policy: new TravelPolicy
+                {
+                    OrganizationUnifiedId = OrgId,
+                    PolicyName = uniqueName,
+                    DefaultCurrencyCode = "AUD"
+                    // set any other fields your service populates if they are required by your model
+                });
+
+                // keep the current default mapping unchanged
+                Model = created;
+
+                // optional: refresh list if you need it immediately after create
+                existing = await PolicySvc.GetForOrganizationAsync(OrgId) ?? Array.Empty<TravelPolicy>();
             }
 
             // Build VM
@@ -701,7 +734,7 @@ else
         catch (Exception ex)
         {
             Error = ex.GetBaseException().Message;
-            Log.LogError(ex, "Init failed");
+            Log.LogError(ex, message: "Init failed");
         }
     }
 
@@ -714,10 +747,10 @@ else
             Vm.Apply(Model);
 
             // Parse array selections -> int sets
-            var continentIds = SelectedContinentIds.Select(int.Parse).ToHashSet();
-            var regionIds    = SelectedRegionIds.Select(int.Parse).ToHashSet();
-            var countryIds   = SelectedCountryIds.Select(int.Parse).ToHashSet();
-            var disabledIds  = SelectedDisabledCountryIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? continentIds = SelectedContinentIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? regionIds    = SelectedRegionIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? countryIds   = SelectedCountryIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? disabledIds  = SelectedDisabledCountryIds.Select(int.Parse).ToHashSet();
 
             // Rebind continents/regions/countries from selections
             Model.Continents = AllContinents.Where(c => continentIds.Contains(c.Id)).ToList();
@@ -731,12 +764,12 @@ else
             await DisabledSvc.SetDisabledCountriesAsync(Model.Id, disabledIds);
 
             // Navigate as needed
-            Nav.NavigateTo(uri: $"/platform/travelpolicy/edit/{Model.Id}");
+            Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrgId}");
         }
         catch (Exception ex)
         {
             Error = ex.GetBaseException().Message;
-            Log.LogError(ex, "Save failed");
+            Log.LogError(ex, message: "Save failed");
         }
     }
 
@@ -918,7 +951,7 @@ else
         private static string[] ParseCsv(string? s) =>
             string.IsNullOrWhiteSpace(s)
                 ? Array.Empty<string>()
-                : s.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                : s.Split(separator: ',', StringSplitOptions.RemoveEmptyEntries)
                    .Select(x => x.Trim().ToUpperInvariant())
                    .Where(x => x.Length > 0)
                    .Distinct()
@@ -927,23 +960,40 @@ else
 
     private sealed class NewTravelPolicy { }
 
+    // ===== Travel Policy Start Date End Date Helper
     private bool _expiresManuallyEdited;
+
+    private static DateTime? AsUtcMidnight(DateTime? d)
+        => d.HasValue
+            ? new DateTime(d.Value.Year, d.Value.Month, d.Value.Day, hour: 0, minute: 0, second: 0, DateTimeKind.Utc)
+            : null;
 
     private Task OnEffectiveChanged(DateTime? newValue)
     {
-        Vm.EffectiveFromUtc = newValue;
+        Vm.EffectiveFromUtc = AsUtcMidnight(newValue);
 
         if (!_expiresManuallyEdited)
-            Vm.ExpiresOnUtc = newValue?.AddYears(1);
+            Vm.ExpiresOnUtc = Vm.EffectiveFromUtc?.AddYears(value: 1);
 
         return Task.CompletedTask;
     }
 
     private Task OnExpiresChanged(DateTime? newValue)
     {
-        // Any manual change locks future auto-updates
         _expiresManuallyEdited = true;
-        Vm.ExpiresOnUtc = newValue;
+        Vm.ExpiresOnUtc = AsUtcMidnight(newValue);
         return Task.CompletedTask;
+    }
+
+    // ===== Travel Policy Name Helper
+        private static string EnsureUniqueName(string baseName, IEnumerable<string> names)
+    {
+        HashSet<string>? set = new HashSet<string>(names, StringComparer.Ordinal);
+        if (!set.Contains(baseName)) return baseName;
+        for (int i = 2; ; i++)
+        {
+            string? candidate = $"{baseName}-{i}";
+            if (!set.Contains(candidate)) return candidate;
+        }
     }
 }
