@@ -75,15 +75,17 @@ else
                                     }
                                     else
                                     {
-                                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetAsDefaultPolicyAsync(p.Id, OrganizationId))">Set As Default</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetAsDefaultPolicyAsync(p.Id, OrganizationId))">Set As Default</button>
                                     }
                                 </td>
                                 <td>@((p.LastUpdatedUtc).ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
                                 <td class="text-end">
-                                    <a class="btn btn-primary"
-                                       href="@($"/platform/travelpolicy/edit/{p.Id}")">
-                                        Edit
-                                    </a>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteTravelPolicyByIdAsync(p.Id)">
+                                        <i class="bi bi-x-circle"></i> Delete
+                                    </button>
+                                    <button class="btn btn-primary btn-sm" @onclick="() => ViewEditTravelPolicyById(p.Id)">
+                                        <i class="bi bi-pen"></i> View/Edit
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -111,14 +113,14 @@ else
         _loading = false;
     }
 
-    private void GoBack() => Nav.NavigateTo("/platform/organizations");
+    private void GoBack() => Nav.NavigateTo(uri: "/platform/organizations");
 
     private async Task SetAsDefaultPolicyAsync(string policyId, string orgId)
     {
         if (_org is null || _org.Org.Id != orgId)
             return;
 
-        bool result = await TravelPolicyService.SetAsDefaultPolicyAsync(orgId, policyId);
+        bool result = await TravelPolicyService.SetAsDefaultPolicyAsync(policyId, orgId);
         if (result)
         {
             _org.Org.DefaultTravelPolicyId = policyId;
@@ -127,4 +129,15 @@ else
    }
 
    private void GoToEditOrg() => Nav.NavigateTo($"/platform/organizations/{OrganizationId}/edit");
+
+   private async Task DeleteTravelPolicyByIdAsync(string travelPolicyId)
+   {
+        await TravelPolicyService.DeleteAsync(id: travelPolicyId);
+        StateHasChanged();
+   }
+
+   private void ViewEditTravelPolicyById(string travelPolicyId)
+   {
+        Nav.NavigateTo(uri: $"/platform/travelpolicy/edit/{travelPolicyId}", forceLoad: true);
+   }
 }
