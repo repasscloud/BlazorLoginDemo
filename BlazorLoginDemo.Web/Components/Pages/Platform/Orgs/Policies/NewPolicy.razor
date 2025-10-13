@@ -17,7 +17,6 @@
 @inject IContinentService ContinentSvc
 @inject IRegionService RegionSvc
 @inject ICountryService CountrySvc
-@inject ITravelPolicyDisabledCountryService DisabledSvc
 @inject NavigationManager Nav
 @inject ILogger<NewTravelPolicy> Log
 
@@ -601,15 +600,15 @@ else
             : null;
     }
 
-    // Catalog data
-    private List<Continent> AllContinents = new List<Continent>();
-    private List<Region>    AllRegions    = new List<Region>();
-    private List<Country>   AllCountries  = new List<Country>();
+    // Catalogs for option lists
+    private IReadOnlyList<Region> AllRegions = Array.Empty<Region>();
+    private IReadOnlyList<Continent> AllContinents = Array.Empty<Continent>();
+    private IReadOnlyList<Country> AllCountries = Array.Empty<Country>();
 
     // Selections
+    private string[] SelectedRegionIds = Array.Empty<string>();
     private string[] SelectedContinentIds = Array.Empty<string>();
-    private string[] SelectedRegionIds    = Array.Empty<string>();
-    private string[] SelectedCountryIds   = Array.Empty<string>();
+    private string[] SelectedCountryIds = Array.Empty<string>();
     private string[] SelectedDisabledCountryIds = Array.Empty<string>();
 
     // car hire
@@ -647,68 +646,33 @@ else
             IAdminOrgServiceUnified.OrgAggregate? agg = await OrgSvc.GetByIdAsync(OrgId);
             OrgName = agg?.Org?.Name ?? throw new InvalidOperationException(message: $"Organization '{OrgId}' missing name.");
 
-            // Load catalogs
-            AllContinents = (await ContinentSvc.GetAllAsync()).ToList();  // ordered in service
-            AllRegions    = (await RegionSvc.GetAllAsync()).ToList();
-            AllCountries  = (await CountrySvc.GetAllAsync()).ToList();
+            AllRegions = await RegionSvc.GetAllAsync();
+            AllContinents = await ContinentSvc.GetAllAsync();
+            AllCountries = await CountrySvc.GetAllAsync();
 
-            // load all policies for the org
-            var existing = await PolicySvc.GetForOrganizationAsync(OrgId) ?? Array.Empty<TravelPolicy>();
-
-            // pick model for the UI if you want to show something; oldest as a stable choice
-            Model = existing.OrderBy(p => p.LastUpdatedUtc).FirstOrDefault();
-
-            // create only if none exist
-            if (Model is null)
+            // NEW policy: do not create anything on init. Do not seed selections.
+            Model = new TravelPolicy
             {
-                // first policy gets the “Default …” name
-                string? baseName = $"{OrgName} Default Travel Policy";
-                string? uniqueName = EnsureUniqueName(baseName, existing.Select(p => p.PolicyName));
+                OrganizationUnifiedId = OrgId,
+                PolicyName = $"{OrgName} Travel Policy",
+                DefaultCurrencyCode = "AUD",
 
-                // use CreateDefaultAsync for first policy only
-                Model = await PolicySvc.CreateDefaultAsync(new TravelPolicy
-                {
-                    OrganizationUnifiedId = OrgId,
-                    PolicyName = uniqueName,
-                    DefaultCurrencyCode = "AUD"
-                });
+                // empty geo arrays
+                RegionIds = Array.Empty<int>(),
+                ContinentIds = Array.Empty<int>(),
+                CountryIds = Array.Empty<int>(),
+                DisabledCountryIds = Array.Empty<int>()
+            };
 
-                // mark as org default via the separate default-mapping model
-                await PolicySvc.SetAsDefaultPolicyAsync(Model.Id, OrgId, isNew: true);
-            }
-            else
-            {
-                // there are existing policies → create a dated non-default if you need a new one “now”
-                // call this only on explicit user action, not on render
-                string? baseName = $"{OrgName} Travel Policy {DateTime.UtcNow:yyyyMMdd}";
-                string? uniqueName = EnsureUniqueName(baseName, existing.Select(p => p.PolicyName));
-
-                TravelPolicy? created = await PolicySvc.CreateAsync(policy: new TravelPolicy
-                {
-                    OrganizationUnifiedId = OrgId,
-                    PolicyName = uniqueName,
-                    DefaultCurrencyCode = "AUD"
-                    // set any other fields your service populates if they are required by your model
-                });
-
-                // keep the current default mapping unchanged
-                Model = created;
-
-                // optional: refresh list if you need it immediately after create
-                existing = await PolicySvc.GetForOrganizationAsync(OrgId) ?? Array.Empty<TravelPolicy>();
-            }
-
-            // Build VM
+            // Build VM from the empty model
             Vm = TravelPolicyVm.FromModel(Model);
 
-            // Seed selection lists from navs
-            SelectedContinentIds = Model.Continents?.Select(x => x.Id.ToString()).ToArray() ?? Array.Empty<string>();
-            SelectedRegionIds    = Model.Regions?.Select(x => x.Id.ToString()).ToArray() ?? Array.Empty<string>();
-            SelectedCountryIds   = Model.Countries?.Select(x => x.Id.ToString()).ToArray() ?? Array.Empty<string>();
+            // Keep selection lists empty for a brand-new policy
+            SelectedContinentIds = Array.Empty<string>();
+            SelectedRegionIds    = Array.Empty<string>();
+            SelectedCountryIds   = Array.Empty<string>();
+            SelectedDisabledCountryIds = Array.Empty<string>();
 
-            // Disabled countries via service
-            SelectedDisabledCountryIds = (await DisabledSvc.GetDisabledCountryIdsAsync(Model.Id))
-                .Select(id => id.ToString()).ToArray();
 
             // hire car
             // fallbacks = first option from each list
@@ -752,16 +716,15 @@ else
             HashSet<int>? countryIds   = SelectedCountryIds.Select(int.Parse).ToHashSet();
             HashSet<int>? disabledIds  = SelectedDisabledCountryIds.Select(int.Parse).ToHashSet();
 
-            // Rebind continents/regions/countries from selections
-            Model.Continents = AllContinents.Where(c => continentIds.Contains(c.Id)).ToList();
-            Model.Regions    = AllRegions.Where(r => regionIds.Contains(r.Id)).ToList();
-            Model.Countries  = AllCountries.Where(c => countryIds.Contains(c.Id)).ToList();
+            // Write selections into int[] fields on the model
+            static int[] ToArray(HashSet<int> s) => s.OrderBy(x => x).ToArray();
+            Model.ContinentIds       = ToArray(continentIds);
+            Model.RegionIds          = ToArray(regionIds);
+            Model.CountryIds         = ToArray(countryIds);
+            Model.DisabledCountryIds = ToArray(disabledIds);
 
-            // Persist core policy
+            // Persist core policy (service normalizes arrays)
             Model = await PolicySvc.CreateAsync(Model);
-
-            // Persist disabled countries atomically
-            await DisabledSvc.SetDisabledCountriesAsync(Model.Id, disabledIds);
 
             // Navigate as needed
             Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrgId}");
