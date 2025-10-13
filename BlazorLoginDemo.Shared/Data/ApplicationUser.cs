@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 using BlazorLoginDemo.Shared.Models.Auth;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
+using BlazorLoginDemo.Shared.Models.Policies;
 using BlazorLoginDemo.Shared.Models.Static;
 using BlazorLoginDemo.Shared.Models.Static.Platform;
 using BlazorLoginDemo.Shared.Models.User;

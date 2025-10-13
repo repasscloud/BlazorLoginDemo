@@ -1,5 +1,7 @@
 // Services/Travel/TravelQuoteService.cs
+using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
+using BlazorLoginDemo.Shared.Models.Policies;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 using Microsoft.EntityFrameworkCore;
@@ -323,8 +325,6 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
         if (pL.Count == 0)
             throw new InvalidOperationException("No travellers with valid/effective travel policies found.");
-
-        
 
         return q;
     }

@@ -1,3 +1,4 @@
+using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using Microsoft.AspNetCore.Identity;

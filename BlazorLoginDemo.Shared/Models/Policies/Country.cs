@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
 namespace BlazorLoginDemo.Shared.Models.Policies;
@@ -21,7 +20,4 @@ public class Country
 
     // Each country is part of a continent
     public int? ContinentId { get; set; }
-
-    [JsonIgnore]
-    public Continent? Continent { get; set; }
 }

@@ -25,9 +25,9 @@ else
                 <div class="fw-bold">@_org?.Org.Name</div>
                 <small class="text-muted">Policies assigned to this organization</small>
             </div>
-            <div class="btn-group">
-                <button class="btn btn-outline-secondary" @onclick="GoBack">Back to Orgs</button>
-                <button class="btn btn-primary" @onclick="GoToEditOrg">Edit Org</button>
+            <div>
+                <button class="btn btn-outline-secondary" @onclick="GoToEditOrg">Back to Org</button>
+                <button class="btn btn-outline-primary" @onclick="NewTravelPolicy"><i class="bi bi-file-earmark-plus"></i> New Policy</button>
             </div>
         </div>
 
@@ -48,7 +48,8 @@ else
                                 <th>Active</th>
                                 <th>Default</th>
                                 <th>Updated</th>
-                                <th class="text-end">Actions</th>
+                                <th></th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -79,10 +80,12 @@ else
                                     }
                                 </td>
                                 <td>@((p.LastUpdatedUtc).ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
-                                <td class="text-end">
+                                <td>
                                     <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteTravelPolicyByIdAsync(p.Id)">
                                         <i class="bi bi-x-circle"></i> Delete
                                     </button>
+                                </td>
+                                <td>
                                     <button class="btn btn-primary btn-sm" @onclick="() => ViewEditTravelPolicyById(p.Id)">
                                         <i class="bi bi-pen"></i> View/Edit
                                     </button>
@@ -113,8 +116,6 @@ else
         _loading = false;
     }
 
-    private void GoBack() => Nav.NavigateTo(uri: "/platform/organizations");
-
     private async Task SetAsDefaultPolicyAsync(string policyId)
     {
         bool result = await TravelPolicyService.SetPolicyAsDefaultAsync(policyId);
@@ -124,7 +125,9 @@ else
         }
    }
 
-   private void GoToEditOrg() => Nav.NavigateTo($"/platform/organizations/{OrganizationId}/edit");
+   private void GoToEditOrg() => Nav.NavigateTo(uri: $"/platform/organizations/{OrganizationId}/edit");
+
+   public void NewTravelPolicy() => Nav.NavigateTo(uri: $"/platform/travelpolicy/new/{OrganizationId}");
 
    private async Task DeleteTravelPolicyByIdAsync(string travelPolicyId)
    {
@@ -132,8 +135,5 @@ else
         Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrganizationId}", forceLoad: true);
    }
 
-   private void ViewEditTravelPolicyById(string travelPolicyId)
-   {
-        Nav.NavigateTo(uri: $"/platform/travelpolicy/edit/{travelPolicyId}", forceLoad: true);
-   }
+   private void ViewEditTravelPolicyById(string travelPolicyId) => Nav.NavigateTo(uri: $"/platform/travelpolicy/edit/{travelPolicyId}", forceLoad: true);
 }
