@@ -137,7 +137,7 @@ fi
 # ── 🐳 2a) Pull containers ───────────────────────────────────────────────────────
 echo
 echo "🐳 2a) Pull containers"
-docker pull postgres:15
+docker pull postgres:18.0-alpine3.22
 docker pull dpage/pgadmin4
 docker pull mcr.microsoft.com/dotnet/sdk:9.0
 docker pull mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim
