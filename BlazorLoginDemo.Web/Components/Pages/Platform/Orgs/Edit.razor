@@ -11,8 +11,11 @@
 @using BlazorLoginDemo.Web.Components.Shared
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
+@using BlazorLoginDemo.Shared.Models.Kernel.Billing
 @using BlazorLoginDemo.Shared.Models.Static.Platform
+
 @inject IAdminOrgServiceUnified OrgSvc
+@inject IAdminLicenseAgreementServiceUnified LicenseService
 @inject NavigationManager Nav
 @inject ILogger<Edit> Logger
 @inject IJSRuntime JS
@@ -176,7 +179,7 @@
             <div class="col-md-2">
                 <label class="form-label" for="defaultCurrency">Billing Currency</label>
                 <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.DefaultCurrency">
-                    @foreach (var c in _currencyOptions)
+                    @foreach (CurrencyOption c in _currencyOptions)
                     {
                         <option value="@c.Code">@c.Code @c.Flag</option>
                     }
@@ -193,7 +196,12 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">Tax Id</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.TaxId" />
+                <div class="input-group">
+                    <InputText class="form-control" @bind-Value="_vm.Organization.TaxId" />
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => ValidateTaxIdAsync(_vm.Organization.Id, _vm.Organization.TaxIdType)">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                </div>
             </div>
             <div class="col-md-2">
                 <label class="form-label">🌍 Last Validated (UTC)</label>
@@ -457,12 +465,11 @@
         <div class="card-header d-flex align-items-center justify-content-between">
             <span>Licensing / Billing</span>
             <div class="btn-group">
-                <button type="button" class="btn btn-outline-primary">Licensing</button>
                 <button type="submit" class="btn btn-primary">Billing Profile</button>
             </div>
         </div>
         <div class="card-body row g-3">
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <label class="form-label">License Agreement ID</label>
                 <div class="input-group">
                     <InputText class="form-control bg-light" @bind-Value="_vm.Organization.LicenseAgreementId" readonly />
@@ -474,9 +481,17 @@
                     }
                 </div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label">License Agreement</label>
-                <input class="form-control bg-light" value="@(_vm.Organization.LicenseAgreement is null ? "(none)" : "Loaded")" readonly />
+            <div class="col-md-3">
+                <label class="form-label">Payment Status</label>
+                <input class="form-control bg-light" value="@(_licenseVM?.PaymentStatus is null ? "(none)" : _licenseVM.PaymentStatus)" readonly />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Expiry Date</label>
+                <input class="form-control bg-light" value="@(_licenseVM?.ExpiryDate is null ? "(none)" : _licenseVM.ExpiryDate)" readonly />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Renewal Date</label>
+                <input class="form-control bg-light" value="@(_licenseVM?.RenewalDate is null ? "(none)" : _licenseVM.RenewalDate)" readonly />
             </div>
         </div>
     </div>
@@ -527,6 +542,9 @@
     private string? parentOrgName;
     private string? parentOrgType;
     private bool parentOrgActive = false;
+
+    // license, billing
+    private LicenseAgreementUnified? _licenseVM;
     
     private record CurrencyOption(string Code, string Flag);
     private readonly List<string> _taxIdOptions = new List<string>
@@ -600,6 +618,16 @@
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
+
+            // load license if linked
+            if (_vm.Organization.LicenseAgreementId is not null)
+            {
+                IAdminLicenseAgreementServiceUnified.LicenseAggregate? agg = await LicenseService.GetByIdAsync(_vm.Organization.LicenseAgreementId, CancellationToken.None);
+                if (agg is not null)
+                {
+                    _licenseVM = agg.License;
+                }
+            }
 
             await LoadParentOrgInfo(pOrgId: _vm.Organization.ParentOrganizationId);
             await LoadChildrenAsync(_vm.Organization.Id);
@@ -1068,5 +1096,35 @@
     {
         Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrgId}", forceLoad: true);
         return;
+    }
+
+//ValidateTaxIdAsync(_vm.Organization.Id)">
+    public async Task ValidateTaxIdAsync(string orgId, string taxIdType)
+    {
+        if (string.IsNullOrWhiteSpace(_vm.Organization.TaxId))
+            return;
+
+        _isSaving = true;
+        try
+        {
+            bool isValid = await OrgSvc.ValidateTaxIdAsync(orgId, _vm.Organization.TaxId, _vm.Organization.TaxIdType);
+            if (!isValid)
+            {
+                _error = "The provided Tax ID is not valid.";
+            }
+            else
+            {
+                _error = null; // clear previous error if any
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error validating Tax ID: {ex.GetBaseException().Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
     }
 }

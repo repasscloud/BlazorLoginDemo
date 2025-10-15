@@ -1,3 +1,5 @@
+using System.Xml;
+using System.Net;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
@@ -6,6 +8,8 @@ using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using HtmlAgilityPack;
+using Serilog;
 
 namespace BlazorLoginDemo.Shared.Services.Platform;
 
@@ -14,12 +18,19 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
     private readonly ApplicationDbContext _db;
     private readonly ILogger<AdminOrgServiceUnified> _log;
     private readonly ILoggerService _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private const string AUBaseUrl = "https://abr.business.gov.au";
 
-    public AdminOrgServiceUnified(ApplicationDbContext db, ILogger<AdminOrgServiceUnified> log, ILoggerService logger)
+    public AdminOrgServiceUnified(
+        ApplicationDbContext db,
+        ILogger<AdminOrgServiceUnified> log,
+        ILoggerService logger,
+        IHttpClientFactory httpClientFactory)
     {
         _db = db;
         _log = log;
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
     }
 
     // -------------- CREATE (rich) --------------
@@ -382,4 +393,71 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
 
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.Organizations.AnyAsync(o => o.Id == id, ct);
+
+    public async Task<bool> ValidateTaxIdAsync(string orgId, string taxId, string taxIdType, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(taxId)) throw new ArgumentException("taxId is required", nameof(taxId));
+        var tnorm = taxId.Trim();
+
+        bool taxResultStatus = false;
+
+        switch (taxIdType)
+        {
+            case "AU ABN" or "AU ACN":
+            {
+                var url = $"{AUBaseUrl}/ABN/View?id={taxId}";
+                var httpClient = _httpClientFactory.CreateClient();
+                var html = await httpClient.GetStringAsync(url);
+
+                var doc = new HtmlDocument();
+                doc.LoadHtml(html);
+
+                string GetField(string label)
+                {
+                    // grab all <th> nodes once
+                    var thNodes = doc.DocumentNode.SelectNodes("//th");
+                    if (thNodes == null)
+                        return "Not found";
+
+                    foreach (var th in thNodes)
+                    {
+                        var decodedText = WebUtility.HtmlDecode(th.InnerText).Trim();
+                        if (decodedText == label)
+                        {
+                            // pick up the next <td>
+                            var td = th.SelectSingleNode("following-sibling::td");
+                            if (td != null)
+                                return WebUtility.HtmlDecode(td.InnerText).Trim();
+                        }
+                    }
+
+                    return "Not found";
+                }
+
+                var gstStatus = GetField("Goods & Services Tax (GST):");
+                taxResultStatus = gstStatus.Contains("Not currently registered for GST") || gstStatus.Contains("Not found")
+                    ? false
+                    : true;
+                break;
+            }
+
+            default:
+                break;
+        }
+
+        if (taxResultStatus)
+        {
+            var org = await _db.Organizations.FirstOrDefaultAsync(o => o.Id == orgId, ct)
+                ?? throw new InvalidOperationException($"Organization '{orgId}' not found.");
+
+            var now = DateTime.UtcNow;
+            org.TaxLastValidated = now;
+            org.LastUpdatedUtc = now;
+            await _db.SaveChangesAsync(ct);
+
+            await _logger.LogInfoAsync($"Validated Tax ID for Org '{org.Name}' (ID: {org.Id})");
+        }
+
+        return taxResultStatus;
+    }
 }
