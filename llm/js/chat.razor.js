@@ -31,15 +31,25 @@
     categorySelect: document.getElementById('categorySelect'),
   };
 
+  // Configurable keyword triggers
+  const triggers = {
+    secret: ['secret', 'api key', 'apikey', 'token', 'password', 'credential'],
+    selection: ['select', 'choose', 'options', 'category', 'priority']
+  };
+
   // State
   const state = {
     messages: [],
     quickOptions: ["Track order", "Reset password", "Pricing", "Contact support"],
-    pendingAttachments: [], // { name, size, file }
+    showQuickOptions: true,            // show initially
+    pendingAttachments: [],            // { name, size, file }
     typingId: null,
     // Selection defaults
     selectedCategory: "General",
     selectedPriority: "Normal",
+    // Modal queue
+    modalQueue: [],                    // 'secret' | 'selection'
+    isModalOpen: false
   };
 
   // Init default selection
@@ -58,12 +68,41 @@
   };
 
   const scheduleScrollToBottom = () => {
-    // Double rAF to run after layout/paint
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         els.messages.scrollTop = els.messages.scrollHeight;
       });
     });
+  };
+
+  const containsAny = (text, words) =>
+    words.some(w => text.includes(w));
+
+  const detectTriggers = (text) => {
+    const t = (text || '').toLowerCase();
+    return {
+      secret: containsAny(t, triggers.secret),
+      selection: containsAny(t, triggers.selection)
+    };
+  };
+
+  // Modal queue helpers
+  const enqueueModal = (name) => {
+    if (!['secret', 'selection'].includes(name)) return;
+    // prevent duplicates in immediate queue
+    if (!state.modalQueue.includes(name)) {
+      state.modalQueue.push(name);
+    }
+    if (!state.isModalOpen) {
+      openNextModal();
+    }
+  };
+
+  const openNextModal = () => {
+    if (state.isModalOpen || state.modalQueue.length === 0) return;
+    const next = state.modalQueue.shift();
+    if (next === 'secret') openSecret();
+    else if (next === 'selection') openSelection();
   };
 
   // Rendering
@@ -110,12 +149,16 @@
 
   const renderQuickOptions = () => {
     els.quickOptions.innerHTML = '';
+    if (!state.showQuickOptions) return;
     for (const opt of state.quickOptions) {
       const btn = document.createElement('button');
       btn.className = 'btn btn-outline-primary btn-sm';
       btn.type = 'button';
       btn.textContent = opt;
       btn.addEventListener('click', () => {
+        // Hide buttons after selection to mimic "one-time" suggestions
+        state.showQuickOptions = false;
+        renderQuickOptions();
         els.input.value = opt;
         send();
       });
@@ -190,8 +233,8 @@
     }
   };
 
-  // Quick options heuristic
-  const updateQuickOptions = (lastText) => {
+  // Quick options heuristic (content changes, independent of visibility)
+  const updateQuickOptionsList = (lastText) => {
     const t = (lastText || '').toLowerCase();
     if (t.includes('price') || t.includes('pricing')) {
       state.quickOptions = ["Monthly plans", "Annual plans", "Discounts", "Talk to sales"];
@@ -206,6 +249,7 @@
   // Modal helpers (vanilla, no Bootstrap JS dependency)
   const openModal = (modalEl) => {
     if (!modalEl) return;
+    state.isModalOpen = true;
     modalEl.classList.add('show', 'd-block');
     modalEl.setAttribute('aria-hidden', 'false');
 
@@ -226,6 +270,10 @@
     const backdrop = Array.from(document.querySelectorAll('.modal-backdrop.custom-backdrop'))
       .find(b => b.dataset.for === modalEl.id);
     if (backdrop) backdrop.remove();
+
+    state.isModalOpen = false;
+    // Open next modal in queue if any
+    openNextModal();
   };
 
   // Secret modal actions
@@ -242,8 +290,12 @@
       timestamp: new Date(),
       attachments: []
     });
+    // Clear inputs
     els.secretLabel.value = '';
     els.secretValue.value = '';
+    // Bring back quick options after this specific action
+    state.showQuickOptions = true;
+    renderQuickOptions();
   };
 
   // Selection modal actions
@@ -267,45 +319,34 @@
       timestamp: new Date(),
       attachments: []
     });
+    // Bring back quick options after this specific action
+    state.showQuickOptions = true;
+    renderQuickOptions();
   };
 
   // Simulated NLP/API hook
   // Replace this with your real API call as needed
   const callNlpApiAndHandleFlows = async (userMsg) => {
-    // Demo logic
-    await new Promise(r => setTimeout(r, 650));
+    // Simulate latency
+    await new Promise(r => setTimeout(r, 500));
     const t = (userMsg.text || '').toLowerCase();
 
-    if (t.includes('secret')) {
-      openSecret();
-      return {
-        id: uid(),
-        sender: 'bot',
-        text: 'It looks like you want to provide sensitive info. I opened the secret popup.',
-        timestamp: new Date(),
-        attachments: []
-      };
-    }
+    const { secret, selection } = detectTriggers(t);
+    if (secret) enqueueModal('secret');
+    if (selection) enqueueModal('selection');
 
-    if (t.includes('select') || t.includes('choose') || t.includes('options')) {
-      openSelection();
-      return {
-        id: uid(),
-        sender: 'bot',
-        text: 'I opened the selection popup so you can choose specifics.',
-        timestamp: new Date(),
-        attachments: []
-      };
-    }
-
+    // Acknowledge and hint at next steps
     const filePart = (userMsg.attachments && userMsg.attachments.length > 0)
       ? ` I see ${userMsg.attachments.length} attachment(s).`
+      : '';
+    const triggerPart = secret || selection
+      ? ' I detected something I can help with and opened a prompt.'
       : '';
 
     return {
       id: uid(),
       sender: 'bot',
-      text: `You said: "${userMsg.text}".${filePart}`,
+      text: `You said: "${userMsg.text}".${filePart}${triggerPart}`,
       timestamp: new Date(),
       attachments: []
     };
@@ -316,6 +357,10 @@
     const text = (els.input.value || '').trim();
     const hasTextOrFiles = text.length > 0 || state.pendingAttachments.length > 0;
     if (!hasTextOrFiles) return;
+
+    // Hide quick options after the user acts (one-time suggestions)
+    state.showQuickOptions = false;
+    renderQuickOptions();
 
     const userMsg = {
       id: uid(),
@@ -349,8 +394,8 @@
     removeTyping();
     if (reply) addMessage(reply);
 
-    // Update quick options
-    updateQuickOptions(text);
+    // Update the content of quick options (not their visibility)
+    updateQuickOptionsList(text);
   };
 
   // Event bindings
@@ -369,9 +414,9 @@
 
   els.fileInput.addEventListener('change', onFilesSelected);
 
-  // Header modal buttons
-  els.btnOpenSecret.addEventListener('click', openSecret);
-  els.btnOpenSelection.addEventListener('click', openSelection);
+  // Header modal buttons (manual testing)
+  els.btnOpenSecret.addEventListener('click', () => enqueueModal('secret'));
+  els.btnOpenSelection.addEventListener('click', () => enqueueModal('selection'));
 
   // Secret modal controls
   els.secretCloseX.addEventListener('click', closeSecret);
@@ -388,7 +433,6 @@
     scheduleScrollToBottom();
   });
   els.input.addEventListener('focus', () => {
-    // Delay to let virtual keyboard adjust viewport
     setTimeout(() => { scheduleScrollToBottom(); }, 100);
   });
 
@@ -397,7 +441,7 @@
     addMessage({
       id: uid(),
       sender: 'bot',
-      text: 'Hi! I’m your assistant. Pick an option below or type your question.',
+      text: 'Hi! I’m your assistant. Type keywords like "secret", "api key", "token", or "select", "choose", "options" to see modals.',
       timestamp: new Date(),
       attachments: []
     });

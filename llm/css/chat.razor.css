@@ -4,20 +4,17 @@ body { overflow: hidden; }
 
 /* Root layout: grid with a dedicated scroll area */
 .chat-wrapper {
-  /* Prefer dynamic viewport units for mobile; fallback to svh/vh */
-  height: 100vh;
-  height: 100svh;
   height: 100dvh;
-
+  height: 100svh;
+  height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto auto; /* header, messages, quick options, input */
   gap: .5rem;
-  /* Bootstrap container spacing already applied by container-md + py-2 */
 }
 
 /* Messages area: the only scrollable region */
 .chat-messages {
-  min-height: 0;            /* CRUCIAL to allow shrinking inside grid/flex and enable scrolling */
+  min-height: 0;            /* allow shrinking inside grid and enable scrolling */
   overflow-y: auto;
   padding: .5rem .25rem;
   background: var(--bs-body-bg);
@@ -33,13 +30,13 @@ body { overflow: hidden; }
   gap: .5rem;
 }
 
-/* Input bar stays visible at the bottom row (no sticky needed here) */
+/* Input bar */
 .chat-input {
   background: var(--bs-body-bg);
   padding: .5rem;
   border-top: 1px solid var(--bs-border-color);
   z-index: 2;
-  margin: 0; /* ensure no extra spacing pushes content */
+  margin: 0;
 }
 
 /* Message bubbles */
@@ -47,7 +44,6 @@ body { overflow: hidden; }
   display: flex;
   margin: .35rem 0;
 }
-
 .message-row.user { justify-content: flex-end; }
 .message-row.bot { justify-content: flex-start; }
 .message-row.system { justify-content: center; }
@@ -58,22 +54,14 @@ body { overflow: hidden; }
   max-width: 75%;
   box-shadow: 0 1px 1px rgba(0,0,0,.04);
 }
+@media (max-width: 576px) { .message-bubble { max-width: 90%; } }
 
-@media (max-width: 576px) {
-  .message-bubble { max-width: 90%; }
-}
-
-.message-bubble.user {
-  background: var(--bs-primary);
-  color: var(--bs-light);
-}
-
+.message-bubble.user { background: var(--bs-primary); color: var(--bs-light); }
 .message-bubble.bot {
   background: var(--bs-light);
   color: var(--bs-body-color);
   border: 1px solid var(--bs-border-color);
 }
-
 .message-bubble.system {
   background: var(--bs-secondary-bg);
   color: var(--bs-secondary-color);
@@ -94,8 +82,6 @@ body { overflow: hidden; }
   margin-right: .5rem;
   margin-bottom: .5rem;
 }
-
-/* Make the close button a bit smaller for chips */
 .btn-close.btn-close-sm { transform: scale(0.8); }
 
 /* Bootstrap modal compatibility rendered via vanilla JS */
