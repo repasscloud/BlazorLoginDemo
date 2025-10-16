@@ -10,13 +10,13 @@
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Services.Interfaces.Policy
 @using BlazorLoginDemo.Shared.Services.Interfaces.Policies
+@using Microsoft.AspNetCore.Components.Web
 
 @inject IAdminOrgServiceUnified OrgSvc
 @inject ITravelPolicyService PolicySvc
 @inject IContinentService ContinentSvc
-@inject IRegionService    RegionSvc
-@inject ICountryService   CountrySvc
-@inject ITravelPolicyDisabledCountryService DisabledSvc
+@inject IRegionService RegionSvc
+@inject ICountryService CountrySvc
 @inject NavigationManager Nav
 @inject ILogger<NewTravelPolicy> Log
 
@@ -546,11 +546,18 @@ else
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Effective From (UTC)</label>
-                        <InputDate @bind-Value="Vm.EffectiveFromUtc" class="form-control" />
+                        <InputDate TValue="DateTime?" Value="Vm.EffectiveFromUtc"
+                                   ValueChanged="@(EventCallback.Factory.Create<DateTime?>(this, OnEffectiveChanged))"
+                                   ValueExpression="() => Vm.EffectiveFromUtc"
+                                   class="form-control" />
                     </div>
+
                     <div class="col-md-4">
                         <label class="form-label">Expires On (UTC)</label>
-                        <InputDate @bind-Value="Vm.ExpiresOnUtc" class="form-control" />
+                        <InputDate TValue="DateTime?" Value="Vm.ExpiresOnUtc"
+                                   ValueChanged="@(EventCallback.Factory.Create<DateTime?>(this, OnExpiresChanged))"
+                                   ValueExpression="() => Vm.ExpiresOnUtc"
+                                   class="form-control" />
                     </div>
                 </div>
             </div>
@@ -565,7 +572,7 @@ else
     private string? Error;
     private string OrgName = "";
     private TravelPolicy? Model;
-    private TravelPolicyVm Vm = new();
+    private TravelPolicyVm Vm = new TravelPolicyVm();
     private EditContext? EditCtx;
 
     // Utc DateTime tz conversion
@@ -593,15 +600,15 @@ else
             : null;
     }
 
-    // Catalog data
-    private List<Continent> AllContinents = new();
-    private List<Region>    AllRegions    = new();
-    private List<Country>   AllCountries  = new();
+    // Catalogs for option lists
+    private IReadOnlyList<Region> AllRegions = Array.Empty<Region>();
+    private IReadOnlyList<Continent> AllContinents = Array.Empty<Continent>();
+    private IReadOnlyList<Country> AllCountries = Array.Empty<Country>();
 
     // Selections
+    private string[] SelectedRegionIds = Array.Empty<string>();
     private string[] SelectedContinentIds = Array.Empty<string>();
-    private string[] SelectedRegionIds    = Array.Empty<string>();
-    private string[] SelectedCountryIds   = Array.Empty<string>();
+    private string[] SelectedCountryIds = Array.Empty<string>();
     private string[] SelectedDisabledCountryIds = Array.Empty<string>();
 
     // car hire
@@ -637,37 +644,34 @@ else
         {
             // Load org
             IAdminOrgServiceUnified.OrgAggregate? agg = await OrgSvc.GetByIdAsync(OrgId);
-            OrgName = agg?.Org?.Name ?? throw new InvalidOperationException($"Organization '{OrgId}' missing name.");
+            OrgName = agg?.Org?.Name ?? throw new InvalidOperationException(message: $"Organization '{OrgId}' missing name.");
 
-            // Load catalogs
-            AllContinents = (await ContinentSvc.GetAllAsync()).ToList();   // ordered in service
-            AllRegions    = (await RegionSvc.GetAllAsync()).ToList();
-            AllCountries  = (await CountrySvc.GetAllAsync()).ToList();
+            AllRegions = await RegionSvc.GetAllAsync();
+            AllContinents = await ContinentSvc.GetAllAsync();
+            AllCountries = await CountrySvc.GetAllAsync();
 
-            // Find or create policy for org
-            var existing = await PolicySvc.GetForOrganizationAsync(OrgId);
-            Model = existing.FirstOrDefault();
-            if (Model is null)
+            // NEW policy: do not create anything on init. Do not seed selections.
+            Model = new TravelPolicy
             {
-                Model = await PolicySvc.CreateDefaultAsync(new TravelPolicy
-                {
-                    OrganizationUnifiedId = OrgId,
-                    PolicyName = $"{OrgName} Default Travel Policy",
-                    DefaultCurrencyCode = "AUD"
-                });
-            }
+                OrganizationUnifiedId = OrgId,
+                PolicyName = $"{OrgName} Travel Policy",
+                DefaultCurrencyCode = "AUD",
 
-            // Build VM
+                // empty geo arrays
+                RegionIds = Array.Empty<int>(),
+                ContinentIds = Array.Empty<int>(),
+                CountryIds = Array.Empty<int>(),
+                DisabledCountryIds = Array.Empty<int>()
+            };
+
+            // Build VM from the empty model
             Vm = TravelPolicyVm.FromModel(Model);
 
-            // Seed selection lists from navs
-            SelectedContinentIds = Model.Continents?.Select(x => x.Id.ToString()).ToArray() ?? Array.Empty<string>();
-            SelectedRegionIds    = Model.Regions?.Select(x => x.Id.ToString()).ToArray() ?? Array.Empty<string>();
-            SelectedCountryIds   = Model.Countries?.Select(x => x.Id.ToString()).ToArray() ?? Array.Empty<string>();
-
-            // Disabled countries via service
-            SelectedDisabledCountryIds = (await DisabledSvc.GetDisabledCountryIdsAsync(Model.Id))
-                .Select(id => id.ToString()).ToArray();
+            // Keep selection lists empty for a brand-new policy
+            SelectedContinentIds = Array.Empty<string>();
+            SelectedRegionIds    = Array.Empty<string>();
+            SelectedCountryIds   = Array.Empty<string>();
+            SelectedDisabledCountryIds = Array.Empty<string>();
 
             // hire car
             // fallbacks = first option from each list
@@ -693,7 +697,7 @@ else
         catch (Exception ex)
         {
             Error = ex.GetBaseException().Message;
-            Log.LogError(ex, "Init failed");
+            Log.LogError(ex, message: "Init failed");
         }
     }
 
@@ -706,29 +710,28 @@ else
             Vm.Apply(Model);
 
             // Parse array selections -> int sets
-            var continentIds = SelectedContinentIds.Select(int.Parse).ToHashSet();
-            var regionIds    = SelectedRegionIds.Select(int.Parse).ToHashSet();
-            var countryIds   = SelectedCountryIds.Select(int.Parse).ToHashSet();
-            var disabledIds  = SelectedDisabledCountryIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? continentIds = SelectedContinentIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? regionIds    = SelectedRegionIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? countryIds   = SelectedCountryIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? disabledIds  = SelectedDisabledCountryIds.Select(int.Parse).ToHashSet();
 
-            // Rebind continents/regions/countries from selections
-            Model.Continents = AllContinents.Where(c => continentIds.Contains(c.Id)).ToList();
-            Model.Regions    = AllRegions.Where(r => regionIds.Contains(r.Id)).ToList();
-            Model.Countries  = AllCountries.Where(c => countryIds.Contains(c.Id)).ToList();
+            // Write selections into int[] fields on the model
+            static int[] ToArray(HashSet<int> s) => s.OrderBy(x => x).ToArray();
+            Model.ContinentIds       = ToArray(continentIds);
+            Model.RegionIds          = ToArray(regionIds);
+            Model.CountryIds         = ToArray(countryIds);
+            Model.DisabledCountryIds = ToArray(disabledIds);
 
-            // Persist core policy
+            // Persist core policy (service normalizes arrays)
             Model = await PolicySvc.CreateAsync(Model);
 
-            // Persist disabled countries atomically
-            await DisabledSvc.SetDisabledCountriesAsync(Model.Id, disabledIds);
-
             // Navigate as needed
-            Nav.NavigateTo(uri: $"/platform/travelpolicy/edit/{Model.Id}");
+            Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrgId}");
         }
         catch (Exception ex)
         {
             Error = ex.GetBaseException().Message;
-            Log.LogError(ex, "Save failed");
+            Log.LogError(ex, message: "Save failed");
         }
     }
 
@@ -910,7 +913,7 @@ else
         private static string[] ParseCsv(string? s) =>
             string.IsNullOrWhiteSpace(s)
                 ? Array.Empty<string>()
-                : s.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                : s.Split(separator: ',', StringSplitOptions.RemoveEmptyEntries)
                    .Select(x => x.Trim().ToUpperInvariant())
                    .Where(x => x.Length > 0)
                    .Distinct()
@@ -918,4 +921,41 @@ else
     }
 
     private sealed class NewTravelPolicy { }
+
+    // ===== Travel Policy Start Date End Date Helper
+    private bool _expiresManuallyEdited;
+
+    private static DateTime? AsUtcMidnight(DateTime? d)
+        => d.HasValue
+            ? new DateTime(d.Value.Year, d.Value.Month, d.Value.Day, hour: 0, minute: 0, second: 0, DateTimeKind.Utc)
+            : null;
+
+    private Task OnEffectiveChanged(DateTime? newValue)
+    {
+        Vm.EffectiveFromUtc = AsUtcMidnight(newValue);
+
+        if (!_expiresManuallyEdited)
+            Vm.ExpiresOnUtc = Vm.EffectiveFromUtc?.AddYears(value: 1);
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnExpiresChanged(DateTime? newValue)
+    {
+        _expiresManuallyEdited = true;
+        Vm.ExpiresOnUtc = AsUtcMidnight(newValue);
+        return Task.CompletedTask;
+    }
+
+    // ===== Travel Policy Name Helper
+        private static string EnsureUniqueName(string baseName, IEnumerable<string> names)
+    {
+        HashSet<string>? set = new HashSet<string>(names, StringComparer.Ordinal);
+        if (!set.Contains(baseName)) return baseName;
+        for (int i = 2; ; i++)
+        {
+            string? candidate = $"{baseName}-{i}";
+            if (!set.Contains(candidate)) return candidate;
+        }
+    }
 }

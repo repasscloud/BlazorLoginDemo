@@ -11,7 +11,7 @@ public interface IRegionService
     Task<Region?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<Region?> GetByNameAsync(string name, CancellationToken ct = default);
     Task<IReadOnlyList<Region>> GetAllAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<Region>> GetAllWithContinentsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Continent>> GetAssignedContinentsAsync(int id, CancellationToken ct = default);
 
     // UPDATE
     Task<Region> UpdateAsync(Region region, CancellationToken ct = default);

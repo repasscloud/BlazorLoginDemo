@@ -1,3 +1,4 @@
+using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
 
 namespace BlazorLoginDemo.Shared.Services.Interfaces.Platform;

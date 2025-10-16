@@ -50,7 +50,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<Continent> Continents => Set<Continent>();
     public DbSet<Country> Countries => Set<Country>();
-    public DbSet<TravelPolicyDisabledCountry> TravelPolicyDisabledCountries => Set<TravelPolicyDisabledCountry>();
     public DbSet<AirportInfo> AirportInfos => Set<AirportInfo>();
 
     // ---------------------------
@@ -296,18 +295,30 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(tp => tp.OrganizationUnifiedId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Many-to-many selectors
-            e.HasMany(x => x.Regions)
-                .WithMany()
-                .UsingEntity(j => j.ToTable("travel_policy_regions", "ava"));
+            // issue #46
+            e.Property(p => p.RegionIds)
+                .HasColumnName("region_ids")
+                .HasColumnType("integer[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::integer[]");
 
-            e.HasMany(x => x.Continents)
-                .WithMany()
-                .UsingEntity(j => j.ToTable("travel_policy_continents", "ava"));
+            e.Property(p => p.ContinentIds)
+                .HasColumnName("continent_ids")
+                .HasColumnType("integer[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::integer[]");
 
-            e.HasMany(x => x.Countries)
-                .WithMany()
-                .UsingEntity(j => j.ToTable("travel_policy_countries", "ava"));
+            e.Property(p => p.CountryIds)
+                .HasColumnName("country_ids")
+                .HasColumnType("integer[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::integer[]");
+
+            e.Property(p => p.DisabledCountryIds)
+                .HasColumnName("disabled_country_ids")
+                .HasColumnType("integer[]")
+                .IsRequired()
+                .HasDefaultValueSql("'{}'::integer[]");
 
             // Arrays (PostgreSQL text[])
             e.Property(p => p.IncludedAirlineCodes)
@@ -371,53 +382,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasDefaultValueSql("timezone('utc', now())");
         });
 
-        // Disabled countries (your composite PK is fine)
-        builder.Entity<TravelPolicyDisabledCountry>(e =>
-        {
-            e.ToTable("travel_policy_disabled_countries", "ava");
-            e.HasKey(x => new { x.TravelPolicyId, x.CountryId });
-
-            e.HasOne(x => x.TravelPolicy)
-                .WithMany(tp => tp.DisabledCountries)
-                .HasForeignKey(x => x.TravelPolicyId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            e.HasOne(x => x.Country)
-                .WithMany()
-                .HasForeignKey(x => x.CountryId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        // Disabled country junction
-        builder.Entity<TravelPolicyDisabledCountry>(e =>
-        {
-            e.ToTable("travel_policy_disabled_countries", "ava");
-            e.HasKey(x => new { x.TravelPolicyId, x.CountryId });
-
-            e.HasOne(x => x.TravelPolicy)
-                .WithMany(tp => tp.DisabledCountries)
-                .HasForeignKey(x => x.TravelPolicyId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            e.HasOne(x => x.Country)
-                .WithMany()
-                .HasForeignKey(x => x.CountryId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            e.HasIndex(x => x.CountryId);
-        });
-
         // Geography hierarchy
+        builder.Entity<Region>(e =>
+        {
+            e.ToTable("regions", "ava");
+            e.HasKey(x => x.Id);
+
+            e.HasIndex(x => x.Name).IsUnique();
+            e.Property(x => x.Name).IsRequired().HasMaxLength(16);
+        });
+        
         builder.Entity<Continent>(e =>
         {
             e.ToTable("continents", "ava");
             e.HasKey(x => x.Id);
 
-            e.HasOne(x => x.Region)
-                .WithMany(r => r.Continents)
-                .HasForeignKey(x => x.RegionId)
-                .OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(32);
+            e.Property(x => x.IsoCode).IsRequired().HasMaxLength(2);
 
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => x.IsoCode).IsUnique();
             e.HasIndex(x => x.RegionId);
         });
 
@@ -426,21 +410,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.ToTable("countries", "ava");
             e.HasKey(x => x.Id);
 
-            e.HasOne(x => x.Continent)
-                .WithMany(ct => ct.Countries)
-                .HasForeignKey(x => x.ContinentId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            e.HasIndex(x => x.ContinentId);
-        });
-
-        builder.Entity<Region>(e =>
-        {
-            e.ToTable("regions", "ava");
-            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(128);
+            e.Property(x => x.IsoCode).IsRequired().HasMaxLength(3);
+            e.Property(x => x.Flag).IsRequired();
 
             e.HasIndex(x => x.Name).IsUnique();
-            e.Property(x => x.Name).IsRequired().HasMaxLength(16);
+            e.HasIndex(x => x.IsoCode).IsUnique();
+            e.HasIndex(x => x.ContinentId);
         });
 
         builder.Entity<AirportInfo>(e =>

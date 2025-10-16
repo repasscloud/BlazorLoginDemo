@@ -2,7 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using BlazorLoginDemo.Shared.Models.Static.Platform; // OrganizationType
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 using System.ComponentModel; // enums: BillingType, BillingFrequency, PaymentMethod, ServiceFeeType, PaymentStatus
-using System.Text.Json.Serialization; // JSON: avoid self-referencing cycles on navs
+using System.Text.Json.Serialization;
+using BlazorLoginDemo.Shared.Models.Policies; // JSON: avoid self-referencing cycles on navs
 
 namespace BlazorLoginDemo.Shared.Models.Kernel.Platform;
 

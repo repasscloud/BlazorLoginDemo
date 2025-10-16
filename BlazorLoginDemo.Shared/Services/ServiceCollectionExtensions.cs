@@ -1,4 +1,5 @@
 using System.Text.Json;
+using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Services.External;
@@ -71,7 +72,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRegionService, RegionService>();
         services.AddScoped<IContinentService, ContinentService>();
         services.AddScoped<ICountryService, CountryService>();
-        services.AddScoped<ITravelPolicyDisabledCountryService, TravelPolicyDisabledCountryService>();
         services.AddScoped<IAirportInfoService, AirportInfoService>();
         return services;
     }

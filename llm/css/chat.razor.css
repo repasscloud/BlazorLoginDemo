@@ -1,0 +1,100 @@
+/* Lock page scroll; only the chat window scrolls */
+html, body { height: 100%; }
+body { overflow: hidden; }
+
+/* Root layout: grid with a dedicated scroll area */
+.chat-wrapper {
+  height: 100dvh;
+  height: 100svh;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto; /* header, messages, quick options, input */
+  gap: .5rem;
+}
+
+/* Messages area: the only scrollable region */
+.chat-messages {
+  min-height: 0;            /* allow shrinking inside grid and enable scrolling */
+  overflow-y: auto;
+  padding: .5rem .25rem;
+  background: var(--bs-body-bg);
+  border-radius: .5rem;
+  border: 1px solid var(--bs-border-color);
+  -webkit-overflow-scrolling: touch; /* iOS momentum scroll */
+}
+
+/* Quick options */
+.quick-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+/* Input bar */
+.chat-input {
+  background: var(--bs-body-bg);
+  padding: .5rem;
+  border-top: 1px solid var(--bs-border-color);
+  z-index: 2;
+  margin: 0;
+}
+
+/* Message bubbles */
+.message-row {
+  display: flex;
+  margin: .35rem 0;
+}
+.message-row.user { justify-content: flex-end; }
+.message-row.bot { justify-content: flex-start; }
+.message-row.system { justify-content: center; }
+
+.message-bubble {
+  border-radius: 1rem;
+  padding: .5rem .75rem;
+  max-width: 75%;
+  box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+@media (max-width: 576px) { .message-bubble { max-width: 90%; } }
+
+.message-bubble.user { background: var(--bs-primary); color: var(--bs-light); }
+.message-bubble.bot {
+  background: var(--bs-light);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
+}
+.message-bubble.system {
+  background: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+  font-size: .9rem;
+}
+
+/* Meta */
+.message-meta { margin-top: .25rem; }
+
+/* Attachment chips */
+.attachment-chip {
+  border: 1px dashed var(--bs-border-color);
+  border-radius: .5rem;
+  padding: .25rem .5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  margin-right: .5rem;
+  margin-bottom: .5rem;
+}
+.btn-close.btn-close-sm { transform: scale(0.8); }
+
+/* Bootstrap modal compatibility rendered via vanilla JS */
+.modal.d-block { background: transparent; }
+.modal .modal-dialog { margin-top: 10vh; }
+
+/* Backdrop for our simple modal control */
+.modal-backdrop.custom-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 1040; /* below .modal (1050) in Bootstrap */
+}
+
+/* Ensure our modals appear above the chat input */
+.modal { z-index: 1050; }

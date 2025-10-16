@@ -267,13 +267,15 @@ public class TravelPolicy
     [ForeignKey(nameof(OrganizationUnifiedId))]
     public OrganizationUnified Organization { get; set; } = default!;
 
+
     // --- Geography allow/deny lists -----------------------------------------
-    public ICollection<Region> Regions { get; set; } = new List<Region>();
-    public ICollection<Continent> Continents { get; set; } = new List<Continent>();
-    public ICollection<Country> Countries { get; set; } = new List<Country>();
+    public int[] RegionIds { get; set; } = Array.Empty<int>();
+    public int[] ContinentIds { get; set; } = Array.Empty<int>();
+    public int[] CountryIds { get; set; } = Array.Empty<int>();
 
     // Exclusions when a broad area is turned on (e.g., APAC but exclude CN).
-    public ICollection<TravelPolicyDisabledCountry> DisabledCountries { get; set; } = new List<TravelPolicyDisabledCountry>();
+    public int[] DisabledCountryIds { get; set; } = Array.Empty<int>();
+
 
     // --- Airline CSV helpers (UI convenience, not stored) --------------------
     [NotMapped]

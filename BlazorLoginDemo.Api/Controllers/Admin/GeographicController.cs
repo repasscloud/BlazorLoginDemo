@@ -46,10 +46,6 @@ public sealed class GeographicController : ControllerBase
         return r is null ? NotFound() : Ok(r);
     }
 
-    [HttpGet("regions-with-continents")]
-    public async Task<IActionResult> GetRegionsWithContinents(CancellationToken ct)
-        => Ok(await _regions.GetAllWithContinentsAsync(ct));
-
     [HttpPost("regions")]
     public async Task<IActionResult> CreateRegion([FromBody] Region region, CancellationToken ct)
     {
@@ -93,16 +89,17 @@ public sealed class GeographicController : ControllerBase
         return c is null ? NotFound() : Ok(c);
     }
 
-    [HttpGet("continents/by-iso/{iso}")]
-    public async Task<IActionResult> GetContinentByIso(string iso, CancellationToken ct)
+    [HttpGet("continents/by-name/{name}")]
+    public async Task<IActionResult> GetContinentByName(string name, CancellationToken ct)
     {
-        var c = await _continents.GetByIsoAsync(iso, ct);
+        var c = await _continents.GetByNameAsync(name, ct);
         return c is null ? NotFound() : Ok(c);
     }
 
-    [HttpGet("continents-with-countries")]
-    public async Task<IActionResult> GetContinentsWithCountries(CancellationToken ct)
-        => Ok(await _continents.GetAllWithCountriesAsync(ct));
+    // Optional “assigned” endpoint exposed by your interface
+    [HttpGet("continents/{id:int}/countries")]
+    public async Task<IActionResult> GetCountriesAssignedToContinent(int id, CancellationToken ct)
+        => Ok(await _continents.GetAssignedCountriesAsync(id, ct));
 
     [HttpPost("continents")]
     public async Task<IActionResult> CreateContinent([FromBody] Continent continent, CancellationToken ct)
@@ -147,20 +144,12 @@ public sealed class GeographicController : ControllerBase
         return c is null ? NotFound() : Ok(c);
     }
 
-    [HttpGet("countries/by-iso/{iso}")]
-    public async Task<IActionResult> GetCountryByIso(string iso, CancellationToken ct)
+    [HttpGet("countries/by-name/{name}")]
+    public async Task<IActionResult> GetCountryByName(string name, CancellationToken ct)
     {
-        var c = await _countries.GetByIsoAsync(iso, ct);
+        var c = await _countries.GetByNameAsync(name, ct);
         return c is null ? NotFound() : Ok(c);
     }
-
-    [HttpGet("countries/by-continent/{continentId:int}")]
-    public async Task<IActionResult> GetCountriesByContinent(int continentId, CancellationToken ct)
-        => Ok(await _countries.GetByContinentAsync(continentId, ct));
-
-    [HttpGet("countries-with-continent")]
-    public async Task<IActionResult> GetCountriesWithContinent(CancellationToken ct)
-        => Ok(await _countries.GetAllWithContinentAsync(ct));
 
     [HttpPost("countries")]
     public async Task<IActionResult> CreateCountry([FromBody] Country country, CancellationToken ct)

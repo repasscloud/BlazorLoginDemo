@@ -9,9 +9,9 @@ public interface IContinentService
 
     // READ
     Task<Continent?> GetByIdAsync(int id, CancellationToken ct = default);
-    Task<Continent?> GetByIsoAsync(string isoCode, CancellationToken ct = default);
+    Task<Continent?> GetByNameAsync(string name, CancellationToken ct = default);
     Task<IReadOnlyList<Continent>> GetAllAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<Continent>> GetAllWithCountriesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Country>> GetAssignedCountriesAsync(int id, CancellationToken ct = default);
 
     // UPDATE
     Task<Continent> UpdateAsync(Continent continent, CancellationToken ct = default);

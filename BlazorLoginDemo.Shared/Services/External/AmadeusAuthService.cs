@@ -1,4 +1,5 @@
 using System.Text.Json;
+using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using Microsoft.EntityFrameworkCore;
