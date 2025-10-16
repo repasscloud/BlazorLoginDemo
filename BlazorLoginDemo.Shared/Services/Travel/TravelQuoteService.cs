@@ -258,16 +258,18 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 if (uid is null) continue;  // skip nulls
                 if (!seenTravellers.Add(uid)) continue;  // de-dupe
 
-                string? travelPolicyId = await _userSvc.GetUserTravelPolicyIdAsync(uid, ct);
-                policyIdsForIntegrity.Add(travelPolicyId);
+                string? userTravelPolicyId = await _userSvc.GetUserTravelPolicyIdAsync(uid, ct);
+                string? effectivePolicyId = userTravelPolicyId
+                   ?? await _orgSvc.GetOrgDefaultTravelPolicyIdAsync(dto.OrganizationId, ct);
 
-                if (travelPolicyId is null)
+                if (effectivePolicyId is null)
                 {
                     excludedUserIds.Add(uid);              // record exclusion
                     continue;                              // drop this uid from the quote
                 }
 
-                distinctPolicyIds.Add(travelPolicyId);
+                policyIdsForIntegrity.Add(effectivePolicyId);
+                distinctPolicyIds.Add(effectivePolicyId);
                 q.Travellers.Add(new TravelQuoteUser { UserId = uid });
             }
         }

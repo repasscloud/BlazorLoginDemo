@@ -404,42 +404,42 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         switch (taxIdType)
         {
             case "AU ABN" or "AU ACN":
-            {
-                var url = $"{AUBaseUrl}/ABN/View?id={taxId}";
-                var httpClient = _httpClientFactory.CreateClient();
-                var html = await httpClient.GetStringAsync(url);
-
-                var doc = new HtmlDocument();
-                doc.LoadHtml(html);
-
-                string GetField(string label)
                 {
-                    // grab all <th> nodes once
-                    var thNodes = doc.DocumentNode.SelectNodes("//th");
-                    if (thNodes == null)
-                        return "Not found";
+                    var url = $"{AUBaseUrl}/ABN/View?id={taxId}";
+                    var httpClient = _httpClientFactory.CreateClient();
+                    var html = await httpClient.GetStringAsync(url);
 
-                    foreach (var th in thNodes)
+                    var doc = new HtmlDocument();
+                    doc.LoadHtml(html);
+
+                    string GetField(string label)
                     {
-                        var decodedText = WebUtility.HtmlDecode(th.InnerText).Trim();
-                        if (decodedText == label)
+                        // grab all <th> nodes once
+                        var thNodes = doc.DocumentNode.SelectNodes("//th");
+                        if (thNodes == null)
+                            return "Not found";
+
+                        foreach (var th in thNodes)
                         {
-                            // pick up the next <td>
-                            var td = th.SelectSingleNode("following-sibling::td");
-                            if (td != null)
-                                return WebUtility.HtmlDecode(td.InnerText).Trim();
+                            var decodedText = WebUtility.HtmlDecode(th.InnerText).Trim();
+                            if (decodedText == label)
+                            {
+                                // pick up the next <td>
+                                var td = th.SelectSingleNode("following-sibling::td");
+                                if (td != null)
+                                    return WebUtility.HtmlDecode(td.InnerText).Trim();
+                            }
                         }
+
+                        return "Not found";
                     }
 
-                    return "Not found";
+                    var gstStatus = GetField("Goods & Services Tax (GST):");
+                    taxResultStatus = gstStatus.Contains("Not currently registered for GST") || gstStatus.Contains("Not found")
+                        ? false
+                        : true;
+                    break;
                 }
-
-                var gstStatus = GetField("Goods & Services Tax (GST):");
-                taxResultStatus = gstStatus.Contains("Not currently registered for GST") || gstStatus.Contains("Not found")
-                    ? false
-                    : true;
-                break;
-            }
 
             default:
                 break;
@@ -459,5 +459,20 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         }
 
         return taxResultStatus;
+    }
+    
+    public async Task<string?> GetOrgDefaultTravelPolicyIdAsync(string orgId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(orgId))
+        {
+            await _logger.LogErrorAsync($"Organization {orgId} has no Default Travel Policy configured."); 
+            return null;
+        }
+
+        var org = await _db.Organizations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == orgId, ct);
+
+        return org?.DefaultTravelPolicyId ?? null;
     }
 }
