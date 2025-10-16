@@ -249,7 +249,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         var distinctPolicyIds = new HashSet<string>(StringComparer.Ordinal);  // non-null only
         var excludedUserIds = new List<string>();  // users dropped due to null policy
 
-        if (dto?.TravellerUserIds is not null)
+        if (dto.TravellerUserIds is not null)
         {
             var seenTravellers = new HashSet<string>(StringComparer.Ordinal);
 
@@ -287,7 +287,10 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         // obtain all travel policies referenced by travellers
         // Build pL with only currently-effective policies (UTC checks, inclusive bounds)
         if (distinctPolicyIds.Count > 1)
-            _log.LogWarning("Quote has travellers with multiple distinct travel policies: {PolicyIds}", string.Join(", ", distinctPolicyIds));
+        {
+            _log.LogInformation("Travel Quote '{QuoteId}' has travellers with multiple distinct travel policies: {PolicyIds}", q.Id, string.Join(", ", distinctPolicyIds));
+            _log.LogInformation("An ephemeral travel policy will be created to unify these policies for the quote lifecycle.");
+        }
 
         var pL = new List<TravelPolicy>();
         var nowUtc = DateTime.UtcNow;
@@ -299,7 +302,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
             if (policy is null)
             {
-                _log.LogWarning("Travel policy '{PolicyId}' referenced by travellers not found in DB.", pid);
+                _log.LogError("Travel policy '{PolicyId}' referenced by travellers not found in DB.", pid);
                 continue;
             }
 
@@ -334,6 +337,38 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
         if (pL.Count == 0)
             _log.LogError("No travellers with valid/effective travel policies found for quote.");
+
+        if (pL.Count == 1)
+        {
+            q.TravelPolicyId = pL[0].Id;  // single policy, assign directly
+            var orgDefaultId = await _orgSvc.GetOrgDefaultTravelPolicyIdAsync(dto.OrganizationId, ct);
+
+            q.PolicyType = string.Equals(pL[0].Id, orgDefaultId, StringComparison.Ordinal)
+                ? TravelQuotePolicyType.OrgDefault
+                : TravelQuotePolicyType.UserDefined;
+        }
+            
+        else if (pL.Count > 1)
+        {
+            EphemeralTravelPolicy eTravelPolicy = new()
+            {
+                PolicyName = $"[Ephemeral] {q.OrganizationId} @ {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
+                OrganizationUnifiedId = q.OrganizationId,
+                DefaultCurrencyCode = await _db.Organizations
+                    .AsNoTracking()
+                    .Where(o => o.Id == q.OrganizationId)
+                    .Select(o => o.DefaultCurrency)
+                    .FirstOrDefaultAsync(ct) ?? "AUD", // fallback
+                CreatedByUserId = q.CreatedByUserId,
+                CreatedAtUtc = DateTime.UtcNow,
+                LastUpdatedUtc = DateTime.UtcNow,
+            };
+            // Merge all policies into eTravelPolicy
+            //eTravelPolicy.MergeFrom(pL);
+            _log.LogInformation("Created EphemeralTravelPolicy for quote '{x}' with Id '{y}'", q.Id, eTravelPolicy.Id);
+            q.TravelPolicyId = eTravelPolicy.Id;
+            q.PolicyType = TravelQuotePolicyType.Ephemeral;
+        }
 
         return q;
     }
