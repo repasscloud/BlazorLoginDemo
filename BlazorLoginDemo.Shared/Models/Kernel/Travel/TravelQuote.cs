@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
+using BlazorLoginDemo.Shared.Models.Policies;
 
 namespace BlazorLoginDemo.Shared.Models.Kernel.Travel;
 
@@ -28,6 +29,9 @@ public sealed class TravelQuote
     [Required, MaxLength(64)]
     public string TmcAssignedId { get; set; } = null!;
     public OrganizationUnified TmcAssigned { get; set; } = null!;
+
+    public TravelQuotePolicyType PolicyType { get; set; } = TravelQuotePolicyType.Unknown;
+    public string TravelPolicyId { get; set; } = null!;  // (invisible) FK to TravelPolicy.Id
 
     // note: optional internal note about this quote
     [MaxLength(4096)]
@@ -93,4 +97,12 @@ public sealed class TravelQuoteDto
     public string TmcAssignedId { get; set; } = null!;
     public string OrganizationId { get; set; } = null!;
     public List<string> TravellerUserIds { get; set; } = new();
+}
+
+public enum TravelQuotePolicyType
+{
+    Unknown = -1,
+    OrgDefault = 0,
+    UserDefined = 1,
+    Ephemeral = 2
 }
