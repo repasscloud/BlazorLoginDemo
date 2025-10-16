@@ -10,7 +10,4 @@ public class Region
     
     [Required]
     public required string Name { get; set; }
-
-    // a region contains one or more continents
-    public ICollection<Continent> Continents { get; set; } = new List<Continent>();
 }

@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15
+    image: postgres:18.0-alpine3.22
     container_name: pgsql
     env_file: .env
     restart: unless-stopped
@@ -45,6 +45,24 @@ services:
       - ./.docker/pgadmin/pgpass:/var/lib/pgadmin/pgpass:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -nv -O - http://localhost/misc/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  pgweb:
+    image: sosedoff/pgweb:latest
+    container_name: pgweb
+    restart: unless-stopped
+    ports:
+      - "5077:8081" # pgweb listens on 8081
+    environment:
+      # optional: auto-connect to your 'db' service; remove if you prefer manual login each time
+      - DATABASE_URL=${PGWEB_DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/ >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10

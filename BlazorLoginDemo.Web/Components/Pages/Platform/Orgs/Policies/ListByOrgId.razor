@@ -1,4 +1,5 @@
 @page "/platform/travelpolicy/list/{OrganizationId}"
+@rendermode InteractiveServer
 
 @using BlazorLoginDemo.Shared.Models.Kernel.Platform
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
@@ -24,9 +25,9 @@ else
                 <div class="fw-bold">@_org?.Org.Name</div>
                 <small class="text-muted">Policies assigned to this organization</small>
             </div>
-            <div class="btn-group">
-                <button class="btn btn-outline-secondary" @onclick="GoBack">Back</button>
-                <button class="btn btn-primary" @onclick="GoBack">Edit</button>
+            <div>
+                <button class="btn btn-outline-secondary" @onclick="GoToEditOrg">Back to Org</button>
+                <button class="btn btn-outline-primary" @onclick="NewTravelPolicy"><i class="bi bi-file-earmark-plus"></i> New Policy</button>
             </div>
         </div>
 
@@ -47,7 +48,8 @@ else
                                 <th>Active</th>
                                 <th>Default</th>
                                 <th>Updated</th>
-                                <th class="text-end">Actions</th>
+                                <th></th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -74,15 +76,19 @@ else
                                     }
                                     else
                                     {
-                                        <button type="button" class="btn btn-outline-secondary" @onclick="@(() => SetAsDefaultPolicyAsync(p.Id, OrganizationId))">Set As Default</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetAsDefaultPolicyAsync(p.Id))">Set As Default</button>
                                     }
                                 </td>
                                 <td>@((p.LastUpdatedUtc).ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
-                                <td class="text-end">
-                                    <a class="btn btn-sm btn-primary"
-                                       href="@($"/platform/travelpolicy/edit/{p.Id}")">
-                                        Edit
-                                    </a>
+                                <td>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteTravelPolicyByIdAsync(p.Id)">
+                                        <i class="bi bi-x-circle"></i> Delete
+                                    </button>
+                                </td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" @onclick="() => ViewEditTravelPolicyById(p.Id)">
+                                        <i class="bi bi-pen"></i> View/Edit
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -110,18 +116,24 @@ else
         _loading = false;
     }
 
-    void GoBack() => Nav.NavigateTo("/platform/organizations");
-
-    private async Task SetAsDefaultPolicyAsync(string policyId, string orgId)
+    private async Task SetAsDefaultPolicyAsync(string policyId)
     {
-        if (_org is null || _org.Org.Id != orgId)
-            return;
-
-        bool result = await TravelPolicyService.SetAsDefaultPolicyAsync(orgId, policyId);
+        bool result = await TravelPolicyService.SetPolicyAsDefaultAsync(policyId);
         if (result)
         {
-            _org.Org.DefaultTravelPolicyId = policyId;
-            StateHasChanged();
+            Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrganizationId}", forceLoad: true);
         }
    }
+
+   private void GoToEditOrg() => Nav.NavigateTo(uri: $"/platform/organizations/{OrganizationId}/edit");
+
+   public void NewTravelPolicy() => Nav.NavigateTo(uri: $"/platform/travelpolicy/new/{OrganizationId}");
+
+   private async Task DeleteTravelPolicyByIdAsync(string travelPolicyId)
+   {
+        await TravelPolicyService.DeleteAsync(id: travelPolicyId);
+        Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrganizationId}", forceLoad: true);
+   }
+
+   private void ViewEditTravelPolicyById(string travelPolicyId) => Nav.NavigateTo(uri: $"/platform/travelpolicy/edit/{travelPolicyId}", forceLoad: true);
 }

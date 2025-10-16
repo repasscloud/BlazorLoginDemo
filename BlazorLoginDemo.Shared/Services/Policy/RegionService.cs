@@ -1,3 +1,4 @@
+using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Policies;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policies;
 using Microsoft.EntityFrameworkCore;
@@ -12,14 +13,15 @@ public sealed class RegionService : IRegionService
     public async Task<Region> CreateAsync(Region region, CancellationToken ct = default)
     {
         if (region is null) throw new ArgumentNullException(nameof(region));
-        region.Name = (region.Name ?? string.Empty).Trim();
+        region.Name = Normalize(region.Name);
 
         if (string.IsNullOrWhiteSpace(region.Name))
             throw new ArgumentException("Name is required.", nameof(region));
 
-        bool clash = await _db.Set<Region>().AsNoTracking()
-            .AnyAsync(x => x.Name == region.Name, ct);
-        if (clash) throw new InvalidOperationException("A region with the same Name already exists.");
+        var exists = await _db.Set<Region>()
+            .AsNoTracking()
+            .AnyAsync(r => r.Name == region.Name, ct);
+        if (exists) throw new InvalidOperationException($"Region '{region.Name}' already exists.");
 
         await _db.Set<Region>().AddAsync(region, ct);
         await _db.SaveChangesAsync(ct);
@@ -27,50 +29,55 @@ public sealed class RegionService : IRegionService
     }
 
     public async Task<Region?> GetByIdAsync(int id, CancellationToken ct = default)
-        => await _db.Set<Region>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        => await _db.Set<Region>().AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
 
     public async Task<Region?> GetByNameAsync(string name, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
-        name = name.Trim();
-        return await _db.Set<Region>().AsNoTracking().FirstOrDefaultAsync(x => x.Name == name, ct);
+        name = Normalize(name);
+        return await _db.Set<Region>().AsNoTracking().FirstOrDefaultAsync(r => r.Name == name, ct);
     }
 
     public async Task<IReadOnlyList<Region>> GetAllAsync(CancellationToken ct = default)
-        => await _db.Set<Region>().AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct);
+        => await _db.Set<Region>().AsNoTracking().OrderBy(r => r.Name).ToListAsync(ct);
 
-    public async Task<IReadOnlyList<Region>> GetAllWithContinentsAsync(CancellationToken ct = default)
-        => await _db.Set<Region>().AsNoTracking()
-            .Include(x => x.Continents)
-            .OrderBy(x => x.Name)
-            .ToListAsync(ct);
+    public async Task<IReadOnlyList<Continent>> GetAssignedContinentsAsync(int id, CancellationToken ct = default)
+        => await _db.Set<Continent>().AsNoTracking().Where(c => c.RegionId == id).ToListAsync(ct);
 
     public async Task<Region> UpdateAsync(Region region, CancellationToken ct = default)
     {
         if (region is null) throw new ArgumentNullException(nameof(region));
-        if (region.Id <= 0) throw new ArgumentException("Id must be provided for update.", nameof(region));
+        if (region.Id <= 0) throw new ArgumentException("Valid Id required.", nameof(region));
 
-        region.Name = (region.Name ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(region.Name))
+        var existing = await _db.Set<Region>().FirstOrDefaultAsync(r => r.Id == region.Id, ct)
+            ?? throw new InvalidOperationException($"Region {region.Id} not found.");
+
+        var newName = Normalize(region.Name);
+        if (string.IsNullOrWhiteSpace(newName))
             throw new ArgumentException("Name is required.", nameof(region));
 
-        _db.Attach(region);
-        _db.Entry(region).State = EntityState.Modified;
+        var nameClash = await _db.Set<Region>().AsNoTracking()
+            .AnyAsync(r => r.Id != region.Id && r.Name == newName, ct);
+        if (nameClash) throw new InvalidOperationException($"Region '{newName}' already exists.");
+
+        existing.Name = newName;
 
         await _db.SaveChangesAsync(ct);
-        return region;
+        return existing;
     }
 
     public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
     {
-        var existing = await _db.Set<Region>().FindAsync([id], ct);
-        if (existing is null) return false;
+        var entity = await _db.Set<Region>().FindAsync([id], ct);
+        if (entity is null) return false;
 
-        _db.Set<Region>().Remove(existing);
+        _db.Remove(entity);
         await _db.SaveChangesAsync(ct);
         return true;
     }
 
     public async Task<bool> ExistsAsync(int id, CancellationToken ct = default)
-        => await _db.Set<Region>().AsNoTracking().AnyAsync(x => x.Id == id, ct);
+        => await _db.Set<Region>().AsNoTracking().AnyAsync(r => r.Id == id, ct);
+
+    private static string Normalize(string? value) => (value ?? string.Empty).Trim();
 }

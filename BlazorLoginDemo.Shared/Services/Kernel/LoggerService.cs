@@ -1,3 +1,4 @@
+using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.SysVar;
 using BlazorLoginDemo.Shared.Models.Static;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;

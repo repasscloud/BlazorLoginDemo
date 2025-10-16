@@ -137,7 +137,7 @@ fi
 # ── 🐳 2a) Pull containers ───────────────────────────────────────────────────────
 echo
 echo "🐳 2a) Pull containers"
-docker pull postgres:15
+docker pull postgres:18.0-alpine3.22
 docker pull dpage/pgadmin4
 docker pull mcr.microsoft.com/dotnet/sdk:9.0
 docker pull mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim
@@ -228,6 +228,12 @@ curl -X 'GET' \
   'http://localhost:8090/api/v1/test/create-org-license' \
   -H 'accept: */*'
 pwsh -File .scripts/import-error-codes-seed.v3.ps1
+region_country_data_import_log=".docker/db/pwsh/import.log"
+[[ -e "$region_country_data_import_log" ]] && rm -f -- "$region_country_data_import_log"
+pwsh -File .docker/db/pwsh/01-import-regions.ps1
+pwsh -File .docker/db/pwsh/02-import-continents.ps1
+pwsh -File .docker/db/pwsh/03-import-countries.ps1
+
 # ── 🏁 Done ───────────────────────────────────────────────────────────────────
 echo
 echo "✅ Done."

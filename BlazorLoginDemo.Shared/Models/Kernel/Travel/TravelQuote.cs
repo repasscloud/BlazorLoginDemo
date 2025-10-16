@@ -1,5 +1,6 @@
 // Models/Kernel/Travel/TravelQuote.cs
 using System.ComponentModel.DataAnnotations;
+using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
 
 namespace BlazorLoginDemo.Shared.Models.Kernel.Travel;

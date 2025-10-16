@@ -85,4 +85,5 @@ public interface IAdminOrgServiceUnified
 
     // UTILS
     Task<bool> ExistsAsync(string id, CancellationToken ct = default);
+    Task<bool> ValidateTaxIdAsync(string orgId, string taxId, string taxIdType, CancellationToken ct = default);
 }
