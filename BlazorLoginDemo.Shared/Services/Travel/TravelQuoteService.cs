@@ -44,6 +44,12 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         try
         {
             var quote = await TranslateDtoAsync(dto, ct);
+
+            if (quote.Travellers.Count == 0)
+            {
+                return (false, "No valid travellers with Travel Policy assigned to generate a quote. Assign users a Travel Policy or assign the organization a Default Travel Policy to generate a quote.", null);
+            }
+
             _db.TravelQuotes.Add(quote);
             await _db.SaveChangesAsync(ct);
             return (true, null, quote.Id);
@@ -100,7 +106,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         // Full overwrite semantics
         _db.ChangeTracker.Clear();
 
-        // Validate roots before touching DB
+        // Validate roots before touching DB (this is hard core error handling!)
         await ValidateRootsAsync(incoming.OrganizationId, incoming.TmcAssignedId, incoming.CreatedByUserId, ct);
         await EnsureTravellerUsersExistAsync(incoming.Travellers.Select(t => t.UserId), ct);
 
@@ -218,11 +224,12 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
     private async Task<TravelQuote> TranslateDtoAsync(TravelQuoteDto dto, CancellationToken ct)
     {
+        // this should NEVER hit an error, because it's built-in to the UI
         if (!TryParseQuoteType(dto.QuoteType, out var type))
             throw new ArgumentException($"Invalid QuoteType '{dto.QuoteType}'.");
 
-        await ValidateRootsAsync(dto.OrganizationId, dto.TmcAssignedId, dto.CreatedByUserId, ct);
-        await EnsureTravellerUsersExistAsync(dto.TravellerUserIds, ct);
+        await ValidateRootsAsync(dto.OrganizationId, dto.TmcAssignedId, dto.CreatedByUserId, ct);  // hard core error handling
+        await EnsureTravellerUsersExistAsync(dto.TravellerUserIds, ct);  // hard core error handling
 
         var q = new TravelQuote
         {
@@ -238,9 +245,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         
         // De-dupe travellers, fetch policy IDs, exclude users with no policy.
         // Keep integrity lists for auditing.
-        var policyIdsForIntegrity = new List<string?>();                           // includes nulls
-        var distinctPolicyIds      = new HashSet<string>(StringComparer.Ordinal);  // non-null only
-        var excludedUserIds        = new List<string>();                           // users dropped due to null policy
+        var policyIdsForIntegrity = new List<string?>();  // includes nulls
+        var distinctPolicyIds = new HashSet<string>(StringComparer.Ordinal);  // non-null only
+        var excludedUserIds = new List<string>();  // users dropped due to null policy
 
         if (dto?.TravellerUserIds is not null)
         {
@@ -248,8 +255,8 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
             foreach (var uid in dto.TravellerUserIds)
             {
-                if (uid is null) continue;                 // skip nulls
-                if (!seenTravellers.Add(uid)) continue;    // de-dupe
+                if (uid is null) continue;  // skip nulls
+                if (!seenTravellers.Add(uid)) continue;  // de-dupe
 
                 string? travelPolicyId = await _userSvc.GetUserTravelPolicyIdAsync(uid, ct);
                 policyIdsForIntegrity.Add(travelPolicyId);
@@ -324,7 +331,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         }
 
         if (pL.Count == 0)
-            throw new InvalidOperationException("No travellers with valid/effective travel policies found.");
+            _log.LogError("No travellers with valid/effective travel policies found for quote.");
 
         return q;
     }

@@ -10,7 +10,7 @@
 
 @inject NavigationManager Nav
 
-<!-- CreateBookingRequestV4 (unified style) -->
+<!-- CreateBookingRequestV5 (unified style) -->
 
 <div class="container mt-4">
     <!-- Header -->
@@ -266,16 +266,16 @@
                         </div>
 
                         <!-- Cabin class -->
-<div class="col-12 col-lg-6">
-    <label class="form-label fw-semibold text-body-emphasis">Cabin</label>
-    <InputSelect class="form-select" @bind-Value="Vm.Cabin">
-        @foreach (var c in Enum.GetValues<CabinClass>().Where(c => c <= Config.MaxCabin))
-        {
-            <option value="@c">@CabinLabel(c)</option>
-        }
-    </InputSelect>
-    <div class="form-text">Policy allows up to @CabinLabel(Config.MaxCabin).</div>
-</div>
+                        <div class="col-12 col-lg-6">
+                            <label class="form-label fw-semibold text-body-emphasis">Cabin</label>
+                            <InputSelect class="form-select" @bind-Value="Vm.Cabin">
+                                @foreach (var c in Enum.GetValues<CabinClass>().Where(c => c <= Config.MaxCabin))
+                                {
+                                    <option value="@c">@CabinLabel(c)</option>
+                                }
+                            </InputSelect>
+                            <div class="form-text">Policy allows up to @CabinLabel(Config.MaxCabin).</div>
+                        </div>
 
                     </div>
 
