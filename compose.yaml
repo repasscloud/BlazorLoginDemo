@@ -49,6 +49,24 @@ services:
       timeout: 5s
       retries: 10
 
+  pgweb:
+    image: sosedoff/pgweb:latest
+    container_name: pgweb
+    restart: unless-stopped
+    ports:
+      - "5077:8081" # pgweb listens on 8081
+    environment:
+      # optional: auto-connect to your 'db' service; remove if you prefer manual login each time
+      - DATABASE_URL=${PGWEB_DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   blazor:
     pull_policy: build    # or: never
     build:
