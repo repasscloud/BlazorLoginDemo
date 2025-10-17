@@ -278,7 +278,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         // distinctPolicyIds: unique non-null policy IDs
         // excludedUserIds: which users were removed due to missing policy
         _log.LogError("Quote DTO translation: {TravellerCount} travellers, {DistinctPolicyCount} distinct non-null policies, {ExcludedUserCount} users excluded due to missing policy.",
-            dto?.TravellerUserIds?.Count() ?? 0,
+            dto.TravellerUserIds?.Count() ?? 0,
             distinctPolicyIds.Count,
             excludedUserIds.Count);
         foreach (string e in excludedUserIds)
