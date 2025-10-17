@@ -47,6 +47,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // Travel / Geography
     // ---------------------------
     public DbSet<TravelPolicy> TravelPolicies => Set<TravelPolicy>();
+    public DbSet<EphemeralTravelPolicy> EphemeralTravelPolicies => Set<EphemeralTravelPolicy>();
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<Continent> Continents => Set<Continent>();
     public DbSet<Country> Countries => Set<Country>();
