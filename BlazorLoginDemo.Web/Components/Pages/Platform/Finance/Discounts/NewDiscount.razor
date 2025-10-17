@@ -1,0 +1,252 @@
+@page "/platform/finance/discounts/new"
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using BlazorLoginDemo.Shared.Models.Kernel.Billing
+@using BlazorLoginDemo.Shared.Services.Interfaces.Kernel
+@using BlazorLoginDemo.Shared.Models.Static
+@using System.Reflection
+@inject IBillingService Billing
+@inject NavigationManager Nav
+@inject ILogger<NewDiscount> Log
+
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">New Discount</h2>
+</div>
+
+<EditForm Model="_vm" OnValidSubmit="HandleCreateAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+        <div class="card mb-3">
+            <div class="card-body">
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Display name</label>
+                        <InputText class="form-control" @bind-Value="_vm.DisplayName" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Parent Org Id</label>
+                        <div class="input-group">
+                            <InputText class="form-control" @bind-Value="_vm.ParentOrgId" readonly />
+                            <button type="button" class="btn btn-outline-secondary">
+                                <i class="bi bi-buildings"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Discount Type</label>
+                        <InputSelect TValue="DiscountType" class="form-select" @bind-Value="_vm.Type">
+                            @foreach (var t in EnumValues<DiscountType>())
+                            {
+                                <option value="@t">@DisplayName(t)</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Amount</label>
+                        <div class="input-group">
+                            <InputNumber class="form-control text-end" @bind-Value="_vm.Amount" />
+                            <button type="button" class="btn btn-outline-secondary">
+                                @if (_vm.Type == DiscountType.Percentage)
+                                {
+                                    <i class="bi bi-percent"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-currency-dollar"></i>
+                                }
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Currency</label>
+                        <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Currency" disabled="@(_vm.Type == DiscountType.Percentage)">
+                            @foreach (UniversalData.CurrencyOption c in UniversalData._currencyOptions)
+                            {
+                                <option value="@c.Code">@c.Code @c.Flag</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-1">
+                        <label class="form-label">@(_vm.IsEnabled ? "Enabled" : "Disabled")</label>
+                        <div class="form-check form-switch mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="_vm.IsEnabled" />
+                            <label class="form-check-label" title="@(_vm.IsEnabled ? "Enabled" : "Disabled")">
+                                <span aria-hidden="true">@(_vm.IsEnabled ? " ✅" : " ❌")</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Duration (periods)</label>
+                        <InputNumber class="form-control" @bind-Value="_vm.DurationInPeriods" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Seat min</label>
+                        <InputNumber class="form-control" @bind-Value="_vm.SeatMin" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Seat max</label>
+                        <InputNumber class="form-control" @bind-Value="_vm.SeatMax" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Starts at (UTC)</label>
+                        <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="_vm.StartsAtUtc" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Ends at (UTC)</label>
+                        <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="_vm.EndsAtUtc" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Discount code (optional)</label>
+                        <InputText class="form-control" @bind-Value="_vm.DiscountCode" />
+                    </div>
+
+
+
+                    
+
+
+
+                    <div class="col-12">
+                        <label class="form-label">Notes</label>
+                        <InputTextArea class="form-control" rows="2" @bind-Value="_vm.Notes" />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button class="btn btn-primary" type="submit" disabled="@_busy">
+                        @(_busy ? "Creating..." : "Create")
+                    </button>
+                    <button class="btn btn-outline-secondary" type="button" @onclick="OnCancel">Cancel</button>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <div class="alert alert-danger mt-3 mb-0">@_error</div>
+                }
+
+    </div>
+</div>
+
+</EditForm>
+
+@code {
+    private readonly Vm _vm = new Vm();
+    private bool _busy;
+    private string? _error;
+
+    private void OnCancel() => Nav.NavigateTo("/platform/finance/discounts", true);
+
+    private async Task HandleCreateAsync()
+    {
+        _error = null;
+        _busy = true;
+        try
+        {
+            IBillingService.CreateDiscountRequest? req = new IBillingService.CreateDiscountRequest(
+                DisplayName: _vm.DisplayName.Trim(),
+                Type: _vm.Type,
+                Amount: _vm.Amount,
+                Scope: _vm.Scope,
+                Currency: _vm.Type == DiscountType.FixedAmount ? _vm.Currency?.Trim().ToUpperInvariant() : null,
+                ParentOrgId: _vm.ParentOrgId,
+                DiscountCode: string.IsNullOrWhiteSpace(_vm.DiscountCode) ? null : _vm.DiscountCode.Trim(),
+                DurationInPeriods: _vm.DurationInPeriods,
+                StartsAtUtc: _vm.StartsAtUtc,
+                EndsAtUtc: _vm.EndsAtUtc,
+                SeatMin: _vm.SeatMin,
+                SeatMax: _vm.SeatMax,
+                IsEnabled: _vm.IsEnabled,
+                Notes: _vm.Notes
+            );
+
+            Discount? created = await Billing.CreateDiscountAsync(req);
+            Log.LogInformation(message: "Created discount {Id} ({Name})", created.Id, created.DisplayName);
+
+            // Redirect. Adjust route to your index/list as needed.
+            Nav.NavigateTo(uri: "/platform/finance/discounts");
+        }
+        catch (Exception ex)
+        {
+            Log.LogError(ex, message: "Create discount failed");
+            _error = ex.GetBaseException().Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OnTypeChanged(ChangeEventArgs _)
+    {
+        if (_vm.Type == DiscountType.Percentage)
+        _vm.Currency = null;
+    }
+
+    // ViewModel kept slim. You can extend later.
+    private sealed class Vm
+    {
+        [Required, StringLength(maximumLength: 120)]
+        public string DisplayName { get; set; } = string.Empty;
+
+        [Required]
+        public DiscountType Type { get; set; } = DiscountType.Percentage;
+
+        [Range(minimum: 0, maximum: 9999999)]
+        public decimal Amount { get; set; }
+
+        [StringLength(maximumLength: 3)]
+        public string? Currency { get; set; } = "AUD";
+
+        [Required]
+        public DiscountScope Scope { get; set; } = DiscountScope.PAYG;
+
+        public int? DurationInPeriods { get; set; }
+
+        public DateTime? StartsAtUtc { get; set; }
+        public DateTime? EndsAtUtc { get; set; }
+
+        [Range(minimum: 0, int.MaxValue)]
+        public int? SeatMin { get; set; }
+
+        [Range(minimum: 0, int.MaxValue)]
+        public int? SeatMax { get; set; }
+
+        [Required]
+        public bool IsEnabled { get; set; } = true;
+
+        [StringLength(maximumLength: 30)]
+        public string? DiscountCode { get; set; }
+
+        [StringLength(maximumLength: 40)]
+        public string? ParentOrgId { get; set; }
+
+        [StringLength(maximumLength: 500)]
+        public string? Notes { get; set; }
+    }
+
+    // Enum Helpers
+    private static IEnumerable<TEnum> EnumValues<TEnum>() where TEnum : struct, Enum
+        => Enum.GetValues<TEnum>();
+
+    private static string DisplayName<TEnum>(TEnum value) where TEnum : struct, Enum
+    {
+        var mem = typeof(TEnum).GetMember(value.ToString());
+        var attr = mem.FirstOrDefault()?.GetCustomAttribute<DisplayAttribute>();
+        return attr?.GetName() ?? value.ToString();
+    }
+}

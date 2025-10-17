@@ -42,6 +42,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     public DbSet<LicenseAgreementUnified> LicenseAgreements => Set<LicenseAgreementUnified>();
     public DbSet<ExpensePolicy> ExpensePolicies => Set<ExpensePolicy>();
+    public DbSet<Discount> Discounts => Set<Discount>();
 
     // ---------------------------
     // Travel / Geography
@@ -281,6 +282,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(x => x.OrganizationUnifiedId)
                 .OnDelete(DeleteBehavior.Cascade);
         }); // :contentReference[oaicite:14]{index=14}
+
+        // ===========================
+        // Billing
+        // ===========================
+        builder.Entity<Discount>(e =>
+        {
+            e.ToTable("subscription_discounts", "ava");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.DiscountCode)
+                .IsRequired()
+                .HasMaxLength(30);
+
+            e.HasIndex(x => x.DiscountCode)
+                .IsUnique();
+        });
+
 
         // ===========================
         // TravelPolicy (attach to Org via many-to-many for now)
