@@ -27,4 +27,16 @@ public static class UniversalData
         ("HKD", "Hong Kong Dollar 🇭🇰"),
         ("NZD", "New Zealand Dollar 🇳🇿")
     ];
+
+    public record CurrencyOption(string Code, string Flag);
+    public static readonly CurrencyOption[] _currencyOptions =
+    [
+        new CurrencyOption(Code: "AUD", Flag: "🇦🇺"),
+        new CurrencyOption(Code: "GBP", Flag: "🇬🇧"),
+        new CurrencyOption(Code: "USD", Flag: "🇺🇸"),
+        new CurrencyOption(Code: "NZD", Flag: "🇳🇿"),
+        new CurrencyOption(Code: "CAD", Flag: "🇨🇦"),
+        new CurrencyOption(Code: "HKD", Flag: "🇭🇰"),
+        new CurrencyOption(Code: "EUR", Flag: "🇪🇺"),
+    ];
 }
