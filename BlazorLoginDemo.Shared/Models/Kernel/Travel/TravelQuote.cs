@@ -30,7 +30,11 @@ public sealed class TravelQuote
     public string TmcAssignedId { get; set; } = null!;
     public OrganizationUnified TmcAssigned { get; set; } = null!;
 
+
+    // Ephemeral travel policy is stored in a separate table that was introduced in issue 
     public TravelQuotePolicyType PolicyType { get; set; } = TravelQuotePolicyType.Unknown;
+    
+    [MaxLength(14)]
     public string TravelPolicyId { get; set; } = null!;  // (invisible) FK to TravelPolicy.Id
 
     // note: optional internal note about this quote
@@ -87,7 +91,8 @@ public enum QuoteState
     Approved = 2,
     Rejected = 3,
     Cancelled = 4,
-    Expired = 5
+    Expired = 5,
+    Archived = 6
 }
 
 public sealed class TravelQuoteDto
