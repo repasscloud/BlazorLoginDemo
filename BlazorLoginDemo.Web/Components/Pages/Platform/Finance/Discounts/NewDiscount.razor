@@ -1,17 +1,21 @@
 @page "/platform/finance/discounts/new"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = "Platform:Finance:Discounts:Create")]
 
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @using System.ComponentModel.DataAnnotations
 @using BlazorLoginDemo.Shared.Models.Kernel.Billing
 @using BlazorLoginDemo.Shared.Services.Interfaces.Kernel
 @using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Static
 @using System.Reflection
+@using BlazorLoginDemo.Shared.Models.Static.SysVar;
 
 @inject IBillingService Billing
 @inject IAdminOrgServiceUnified Orgs
 @inject NavigationManager Nav
-@inject ILogger<NewDiscount> Log
+@inject ILoggerService _log
 
 <BlazorLoginDemo.Web.Components.Shared.OrgPickerDialog @ref="orgPicker" />
 
@@ -23,145 +27,141 @@
     <DataAnnotationsValidator />
     <ValidationSummary />
 
-        <div class="card mb-3">
-            <div class="card-body">
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Discount Name</label>
-                        <InputText class="form-control" @bind-Value="_vm.DisplayName" />
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Parent Org Id</label>
-                        <div class="input-group">
-                            <InputText class="form-control bg-light" @bind-Value="_vm.ParentOrgId" readonly />
-                                @if (string.IsNullOrEmpty(_vm.ParentOrgId))
-                                {
-                                    <button type="button" class="btn btn-outline-secondary" @onclick="PickParentOrg">
-                                        <i class="bi bi-building"></i> Select Org
-                                    </button>
-                                }
-                                else
-                                {
-                                    <button type="button" class="btn btn-outline-danger" @onclick="@ClearParent">Clear</button>
-                                }
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Discount Type</label>
-                        <InputSelect TValue="DiscountType" class="form-select" @bind-Value="_vm.Type">
-                            @foreach (DiscountType t in EnumValues<DiscountType>())
-                            {
-                                <option value="@t">@DisplayName(t)</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label">Amount</label>
-                        <div class="input-group">
-                            <InputNumber class="form-control text-end" @bind-Value="_vm.Amount" />
-                            <button type="button" class="btn btn-outline-secondary">
-                                <i class="@GetAmountIconClass()"></i>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">Discount Name</label>
+                    <InputText class="form-control" @bind-Value="_vm.DisplayName" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Parent Org Id</label>
+                    <div class="input-group">
+                        <InputText class="form-control bg-light" @bind-Value="_vm.ParentOrgId" readonly />
+                        @if (string.IsNullOrEmpty(_vm.ParentOrgId))
+                        {
+                            <button type="button" class="btn btn-outline-secondary" @onclick="PickParentOrg">
+                                <i class="bi bi-building"></i> Select Org
                             </button>
-                        </div>
-                    </div>
-
-                    <div class="col-md-1">
-                        <label class="form-label">@(_vm.IsEnabled ? "Enabled" : "Disabled")</label>
-                        <div class="form-check form-switch mt-2">
-                            <InputCheckbox class="form-check-input" @bind-Value="_vm.IsEnabled" />
-                            <label class="form-check-label" title="@(_vm.IsEnabled ? "Enabled" : "Disabled")">
-                                <span aria-hidden="true">@(_vm.IsEnabled ? " ✅" : " ❌")</span>
-                            </label>
-                        </div>
+                        }
+                        else
+                        {
+                        <button type="button" class="btn btn-outline-danger" @onclick="@ClearParent">Clear</button>
+                        }
                     </div>
                 </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Currency</label>
-                        <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Currency" disabled="@(_vm.Type == DiscountType.Percentage)">
-                            @foreach (UniversalData.CurrencyOption c in UniversalData._currencyOptions)
-                            {
-                                <option value="@c.Code">@c.Code @c.Flag</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Discount Scope</label>
-                        <InputSelect TValue="DiscountScope" class="form-select" @bind-Value="_vm.Scope">
-                            @foreach (DiscountScope s in EnumValues<DiscountScope>())
-                            {
-                                <option value="@s">@DisplayName(s)</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Duration (periods)</label>
-                        <InputNumber class="form-control" @bind-Value="_vm.DurationInPeriods" />
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Discount code (optional)</label>
-                        <InputText class="form-control" @bind-Value="_vm.DiscountCode" />
+                <div class="col-md-3">
+                    <label class="form-label">Discount Type</label>
+                    <InputSelect TValue="DiscountType" class="form-select" @bind-Value="_vm.Type">
+                        @foreach (DiscountType t in EnumValues<DiscountType>())
+                        {
+                            <option value="@t">@DisplayName(t)</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Amount</label>
+                    <div class="input-group">
+                        <InputNumber class="form-control text-end" @bind-Value="_vm.Amount" />
+                        <button type="button" class="btn btn-outline-secondary">
+                            <i class="@GetAmountIconClass()"></i>
+                        </button>
                     </div>
                 </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Seat Min</label>
-                        <InputNumber class="form-control" @bind-Value="_vm.SeatMin" />
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Seat Max</label>
-                        <InputNumber class="form-control" @bind-Value="_vm.SeatMax" />
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Starts at (UTC)</label>
-                        <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="_vm.StartsAtUtc" />
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label">Ends at (UTC)</label>
-                        <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="_vm.EndsAtUtc" />
+                <div class="col-md-1">
+                    <label class="form-label">@(_vm.IsEnabled ? "Enabled" : "Disabled")</label>
+                    <div class="form-check form-switch mt-2">
+                        <InputCheckbox class="form-check-input" @bind-Value="_vm.IsEnabled" />
+                        <label class="form-check-label" title="@(_vm.IsEnabled ? "Enabled" : "Disabled")">
+                            <span aria-hidden="true">@(_vm.IsEnabled ? " ✅" : " ❌")</span>
+                        </label>
                     </div>
                 </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-12">
-                        <label class="form-label">Notes</label>
-                        <InputTextArea class="form-control" rows="2" @bind-Value="_vm.Notes" />
-                    </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">Currency</label>
+                    <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Currency" disabled="@(_vm.Type == DiscountType.Percentage)">
+                        @foreach (UniversalData.CurrencyOption c in UniversalData._currencyOptions)
+                        {
+                            <option value="@c.Code">@c.Code @c.Flag</option>
+                        }
+                    </InputSelect>
                 </div>
-
-                <div class="d-flex gap-2 mt-4">
-                    <button class="btn btn-primary" type="submit" disabled="@_busy">
-                        @(_busy ? "Creating..." : "Create")
-                    </button>
-                    <button class="btn btn-outline-secondary" type="button" @onclick="OnCancel">Cancel</button>
+                <div class="col-md-3">
+                    <label class="form-label">Discount Scope</label>
+                    <InputSelect TValue="DiscountScope" class="form-select" @bind-Value="_vm.Scope">
+                        @foreach (DiscountScope s in EnumValues<DiscountScope>())
+                        {
+                            <option value="@s">@DisplayName(s)</option>
+                        }
+                    </InputSelect>
                 </div>
-
-                @if (!string.IsNullOrWhiteSpace(_error))
-                {
-                    <div class="alert alert-danger mt-3 mb-0">@_error</div>
-                }
+                <div class="col-md-3">
+                    <label class="form-label">Duration (periods)</label>
+                    <InputNumber class="form-control" @bind-Value="_vm.DurationInPeriods" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Discount code (optional)</label>
+                    <InputText class="form-control" @bind-Value="_vm.DiscountCode" />
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">Seat Min</label>
+                    <InputNumber class="form-control" @bind-Value="_vm.SeatMin" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Seat Max</label>
+                    <InputNumber class="form-control" @bind-Value="_vm.SeatMax" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Starts at (UTC)</label>
+                    <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="_vm.StartsAtUtc" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ends at (UTC)</label>
+                    <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="_vm.EndsAtUtc" />
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <label class="form-label">Notes</label>
+                    <InputTextArea class="form-control" rows="2" @bind-Value="_vm.Notes" />
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-primary" type="submit" disabled="@_busy">
+                    @(_busy ? "Creating..." : "Create")
+                </button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="OnCancel">Cancel</button>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <div class="alert alert-danger mt-3 mb-0">@_error</div>
+            }
+        </div>
     </div>
-</div>
-
 </EditForm>
 
-
-
-
-
 @code {
+    [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+    private ClaimsPrincipal? _user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState? authState = await AuthStateTask;
+        _user = authState.User;
+        await _log.InformationAsync(
+            evt: "PAGE_VIEW",
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.View,
+            message: "Accessed New Discount page",
+            ent: "DiscountPage",
+            entId: "New",
+            uid: _user?.FindFirstValue(ClaimTypes.NameIdentifier));
+    }
+
     private readonly Vm _vm = new Vm();
     private bool _busy;
     private string? _error;
@@ -192,14 +192,38 @@
             );
 
             Discount? created = await Billing.CreateDiscountAsync(req);
-            Log.LogInformation(message: "Created discount {Id} ({Name})", created.Id, created.DisplayName);
+            await _log.InformationAsync(
+                evt: "DISCOUNT_CREATE_OK",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Create,
+                message: $"Created discount {created.Id} ({created.DisplayName})",
+                ent: nameof(Discount),
+                entId: created.Id,
+                uid: _user?.FindFirstValue(ClaimTypes.NameIdentifier));
 
             // Redirect. Adjust route to your index/list as needed.
             Nav.NavigateTo(uri: "/platform/finance/discounts");
         }
         catch (Exception ex)
         {
-            Log.LogError(ex, message: "Create discount failed");
+            await _log.ErrorAsync(
+                evt: "DISCOUNT_CREATE_EXCEPTION",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Create,
+                ex: ex,
+                message: "Create discount threw exception",
+                ent: nameof(Discount),
+                uid: _user?.FindFirstValue(ClaimTypes.NameIdentifier),
+                note: "exception_caught");
+            await _log.ErrorAsync(
+                evt: "DISCOUNT_CREATE_FAIL",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Create,
+                ex: new InvalidOperationException("Create discount failed"),
+                message: "Create discount failed",
+                ent: nameof(Discount),
+                uid: _user?.FindFirstValue(ClaimTypes.NameIdentifier),
+                note: "no_exception_details");
             _error = ex.GetBaseException().Message;
         }
         finally
