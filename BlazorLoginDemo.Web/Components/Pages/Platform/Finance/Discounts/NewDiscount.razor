@@ -4,12 +4,16 @@
 @using System.ComponentModel.DataAnnotations
 @using BlazorLoginDemo.Shared.Models.Kernel.Billing
 @using BlazorLoginDemo.Shared.Services.Interfaces.Kernel
+@using BlazorLoginDemo.Shared.Services.Interfaces.Platform
 @using BlazorLoginDemo.Shared.Models.Static
 @using System.Reflection
 
 @inject IBillingService Billing
+@inject IAdminOrgServiceUnified Orgs
 @inject NavigationManager Nav
 @inject ILogger<NewDiscount> Log
+
+<BlazorLoginDemo.Web.Components.Shared.OrgPickerDialog @ref="orgPicker" />
 
 <div class="d-flex align-items-center justify-content-between mb-3">
     <h2 class="mb-0">New Discount</h2>
@@ -31,10 +35,17 @@
                     <div class="col-md-3">
                         <label class="form-label">Parent Org Id</label>
                         <div class="input-group">
-                            <InputText class="form-control" @bind-Value="_vm.ParentOrgId" readonly />
-                            <button type="button" class="btn btn-outline-secondary">
-                                <i class="bi bi-buildings"></i>
-                            </button>
+                            <InputText class="form-control bg-light" @bind-Value="_vm.ParentOrgId" readonly />
+                                @if (string.IsNullOrEmpty(_vm.ParentOrgId))
+                                {
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="PickParentOrg">
+                                        <i class="bi bi-building"></i> Select Org
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-danger" @onclick="@ClearParent">Clear</button>
+                                }
                         </div>
                     </div>
 
@@ -146,12 +157,16 @@
 
 </EditForm>
 
+
+
+
+
 @code {
     private readonly Vm _vm = new Vm();
     private bool _busy;
     private string? _error;
 
-    private void OnCancel() => Nav.NavigateTo("/platform/finance/discounts", true);
+    private void OnCancel() => Nav.NavigateTo(uri: "/platform/finance/discounts", forceLoad: true);
 
     private async Task HandleCreateAsync()
     {
@@ -267,8 +282,26 @@
 
     private static string DisplayName<TEnum>(TEnum value) where TEnum : struct, Enum
     {
-        var mem = typeof(TEnum).GetMember(value.ToString());
-        var attr = mem.FirstOrDefault()?.GetCustomAttribute<DisplayAttribute>();
+        MemberInfo[]? mem = typeof(TEnum).GetMember(value.ToString());
+        DisplayAttribute? attr = mem.FirstOrDefault()?.GetCustomAttribute<DisplayAttribute>();
         return attr?.GetName() ?? value.ToString();
+    }
+
+    // Org Picker
+    private Components.Shared.OrgPickerDialog? orgPicker;
+    private string? _parentOrgDisplay;
+    private async Task PickParentOrg()
+    {
+        IAdminOrgServiceUnified.OrganizationPickerDto? selected = await orgPicker!.ShowAsync(_vm.ParentOrgId);
+        if (selected is null) return;
+
+        _vm.ParentOrgId = selected.Id;
+        _parentOrgDisplay = $"{selected.Name} · {selected.Id}";
+        StateHasChanged();
+    }
+    private void ClearParent()
+    {
+        _vm.ParentOrgId = null;
+        _parentOrgDisplay = null;
     }
 }
