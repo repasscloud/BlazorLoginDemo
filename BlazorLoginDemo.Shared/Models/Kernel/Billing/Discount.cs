@@ -71,6 +71,7 @@ namespace BlazorLoginDemo.Shared.Models.Kernel.Billing
         /// </summary>
         [MaxLength(64)]
         public string? StripeCouponId { get; set; }
+        
         [MaxLength(64)]
         public string? StripePromotionCodeId { get; set; }
 
