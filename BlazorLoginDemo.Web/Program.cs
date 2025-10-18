@@ -111,6 +111,9 @@ public class Program
             options.AddPolicy("Platform:ManageUsers", p =>
                 p.RequireRole(AppRoles.Sudo, AppRoles.Platform.UserAdmin, AppRoles.Platform.SuperAdmin, AppRoles.Platform.Admin));
 
+            options.AddPolicy("Platform:Finance:Discounts:Create", p =>
+                p.RequireRole(AppRoles.Sudo, AppRoles.Platform.SuperAdmin, AppRoles.Platform.Finance.Admin, AppRoles.Platform.Sales.Admin, AppRoles.Platform.Sales.Manager));
+
             // TMC
             options.AddPolicy(AppPolicies.TmcPolicy.AdminArea, p =>
                 p.RequireRole(AppRoles.Sudo, AppRoles.Tmc.Admin, AppRoles.Tmc.UserAdmin, AppRoles.Tmc.PolicyAdmin, AppRoles.Tmc.SecurityAdmin, AppRoles.Tmc.IntegrationAdmin));
