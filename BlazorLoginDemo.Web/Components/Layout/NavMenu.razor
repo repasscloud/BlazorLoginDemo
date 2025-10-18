@@ -109,6 +109,28 @@
                     </div>
                 </div>
 
+                <!-- Finance -->
+                <div class="nav-item px-3">
+                    <button type="button"
+                            class="nav-link d-flex justify-content-between align-items-center w-100"
+                            @onclick="TogglePlatformFinanceGroup">
+                        <span class="d-inline-flex align-items-center">
+                            <span class="bi bi-bank-nav-menu" aria-hidden="true"></span>
+                            <span class="ms-1">Finance</span>
+                        </span>
+                        <span class="caret @(platformFinanceOpen ? "open" : null)" aria-hidden="true">▸</span>
+                    </button>
+
+                    <div class="nav-submenu @(platformFinanceOpen ? "show" : null)">
+                        <!-- Finance : Create -->
+                        <div class="nav-subitem">
+                            <NavLink class="nav-link" href="/platform/finance/discounts/new" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-piggy-bank-nav-menu" aria-hidden="true"></span> Discounts
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="nav-item px-3">
                     <form method="post" action="/auth/logout" class="d-inline">
                         <AntiforgeryToken />
@@ -390,6 +412,8 @@
     private void TogglePlatformTravelGroup() => platformTravelOpen = !platformTravelOpen;
     private bool platformTravelOpen;
 
+    private void TogglePlatformFinanceGroup() => platformFinanceOpen = !platformFinanceOpen;
+    private bool platformFinanceOpen;
 
     
     private bool adminClientsOpen;
