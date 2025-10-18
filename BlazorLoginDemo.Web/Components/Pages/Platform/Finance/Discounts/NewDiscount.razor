@@ -22,9 +22,9 @@
         <div class="card mb-3">
             <div class="card-body">
 
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Display name</label>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Discount Name</label>
                         <InputText class="form-control" @bind-Value="_vm.DisplayName" />
                     </div>
 
@@ -41,7 +41,7 @@
                     <div class="col-md-3">
                         <label class="form-label">Discount Type</label>
                         <InputSelect TValue="DiscountType" class="form-select" @bind-Value="_vm.Type">
-                            @foreach (var t in EnumValues<DiscountType>())
+                            @foreach (DiscountType t in EnumValues<DiscountType>())
                             {
                                 <option value="@t">@DisplayName(t)</option>
                             }
@@ -53,26 +53,9 @@
                         <div class="input-group">
                             <InputNumber class="form-control text-end" @bind-Value="_vm.Amount" />
                             <button type="button" class="btn btn-outline-secondary">
-                                @if (_vm.Type == DiscountType.Percentage)
-                                {
-                                    <i class="bi bi-percent"></i>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-currency-dollar"></i>
-                                }
+                                <i class="@GetAmountIconClass()"></i>
                             </button>
                         </div>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label">Currency</label>
-                        <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Currency" disabled="@(_vm.Type == DiscountType.Percentage)">
-                            @foreach (UniversalData.CurrencyOption c in UniversalData._currencyOptions)
-                            {
-                                <option value="@c.Code">@c.Code @c.Flag</option>
-                            }
-                        </InputSelect>
                     </div>
 
                     <div class="col-md-1">
@@ -84,6 +67,28 @@
                             </label>
                         </div>
                     </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Currency</label>
+                        <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Currency" disabled="@(_vm.Type == DiscountType.Percentage)">
+                            @foreach (UniversalData.CurrencyOption c in UniversalData._currencyOptions)
+                            {
+                                <option value="@c.Code">@c.Code @c.Flag</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Discount Scope</label>
+                        <InputSelect TValue="DiscountScope" class="form-select" @bind-Value="_vm.Scope">
+                            @foreach (DiscountScope s in EnumValues<DiscountScope>())
+                            {
+                                <option value="@s">@DisplayName(s)</option>
+                            }
+                        </InputSelect>
+                    </div>
 
                     <div class="col-md-3">
                         <label class="form-label">Duration (periods)</label>
@@ -91,12 +96,19 @@
                     </div>
 
                     <div class="col-md-3">
-                        <label class="form-label">Seat min</label>
+                        <label class="form-label">Discount code (optional)</label>
+                        <InputText class="form-control" @bind-Value="_vm.DiscountCode" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Seat Min</label>
                         <InputNumber class="form-control" @bind-Value="_vm.SeatMin" />
                     </div>
 
                     <div class="col-md-3">
-                        <label class="form-label">Seat max</label>
+                        <label class="form-label">Seat Max</label>
                         <InputNumber class="form-control" @bind-Value="_vm.SeatMax" />
                     </div>
 
@@ -109,18 +121,9 @@
                         <label class="form-label">Ends at (UTC)</label>
                         <InputDate DateFormat="yyyy-MM-dd" class="form-control" @bind-Value="_vm.EndsAtUtc" />
                     </div>
+                </div>
 
-                    <div class="col-md-3">
-                        <label class="form-label">Discount code (optional)</label>
-                        <InputText class="form-control" @bind-Value="_vm.DiscountCode" />
-                    </div>
-
-
-
-                    
-
-
-
+                <div class="row g-3 mb-3">
                     <div class="col-12">
                         <label class="form-label">Notes</label>
                         <InputTextArea class="form-control" rows="2" @bind-Value="_vm.Notes" />
@@ -138,7 +141,6 @@
                 {
                     <div class="alert alert-danger mt-3 mb-0">@_error</div>
                 }
-
     </div>
 </div>
 
@@ -195,6 +197,26 @@
     {
         if (_vm.Type == DiscountType.Percentage)
         _vm.Currency = null;
+    }
+
+    private string GetAmountIconClass()
+    {
+        if (_vm.Type == DiscountType.Percentage) return "bi bi-percent";
+        var code = _vm.Currency?.ToUpperInvariant();
+
+        return code switch
+        {
+            "EUR" => "bi bi-currency-euro",
+            "GBP" => "bi bi-currency-pound",
+            "JPY" => "bi bi-currency-yen",
+            "CNY" => "bi bi-currency-yen",
+            "BTC" => "bi bi-currency-bitcoin",
+            "ETH" => "bi bi-currency-bitcoin",
+            "LTC" => "bi bi-currency-bitcoin",
+            // Bootstrap has only $, £, €, ¥, ₿. Map others to $.
+            "USD" or "AUD" or "NZD" or "CAD" or "HKD" => "bi bi-currency-dollar",
+            _ => "bi bi-currency-dollar"
+        };
     }
 
     // ViewModel kept slim. You can extend later.
