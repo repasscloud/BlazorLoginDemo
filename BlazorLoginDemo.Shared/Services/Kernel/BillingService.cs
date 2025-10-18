@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
+using BlazorLoginDemo.Shared.Models.Static.SysVar;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -32,7 +33,14 @@ internal sealed class BillingService : IBillingService
         var code = string.IsNullOrWhiteSpace(req.DiscountCode)
             ? CodeGen.NewDiscountCode()
             : NormalizeCode(req.DiscountCode!);
-        await _logger.LogInfoAsync($"Creating Discount {code} for Org {req.ParentOrgId}");
+        await _logger.InformationAsync(
+            evt: "DISCOUNT_CREATE",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Create,
+            message: $"Creating Discount '{code}' for Org '{req.ParentOrgId}'",
+            ent: nameof(Discount),
+            entId: code,
+            org: req.ParentOrgId);
 
         // ensure uniqueness of human-facing code per-tenant (or global)
         var codeExists = await _db.Discounts
@@ -40,7 +48,14 @@ internal sealed class BillingService : IBillingService
             .AnyAsync(d => d.DiscountCode == code && d.ParentOrgId == req.ParentOrgId, ct);
         if (codeExists)
         {
-            await _logger.LogWarningAsync($"Discount code '{code}' already exists. Generating a new one.");
+            await _logger.WarningAsync(
+                evt: "DISCOUNT_CODE_EXISTS",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Validate,
+                message: $"Discount code '{code}' already exists. Generating a new one.",
+                ent: nameof(Discount),
+                entId: code,
+                note: "duplicate_code");
             for (int attempt = 0; attempt < 5; attempt++)
             {
                 code = CodeGen.NewDiscountCode();

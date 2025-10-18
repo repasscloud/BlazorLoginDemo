@@ -6,6 +6,7 @@ using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
+using BlazorLoginDemo.Shared.Models.Static.SysVar;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
@@ -41,7 +42,14 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
 
     public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersAsync(FlightOfferSearchRequestDto dto, CancellationToken ct = default)
     {
-        await _loggerService.LogInfoAsync($"FlightOfferService received request from API with ID: {dto.Id}");
+        await _loggerService.InformationAsync(
+            evt: "FLIGHT_OFFERS_REQ_START",
+            cat: SysLogCatType.Api,  // we RECEIVED a request (not calling Amadeus yet)
+            act: SysLogActionType.Start,
+            message: $"Received flight offers request (dto={nameof(FlightOfferSearchRequestDto)}, id={dto.Id})",
+            ent: nameof(FlightOfferSearchRequestDto),
+            entId: dto.Id,
+            note: "ingress:start");
 
         // 1) Load Travel Policy (optional)
         TravelPolicyBookingContextDto? policyCtx = null;
@@ -177,7 +185,15 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
 
         // DEBUG persist
         string debugJsonX = $@"/app/searchRequestDTO_debugJsonX_{dto.Id}.json";
-        await _loggerService.LogInfoAsync($"Saving results of {dto.Id} to {debugJsonX}");
+        await _loggerService.DebugAsync(
+            evt: "FLIGHT_OFFERS_SAVE_RESULTS",
+            cat: SysLogCatType.Storage,                 // file/blob write
+            act: SysLogActionType.Update,               // use Create if writing first time
+            message: $"Saving results for request id={dto.Id} to {debugJsonX}",
+            ent: "FlightOfferResults",
+            entId: dto.Id,
+            note: $"path:{debugJsonX}");
+
         var xJson = JsonSerializer.Serialize(flightOfferSearch, _jsonOptions);
         await File.WriteAllTextAsync(debugJsonX, xJson, ct);
 
@@ -185,7 +201,13 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         var token = await _authService.GetTokenInformationAsync();
         if (string.IsNullOrEmpty(token))
         {
-            await _loggerService.LogErrorAsync("Unable to retrieve valid OAuth token.");
+            await _loggerService.ErrorAsync(
+                evt: "AMADEUS_OAUTH_TOKEN_FAIL",
+                cat: SysLogCatType.Integration,
+                act: SysLogActionType.Exec,
+                ex: new InvalidOperationException("Unable to retrieve valid OAuth token."),
+                message: "Unable to retrieve valid OAuth token.",
+                ent: "AmadeusOAuth");
             throw new Exception("Unable to retrieve valid OAuth token.");
         }
 
@@ -218,12 +240,29 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
 
             await _db.FlightOfferSearchResultRecords.AddAsync(record, ct);
             await _db.SaveChangesAsync(ct);
+            await _loggerService.InformationAsync(
+                evt: "AMADEUS_FLIGHT_REQ_SUCCESS",
+                cat: SysLogCatType.Integration,
+                act: SysLogActionType.Exec,
+                message: "Calling Amadeus Flight Offers",
+                ent: "FlightOfferSearch",
+                entId: dto.Id,
+                note: "provider:Amadeus");
+
             return result;
         }
         else
         {
             string errorBody = await response.Content.ReadAsStringAsync(ct);
-            await _loggerService.LogErrorAsync($"Amadeus error {response.StatusCode}: {errorBody}");
+            await _loggerService.ErrorAsync(
+                evt: "AMADEUS_API_ERROR",
+                cat: SysLogCatType.Integration,
+                act: SysLogActionType.Exec,
+                ex: new HttpRequestException($"Amadeus error {response.StatusCode}: {errorBody}"),
+                message: "Amadeus API call failed",
+                ent: "Amadeus",
+                stat: (int)response.StatusCode,
+                note: "provider:Amadeus");
             throw new InvalidOperationException($"Error '{response.StatusCode}' Response: {errorBody}");
         }
     }

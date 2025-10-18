@@ -1,5 +1,6 @@
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Policies;
+using BlazorLoginDemo.Shared.Models.Static.SysVar;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
 using Microsoft.EntityFrameworkCore;
@@ -39,7 +40,14 @@ public sealed class TravelPolicyService : ITravelPolicyService
         var orgExists = await _db.Organizations.AsNoTracking().AnyAsync(o => o.Id == policy.OrganizationUnifiedId, ct);
         if (!orgExists) throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found.");
 
-        await _logger.LogInfoAsync($"Creating TravelPolicy '{policy.PolicyName}' for Org '{policy.OrganizationUnifiedId}'");
+        await _logger.InformationAsync(
+            evt: "TRAVEL_POLICY_CREATE",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Create,
+            message: $"Creating TravelPolicy '{policy.PolicyName}' for Org '{policy.OrganizationUnifiedId}'",
+            ent: nameof(TravelPolicy),
+            entId: policy.Id);
+        
 
         policy.Id = NanoidDotNet.Nanoid.Generate(NanoidDotNet.Nanoid.Alphabets.LettersAndDigits.ToUpper(), 14);
 
@@ -184,7 +192,15 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         if (tp is null)
         {
-            await _logger.LogErrorAsync(message: $"TravelPolicy '{policyId}' not found.");
+            await _logger.ErrorAsync(
+                evt: "TRAVEL_POLICY_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                ex: new InvalidOperationException($"TravelPolicy '{policyId}' not found."),
+                message: $"TravelPolicy '{policyId}' not found.",
+                ent: nameof(TravelPolicy),
+                entId: policyId,
+                note: "not_found");
             return false;
         }
 
@@ -193,14 +209,34 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         if (org is null)
         {
-            await _logger.LogErrorAsync(message: $"Organization '{tp.OrganizationUnifiedId}' from TravelPolicy '{policyId}' not found.");
+            await _logger.ErrorAsync(
+                evt: "ORGANIZATION_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                ex: new InvalidOperationException($"Organization '{tp.OrganizationUnifiedId}' from TravelPolicy '{policyId}' not found."),
+                message: $"Organization '{tp.OrganizationUnifiedId}' from TravelPolicy '{policyId}' not found.",
+                ent: nameof(policyId),
+                entId: tp.OrganizationUnifiedId,
+                note: "not_found");
             return false;
         }
 
         if (!string.IsNullOrEmpty(org.DefaultExpensePolicyId))
-            await _logger.LogInfoAsync(message: $"Organization '{org.Id}' default Travel Policy updated from '{tp.OrganizationUnifiedId}' to '{policyId}'.");
+            await _logger.InformationAsync(
+                evt: "TRAVEL_POLICY_UPDATE_DEFAULT",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                message: $"Organization '{org.Id}' default Travel Policy updated from '{tp.OrganizationUnifiedId}' to '{policyId}'.",
+                ent: nameof(TravelPolicy),
+                entId: policyId);
         else
-            await _logger.LogInfoAsync(message: $"Organization '{org.Id}' default Travel Policy set to '{policyId}'.");
+            await _logger.InformationAsync(
+                evt: "TRAVEL_POLICY_SET_DEFAULT",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                message: $"Organization '{org.Id}' default Travel Policy set to '{policyId}'.",
+                ent: nameof(TravelPolicy),
+                entId: policyId);
 
         org.DefaultTravelPolicyId = policyId;
         org.LastUpdatedUtc = DateTime.UtcNow;

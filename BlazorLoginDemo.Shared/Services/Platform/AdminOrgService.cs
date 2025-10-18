@@ -1,4 +1,3 @@
-using System.Xml;
 using System.Net;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
@@ -9,7 +8,7 @@ using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using HtmlAgilityPack;
-using Serilog;
+using BlazorLoginDemo.Shared.Models.Static.SysVar;
 
 namespace BlazorLoginDemo.Shared.Services.Platform;
 
@@ -88,7 +87,15 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             throw;
         }
 
-        await _logger.LogInfoAsync($"Created Organization '{org.Name}' (ID: {org.Id})");
+        await _logger.InformationAsync(
+            evt: "ORG_CREATE",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Create,
+            message: $"Created Organization '{org.Name}' (ID: {org.Id})",
+            ent: nameof(req.Name),
+            entId: org.Id,
+            org: org.Id?.ToString());
+
 
         var loaded = await _db.Organizations
             .Include(o => o.Domains)
@@ -103,7 +110,14 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         try
         {
             var agg = await CreateAsync(req, ct);
-            await _logger.LogInfoAsync($"CreateOrgAsync succeeded for Org '{agg.Org.Name}' (ID: {agg.Org.Id})");
+            await _logger.InformationAsync(
+                evt: "ORG_CREATE_END",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.End,
+                message: $"CreateOrgAsync succeeded for Org '{agg.Org.Name}' (ID: {agg.Org.Id})",
+                ent: nameof(req.Name),
+                entId: agg.Org.Id,
+                org: agg.Org.Id?.ToString());
             return new(true, null, agg.Org.Id);
         }
         catch (Exception ex)
@@ -124,7 +138,14 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             .Include(o => o.TravelPolicies)   // load the travel policies #36
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
-        await _logger.LogInfoAsync("Retrieved organization by ID: " + id);
+        await _logger.InformationAsync(
+            evt: "ORG_READ_BY_ID",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Read,
+            message: $"Retrieved organization by ID: {id}",
+            ent: nameof(id),
+            entId: id,
+            org: id?.ToString());
 
         return org is null ? null : new IAdminOrgServiceUnified.OrgAggregate(org, org.Domains.ToList(), org.LicenseAgreement);
     }
@@ -455,7 +476,14 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             org.LastUpdatedUtc = now;
             await _db.SaveChangesAsync(ct);
 
-            await _logger.LogInfoAsync($"Validated Tax ID for Org '{org.Name}' (ID: {org.Id})");
+            await _logger.InformationAsync(
+                evt: "ORG_TAX_ID_VALIDATE",
+                cat: SysLogCatType.Tax,
+                act: SysLogActionType.Validate,
+                message: $"Validated Tax ID for Org '{org.Name}' (ID: {org.Id})",
+                ent: nameof(org.Id),
+                entId: org.Id,
+                org: org.Id?.ToString());
         }
 
         return taxResultStatus;
@@ -465,7 +493,16 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
     {
         if (string.IsNullOrWhiteSpace(orgId))
         {
-            await _logger.LogErrorAsync($"Organization {orgId} has no Default Travel Policy configured."); 
+            await _logger.ErrorAsync(
+                evt: "ORG_DEFAULT_POLICY_MISSING",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Validate,
+                ex: new InvalidOperationException($"Organization {orgId} has no Default Travel Policy configured."),
+                message: $"Organization {orgId} has no Default Travel Policy configured.",
+                ent: nameof(orgId),
+                entId: orgId,
+                org: orgId?.ToString(),
+                note: "default_policy_missing");
             return null;
         }
 
