@@ -96,7 +96,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthStateTask;
+        AuthenticationState? authState = await AuthStateTask;
         _user = authState.User;
     }
 
@@ -104,25 +104,25 @@
     {
         if (_user == null) return "#";
 
-        if (_user.IsInRole("Sudo"))
+        if (_user.IsInRole(role: "Sudo"))
         {
             return $"/platform/pnr/create/{type}";
         }
 
-        if (_user.IsInRole("Platform.SuperAdmin") ||
-            _user.IsInRole("Platform.SuperUser") ||
-            _user.IsInRole("Platform.Admin") ||
-            _user.IsInRole("Platform.Support.Admin") ||
-            _user.IsInRole("Platform.Support.Agent") ||
-            _user.IsInRole("Tmc.Admin") ||
-            _user.IsInRole("Tmc.BookingsManager") ||
-            _user.IsInRole("Tmc.TravelAgent"))
+        if (_user.IsInRole(role: "Platform.SuperAdmin") ||
+            _user.IsInRole(role: "Platform.SuperUser") ||
+            _user.IsInRole(role: "Platform.Admin") ||
+            _user.IsInRole(role: "Platform.Support.Admin") ||
+            _user.IsInRole(role: "Platform.Support.Agent") ||
+            _user.IsInRole(role: "Tmc.Admin") ||
+            _user.IsInRole(role: "Tmc.BookingsManager") ||
+            _user.IsInRole(role: "Tmc.TravelAgent"))
         {
             return $"/booking/tmc/{type}";
         }
 
-        if (_user.IsInRole("Client.Admin") ||
-            _user.IsInRole("Client.Requestor"))
+        if (_user.IsInRole(role: "Client.Admin") ||
+            _user.IsInRole(role: "Client.Requestor"))
         {
             return $"/booking/client/{type}";
         }
