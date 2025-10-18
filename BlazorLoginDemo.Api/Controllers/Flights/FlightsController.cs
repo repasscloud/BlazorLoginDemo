@@ -4,6 +4,7 @@ using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
 using BlazorLoginDemo.Shared.Security;
+using BlazorLoginDemo.Shared.Models.Static.SysVar;
 
 namespace BlazorLoginDemo.Api.Controllers.Flights;
 
@@ -41,12 +42,26 @@ public class FlightsController : ControllerBase
 
         if (existing is not null)
         {
-            await _log.LogErrorAsync($"Table 'FlightOfferSearchRequestDto' has matching value for {criteria.Id}");
+            await _log.ErrorAsync(
+                evt: "FLIGHT_SEARCH_REQUEST_DUP",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Validate,
+                ex: new InvalidOperationException($"Table '{nameof(FlightOfferSearchRequestDto)}' has matching value for {criteria.Id}"),
+                message: $"Duplicate FlightOfferSearchRequest detected for id={criteria.Id}",
+                ent: nameof(FlightOfferSearchRequestDto),
+                entId: criteria.Id,
+                note: "duplicate");
             return BadRequest($"A record with Id = {criteria.Id} already exists.");
         }
 
         // save it to the db
-        await _log.LogDebugAsync($"Created record 'FlightOfferSearchReqeustDto' with ID '{criteria.Id}'");
+        await _log.DebugAsync(
+            evt: "FLIGHT_SEARCH_REQUEST_CREATE",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Create,
+            message: $"Created record '{nameof(FlightOfferSearchRequestDto)}' with ID '{criteria.Id}'",
+            ent: nameof(FlightOfferSearchRequestDto),
+            entId: criteria.Id);
         await _db.FlightOfferSearchRequestDtos.AddAsync(criteria, ct);
 
         // TravelSearchRecord travelSearchRecord = new TravelSearchRecord

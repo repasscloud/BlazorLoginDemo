@@ -11,7 +11,8 @@ using BlazorLoginDemo.Shared.Models.Kernel.Platform;        // OrganizationUnifi
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;         // LicenseAgreementUnified
 using BlazorLoginDemo.Shared.Models.Policies;               // ExpensePolicy
 using BlazorLoginDemo.Shared.Models.User;
-using BlazorLoginDemo.Shared.Models.DTOs;                   // AvaUserLoyaltyAccount (legacy shape retained)
+using BlazorLoginDemo.Shared.Models.DTOs;
+using BlazorLoginDemo.Shared.Models.Kernel.FX;                   // AvaUserLoyaltyAccount (legacy shape retained)
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -24,6 +25,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
     public DbSet<ErrorCodeUnified> ErrorCodes => Set<ErrorCodeUnified>();
+    public DbSet<ExchangeRateSnapshot> ExchangeRateSnapshots => Set<ExchangeRateSnapshot>();
 
     // ---------------------------
     // Org / Tenancy (Unified)
