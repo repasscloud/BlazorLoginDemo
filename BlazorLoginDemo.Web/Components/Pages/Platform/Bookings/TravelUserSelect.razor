@@ -367,7 +367,7 @@ else
 
         var client = HttpClientFactory.CreateClient("AvaApi");
 
-        var payload = new TravelQuoteDto
+        TravelQuoteDto payload = new TravelQuoteDto
         {
             QuoteType = BookingTypeNormalized,
             CreatedByUserId = myUserId!,
