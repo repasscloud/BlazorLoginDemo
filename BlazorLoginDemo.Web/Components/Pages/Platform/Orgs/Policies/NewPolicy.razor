@@ -711,15 +711,15 @@ else
 
             // Parse array selections -> int sets
             HashSet<int>? continentIds = SelectedContinentIds.Select(int.Parse).ToHashSet();
-            HashSet<int>? regionIds    = SelectedRegionIds.Select(int.Parse).ToHashSet();
-            HashSet<int>? countryIds   = SelectedCountryIds.Select(int.Parse).ToHashSet();
-            HashSet<int>? disabledIds  = SelectedDisabledCountryIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? regionIds = SelectedRegionIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? countryIds = SelectedCountryIds.Select(int.Parse).ToHashSet();
+            HashSet<int>? disabledIds = SelectedDisabledCountryIds.Select(int.Parse).ToHashSet();
 
             // Write selections into int[] fields on the model
             static int[] ToArray(HashSet<int> s) => s.OrderBy(x => x).ToArray();
-            Model.ContinentIds       = ToArray(continentIds);
-            Model.RegionIds          = ToArray(regionIds);
-            Model.CountryIds         = ToArray(countryIds);
+            Model.ContinentIds = ToArray(continentIds);
+            Model.RegionIds = ToArray(regionIds);
+            Model.CountryIds = ToArray(countryIds);
             Model.DisabledCountryIds = ToArray(disabledIds);
 
             // Persist core policy (service normalizes arrays)
