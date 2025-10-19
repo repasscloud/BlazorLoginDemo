@@ -2,7 +2,6 @@
 using System.ComponentModel.DataAnnotations;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
-using BlazorLoginDemo.Shared.Models.Policies;
 
 namespace BlazorLoginDemo.Shared.Models.Kernel.Travel;
 
