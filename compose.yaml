@@ -105,6 +105,7 @@ services:
     volumes:
       # Persist ASP.NET DataProtection keys (avoid warnings + keep auth cookies valid across restarts)
       - web-dataprotection:/home/app/.aspnet/DataProtection-Keys
+
   # blazor2:
   #   pull_policy: build
   #   build:
@@ -220,6 +221,32 @@ services:
       - ConnectionStrings__DefaultConnection=${CONNECTIONSTRINGS__DEFAULTCONNECTION}
     tty: true
     restart: "no"
+
+  crontab:
+    build:
+      context: ./.docker/cron
+      dockerfile: Dockerfile
+      args:
+        TARGETARCH: arm64         # you are on Apple Silicon; set amd64 on x86 builders
+    platform: linux/arm64         # ensure correct platform locally
+    container_name: crontab
+    depends_on:
+      - api
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,size=8m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL","curl -fsS http://localhost:9876/metrics >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 60s
+
 
 volumes:
   postgresql-data:

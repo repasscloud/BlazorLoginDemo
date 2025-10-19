@@ -1,0 +1,7 @@
+CRON_TZ=UTC
+
+# hourly
+0 * * * * curl -fsS --max-time 10 --retry 2 --retry-connrefused -H 'accept: */*' http://api:8090/api/v1/travel/quotes/cron/expire-pending-quotes
+
+# heartbeat
+*/5 * * * * echo "heartbeat $(date -Iseconds)"
