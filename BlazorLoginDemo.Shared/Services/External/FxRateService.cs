@@ -4,22 +4,42 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using BlazorLoginDemo.Shared.Models.Kernel.FX;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
+using BlazorLoginDemo.Shared.Services.Interfaces.Persistence;
 
 namespace BlazorLoginDemo.Shared.Services.External;
 
 public sealed class FxRateService : IFxRateService
 {
-    private readonly HttpClient _http;
+    private readonly IHttpClientFactory _httpFactory;
     private readonly ExchangeRateApiOptions _opts;
     private readonly IMemoryCache _cache;
+    private readonly IFxRateStore _store;
 
     private static string CacheKey(string baseCode) => $"fx:rates:{baseCode.ToUpperInvariant()}";
 
-    public FxRateService(HttpClient http, IOptions<ExchangeRateApiOptions> opts, IMemoryCache cache)
+    public FxRateService(
+        IHttpClientFactory httpFactory,
+        IOptions<ExchangeRateApiOptions> opts,
+        IMemoryCache cache,
+        IFxRateStore store)
     {
-        _http = http;
+        _httpFactory = httpFactory;
         _opts = opts.Value;
         _cache = cache;
+        _store = store;
+    }
+
+    public async Task<decimal?> GetLatestSnapshotRateAsync(string baseCode, string quoteCode, CancellationToken ct = default)
+    {
+        baseCode  = (baseCode ?? string.Empty).Trim().ToUpperInvariant();
+        quoteCode = (quoteCode ?? string.Empty).Trim().ToUpperInvariant();
+
+        var snap = await _store.GetLatestAsync(baseCode, ct);
+        if (snap is null) return null;
+
+        return snap.Rates.TryGetValue(quoteCode, out var r)
+            ? decimal.Round(r, 6, MidpointRounding.AwayFromZero)
+            : null;
     }
 
     public async Task<ExchangeRateResponse> GetRatesAsync(string baseCode, CancellationToken ct = default)
@@ -29,10 +49,12 @@ public sealed class FxRateService : IFxRateService
         if (_cache.TryGetValue(CacheKey(baseCode), out ExchangeRateResponse? cached) && cached != null)
             return cached;
 
-        // Endpoint: {BaseUrl}/{ApiKey}/latest/{baseCode}
-        var path = $"latest/{baseCode}";
-        using var req = new HttpRequestMessage(HttpMethod.Get, path);
-        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+        // Build absolute URL using settings, same pattern as AmadeusAuthService.
+        // e.g. https://v6.exchangerate-api.com/v6/{key}/latest/{base}
+        var url = $"{_opts.BaseUrl.TrimEnd('/')}/{_opts.ApiKey.Trim()}/latest/{baseCode}";
+
+        var http = _httpFactory.CreateClient("fx"); // named client optional, see Program.cs snippet
+        using var resp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
 
         if (resp.StatusCode == HttpStatusCode.NotFound)
             throw new InvalidOperationException($"Base currency '{baseCode}' not supported by provider.");
@@ -45,9 +67,8 @@ public sealed class FxRateService : IFxRateService
         if (!string.Equals(payload.Result, "success", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException($"FX provider returned non-success result: '{payload.Result}'.");
 
-        // Cache until provider’s next update time minus a small skew
         var ttl = payload.TimeNextUpdateUtc - DateTimeOffset.UtcNow - TimeSpan.FromSeconds(10);
-        if (ttl < TimeSpan.FromSeconds(1)) ttl = TimeSpan.FromMinutes(5); // fallback
+        if (ttl < TimeSpan.FromSeconds(1)) ttl = TimeSpan.FromMinutes(5);
 
         _cache.Set(CacheKey(baseCode), payload, ttl);
         return payload;
@@ -64,7 +85,6 @@ public sealed class FxRateService : IFxRateService
         if (!rates.ConversionRates.TryGetValue(target, out var rate))
             throw new InvalidOperationException($"Target currency '{target}' not found.");
 
-        // Ensure decimal precision suitable for money math
         return decimal.Round(rate, 10, MidpointRounding.AwayFromZero);
     }
 

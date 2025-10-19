@@ -35,5 +35,16 @@ namespace BlazorLoginDemo.Api.Controllers.Fx
             var rate = await _fx.GetRateAsync(from, to, ct);
             return Ok(rate);
         }
+
+        // GET /api/v1/fx/latest/{baseCode}/{quoteCode}  -> { "<QUOTE>": <rate> }
+        [HttpGet("/api/v1/fx/latest/{baseCode}/{quoteCode}")]
+        public async Task<IActionResult> GetLatestSnapshotRate([FromRoute] string baseCode, [FromRoute] string quoteCode, CancellationToken ct)
+        {
+            var rate = await _fx.GetLatestSnapshotRateAsync(baseCode, quoteCode, ct);
+            if (rate is null) return NotFound();
+
+            var key = quoteCode.Trim().ToUpperInvariant();
+            return Ok(new Dictionary<string, decimal> { [key] = rate.Value });
+        }
     }
 }

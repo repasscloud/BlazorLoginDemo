@@ -126,6 +126,54 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         });
 
         // ===========================
+        // FX snapshots
+        // ===========================
+        builder.Entity<ExchangeRateSnapshot>(e =>
+        {
+            e.ToTable("fx_rate_snapshots", "ava");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id).HasColumnName("id");
+
+            e.Property(x => x.BaseCode)
+                .HasColumnName("base_code")
+                .HasMaxLength(3)
+                .IsRequired();
+
+            e.Property(x => x.CreatedAtUtc)
+                .HasColumnName("created_at_utc")
+                .HasColumnType("timestamptz")
+                .HasDefaultValueSql("timezone('utc', now())")
+                .ValueGeneratedOnAdd();
+
+            // prevent updates to created timestamp
+            e.Property(x => x.CreatedAtUtc)
+                .Metadata.SetAfterSaveBehavior(Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
+
+            // jsonb for rate map
+            e.Property(x => x.Rates)
+                .HasColumnName("rates_json")
+                .HasColumnType("jsonb");
+
+            e.Property(x => x.ProviderLastUpdateUtc)
+                .HasColumnName("provider_last_update_utc")
+                .HasColumnType("timestamptz");
+
+            e.Property(x => x.ProviderNextUpdateUtc)
+                .HasColumnName("provider_next_update_utc")
+                .HasColumnType("timestamptz");
+
+            e.Property(x => x.ProviderResult)
+                .HasColumnName("provider_result")
+                .HasMaxLength(32);
+
+            // latest-by-base lookup
+            e.HasIndex(x => new { x.BaseCode, x.CreatedAtUtc })
+                .HasDatabaseName("ix_fx_base_created");
+        });
+
+
+        // ===========================
         // ApplicationUser (overhauled)
         // ===========================
         builder.Entity<ApplicationUser>(e =>

@@ -1,15 +1,18 @@
 using System.Text.Json;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
+using BlazorLoginDemo.Shared.Models.Kernel.FX;
 using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Services.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
+using BlazorLoginDemo.Shared.Services.Interfaces.Persistence;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policies;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
 using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 using BlazorLoginDemo.Shared.Services.Kernel;
+using BlazorLoginDemo.Shared.Services.Persistence;
 using BlazorLoginDemo.Shared.Services.Platform;
 using BlazorLoginDemo.Shared.Services.Policies;
 using BlazorLoginDemo.Shared.Services.Policy;
@@ -101,9 +104,26 @@ public static class ServiceCollectionExtensions
                 "InboundAPiKeyAuth must specify HeaderName and at least one non-empty key.")
             .ValidateOnStart();
 
+            // ExchangeRate API options
+            services.AddOptions<ExchangeRateApiOptions>()
+                .Bind(config.GetSection("ExchangeRateApi"))
+                .Validate(o =>
+                    !string.IsNullOrWhiteSpace(o.BaseUrl) &&
+                    !string.IsNullOrWhiteSpace(o.ApiKey) &&
+                    !string.IsNullOrWhiteSpace(o.DefaultBaseCode) &&
+                    o.DefaultBaseCode.Length == 3,
+                    "ExchangeRateApi: BaseUrl, ApiKey, and 3-letter DefaultBaseCode are required.")
+                .ValidateOnStart();
+
         // --- infra ---
         services.AddHttpClient();
         services.AddSingleton(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        // --- fx http client ---
+        services.AddHttpClient("fx", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
 
         // --- Identity (required by AdminUserServiceUnified) ---
         services
@@ -129,6 +149,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITravelQuoteService, TravelQuoteService>();
         services.AddScoped<IErrorCodeService, ErrorCodeService>();
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
+
+        // --- fx services ---
+        services.AddScoped<IFxRateStore, EfFxRateStore>();
+        services.AddScoped<IFxRateService, FxRateService>();
 
         // --- geographic services ---
         services.AddScoped<IRegionService, RegionService>();
