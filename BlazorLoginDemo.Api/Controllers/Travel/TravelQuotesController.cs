@@ -86,6 +86,13 @@ public sealed class TravelQuotesController : ControllerBase
         return Ok(new { id = travelQuoteId });
     }
 
+    [HttpGet("cron/expire-pending-quotes")]
+    public async Task<IActionResult> ExpirePendingQuotes(CancellationToken ct)
+    {
+        var expiredCount = await _svc.ExpireOldQuotesAsync(ct);
+        return Ok(new { expiredCount });
+    }
+
     // ---------- Request contracts ----------
     public sealed record UpdateCreatedByRequest([property: Required] string NewUserId);
     public sealed record UpdateStateRequest([property: Required] QuoteState State);

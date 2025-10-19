@@ -2,10 +2,11 @@
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Policies;
+using BlazorLoginDemo.Shared.Models.Static.SysVar;
+using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace BlazorLoginDemo.Shared.Services.Travel;
 
@@ -14,13 +15,13 @@ internal sealed class TravelQuoteService : ITravelQuoteService
     private readonly ApplicationDbContext _db;
     private readonly IAdminOrgServiceUnified _orgSvc;
     private readonly IAdminUserServiceUnified _userSvc;
-    private readonly ILogger<TravelQuoteService> _log;
+    private readonly ILoggerService _log;
 
     public TravelQuoteService(
         ApplicationDbContext db,
         IAdminOrgServiceUnified orgSvc,
         IAdminUserServiceUnified userSvc,
-        ILogger<TravelQuoteService> log)
+        ILoggerService log)
     {
         _db = db;
         _orgSvc = orgSvc;
@@ -41,12 +42,43 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
     public async Task<(bool Ok, string? Error, string? TravelQuoteId)> CreateFromDtoAsync(TravelQuoteDto dto, CancellationToken ct = default)
     {
+        await _log.InformationAsync(
+            evt: "TRAVEL_QUOTE_TRANSLATE_START",
+            cat: SysLogCatType.Workflow,
+            act: SysLogActionType.Start,
+            message: $"Translate TravelQuote DTO start (createdby={dto.CreatedByUserId}, type={dto.QuoteType}, org={dto.OrganizationId}, travellers={dto.TravellerUserIds?.Count ?? 0})",
+            ent: "TravelQuoteDto",
+            entId: dto.OrganizationId,
+            uid: dto.CreatedByUserId,
+            org: dto.OrganizationId);
+            
         try
         {
             var quote = await TranslateDtoAsync(dto, ct);
 
             if (quote.Travellers.Count == 0)
             {
+                await _log.WarningAsync(
+                    evt: "TRAVEL_QUOTE_TRANSLATE_NO_TRAVELLERS",
+                    cat: SysLogCatType.Workflow,
+                    act: SysLogActionType.Validate,
+                    message: "No valid travellers with Travel Policy assigned to generate a quote. Assign users a Travel Policy or set an Org Default Travel Policy.",
+                    ent: "TravelQuoteDto",
+                    entId: dto.OrganizationId,
+                    uid: dto.CreatedByUserId,
+                    org: dto.OrganizationId,
+                    note: "no_travellers_or_policy");
+
+                await _log.InformationAsync(
+                    evt: "TRAVEL_QUOTE_TRANSLATE_FINISH",
+                    cat: SysLogCatType.Workflow,
+                    act: SysLogActionType.End,
+                    message: $"Translate TravelQuote DTO finished (type={dto.QuoteType}, org={dto.OrganizationId})",
+                    ent: "TravelQuoteDto",
+                    entId: dto.OrganizationId,
+                    uid: dto.CreatedByUserId,
+                    org: dto.OrganizationId);
+
                 return (false, "No valid travellers with Travel Policy assigned to generate a quote. Assign users a Travel Policy or assign the organization a Default Travel Policy to generate a quote.", null);
             }
 
@@ -56,7 +88,17 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "CreateFromDtoAsync failed");
+            await _log.ErrorAsync(
+                evt: "TRAVEL_QUOTE_CREATE_FROM_DTO_FAIL",
+                cat: SysLogCatType.Workflow,
+                act: SysLogActionType.Exec,
+                ex: ex,
+                message: "CreateFromDtoAsync failed",
+                ent: "TravelQuoteDto",
+                entId: dto.OrganizationId,
+                uid: dto.CreatedByUserId,
+                org: dto.OrganizationId);
+
             return (false, ex.GetBaseException().Message, null);
         }
     }
@@ -190,6 +232,27 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         return false;
     }
 
+    public async Task<int> ExpireOldQuotesAsync(CancellationToken ct = default)
+    {
+        var cutoffUtc = DateTime.UtcNow.AddDays(-3);
+
+        var affected = await _db.TravelQuotes
+            .Where(q => q.CreatedAtUtc < cutoffUtc && q.State != QuoteState.Expired)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(q => q.State, q => QuoteState.Expired), ct);
+
+        await _log.InformationAsync(
+            evt: "TRAVEL_QUOTE_EXPIRE_OLD",
+            cat: SysLogCatType.Automation,          // background maintenance
+            act: SysLogActionType.Update,           // bulk state change
+            message: $"Expired {affected} travel quotes older than {cutoffUtc:o}",
+            ent: nameof(TravelQuote),
+            entId: $"cutoff:{cutoffUtc:o}",
+            note: "bulk_expire");
+
+        return affected;
+    }
+
     private async Task ValidateRootsAsync(string orgId, string tmcId, string userId, CancellationToken ct)
     {
         if (!await _orgSvc.ExistsAsync(orgId, ct)) throw new InvalidOperationException($"Organization '{orgId}' not found.");
@@ -226,7 +289,23 @@ internal sealed class TravelQuoteService : ITravelQuoteService
     {
         // this should NEVER hit an error, because it's built-in to the UI
         if (!TryParseQuoteType(dto.QuoteType, out var type))
-            throw new ArgumentException($"Invalid QuoteType '{dto.QuoteType}'.");
+        {
+            // Log then throw
+            var ex = new ArgumentException($"Invalid QuoteType '{dto.QuoteType}'.");
+            await _log.ErrorAsync(
+                evt: "TRAVEL_QUOTE_TRANSLATE_INVALID_QUOTE_TYPE",
+                cat: SysLogCatType.Workflow,
+                act: SysLogActionType.Validate,
+                ex: ex,
+                message: $"Invalid QuoteType '{dto.QuoteType}'.",
+                ent: "TravelQuoteDto",
+                entId: dto.OrganizationId,
+                uid: dto.CreatedByUserId,
+                org: dto.OrganizationId,
+                note: "invalid_quote_type");
+
+            throw ex;
+        }
 
         await ValidateRootsAsync(dto.OrganizationId, dto.TmcAssignedId, dto.CreatedByUserId, ct);  // hard core error handling
         await EnsureTravellerUsersExistAsync(dto.TravellerUserIds, ct);  // hard core error handling
@@ -277,19 +356,49 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         // policyIdsForIntegrity: all fetched IDs (nulls included) for checks
         // distinctPolicyIds: unique non-null policy IDs
         // excludedUserIds: which users were removed due to missing policy
-        _log.LogError("Quote DTO translation: {TravellerCount} travellers, {DistinctPolicyCount} distinct non-null policies, {ExcludedUserCount} users excluded due to missing policy.",
-            dto.TravellerUserIds?.Count() ?? 0,
-            distinctPolicyIds.Count,
-            excludedUserIds.Count);
-        foreach (string e in excludedUserIds)
-            _log.LogError(" - Excluded user ID: {UserId}", e);
+        await _log.WarningAsync(
+            evt: "TRAVEL_QUOTE_TRANSLATE_NO_VALID_POLICIES",
+            cat: SysLogCatType.Workflow,
+            act: SysLogActionType.Validate,
+            message: $"Quote DTO translation: {dto.TravellerUserIds?.Count() ?? 0} travellers, {distinctPolicyIds.Count} distinct non-null policies, {excludedUserIds.Count} users excluded due to missing policy.",
+            ent: "TravelQuoteDto",
+            entId: dto.OrganizationId,
+            note: "missing_policies",
+            // keep the counts for searchability in free text AND structured sinks
+            overrideOutcome: null);
+
+        foreach (var e in excludedUserIds)
+        {
+            await _log.WarningAsync(
+                evt: "TRAVEL_QUOTE_TRANSLATE_EXCLUDED_USER",
+                cat: SysLogCatType.Workflow,
+                act: SysLogActionType.Validate,
+                message: $"Excluded traveller due to missing policy. userId={e}",
+                ent: "TravelQuoteDto",
+                entId: dto.OrganizationId,
+                note: "excluded_missing_policy");
+        }
 
         // obtain all travel policies referenced by travellers
         // Build pL with only currently-effective policies (UTC checks, inclusive bounds)
         if (distinctPolicyIds.Count > 1)
         {
-            _log.LogInformation("Travel Quote '{QuoteId}' has travellers with multiple distinct travel policies: {PolicyIds}", q.Id, string.Join(", ", distinctPolicyIds));
-            _log.LogInformation("An ephemeral travel policy will be created to unify these policies for the quote lifecycle.");
+            await _log.InformationAsync(
+                evt: "TRAVEL_QUOTE_TRANSLATE_MULTI_POLICY",
+                cat: SysLogCatType.Workflow,
+                act: SysLogActionType.Step,
+                message: $"Quote '{q.Id}' has travellers with multiple distinct policies: {string.Join(", ", distinctPolicyIds)}",
+                ent: nameof(TravelQuote),
+                entId: q.Id);
+
+            await _log.InformationAsync(
+                evt: "TRAVEL_QUOTE_EPHEMERAL_CREATED",
+                cat: SysLogCatType.Tax, // or Data if you actually persist it immediately
+                act: SysLogActionType.Create,
+                message: "An ephemeral travel policy will be created to unify policies for the quote lifecycle.",
+                ent: "EphemeralTravelPolicy",
+                entId: q.Id, // or the new policy id once known
+                note: "unify_policies");
         }
 
         var pL = new List<TravelPolicy>();
@@ -302,7 +411,14 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
             if (policy is null)
             {
-                _log.LogError("Travel policy '{PolicyId}' referenced by travellers not found in DB.", pid);
+                await _log.WarningAsync(
+                    evt: "TRAVEL_QUOTE_TRANSLATE_POLICY_NOT_FOUND",
+                    cat: SysLogCatType.Workflow,
+                    act: SysLogActionType.Validate,
+                    message: $"Travel policy '{pid}' referenced by travellers not found in DB.",
+                    ent: "TravelPolicy",
+                    entId: pid,
+                    note: "policy_missing");
                 continue;
             }
 
@@ -328,15 +444,42 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             else
             {
                 if (!effectiveOk)
-                    _log.LogWarning("Travel policy '{PolicyId}' not yet effective. EffectiveFromUtc={EffectiveFromUtc:o}", pid, eff);
+                {
+                    await _log.WarningAsync(
+                        evt: "TRAVEL_QUOTE_TRANSLATE_POLICY_NOT_EFFECTIVE",
+                        cat: SysLogCatType.Workflow,
+                        act: SysLogActionType.Validate,
+                        message: $"Travel policy '{pid}' not yet effective. EffectiveFromUtc={eff:o}",
+                        ent: "TravelPolicy",
+                        entId: pid,
+                        note: "policy_not_effective");
+                }
 
                 if (!expiresOk)
-                    _log.LogWarning("Travel policy '{PolicyId}' expired. ExpiresOnUtc={ExpiresOnUtc:o}", pid, exp);
+                {
+                    await _log.WarningAsync(
+                        evt: "TRAVEL_QUOTE_TRANSLATE_POLICY_EXPIRED",
+                        cat: SysLogCatType.Workflow,
+                        act: SysLogActionType.Validate,
+                        message: $"Travel policy '{pid}' expired. ExpiresOnUtc={exp:o}",
+                        ent: "TravelPolicy",
+                        entId: pid,
+                        note: "policy_expired");
+                }
             }
         }
 
         if (pL.Count == 0)
-            _log.LogError("No travellers with valid/effective travel policies found for quote.");
+        {
+            await _log.WarningAsync(
+                evt: "TRAVEL_QUOTE_TRANSLATE_NO_VALID_POLICIES",
+                cat: SysLogCatType.Workflow,
+                act: SysLogActionType.Validate,
+                message: "No travellers with valid/effective travel policies found for quote.",
+                ent: nameof(TravelQuote),
+                entId: q.Id,
+                note: "no_effective_policies");
+        }
 
         if (pL.Count == 1)
         {
@@ -365,7 +508,15 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             };
             // Merge all policies into eTravelPolicy
             //eTravelPolicy.MergeFrom(pL);
-            _log.LogInformation("Created EphemeralTravelPolicy for quote '{x}' with Id '{y}'", q.Id, eTravelPolicy.Id);
+            await _log.InformationAsync(
+                evt: "TRAVEL_QUOTE_EPHEMERAL_CREATED",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Create,
+                message: $"Created EphemeralTravelPolicy for quote '{q.Id}' with Id '{eTravelPolicy.Id}'",
+                ent: "EphemeralTravelPolicy",
+                entId: eTravelPolicy.Id,
+                org: q.OrganizationId);
+
             q.TravelPolicyId = eTravelPolicy.Id;
             q.PolicyType = TravelQuotePolicyType.Ephemeral;
         }
