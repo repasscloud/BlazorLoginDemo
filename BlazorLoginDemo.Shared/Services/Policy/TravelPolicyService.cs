@@ -47,9 +47,6 @@ public sealed class TravelPolicyService : ITravelPolicyService
             message: $"Creating TravelPolicy '{policy.PolicyName}' for Org '{policy.OrganizationUnifiedId}'",
             ent: nameof(TravelPolicy),
             entId: policy.Id);
-        
-
-        policy.Id = NanoidDotNet.Nanoid.Generate(NanoidDotNet.Nanoid.Alphabets.LettersAndDigits.ToUpper(), 14);
 
         static DateTime? EnsureUtc(DateTime? d) =>
             d is null ? null :
@@ -63,6 +60,32 @@ public sealed class TravelPolicyService : ITravelPolicyService
         policy.LastUpdatedUtc = DateTime.UtcNow;
 
         await _db.TravelPolicies.AddAsync(policy, ct);
+
+        var org = await _db.Organizations.FirstOrDefaultAsync(
+            o => o.Id == policy.OrganizationUnifiedId, ct);
+        if (org is null)
+            throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found on add.");
+
+        if (string.IsNullOrWhiteSpace(org.DefaultTravelPolicyId))
+        {
+            org.DefaultTravelPolicyId = policy.Id;
+            org.LastUpdatedUtc = DateTime.UtcNow;
+
+            await _logger.InformationAsync(
+                evt: "TRAVEL_POLICY_SET_DEFAULT_ON_CREATE",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                message: $"Organization '{org.Id}' default Travel Policy set to '{policy.Id}' on creation.",
+                ent: nameof(TravelPolicy),
+                entId: policy.Id);
+
+            await _db.SaveChangesAsync(ct);
+        }
+        else
+        {
+            _db.Entry(org).State = EntityState.Detached; // "let go"
+        }
+
         await _db.SaveChangesAsync(ct);
         return policy;
     }
