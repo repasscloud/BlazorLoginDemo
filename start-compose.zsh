@@ -195,9 +195,9 @@ echo
 echo "🚀 8) Start Api app"
 docker compose up -d api
 
-# ── 🌱 9) Seed the DB with additional data ──────────────────────────────────
+# ── 🌱 9) Seed the DB with airport data ──────────────────────────────────
 echo
-echo "🌱 9) Seed the DB with additional data"
+echo "🌱 9) Seed the DB with airport data"
 pwsh -File .scripts/import-airports.ps1 -CsvPath .scripts/data/airports.csv -Batch 500
 
 # ── 📤 10) Commit & push version bump ──────────────────────────────────────────
