@@ -117,6 +117,7 @@ public static class ServiceCollectionExtensions
 
         // --- infra ---
         services.AddHttpClient();
+        services.AddMemoryCache(); // <-- needed for IMemoryCache
         services.AddSingleton(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         // --- fx http client ---
