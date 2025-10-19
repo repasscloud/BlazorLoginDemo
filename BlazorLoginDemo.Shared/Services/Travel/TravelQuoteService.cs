@@ -253,6 +253,63 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         return affected;
     }
 
+    // ---------------- UI HELPERS ----------------
+    public async Task GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default)
+    {
+        var quote = await GetByIdAsync(travelQuoteId, ct)
+            ?? throw new InvalidOperationException($"TravelQuote '{travelQuoteId}' not found.");
+
+        // Placeholder: actual implementation would generate UI options based on quote details
+
+        // Retrieve TravelPolicy associated with the quote
+        TravelPolicy? travelPolicy = null;
+
+        var policyType = quote.PolicyType;
+        switch (policyType)
+        {
+            case TravelQuotePolicyType.OrgDefault:
+            case TravelQuotePolicyType.UserDefined:
+                travelPolicy = await _db.TravelPolicies
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
+                break;
+
+            case TravelQuotePolicyType.Ephemeral:
+                travelPolicy = await _db.EphemeralTravelPolicies
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
+                break;
+
+            default:
+                await _log.WarningAsync(
+                    evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_UNKNOWN_POLICY_TYPE",
+                    cat: SysLogCatType.Workflow,
+                    act: SysLogActionType.Validate,
+                    message: $"Unknown TravelQuotePolicyType '{policyType}' for TravelQuote '{travelQuoteId}'",
+                    ent: nameof(TravelQuote),
+                    entId: travelQuoteId,
+                    note: "unknown_policy_type");
+                break;
+        }
+
+
+        // await _db.TravelPolicies
+        //     .AsNoTracking()
+        //     .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
+
+        // get valid airport codes (if any)
+
+
+        await _log.InformationAsync(
+            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+            cat: SysLogCatType.App,
+            act: SysLogActionType.Read,
+            message: $"Generated flight search UI options for TravelQuote '{travelQuoteId}'",
+            ent: nameof(TravelQuote),
+            entId: travelQuoteId);  
+    }
+
+    // ---------------- PRIVATE FUNCTIONS ----------------
     private async Task ValidateRootsAsync(string orgId, string tmcId, string userId, CancellationToken ct)
     {
         if (!await _orgSvc.ExistsAsync(orgId, ct)) throw new InvalidOperationException($"Organization '{orgId}' not found.");

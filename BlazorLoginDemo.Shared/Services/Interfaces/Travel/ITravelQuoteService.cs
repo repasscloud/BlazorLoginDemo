@@ -32,4 +32,7 @@ public interface ITravelQuoteService
     // HELPERS
     bool TryParseQuoteType(string value, out TravelQuoteType type);
     Task<int> ExpireOldQuotesAsync(CancellationToken ct = default);
+
+    // UI HELPERS
+    Task GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default);
 }
