@@ -7,6 +7,7 @@
 @using System.Globalization
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
+@using BlazorLoginDemo.Shared.Models.Search
 
 @inject NavigationManager Nav
 
@@ -451,8 +452,8 @@
         }
     }
 
-    private List<AirportItem> FilteredOrigins { get; set; } = new List<AirportItem>();
-    private List<AirportItem> FilteredDestinations { get; set; } = new List<AirportItem>();
+    private List<BookingAirportItem> FilteredOrigins { get; set; } = new List<BookingAirportItem>();
+    private List<BookingAirportItem> FilteredDestinations { get; set; } = new List<BookingAirportItem>();
 
     // ===== Lifecycle =====
     protected override async Task OnParametersSetAsync()
@@ -611,7 +612,7 @@
         ShowDestinationList = DestinationFocused && q.Length >= 1 && FilteredDestinations.Count > 0;
     }
 
-    private static List<AirportItem> FilterAirports(List<AirportItem> all, string query)
+    private static List<BookingAirportItem> FilterAirports(List<BookingAirportItem> all, string query)
     {
         if (string.IsNullOrWhiteSpace(query)) return all.Take(25).ToList();
         query = query.ToUpperInvariant();
@@ -623,14 +624,14 @@
             .ToList();
     }
 
-    private void PickOrigin(AirportItem a)
+    private void PickOrigin(BookingAirportItem a)
     {
         Vm.Origin = a.Code;
         OriginQuery = $"{a.Code} — {a.Name}";
         ShowOriginList = false;
     }
 
-    private void PickDestination(AirportItem a)
+    private void PickDestination(BookingAirportItem a)
     {
         Vm.Destination = a.Code;
         DestinationQuery = $"{a.Code} — {a.Name}";
@@ -796,11 +797,11 @@
     }
 
     // ===== Backing indexes for airports =====
-    private List<AirportItem> _originIndex = new List<AirportItem>();
-    private List<AirportItem> _destIndex = new List<AirportItem>();
+    private List<BookingAirportItem> _originIndex = new List<BookingAirportItem>();
+    private List<BookingAirportItem> _destIndex = new List<BookingAirportItem>();
 
-    private static AirportItem FormatAirport(Airport a) =>
-        new AirportItem(a.Code,
+    private static BookingAirportItem FormatAirport(BookingAirport a) =>
+        new BookingAirportItem(a.Code,
             a.Name,
             a.City,
             a.Country,
@@ -838,21 +839,21 @@
         public List<Alliance> Alliances { get; set; } = new List<Alliance>();   // reward programs
     }
 
-    private sealed record Airport(string Code, string Name, string City, string Country);
+    //Bprivate sealed record Airport(string Code, string Name, string City, string Country);
 
-    private sealed record Airline(string Code, string Name);
+    //private sealed record Airline(string Code, string Name);
 
-    private sealed record AirportItem(string Code, string Name, string City, string Country, string NameFormatted);
+    //private sealed record AirportItem(string Code, string Name, string City, string Country, string NameFormatted);
 
     private sealed class PageConfig
     {
         public string TenantName { get; init; } = "—";
         public string PolicyName { get; init; } = "—";
 
-        public List<Airport> EnabledOrigins { get; init; } = new List<Airport>();
-        public List<Airport> EnabledDestinations { get; init; } = new List<Airport>();
+        public List<BookingAirport> EnabledOrigins { get; init; } = new List<BookingAirport>();
+        public List<BookingAirport> EnabledDestinations { get; init; } = new List<BookingAirport>();
 
-        public List<Airline> AvailableAirlines { get; init; } = new List<Airline>();
+        public List<BookingAirline> AvailableAirlines { get; init; } = new List<BookingAirline>();
         public List<string> PreferredAirlines { get; init; } = new List<string>();
 
         public CabinClass MaxCabin { get; init; } = CabinClass.First;
@@ -940,7 +941,7 @@
     }
 
     // ===== Dummy data =====
-    private static List<Airport> DummyAirports() => new()
+    private static List<BookingAirport> DummyAirports() => new()
     {
         new("SYD","Sydney Kingsford Smith","Sydney","AU"),
         new("MEL","Melbourne Tullamarine","Melbourne","AU"),
