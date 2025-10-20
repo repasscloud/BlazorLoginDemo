@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
-using NanoidDotNet;
 
 namespace BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
 
