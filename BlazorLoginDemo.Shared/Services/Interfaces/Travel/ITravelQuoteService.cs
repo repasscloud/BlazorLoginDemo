@@ -1,5 +1,6 @@
 // Services/Interfaces/Travel/ITravelQuoteService.cs
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
+using BlazorLoginDemo.Shared.Models.Search;
 
 namespace BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 
@@ -34,5 +35,5 @@ public interface ITravelQuoteService
     Task<int> ExpireOldQuotesAsync(CancellationToken ct = default);
 
     // UI HELPERS
-    Task GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default);
+    Task<FlightSearchPageConfig> GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default);
 }
