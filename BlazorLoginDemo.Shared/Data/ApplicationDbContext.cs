@@ -505,8 +505,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.Iata);
             e.HasIndex(x => x.Icao);
 
-            e.Property(x => x.Iata).HasMaxLength(2);          // IATA = 2 chars
-            e.Property(x => x.Icao).HasMaxLength(3);          // ICAO = 3 chars
+            e.Property(x => x.Iata).HasMaxLength(2);  // IATA = 2 chars
+            e.Property(x => x.Icao).HasMaxLength(3);  // ICAO = 3 chars
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
             e.Property(x => x.Alias).HasMaxLength(200);
             e.Property(x => x.CallSign).HasMaxLength(200);
