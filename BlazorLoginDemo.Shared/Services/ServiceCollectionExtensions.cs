@@ -2,6 +2,7 @@ using System.Text.Json;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.Kernel.FX;
+using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Services.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
@@ -20,6 +21,7 @@ using BlazorLoginDemo.Shared.Services.Travel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace BlazorLoginDemo.Shared.Services;
 
@@ -136,6 +138,25 @@ public static class ServiceCollectionExtensions
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
+
+        // --- airline service ---
+        services.AddOptions<AirlineIngestionOptions>()
+            .Bind(config.GetSection(AirlineIngestionOptions.SectionName))   // "AirlineIngestion"
+            .Validate(o =>
+                Uri.TryCreate(o.SourceUrl, UriKind.Absolute, out var u) &&
+                (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps),
+                "SourceUrl must be absolute http/https")
+            .Validate(o => o.HttpTimeoutSeconds is > 0 and <= 300, "HttpTimeoutSeconds must be 1-300")
+            .ValidateOnStart();
+
+        services.AddHttpClient("airlines")
+            .ConfigureHttpClient((sp, c) =>
+            {
+                var o = sp.GetRequiredService<IOptions<AirlineIngestionOptions>>().Value;
+                c.Timeout = TimeSpan.FromSeconds(o.HttpTimeoutSeconds);
+            });
+
+        services.AddScoped<IAirlineService, AirlineService>();
 
         // --- shared services ---
         services.AddScoped<ILoggerService, LoggerService>();
