@@ -339,7 +339,7 @@
             </div>
 
             <!-- Footer actions -->
-            <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
                 <div class="text-muted small">
                     @if (!IsFormValid)
                     {
@@ -459,7 +459,7 @@
     protected override async Task OnParametersSetAsync()
     {
         // Route param wins, else fall back to ?tq=
-        var id = !string.IsNullOrWhiteSpace(TravelQuoteId) ? TravelQuoteId : tq;
+        string? id = !string.IsNullOrWhiteSpace(TravelQuoteId) ? TravelQuoteId : tq;
 
         // Select real vs dummy data source
         _service = string.IsNullOrWhiteSpace(id)
@@ -720,9 +720,9 @@
 
     private static string AllianceIconUrl(Alliance a) => a switch
     {
-        Alliance.Oneworld     => "https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_alliance/oneworld.svg",
-        Alliance.StarAlliance => "https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_alliance/star_alliance_logo_cropped.svg",
-        Alliance.SkyTeam      => "https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_alliance/skyteam.svg",
+        Alliance.Oneworld     => "/img/airline_alliance/oneworld.svg",
+        Alliance.StarAlliance => "/img/airline_alliance/star_alliance_logo_cropped.svg",
+        Alliance.SkyTeam      => "/img/airline_alliance/skyteam.svg",
         _ => ""
     };
 
