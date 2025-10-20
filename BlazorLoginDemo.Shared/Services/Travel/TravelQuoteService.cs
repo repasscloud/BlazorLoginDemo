@@ -275,9 +275,22 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 break;
 
             case TravelQuotePolicyType.Ephemeral:
-                travelPolicy = await _db.EphemeralTravelPolicies
+                var ephemeralPolicy = await _db.EphemeralTravelPolicies
                     .AsNoTracking()
                     .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
+
+                // Convert EphemeralTravelPolicy to TravelPolicy since they have the same structure
+                if (ephemeralPolicy != null)
+                {
+                    travelPolicy = ConvertEphemeralToTravelPolicy(ephemeralPolicy);
+                    await _log.InformationAsync(
+                        evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_EPHEMERAL_CONVERTED",
+                        cat: SysLogCatType.Workflow,
+                        act: SysLogActionType.Step,
+                        message: $"Converted EphemeralTravelPolicy '{ephemeralPolicy.Id}' to TravelPolicy for TravelQuote '{travelQuoteId}'",
+                        ent: nameof(TravelQuote),
+                        entId: travelQuoteId);
+                }
                 break;
 
             default:
@@ -291,6 +304,19 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     note: "unknown_policy_type");
                 break;
         }
+
+        // we have the travel policy now, so count the users to be processed
+        var adults = quote.Travellers.Count;
+
+        // earliest departing date
+        DateTime earliestDeparture = DateTime.UtcNow.AddDays(0); // default to 0 days from now
+        if (travelPolicy?.DefaultCalendarDaysInAdvanceForFlightBooking is int daysInAdvance && daysInAdvance > 0)
+        {
+            earliestDeparture = DateTime.UtcNow.AddDays(daysInAdvance);
+        }
+
+        // earliest flight preference time
+        
 
 
         // await _db.TravelPolicies
@@ -378,7 +404,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
         // foreach (var uid in dto.TravellerUserIds.Distinct(StringComparer.Ordinal))
         //     q.Travellers.Add(new TravelQuoteUser { UserId = uid });
-        
+
         // De-dupe travellers, fetch policy IDs, exclude users with no policy.
         // Keep integrity lists for auditing.
         var policyIdsForIntegrity = new List<string?>();  // includes nulls
@@ -492,7 +518,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             // 1) EffectiveFromUtc null OR now >= EffectiveFromUtc
             // 2) ExpiresOnUtc null OR now <= ExpiresOnUtc
             bool effectiveOk = !eff.HasValue || nowUtc >= eff.Value;
-            bool expiresOk   = !exp.HasValue || nowUtc <= exp.Value;
+            bool expiresOk = !exp.HasValue || nowUtc <= exp.Value;
 
             if (effectiveOk && expiresOk)
             {
@@ -547,7 +573,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 ? TravelQuotePolicyType.OrgDefault
                 : TravelQuotePolicyType.UserDefined;
         }
-            
+
         else if (pL.Count > 1)
         {
             EphemeralTravelPolicy eTravelPolicy = new()
@@ -579,5 +605,125 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         }
 
         return q;
+    }
+    
+    private TravelPolicy ConvertEphemeralToTravelPolicy(EphemeralTravelPolicy ephemeral)
+    {
+        return new TravelPolicy
+        {
+            Id = ephemeral.Id,
+            PolicyName = ephemeral.PolicyName,
+            OrganizationUnifiedId = ephemeral.OrganizationUnifiedId,
+
+            // Financial
+            DefaultCurrencyCode = ephemeral.DefaultCurrencyCode,
+            MaxFlightPrice = ephemeral.MaxFlightPrice,
+
+            // Effective window
+            EffectiveFromUtc = ephemeral.EffectiveFromUtc,
+            ExpiresOnUtc = ephemeral.ExpiresOnUtc,
+
+            // Auditing
+            CreatedAtUtc = ephemeral.CreatedAtUtc,
+            LastUpdatedUtc = ephemeral.LastUpdatedUtc,
+            // CreatedByUserId exists only on EphemeralTravelPolicy
+
+            // Flight
+            DefaultFlightSeating = ephemeral.DefaultFlightSeating,
+            MaxFlightSeating = ephemeral.MaxFlightSeating,
+            IncludedAirlineCodes = ephemeral.IncludedAirlineCodes?.ToArray() ?? Array.Empty<string>(),
+            ExcludedAirlineCodes = ephemeral.ExcludedAirlineCodes?.ToArray() ?? Array.Empty<string>(),
+            CabinClassCoverage = ephemeral.CabinClassCoverage,
+            NonStopFlight = ephemeral.NonStopFlight,
+
+            // Accommodation
+            MaxHotelNightlyRate = ephemeral.MaxHotelNightlyRate,
+            DefaultHotelRoomType = ephemeral.DefaultHotelRoomType,
+            MaxHotelRoomType = ephemeral.MaxHotelRoomType,
+            IncludedHotelChains = ephemeral.IncludedHotelChains?.ToArray() ?? Array.Empty<string>(),
+            ExcludedHotelChains = ephemeral.ExcludedHotelChains?.ToArray() ?? Array.Empty<string>(),
+            HotelBookingTimeAvailableFrom = ephemeral.HotelBookingTimeAvailableFrom,
+            HotelBookingTimeAvailableTo = ephemeral.HotelBookingTimeAvailableTo,
+            EnableSaturdayHotelBookings = ephemeral.EnableSaturdayHotelBookings,
+            EnableSundayHotelBookings = ephemeral.EnableSundayHotelBookings,
+
+            // Taxi / Ride-hail
+            MaxTaxiFarePerRide = ephemeral.MaxTaxiFarePerRide,
+            IncludedTaxiVendors = ephemeral.IncludedTaxiVendors?.ToArray() ?? Array.Empty<string>(),
+            ExcludedTaxiVendors = ephemeral.ExcludedTaxiVendors?.ToArray() ?? Array.Empty<string>(),
+            MaxTaxiSurgeMultiplier = ephemeral.MaxTaxiSurgeMultiplier,
+
+            // Train
+            DefaultTrainClass = ephemeral.DefaultTrainClass,
+            MaxTrainClass = ephemeral.MaxTrainClass,
+            MaxTrainPrice = ephemeral.MaxTrainPrice,
+            IncludedRailOperators = ephemeral.IncludedRailOperators?.ToArray() ?? Array.Empty<string>(),
+            ExcludedRailOperators = ephemeral.ExcludedRailOperators?.ToArray() ?? Array.Empty<string>(),
+
+            // Hire car
+            MaxCarHireDailyRate = ephemeral.MaxCarHireDailyRate,
+            AllowedCarHireClasses = ephemeral.AllowedCarHireClasses?.ToArray() ?? Array.Empty<string>(),
+            IncludedCarHireVendors = ephemeral.IncludedCarHireVendors?.ToArray() ?? Array.Empty<string>(),
+            ExcludedCarHireVendors = ephemeral.ExcludedCarHireVendors?.ToArray() ?? Array.Empty<string>(),
+            RequireInclusiveInsurance = ephemeral.RequireInclusiveInsurance,
+            DefaultCarClass = ephemeral.DefaultCarClass,
+            MaxCarClass = ephemeral.MaxCarClass,
+            MaxCarDailyRate = ephemeral.MaxCarDailyRate,
+
+            // Bus / Coach
+            MaxBusFarePerTicket = ephemeral.MaxBusFarePerTicket,
+            IncludedBusOperators = ephemeral.IncludedBusOperators?.ToArray() ?? Array.Empty<string>(),
+            ExcludedBusOperators = ephemeral.ExcludedBusOperators?.ToArray() ?? Array.Empty<string>(),
+
+            // SIM / eSIM
+            MaxSimBundlePrice = ephemeral.MaxSimBundlePrice,
+            MinSimDataGb = ephemeral.MinSimDataGb,
+            MinSimValidityDays = ephemeral.MinSimValidityDays,
+            IncludedSimVendors = ephemeral.IncludedSimVendors?.ToArray() ?? Array.Empty<string>(),
+            ExcludedSimVendors = ephemeral.ExcludedSimVendors?.ToArray() ?? Array.Empty<string>(),
+
+            // Activities
+            MaxActivityPricePerPerson = ephemeral.MaxActivityPricePerPerson,
+            IncludedActivityProviders = ephemeral.IncludedActivityProviders?.ToArray() ?? Array.Empty<string>(),
+            ExcludedActivityProviders = ephemeral.ExcludedActivityProviders?.ToArray() ?? Array.Empty<string>(),
+            AllowHighRiskActivities = ephemeral.AllowHighRiskActivities,
+
+            // Booking time rules
+            FlightBookingTimeAvailableFrom = ephemeral.FlightBookingTimeAvailableFrom,
+            FlightBookingTimeAvailableTo = ephemeral.FlightBookingTimeAvailableTo,
+            EnableSaturdayFlightBookings = ephemeral.EnableSaturdayFlightBookings,
+            EnableSundayFlightBookings = ephemeral.EnableSundayFlightBookings,
+            DefaultCalendarDaysInAdvanceForFlightBooking = ephemeral.DefaultCalendarDaysInAdvanceForFlightBooking,
+
+            // Geography allow/deny
+            RegionIds = ephemeral.RegionIds?.ToArray() ?? Array.Empty<int>(),
+            ContinentIds = ephemeral.ContinentIds?.ToArray() ?? Array.Empty<int>(),
+            CountryIds = ephemeral.CountryIds?.ToArray() ?? Array.Empty<int>(),
+            DisabledCountryIds = ephemeral.DisabledCountryIds?.ToArray() ?? Array.Empty<int>(),
+
+            // Duration thresholds: cabin
+            MaxFlightSeatingAt6Hours = ephemeral.MaxFlightSeatingAt6Hours,
+            MaxFlightSeatingAt8Hours = ephemeral.MaxFlightSeatingAt8Hours,
+            MaxFlightSeatingAt10Hours = ephemeral.MaxFlightSeatingAt10Hours,
+            MaxFlightSeatingAt14Hours = ephemeral.MaxFlightSeatingAt14Hours,
+
+            // Duration thresholds: price
+            MaxFlightPriceAt6Hours = ephemeral.MaxFlightPriceAt6Hours,
+            MaxFlightPriceAt8Hours = ephemeral.MaxFlightPriceAt8Hours,
+            MaxFlightPriceAt10Hours = ephemeral.MaxFlightPriceAt10Hours,
+            MaxFlightPriceAt14Hours = ephemeral.MaxFlightPriceAt14Hours,
+
+            // Approvals
+            AutoApproveToPolicyLimit = ephemeral.AutoApproveToPolicyLimit,
+            RequireManagerApprovalToPolicyLimit = ephemeral.RequireManagerApprovalToPolicyLimit,
+            L1ApprovalRequired = ephemeral.L1ApprovalRequired,
+            L1ApprovalAmount = ephemeral.L1ApprovalAmount,
+            L2ApprovalRequired = ephemeral.L2ApprovalRequired,
+            L2ApprovalAmount = ephemeral.L2ApprovalAmount,
+            L3ApprovalRequired = ephemeral.L3ApprovalRequired,
+            L3ApprovalAmount = ephemeral.L3ApprovalAmount,
+            BillingContactApprovalToPolicyLimit = ephemeral.BillingContactApprovalToPolicyLimit,
+            BillingContactApprovalAbovePolicyLimit = ephemeral.BillingContactApprovalAbovePolicyLimit
+        };
     }
 }
