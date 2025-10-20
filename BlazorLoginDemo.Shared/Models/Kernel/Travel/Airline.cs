@@ -5,11 +5,15 @@ namespace BlazorLoginDemo.Shared.Models.Kernel.Travel;
 public sealed class Airline
 {
     public int Id { get; set; }
-    public string Iata { get; set; } = default!;  // eg QF
+    public string Iata { get; set; } = default!;  // e.g., QF
     public string Icao { get; set; } = string.Empty;  // optional
     public string Name { get; set; } = default!;
-    public AirlineAlliance Alliance { get; set; } = AirlineAlliance.Unknown;  // independant for non-alliance carrier
+    public string Alias { get; set; } = string.Empty;  // optional
+    public string CallSign { get; set; } = string.Empty;  // optional
+    public string Country { get; set; } = default!;
+    public AirlineAlliance Alliance { get; set; } = AirlineAlliance.Unknown;
     public int? FoundedYear { get; set; }
 
-    public ICollection<LoyaltyProgram> Programs { get; set; } = new List<LoyaltyProgram>();
+    // 0..1 back-link
+    public LoyaltyProgram? LoyaltyProgram { get; set; }
 }

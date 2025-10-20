@@ -501,24 +501,34 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("airlines", "ava");
             e.HasKey(x => x.Id);
-            e.HasIndex(x => x.Iata).IsUnique();
-            e.Property(x => x.Iata).HasMaxLength(3).IsRequired();
-            e.Property(x => x.Icao).HasMaxLength(4);
-            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
-        });
 
+            e.HasIndex(x => x.Iata);
+            e.HasIndex(x => x.Icao);
+
+            e.Property(x => x.Iata).HasMaxLength(2);          // IATA = 2 chars
+            e.Property(x => x.Icao).HasMaxLength(3);          // ICAO = 3 chars
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Alias).HasMaxLength(200);
+            e.Property(x => x.CallSign).HasMaxLength(200);
+            e.Property(x => x.Country).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Alliance).HasConversion<int>();
+            e.Property(x => x.FoundedYear);
+        });
+                
         builder.Entity<LoyaltyProgram>(e =>
         {
             e.ToTable("loyalty_programs", "ava");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Code).IsUnique();
-            e.Property(x => x.Code).HasMaxLength(32).IsRequired();
-            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+            e.HasIndex(x => x.AirlineId).IsUnique(); // 1:0..1
+            e.Property(x => x.Code).HasMaxLength(40).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Alliance).HasConversion<int>();
 
             e.HasOne(x => x.Airline)
-                .WithMany(a => a.Programs)
-                .HasForeignKey(x => x.AirlineId)
-                .OnDelete(DeleteBehavior.Restrict);
+             .WithOne(a => a.LoyaltyProgram)
+             .HasForeignKey<LoyaltyProgram>(x => x.AirlineId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Rehome AvaUserLoyaltyAccount to ApplicationUser (shadow FK) and ignore legacy nav
