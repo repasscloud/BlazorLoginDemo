@@ -79,6 +79,11 @@
                                 <span class="bi bi-person-add-nav-menu" aria-hidden="true"></span> New
                             </NavLink>
                         </div>
+                        <div class="nav-subitem">
+                            <NavLink class="nav-link" href="/platform/users/setpassword" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-person-lock-nav-menu" aria-hidden="true"></span> Set Password
+                            </NavLink>
+                        </div>
                     </div>
                 </div>
 
@@ -122,7 +127,7 @@
                     </button>
 
                     <div class="nav-submenu @(platformFinanceOpen ? "show" : null)">
-                        <!-- Finance : Create -->
+                        <!-- Finance : New Discount -->
                         <div class="nav-subitem">
                             <NavLink class="nav-link" href="/platform/finance/discounts/new" Match="NavLinkMatch.Prefix">
                                 <span class="bi bi-piggy-bank-nav-menu" aria-hidden="true"></span> Discounts
@@ -131,6 +136,30 @@
                     </div>
                 </div>
 
+                <!-- Sales -->
+                <div class="nav-item px-3">
+                    <button type="button"
+                            class="nav-link d-flex justify-content-between align-items-center w-100"
+                            @onclick="TogglePlatformSalesGroup">
+                        <span class="d-inline-flex align-items-center">
+                            <span class="bi bi-graph-up-arrow-nav-menu" aria-hidden="true"></span>
+                            <span class="ms-1">Sales</span>
+                        </span>
+                        <span class="caret @(platformSalesOpen ? "open" : null)" aria-hidden="true">▸</span>
+                    </button>
+
+                    <div class="nav-submenu @(platformFinanceOpen ? "show" : null)">
+                        <!-- Finance : New Discount -->
+                        <div class="nav-subitem">
+                            <NavLink class="nav-link" href="/platform/finance/discounts/new" Match="NavLinkMatch.Prefix">
+                                <span class="bi bi-piggy-bank-nav-menu" aria-hidden="true"></span> Discounts
+                            </NavLink>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Logout -->
                 <div class="nav-item px-3">
                     <form method="post" action="/auth/logout" class="d-inline">
                         <AntiforgeryToken />
@@ -414,6 +443,9 @@
 
     private void TogglePlatformFinanceGroup() => platformFinanceOpen = !platformFinanceOpen;
     private bool platformFinanceOpen;
+
+    private void TogglePlatformSalesGroup() => platformSalesOpen = !platformSalesOpen;
+    private bool platformSalesOpen;
 
     
     private bool adminClientsOpen;
