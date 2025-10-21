@@ -168,6 +168,7 @@ public static class ServiceCollectionExtensions
         // --- kernel services ---
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
         services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
+        services.AddScoped<ITravelPolicyService, TravelPolicyService>();
         services.AddScoped<ITravelQuoteService, TravelQuoteService>();
         services.AddScoped<IErrorCodeService, ErrorCodeService>();
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
