@@ -130,7 +130,7 @@
                         <!-- Finance : New Discount -->
                         <div class="nav-subitem">
                             <NavLink class="nav-link" href="/platform/finance/discounts/new" Match="NavLinkMatch.Prefix">
-                                <span class="bi bi-piggy-bank-nav-menu" aria-hidden="true"></span> Discounts
+                                <span class="bi bi-piggy-bank-nav-menu" aria-hidden="true"></span> New Discount
                             </NavLink>
                         </div>
                     </div>
@@ -148,10 +148,10 @@
                         <span class="caret @(platformSalesOpen ? "open" : null)" aria-hidden="true">▸</span>
                     </button>
 
-                    <div class="nav-submenu @(platformFinanceOpen ? "show" : null)">
-                        <!-- Finance : New Discount -->
+                    <div class="nav-submenu @(platformSalesOpen ? "show" : null)">
+                        <!-- Sales : New Opportunity -->
                         <div class="nav-subitem">
-                            <NavLink class="nav-link" href="/platform/finance/discounts/new" Match="NavLinkMatch.Prefix">
+                            <NavLink class="nav-link" href="/platform/sales/discounts/view" Match="NavLinkMatch.Prefix">
                                 <span class="bi bi-piggy-bank-nav-menu" aria-hidden="true"></span> Discounts
                             </NavLink>
                         </div>
@@ -172,10 +172,7 @@
             </Authorized>
         </AuthorizeView>
 
-
-
 @*         
-
         <!-- Admin Users -->
         <div class="nav-item px-3">
             <!-- Toggle row (keeps the same visual style as your other nav-link rows) -->
