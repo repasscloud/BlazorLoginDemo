@@ -17,7 +17,7 @@ namespace BlazorLoginDemo.Shared.Models.Kernel.SysVar
         // Level / codes
         [Required] public SysLogLevel Level { get; set; } = SysLogLevel.Information;
 
-        [Required, MaxLength(40)]
+        [Required, MaxLength(80)]
         public string Evt { get; set; } = string.Empty;            // e.g. API_REQ_END, UI_ACTION
 
         [Required] public SysLogCatType Cat { get; set; }          // category enum
@@ -25,7 +25,7 @@ namespace BlazorLoginDemo.Shared.Models.Kernel.SysVar
         [Required] public SysLogOutcome Out { get; set; } = SysLogOutcome.OK;
 
         // Domain target
-        [MaxLength(40)]  public string? Ent { get; set; }           // e.g. Discount, Quote
+        [MaxLength(80)]  public string? Ent { get; set; }           // e.g. Discount, Quote
         [MaxLength(80)]  public string? EntId { get; set; }
 
         // Correlation / tenancy
