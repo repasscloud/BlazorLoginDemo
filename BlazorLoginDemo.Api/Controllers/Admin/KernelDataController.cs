@@ -67,7 +67,7 @@ public sealed class KernelDataController : ControllerBase
         [FromQuery(Name = "hasIata")] bool? hasIata,                     // defaults to true
         [FromQuery(Name = "hasMunicipality")] bool? hasMunicipality,     // defaults to true
         [FromQuery] int skip = 0,
-        [FromQuery] int take = 99999,
+        [FromQuery] int take = 50,
         CancellationToken ct = default)
     {
         if (types is { Count: 0 }) types = null;
