@@ -433,7 +433,6 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 Name: airline.Name ?? "Unknown Airline"));
         }
 
-
         // cabin class
         var map = new Dictionary<string, CabinClass>(StringComparer.OrdinalIgnoreCase)
         {
