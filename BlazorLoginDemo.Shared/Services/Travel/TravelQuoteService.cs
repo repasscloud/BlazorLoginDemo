@@ -274,15 +274,11 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         var quote = await GetByIdAsync(travelQuoteId, ct)
             ?? throw new InvalidOperationException($"TravelQuote '{travelQuoteId}' not found.");
 
-        // Placeholder: actual implementation would generate UI options based on quote details
-
         var orgName = quote.Organization?.Name ?? "Unknown Org";
 
-        // Retrieve TravelPolicy associated with the quote
+        // Find policy
         TravelPolicy? travelPolicy = null;
-
-        var policyType = quote.PolicyType;
-        switch (policyType)
+        switch (quote.PolicyType)
         {
             case TravelQuotePolicyType.OrgDefault:
             case TravelQuotePolicyType.UserDefined:
@@ -292,19 +288,18 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 break;
 
             case TravelQuotePolicyType.Ephemeral:
-                var ephemeralPolicy = await _db.EphemeralTravelPolicies
+                var eph = await _db.EphemeralTravelPolicies
                     .AsNoTracking()
                     .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
 
-                // Convert EphemeralTravelPolicy to TravelPolicy since they have the same structure
-                if (ephemeralPolicy != null)
+                if (eph is not null)
                 {
-                    travelPolicy = ConvertEphemeralToTravelPolicy(ephemeralPolicy);
+                    travelPolicy = ConvertEphemeralToTravelPolicy(eph);
                     await _log.InformationAsync(
                         evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_EPHEMERAL_CONVERTED",
                         cat: SysLogCatType.Workflow,
                         act: SysLogActionType.Step,
-                        message: $"Converted EphemeralTravelPolicy '{ephemeralPolicy.Id}' to TravelPolicy for TravelQuote '{travelQuoteId}'",
+                        message: $"Converted EphemeralTravelPolicy '{eph.Id}' to TravelPolicy for TravelQuote '{travelQuoteId}'",
                         ent: nameof(TravelQuote),
                         entId: travelQuoteId);
                 }
@@ -315,50 +310,40 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_UNKNOWN_POLICY_TYPE",
                     cat: SysLogCatType.Workflow,
                     act: SysLogActionType.Validate,
-                    message: $"Unknown TravelQuotePolicyType '{policyType}' for TravelQuote '{travelQuoteId}'",
+                    message: $"Unknown TravelQuotePolicyType '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
                     ent: nameof(TravelQuote),
                     entId: travelQuoteId,
                     note: "unknown_policy_type");
                 break;
         }
 
-        // policy name
         var policyName = travelPolicy?.PolicyName ?? "Unknown Policy";
-
-        // we have the travel policy now, so count the users to be processed
         var adults = quote.Travellers.Count;
 
-        // earliest departing date
-        DateTime earliestDepartureDate = DateTime.UtcNow.AddDays(0); // default to 0 days from now
-        if (travelPolicy?.DefaultCalendarDaysInAdvanceForFlightBooking is int daysInAdvance && daysInAdvance > 0)
-        {
-            earliestDepartureDate = DateTime.UtcNow.AddDays(daysInAdvance);
-        }
+        // Min departure date per policy
+        DateTime earliestDepartureDate = DateTime.UtcNow;
+        if (travelPolicy?.DefaultCalendarDaysInAdvanceForFlightBooking is int d && d > 0)
+            earliestDepartureDate = DateTime.UtcNow.AddDays(d);
 
-        // earliest flight preference time
+        // Fixed time window
         string? earliestDepartureTime = null;
         string? latestDepartureTime = null;
-        bool _hasFixedTimes = false;
+        bool hasFixedTimes = false;
 
         if (!string.IsNullOrWhiteSpace(travelPolicy?.FlightBookingTimeAvailableFrom) &&
-            DateTime.TryParseExact(travelPolicy?.FlightBookingTimeAvailableFrom, "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t1))
+            DateTime.TryParseExact(travelPolicy.FlightBookingTimeAvailableFrom, "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t1))
         {
             earliestDepartureTime = t1.ToString("HH:mm", CultureInfo.InvariantCulture);
-            _hasFixedTimes = true;
+            hasFixedTimes = true;
         }
         if (!string.IsNullOrWhiteSpace(travelPolicy?.FlightBookingTimeAvailableTo) &&
-            DateTime.TryParseExact(travelPolicy?.FlightBookingTimeAvailableTo, "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t2))
+            DateTime.TryParseExact(travelPolicy.FlightBookingTimeAvailableTo, "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t2))
         {
             latestDepartureTime = t2.ToString("HH:mm", CultureInfo.InvariantCulture);
-            _hasFixedTimes = true;
+            hasFixedTimes = true;
         }
 
-
-        // await _db.TravelPolicies
-        //     .AsNoTracking()
-        //     .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
-
-        // find allowed countries, this is used for airport codes and airlines (virtual)
+        // Allowed countries → airport list
         var allowedCountries = travelPolicy is not null
             ? await _travelPolicySvc.ResolveAllowedCountriesAsync(travelPolicy.Id, ct)
             : Array.Empty<Country>();
@@ -375,25 +360,23 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 note: "no_allowed_countries");
         }
 
-        // create to/from lists based on allowed countries
-        List<Iso3166_Alpha2> allowedIso3166_Alpha2 =
+        var allowedIso3166_Alpha2 =
             allowedCountries
                 .Select(c => c.IsoCode)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => Enum.TryParse<Iso3166_Alpha2>(s.Trim(), ignoreCase: true, out var e) ? e : (Iso3166_Alpha2?)null)
+                .Select(s => Enum.TryParse<Iso3166_Alpha2>(s!.Trim(), true, out var e) ? e : (Iso3166_Alpha2?)null)
                 .Where(e => e.HasValue)
                 .Select(e => e!.Value)
                 .Distinct()
                 .ToList();
 
-        List<BookingAirport> originsDestinations =
+        var originsDestinations =
             (await _airportInfoSvc.SearchMultiAsync(
                 types: new List<AirportType> { AirportType.MediumAirport, AirportType.LargeAirport },
                 countries: allowedIso3166_Alpha2,
                 hasIata: true,
                 hasMunicipality: true,
-                ct: ct
-            ))
+                ct: ct))
             .Select(a => new BookingAirport(
                 Code: a.IataCode!,
                 Name: a.Name,
@@ -401,8 +384,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 Country: a.IsoCountry.ToString()))
             .ToList();
 
-        // allowed airlines (virtual)
-        // 1) Pick codes once with normalization
+        // Airlines
         string[] excludedAirlines = NormalizeAirlineCodes(travelPolicy?.ExcludedAirlineCodes);
         string[] includedAirlines = NormalizeAirlineCodes(travelPolicy?.IncludedAirlineCodes);
 
@@ -412,12 +394,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 ? includedAirlines
                 : Array.Empty<string>();
 
-        // 2) Resolve to BookingAirline
         var bookingAirlines = new List<BookingAirline>(availableAirlines.Length);
-
         foreach (var code in availableAirlines)
         {
-            // Try IATA if 2 chars, else ICAO if 3 chars
             Airline? airline = code.Length == 2
                 ? await _airlineSvc.GetByIataAsync(code, includeProgram: false, ct)
                 : await _airlineSvc.GetByIcaoAsync(code, includeProgram: false, ct);
@@ -433,53 +412,14 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 Name: airline.Name ?? "Unknown Airline"));
         }
 
-        // cabin class
-        var map = new Dictionary<string, CabinClass>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["ECONOMY"] = CabinClass.Economy,
-            ["PREMIUM_ECONOMY"] = CabinClass.PremiumEconomy,
-            ["BUSINESS"] = CabinClass.Business,
-            ["FIRST"] = CabinClass.First
-        };
+        // Cabins: parse strings → enum; return enum values (integers on the wire)
+        var defaultCabin = TryParseCabin(travelPolicy?.DefaultFlightSeating, out var c1) ? c1 : CabinClass.Economy;
+        var maxCabin     = TryParseCabin(travelPolicy?.MaxFlightSeating,     out var c2) ? c2 : CabinClass.First;
 
-        CabinClass? defaultCabin = null;
-        string? defaultCabinLabel = null;
-        CabinClass? maxCabin = null;
-        string? maxCabinLabel = null;
+        // Coverage (kept if you need it later)
+        var coverageType = TryParseCoverage(travelPolicy?.CabinClassCoverage, out var cov) ? cov : (CoverageType?)null;
 
-        var cabinDefault = travelPolicy?.DefaultFlightSeating;
-        if (!string.IsNullOrWhiteSpace(cabinDefault) && map.TryGetValue(cabinDefault.Trim(), out var cab1))
-        {
-            defaultCabin = cab1;
-            defaultCabinLabel = CabinLabel(cab1);
-        }
-
-        var cabinMax = travelPolicy?.MaxFlightSeating;
-        if (!string.IsNullOrWhiteSpace(cabinMax) && map.TryGetValue(cabinMax.Trim(), out var cab2))
-        {
-            maxCabin = cab2;
-            maxCabinLabel = CabinLabel(cab2);
-        }
-
-        // coverage type
-        var coverageMap = new Dictionary<string, CoverageType>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["MOST_SEGMENTS"] = CoverageType.MostSegments,
-            ["AT_LEAST_ONE_SEGMENT"] = CoverageType.AtLeastOneSegment,
-            ["ALL_SEGMENTS"] = CoverageType.AllSegments
-        };
-
-        CoverageType? coverageType = null;
-        string? coverageTypeLabel = null;
-        var coverageStr = travelPolicy?.CabinClassCoverage;
-        if (!string.IsNullOrWhiteSpace(coverageStr) && coverageMap.TryGetValue(coverageStr.Trim(), out var cov))
-        {
-            coverageType = cov;
-            coverageTypeLabel = coverageStr.Trim();
-        };
-
-        // create the UI options object
-        FlightSearchPageConfig config = new FlightSearchPageConfig
+        var config = new FlightSearchPageConfig
         {
             TenantName = orgName,
             PolicyName = policyName,
@@ -489,16 +429,17 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             EnabledDestinations = originsDestinations,
             AvailableAirlines = bookingAirlines,
             PreferredAirlines = includedAirlines.ToList(),
-            DefaultCabin = defaultCabin ?? CabinClass.Economy,
-            MaxCabin = maxCabin ?? CabinClass.First,
+            DefaultCabin = defaultCabin,
+            MaxCabin = maxCabin,
             DaysInAdvanceBookingRequired = travelPolicy?.DefaultCalendarDaysInAdvanceForFlightBooking,
-            HasFixedTimes = _hasFixedTimes,
+            HasFixedTimes = hasFixedTimes,
             FixedDepartEarliest = earliestDepartureTime ?? string.Empty,
             FixedDepartLatest = latestDepartureTime ?? string.Empty,
             SeedDepartDate = earliestDepartureDate,
             Adults = adults
+            // If you later add coverage to the DTO, set it here from coverageType.
         };
-        
+
         await _log.InformationAsync(
             evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
             cat: SysLogCatType.App,
@@ -925,4 +866,36 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         CoverageType.AtLeastOneSegment => "At Least One Segment",
         _ => c.ToString()
     };
+
+    // Accepts "ECONOMY", "economy", "PREMIUM_ECONOMY", "PremiumEconomy", with spaces/underscores ignored.
+    private static bool TryParseCabin(string? s, out CabinClass cabin)
+    {
+        cabin = CabinClass.Economy;
+        if (string.IsNullOrWhiteSpace(s)) return false;
+
+        var key = s.Trim().ToUpperInvariant().Replace("_", "").Replace(" ", "");
+        return key switch
+        {
+            "ECONOMY"        => (cabin = CabinClass.Economy) is var _ && true,
+            "PREMIUMECONOMY" => (cabin = CabinClass.PremiumEconomy) is var _ && true,
+            "BUSINESS"       => (cabin = CabinClass.Business) is var _ && true,
+            "FIRST"          => (cabin = CabinClass.First) is var _ && true,
+            _ => false
+        };
+    }
+
+    private static bool TryParseCoverage(string? s, out CoverageType coverage)
+    {
+        coverage = CoverageType.MostSegments;
+        if (string.IsNullOrWhiteSpace(s)) return false;
+
+        var key = s.Trim().ToUpperInvariant().Replace(" ", "").Replace("-", "").Replace("_", "");
+        return key switch
+        {
+            "MOSTSEGMENTS"        => (coverage = CoverageType.MostSegments) is var _ && true,
+            "ATLEASTONESEGMENT"   => (coverage = CoverageType.AtLeastOneSegment) is var _ && true,
+            "ALLSEGMENTS"         => (coverage = CoverageType.AllSegments) is var _ && true,
+            _ => false
+        };
+    }
 }
