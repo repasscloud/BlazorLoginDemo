@@ -54,7 +54,7 @@ public sealed class KernelDataController : ControllerBase
         [FromQuery] AirportContinent? continent,
         [FromQuery] Iso3166_Alpha2? country,
         [FromQuery] int skip = 0,
-        [FromQuery] int take = 50,
+        [FromQuery] int take = 99999,
         CancellationToken ct = default)
         => Ok(await _airportInfoService.SearchAsync(q, type, continent, country, skip, take, ct));
 
