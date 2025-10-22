@@ -365,7 +365,7 @@ else
         if (string.IsNullOrEmpty(SelectedClientId) || SelectedUserIds.Count == 0)
             return;
 
-        var client = HttpClientFactory.CreateClient("AvaApi");
+        HttpClient? client = HttpClientFactory.CreateClient(name: "AvaApi");
 
         TravelQuoteDto payload = new TravelQuoteDto
         {
@@ -376,7 +376,7 @@ else
             TravellerUserIds = SelectedUserIds.ToList()
         };
 
-        using var response = await client.PostAsJsonAsync("api/v1/travel/quotes/from-dto", payload, JsonOpts);
+        using HttpResponseMessage? response = await client.PostAsJsonAsync("api/v1/travel/quotes/from-dto", payload, JsonOpts);
 
         // catch your controller's: return BadRequest(new { error });
         if (response.StatusCode == HttpStatusCode.BadRequest)
@@ -384,12 +384,12 @@ else
             // prefer ErrorEnvelope { Error } if you already have that type
             try
             {
-                var err = await response.Content.ReadFromJsonAsync<ErrorEnvelope>(JsonOpts);
+                ErrorEnvelope? err = await response.Content.ReadFromJsonAsync<ErrorEnvelope>(JsonOpts);
                 ErrorMessage = string.IsNullOrWhiteSpace(err?.Error) ? "Bad request." : err!.Error;
             }
             catch
             {
-                var raw = await response.Content.ReadAsStringAsync();
+                string? raw = await response.Content.ReadAsStringAsync();
                 ErrorMessage = string.IsNullOrWhiteSpace(raw) ? "Bad request." : raw;
             }
             return;
@@ -398,20 +398,20 @@ else
         // any other non-success → set a terse message and stop
         if (!response.IsSuccessStatusCode)
         {
-            var raw = await response.Content.ReadAsStringAsync();
+            string? raw = await response.Content.ReadAsStringAsync();
             ErrorMessage = $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}"
                         + (string.IsNullOrWhiteSpace(raw) ? "" : $": {raw}");
             return;
         }
 
-        var ok = await response.Content.ReadFromJsonAsync<IdEnvelope>(JsonOpts);
+        IdEnvelope? ok = await response.Content.ReadFromJsonAsync<IdEnvelope>(JsonOpts);
         if (string.IsNullOrWhiteSpace(ok?.Id))
         {
             ErrorMessage = "Missing ID.";
             return;
         }
 
-        var createdId = ok!.Id!;
-        Nav.NavigateTo($"/platform/pnr/create/{BookingTypeNormalized}/{createdId}", forceLoad: true);
+        string? createdId = ok!.Id!;
+        Nav.NavigateTo(uri: $"/platform/pnr/create/{BookingTypeNormalized}/{createdId}", forceLoad: true);
     }
 }

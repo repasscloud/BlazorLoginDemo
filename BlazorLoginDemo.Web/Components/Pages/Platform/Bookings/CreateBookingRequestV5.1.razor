@@ -1,15 +1,19 @@
-@page "/platform/bookings/create-v5.1"
-@page "/platform/bookings/create-v5.1/{TravelQuoteId?}"
+@page "/platform/pnr/create/{TravelQuoteId?}"
 @rendermode InteractiveServer
 
+@using BlazorLoginDemo.Shared.Models.Static.SysVar
+@using BlazorLoginDemo.Shared.Services.Interfaces.Kernel
 @using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
 @using System.Globalization
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using BlazorLoginDemo.Shared.Models.Search
+@using System.Text.Json
 
 @inject NavigationManager Nav
+@inject IHttpClientFactory HttpClientFactory
+@inject ILoggerService _log
 
 <!-- CreateBookingRequestV5 (unified style) -->
 
@@ -400,10 +404,10 @@
                         </dd>
 
                         <dt class="col-5">Airlines</dt>
-                        <dd class="col-7">@((Vm.Airlines.Count == 0) ? "Any" : string.Join(", ", Vm.Airlines))</dd>
+                        <dd class="col-7">@((Vm.Airlines.Count == 0) ? "Any" : string.Join(separator: ", ", Vm.Airlines))</dd>
 
                         <dt class="col-5">Alliances</dt>
-                        <dd class="col-7">@((Vm.Alliances.Count == 0) ? "None" : string.Join(", ", Vm.Alliances.Select(AllianceLabel)))</dd>
+                        <dd class="col-7">@((Vm.Alliances.Count == 0) ? "None" : string.Join(separator: ", ", Vm.Alliances.Select(AllianceLabel)))</dd>
                     </dl>
                 </div>
             </div>
@@ -419,11 +423,15 @@
     [SupplyParameterFromQuery] public string? tq { get; set; }
 
     // ===== View Model =====
-    private SearchVm Vm { get; set; } = new();
+    private FlightSearchPageConfig _cfg = default!;
+    private SearchVm Vm { get; set; } = new SearchVm();
 
     // ===== Page State =====
     private PageConfig Config { get; set; } = PageConfig.Empty();
-    private IConfigService _service = default!;
+    private IConfigService _configSvc = default!;
+    private CancellationTokenSource? _cts;
+    static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
+    private string? _error;
 
     // ===== Origin/Destination Dropdown State =====
     private bool ShowOriginList { get; set; }
@@ -461,12 +469,82 @@
         // Route param wins, else fall back to ?tq=
         string? id = !string.IsNullOrWhiteSpace(TravelQuoteId) ? TravelQuoteId : tq;
 
-        // Select real vs dummy data source
-        _service = string.IsNullOrWhiteSpace(id)
-            ? new DummyConfigService()
-            : new PlaceholderConfigService(); // replace with real implementation later
+        // Require an ID
+        if (string.IsNullOrWhiteSpace(id))
+            Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);
 
-        Config = await _service.LoadAsync(id ?? string.Empty);
+        // Cancel prior load if any
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        CancellationToken ct = _cts.Token;
+
+        // Create HttpClient for API calls
+        HttpClient? client = HttpClientFactory.CreateClient(name: "AvaApi");
+        string? url  = $"api/v1/travel/quotes/ui/flightsearchpageconfig/{Uri.EscapeDataString(id ?? string.Empty)}";
+
+        await _log.InformationAsync(
+            evt: "BOOKING_REQ_CONFIG_FETCH_START",
+            cat: SysLogCatType.Api,
+            act: SysLogActionType.Start,
+            message: "Fetching CreateBookingRequest page config",
+            ent: nameof(FlightSearchPageConfig),
+            entId: url,
+            note: "ingress:client");
+
+        try
+        {
+            FlightSearchPageConfig? result = await client.GetFromJsonAsync<FlightSearchPageConfig>(url, JsonOpts, ct);
+            if (result == null)
+            {
+                _error = "Configuration data is null";
+                Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);
+                return;
+            }
+            
+            _cfg = result;
+            _error = null;
+
+            await _log.InformationAsync(
+                evt: "BOOKING_REQ_CONFIG_FETCH_OK",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.End,
+                message: "Fetched CreateBookingRequest page config",
+                ent: nameof(FlightSearchPageConfig),
+                entId: url);
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Error loading configuration: {ex.Message}";
+
+            await _log.ErrorAsync(
+                evt: "BOOKING_REQ_CONFIG_FETCH_ERR",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Read,
+                ex: ex,
+                message: "HTTP error while fetching CreateBookingRequest page config",
+                ent: nameof(FlightSearchPageConfig),
+                entId: url,
+                note: "http_error");
+                
+            Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);
+        }
+        catch (TaskCanceledException)
+        {
+            await _log.WarningAsync(
+                evt: "BOOKING_REQ_CONFIG_FETCH_CANCEL",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Read,
+                message: "Config fetch cancelled",
+                ent: nameof(FlightSearchPageConfig),
+                entId: url,
+                note: "task_canceled");
+
+            // Ignore cancellations
+            Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);
+        }
+
+        // Load full config from service
+        Config = await _configSvc.LoadFSPConfigAsync(_cfg);
 
         // Initialize VM from config where required defaults exist
         InitializeVmFromConfig();
@@ -537,12 +615,12 @@
 
     private void AdjustAdults(int delta)
     {
-        Vm.Adults = Math.Clamp(Vm.Adults + delta, 1, 9);
+        Vm.Adults = Math.Clamp(Vm.Adults + delta, min: 1, max: 9);
     }
 
     private void AdjustChildren(int delta)
     {
-        Vm.Children = Math.Clamp(Vm.Children + delta, 0, 9);
+        Vm.Children = Math.Clamp(Vm.Children + delta, min: 0, max: 9);
     }
 
     // ===== Validation =====
@@ -600,7 +678,7 @@
 
     private void ApplyOriginFilter()
     {
-        var q = (OriginQuery ?? "").Trim();
+        string? q = (OriginQuery ?? "").Trim();
         FilteredOrigins = FilterAirports(_originIndex, q);
         ShowOriginList = OriginFocused && q.Length >= 1 && FilteredOrigins.Count > 0;
     }
@@ -620,7 +698,7 @@
             .Where(a => a.Code.Contains(query, StringComparison.OrdinalIgnoreCase)
                      || a.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
                      || a.Country.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .Take(25)
+            .Take(count: 25)
             .ToList();
     }
 
@@ -640,7 +718,7 @@
 
     private async void HideOriginListDeferred(FocusEventArgs _)
     {
-        await Task.Delay(120);
+        await Task.Delay(millisecondsDelay: 120);
         OriginFocused = false;
         ShowOriginList = false;
         StateHasChanged();
@@ -648,7 +726,7 @@
 
     private async void HideDestinationListDeferred(FocusEventArgs _)
     {
-        await Task.Delay(120);
+        await Task.Delay(millisecondsDelay: 120);
         DestinationFocused = false;
         ShowDestinationList = false;
         StateHasChanged();
@@ -727,7 +805,7 @@
     };
 
     private string FormatDate(DateTime? dt) =>
-        dt?.ToString("ddd, dd MMM yyyy", CultureInfo.InvariantCulture) ?? "-";
+        dt?.ToString(format: "ddd, dd MMM yyyy", CultureInfo.InvariantCulture) ?? "-";
 
     private string DisplayQuoteId => string.IsNullOrWhiteSpace(TravelQuoteId ?? tq) ? "(preview)" : (TravelQuoteId ?? tq)!;
 
@@ -789,11 +867,16 @@
             if (Vm.Trip == TripType.Return)
             {
                 // Ensure return not before depart
-                var baseMinReturn = Vm.DepartDate ?? MinDepartDate;
+                DateTime baseMinReturn = Vm.DepartDate ?? MinDepartDate;
                 Vm.ReturnDate = EnforceMin(Vm.ReturnDate, baseMinReturn);
             }
         }
 
+        // Seed adults count
+        if (Config.Adults > 0)
+        {
+            Vm.Adults = Config.Adults;
+        }
     }
 
     // ===== Backing indexes for airports =====
@@ -869,17 +952,56 @@
         public DateTime? SeedDepartDate { get; init; }
         public DateTime? SeedReturnDate { get; init; }
 
+        public int Adults { get; init; }
+
         public static PageConfig Empty() => new PageConfig();
     }
 
     // ===== Service abstraction =====
     private interface IConfigService
     {
-        Task<PageConfig> LoadAsync(string travelQuoteId);
+        //Task<PageConfig> LoadAsync(string travelQuoteId);
+        Task<PageConfig> LoadFSPConfigAsync(FlightSearchPageConfig _cfg);
     }
 
+    // Wire in FlightSearchPageConfig from API based on TravelQuoteId.
+    private sealed class TranslateFlightSearchPageConfigService : IConfigService
+    {
+        // private readonly FlightSearchPageConfig _cfg;
+
+        // public TranslateFlightSearchPageConfigService(FlightSearchPageConfig cfg)
+        // {
+        //     _cfg = cfg;
+        // }
+
+        public Task<PageConfig> LoadFSPConfigAsync(FlightSearchPageConfig _cfg)
+        {
+            PageConfig cfg = new PageConfig
+            {
+                TenantName = _cfg.TenantName,
+                PolicyName = _cfg.PolicyName,
+                EnabledOrigins = _cfg.EnabledOrigins,
+                EnabledDestinations = _cfg.EnabledDestinations,
+                AvailableAirlines = _cfg.AvailableAirlines,
+                PreferredAirlines = _cfg.PreferredAirlines,
+                MaxCabin = (CabinClass)_cfg.MaxCabin,
+                DaysInAdvanceBookingRequired = _cfg.DaysInAdvanceBookingRequired,
+                HasFixedTimes = _cfg.HasFixedTimes,
+                FixedDepartEarliest = _cfg.FixedDepartEarliest,
+                FixedDepartLatest = _cfg.FixedDepartLatest,
+                FixedReturnEarliest = _cfg.FixedReturnEarliest,
+                FixedReturnLatest = _cfg.FixedReturnLatest,
+                SeedDepartDate = _cfg.SeedDepartDate,
+                SeedReturnDate = _cfg.SeedReturnDate,
+                Adults = _cfg.Adults,
+            };
+            return Task.FromResult(cfg);
+        }
+    }
+
+
     // Placeholder to wire in your actual API-backed service later.
-    private sealed class PlaceholderConfigService : IConfigService
+    @* private sealed class PlaceholderConfigService : IConfigService
     {
         public Task<PageConfig> LoadAsync(string travelQuoteId)
         {
@@ -938,7 +1060,7 @@
             };
             return Task.FromResult(cfg);
         }
-    }
+    } *@
 
     // ===== Dummy data =====
     private static List<BookingAirport> DummyAirports() => new()

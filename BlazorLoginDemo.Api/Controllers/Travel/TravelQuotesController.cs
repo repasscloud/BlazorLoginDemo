@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
+using BlazorLoginDemo.Shared.Models.Search;
 
 namespace BlazorLoginDemo.Api.Controllers.Travel;
 
@@ -34,6 +35,13 @@ public sealed class TravelQuotesController : ControllerBase
     {
         var result = await _svc.SearchAsync(organizationId, createdByUserId, tmcAssignedId, type, state, ct);
         return Ok(result);
+    }
+
+    [HttpGet("ui/flightsearchpageconfig/{travelQuoteId}")]
+    public async Task<ActionResult<FlightSearchPageConfig>> GetFlightSearchPageConfig(string travelQuoteId, CancellationToken ct)
+    {
+        var config = await _svc.GenerateFlightSearchUIOptionsAsync(travelQuoteId, ct);
+        return config is null ? NotFound() : Ok(config);
     }
 
     // ---------- CREATE ----------
