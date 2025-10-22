@@ -11,6 +11,7 @@
 @using BlazorLoginDemo.Shared.Models.Search
 @using System.Text.Json
 @using System.Text.Json.Serialization
+@using BlazorLoginDemo.Shared.Services.Helpers
 
 @inject NavigationManager Nav
 @inject IHttpClientFactory HttpClientFactory
@@ -614,6 +615,24 @@ else
         ValidateDates();
         if (!IsFormValid) return;
 
+        SearchVm _vm = new SearchVm()
+        {
+            Origin = Vm.Origin,
+            Destination = Vm.Destination,
+            Trip = Vm.Trip,
+            DepartDate = (Vm.DepartDate).ToDateOnlyString(),
+            ReturnDate = (Vm.ReturnDate).ToDateOnlyString(),
+            Adults = Vm.Adults,
+            Children = Vm.Children,
+            Cabin = Vm.Cabin,
+            DepartEarliest = Vm.DepartEarliest,
+            DepartLatest = Vm.DepartLatest,
+            ReturnEarliest = Vm.ReturnEarliest,
+            ReturnLatest = Vm.ReturnLatest,
+            Airlines = Vm.Airlines,
+            Alliances = Vm.Alliances
+        };
+
         string jsonString = JsonSerializer.Serialize(Vm, EnumJson);
         File.WriteAllText(path: @"/app/wwwroot/tmp/flightsearch_vm.json", jsonString);
 
@@ -954,7 +973,7 @@ else
 
         public TripType Trip { get; set; } = TripType.OneWay;
 
-        public DateTime? DepartDate { get; set; } = DateTime.Today.AddDays(7);
+        public DateTime? DepartDate { get; set; } = DateTime.Today.AddDays(value: 7);
         public DateTime? ReturnDate { get; set; } = null;
 
         public int Adults { get; set; } = 1;
