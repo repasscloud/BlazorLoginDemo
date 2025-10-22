@@ -17,26 +17,30 @@
 @inject ILoggerService _log
 
 <!-- CreateBookingRequestV5 (unified style) -->
-
 @if (_pageIsLoading == true)
 {
     <div class="loading-overlay" role="status" aria-live="polite" aria-label="Loading">
-        <div class="loading-wrap">
-            <svg class="plane" viewBox="0 0 128 128" width="84" height="84" aria-hidden="true">
-                <!-- simple plane icon -->
-                <g fill="currentColor">
-                    <path d="M8 64h52l40-22c5-3 10 2 7 7l-22 40v28l-12-12-12 12v-28L8 64z"/>
-                </g>
-            </svg>
-            <div class="loading-text">Loading…</div>
-        </div>
+        <div class="sky">
+            <!-- Clouds (behind the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c1" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c2" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c3" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c4" alt="" aria-hidden="true" />
 
-        <!-- subtle clouds -->
-        <div class="cloud cloud-1"></div>
-        <div class="cloud cloud-2"></div>
-        <div class="cloud cloud-3"></div>
+            <!-- Plane -->
+            <img src="/media/airplane.svg" class="plane-svg" alt="Airplane loading" />
+
+            <!-- Clouds (in front of the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c5" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c6" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c7" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c8" alt="" aria-hidden="true" />
+
+            <div class="loading-text">LOADING...</div>
+        </div>
     </div>
 }
+
 else
 {
 <div class="container mt-4">
