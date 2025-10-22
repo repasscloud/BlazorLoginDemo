@@ -10,6 +10,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using BlazorLoginDemo.Shared.Models.Search
 @using System.Text.Json
+@using System.Text.Json.Serialization
 
 @inject NavigationManager Nav
 @inject IHttpClientFactory HttpClientFactory
@@ -430,7 +431,11 @@
     private PageConfig Config { get; set; } = PageConfig.Empty();
     private IConfigService _configSvc = default!;
     private CancellationTokenSource? _cts;
-    static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
+    static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
     private string? _error;
 
     // ===== Origin/Destination Dropdown State =====
@@ -998,69 +1003,6 @@
             return Task.FromResult(cfg);
         }
     }
-
-
-    // Placeholder to wire in your actual API-backed service later.
-    @* private sealed class PlaceholderConfigService : IConfigService
-    {
-        public Task<PageConfig> LoadAsync(string travelQuoteId)
-        {
-            // Simulate a policy with a 10-day advance minimum when a quote id is provided
-            PageConfig cfg = new PageConfig
-            {
-                TenantName = "Contoso Travel",
-                PolicyName = $"Quote {travelQuoteId}",
-                EnabledOrigins = DummyAirports().Where(a => a.Code is "SYD" or "MEL" or "BNE").ToList(),
-                EnabledDestinations = DummyAirports().Where(a => a.Code is "AKL" or "WLG" or "CHC" or "ZQN").ToList(),
-                AvailableAirlines = new() { new("QF", "Qantas"), new("NZ", "Air New Zealand") },
-                PreferredAirlines = new() { "QF" },
-                MaxCabin = CabinClass.Business,
-
-                // IMPORTANT: enforce policy min
-                DaysInAdvanceBookingRequired = 10,
-
-                // Times may still be fixed; they affect time inputs only
-                HasFixedTimes = true,
-                FixedDepartEarliest = "07:00",
-                FixedDepartLatest = "10:30",
-                FixedReturnEarliest = "14:00",
-                FixedReturnLatest = "20:00",
-
-                // Optional seeds; InitializeVmFromConfig will bump to Min if needed
-                SeedDepartDate = DateTime.Today.AddDays(10),
-                SeedReturnDate = DateTime.Today.AddDays(14)
-            };
-            return Task.FromResult(cfg);
-        }
-    }
-
-
-    // Dummy service used when no TravelQuoteId provided, so you can see full UI.
-    private sealed class DummyConfigService : IConfigService
-    {
-        public Task<PageConfig> LoadAsync(string _)
-        {
-            PageConfig cfg = new PageConfig
-            {
-                TenantName = "Demo Tenant",
-                PolicyName = "Sample Policy",
-                EnabledOrigins = DummyAirports().Where(a => a.Country == "AU").ToList(),
-                EnabledDestinations = DummyAirports().Where(a => a.Country is "NZ" or "SG" or "US").ToList(),
-                AvailableAirlines = new()
-                {
-                    new("QF", "Qantas"), new("VA", "Virgin Australia"), new("SQ", "Singapore Airlines"),
-                    new("NZ", "Air New Zealand"), new("UA", "United")
-                },
-                PreferredAirlines = new() { "SQ", "QF" },
-                MaxCabin = CabinClass.First,
-                HasFixedTimes = false,
-                SeedDepartDate = DateTime.Today.AddDays(7),
-                SeedReturnDate = DateTime.Today.AddDays(12),
-                DaysInAdvanceBookingRequired = 7,
-            };
-            return Task.FromResult(cfg);
-        }
-    } *@
 
     // ===== Dummy data =====
     private static List<BookingAirport> DummyAirports() => new()
