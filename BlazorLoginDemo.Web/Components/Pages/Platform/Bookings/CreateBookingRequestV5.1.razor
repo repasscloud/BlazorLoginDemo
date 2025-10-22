@@ -18,6 +18,27 @@
 
 <!-- CreateBookingRequestV5 (unified style) -->
 
+@if (_pageIsLoading == true)
+{
+    <div class="loading-overlay" role="status" aria-live="polite" aria-label="Loading">
+        <div class="loading-wrap">
+            <svg class="plane" viewBox="0 0 128 128" width="84" height="84" aria-hidden="true">
+                <!-- simple plane icon -->
+                <g fill="currentColor">
+                    <path d="M8 64h52l40-22c5-3 10 2 7 7l-22 40v28l-12-12-12 12v-28L8 64z"/>
+                </g>
+            </svg>
+            <div class="loading-text">Loading…</div>
+        </div>
+
+        <!-- subtle clouds -->
+        <div class="cloud cloud-1"></div>
+        <div class="cloud cloud-2"></div>
+        <div class="cloud cloud-3"></div>
+    </div>
+}
+else
+{
 <div class="container mt-4">
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between">
@@ -415,6 +436,9 @@
         </div>
     </div>
 </div>
+}
+
+
 
 @code {
     // ===== Parameters =====
@@ -428,14 +452,18 @@
     private SearchVm Vm { get; set; } = new SearchVm();
 
     // ===== Page State =====
+    bool? _pageIsLoading = true;
     private PageConfig Config { get; set; } = PageConfig.Empty();
     private IConfigService _configSvc = default!;
     private CancellationTokenSource? _cts;
-    static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions()
+    static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
+    // add once in the page
+    static readonly JsonSerializerOptions EnumJson = new JsonSerializerOptions()
     {
         PropertyNameCaseInsensitive = true,
         Converters = { new JsonStringEnumConverter() }
     };
+
     private string? _error;
 
     // ===== Origin/Destination Dropdown State =====
@@ -498,10 +526,18 @@
 
         try
         {
-            FlightSearchPageConfig? result = await client.GetFromJsonAsync<FlightSearchPageConfig>(url, JsonOpts, ct);
+            FlightSearchPageConfig? result = await client.GetFromJsonAsync<FlightSearchPageConfig>(url, EnumJson, ct);
+
             if (result == null)
             {
                 _error = "Configuration data is null";
+                await _log.WarningAsync(
+                    evt: "BOOKING_REQ_CONFIG_EMPTY",
+                    cat: SysLogCatType.Api,
+                    act: SysLogActionType.Read,
+                    message: _error,
+                    ent: nameof(FlightSearchPageConfig),
+                    entId: url);
                 Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);
                 return;
             }
@@ -547,6 +583,9 @@
             // Ignore cancellations
             Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);
         }
+
+        // Ensure service
+        _configSvc ??= new TranslateFlightSearchPageConfigService();
 
         // Load full config from service
         Config = await _configSvc.LoadFSPConfigAsync(_cfg);
@@ -690,7 +729,7 @@
 
     private void ApplyDestinationFilter()
     {
-        var q = (DestinationQuery ?? "").Trim();
+        string? q = (DestinationQuery ?? "").Trim();
         FilteredDestinations = FilterAirports(_destIndex, q);
         ShowDestinationList = DestinationFocused && q.Length >= 1 && FilteredDestinations.Count > 0;
     }
@@ -703,7 +742,7 @@
             .Where(a => a.Code.Contains(query, StringComparison.OrdinalIgnoreCase)
                      || a.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
                      || a.Country.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .Take(count: 25)
+            //.Take(count: 25)
             .ToList();
     }
 
@@ -898,8 +937,6 @@
     // ===== Data contracts =====
     private enum TripType { OneWay = 1, Return = 2 }
 
-    private enum CabinClass { Economy = 0, PremiumEconomy = 1, Business = 2, First = 3 }
-
     private enum Alliance { Oneworld = 1, StarAlliance = 2, SkyTeam = 3 }
 
     private sealed class SearchVm
@@ -972,12 +1009,6 @@
     // Wire in FlightSearchPageConfig from API based on TravelQuoteId.
     private sealed class TranslateFlightSearchPageConfigService : IConfigService
     {
-        // private readonly FlightSearchPageConfig _cfg;
-
-        // public TranslateFlightSearchPageConfigService(FlightSearchPageConfig cfg)
-        // {
-        //     _cfg = cfg;
-        // }
 
         public Task<PageConfig> LoadFSPConfigAsync(FlightSearchPageConfig _cfg)
         {
@@ -1003,21 +1034,4 @@
             return Task.FromResult(cfg);
         }
     }
-
-    // ===== Dummy data =====
-    private static List<BookingAirport> DummyAirports() => new()
-    {
-        new("SYD","Sydney Kingsford Smith","Sydney","AU"),
-        new("MEL","Melbourne Tullamarine","Melbourne","AU"),
-        new("BNE","Brisbane","Brisbane","AU"),
-        new("PER","Perth","Perth","AU"),
-        new("ADL","Adelaide","Adelaide","AU"),
-        new("AKL","Auckland","Auckland","NZ"),
-        new("WLG","Wellington","Wellington","NZ"),
-        new("CHC","Christchurch","Christchurch","NZ"),
-        new("ZQN","Queenstown","Queenstown","NZ"),
-        new("SIN","Singapore Changi","Singapore","SG"),
-        new("LAX","Los Angeles","Los Angeles","US"),
-        new("SFO","San Francisco","San Francisco","US")
-    };
 }
