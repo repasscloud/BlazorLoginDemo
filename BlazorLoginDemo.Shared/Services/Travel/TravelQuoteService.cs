@@ -376,6 +376,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 countries: allowedIso3166_Alpha2,
                 hasIata: true,
                 hasMunicipality: true,
+                take: 99999,
                 ct: ct))
             .Select(a => new BookingAirport(
                 Code: a.IataCode!,

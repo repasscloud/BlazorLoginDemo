@@ -362,6 +362,6 @@ else
         }
 
         string? createdId = ok!.Id!;
-        Nav.NavigateTo(uri: $"/platform/pnr/create/{BookingTypeNormalized}/{createdId}", forceLoad: true);
+        Nav.NavigateTo(uri: $"/platform/pnr/create/flight/search/{createdId}", forceLoad: true);
     }
 }

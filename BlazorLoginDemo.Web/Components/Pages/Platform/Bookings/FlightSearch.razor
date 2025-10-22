@@ -1,4 +1,4 @@
-@page "/platform/pnr/create2/{TravelQuoteId?}"
+@page "/platform/pnr/create/flight/search/{TravelQuoteId?}"
 @rendermode InteractiveServer
 
 @using BlazorLoginDemo.Shared.Models.Static.SysVar
@@ -40,7 +40,6 @@
         </div>
     </div>
 }
-
 else
 {
 <div class="container mt-4">
@@ -208,9 +207,6 @@ else
                             }
                         </div>
 
-
-
-
                         <!-- Pax -->
                         <div class="col-12 col-md-6 col-xxl-3">
                             <label class="form-label fw-semibold text-body-emphasis">Passengers</label>
@@ -221,17 +217,17 @@ else
                                        @onchange="e => Vm.Adults = CoerceInt(e.Value, 1, 9)" />
                                 <button class="btn btn-outline-secondary" type="button" @onclick="() => AdjustAdults(1)" disabled="@(Vm.Adults >= 9)"><i class="bi bi-plus"></i></button>
                             </div>
-                            <div class="form-text">Ages 12+.</div>
+                            @* <div class="form-text">Ages 12+.</div> *@
                         </div>
                         <div class="col-12 col-md-6 col-xxl-3">
-                            <label class="form-label fw-semibold text-body-emphasis">Children</label>
+                            @* <label class="form-label fw-semibold text-body-emphasis">Children</label>
                             <div class="input-group">
                                 <button class="btn btn-outline-secondary" type="button" @onclick="() => AdjustChildren(-1)" disabled="@(Vm.Children <= 0)"><i class="bi bi-dash"></i></button>
                                 <span class="input-group-text">0–11</span>
                                 <input type="number" class="form-control text-center" min="0" max="9" value="@Vm.Children"
                                        @onchange="e => Vm.Children = CoerceInt(e.Value, 0, 9)" />
                                 <button class="btn btn-outline-secondary" type="button" @onclick="() => AdjustChildren(1)" disabled="@(Vm.Children >= 9)"><i class="bi bi-plus"></i></button>
-                            </div>
+                            </div> *@
                         </div>
                     </div>
 
@@ -418,7 +414,8 @@ else
                         }
 
                         <dt class="col-5">Pax</dt>
-                        <dd class="col-7">@Vm.Adults A, @Vm.Children C</dd>
+                        @* <dd class="col-7">@Vm.Adults A, @Vm.Children C</dd> *@
+                        <dd class="col-7">@Vm.Adults A</dd>
 
                         <dt class="col-5">Cabin</dt>
                         <dd class="col-7">@CabinLabel(Vm.Cabin)</dd>
@@ -605,6 +602,10 @@ else
         ApplyDestinationFilter();
 
         ValidateDates();
+
+        await Task.Delay(millisecondsDelay: 1000);
+
+        _pageIsLoading = false;
     }
 
     // ===== Commands =====

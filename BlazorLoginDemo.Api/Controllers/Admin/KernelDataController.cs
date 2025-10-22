@@ -67,7 +67,7 @@ public sealed class KernelDataController : ControllerBase
         [FromQuery(Name = "hasIata")] bool? hasIata,                     // defaults to true
         [FromQuery(Name = "hasMunicipality")] bool? hasMunicipality,     // defaults to true
         [FromQuery] int skip = 0,
-        [FromQuery] int take = 50,
+        [FromQuery] int take = 99999,
         CancellationToken ct = default)
     {
         if (types is { Count: 0 }) types = null;
@@ -75,7 +75,7 @@ public sealed class KernelDataController : ControllerBase
         if (countries is { Count: 0 }) countries = null;
 
         if (take <= 0) take = 50;
-        if (take > 500) take = 500;
+        if (take <= 500) take = 500;
         if (skip < 0)  skip = 0;
 
         var result = await _airportInfoService.SearchMultiAsync(
