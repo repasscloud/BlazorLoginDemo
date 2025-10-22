@@ -615,7 +615,7 @@ else
         if (!IsFormValid) return;
 
         string jsonString = JsonSerializer.Serialize(Vm, EnumJson);
-        File.WriteAllText(path: @"/tmp/flightsearch_vm.json", jsonString);
+        File.WriteAllText(path: @"/app/wwwroot/tmp/flightsearch_vm.json", jsonString);
 
         // Forward VM to API (placeholder)
         // Nav.NavigateTo($"/platform/search/run?origin={Vm.Origin}&destination={Vm.Destination}...");
