@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.19.0
+
 FROM alpine:3.20
 
 RUN apk add --no-cache curl ca-certificates && update-ca-certificates

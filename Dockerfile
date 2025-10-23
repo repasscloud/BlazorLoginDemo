@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7-labs
+# syntax=docker/dockerfile:1.19.0
 
 # --- Build stage --------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
