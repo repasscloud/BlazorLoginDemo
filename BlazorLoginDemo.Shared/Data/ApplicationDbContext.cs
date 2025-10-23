@@ -12,7 +12,8 @@ using BlazorLoginDemo.Shared.Models.Kernel.Billing;         // LicenseAgreementU
 using BlazorLoginDemo.Shared.Models.Policies;               // ExpensePolicy
 using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.DTOs;
-using BlazorLoginDemo.Shared.Models.Kernel.FX;                   // AvaUserLoyaltyAccount (legacy shape retained)
+using BlazorLoginDemo.Shared.Models.Kernel.FX;
+using BlazorLoginDemo.Shared.Models.Search;                   // AvaUserLoyaltyAccount (legacy shape retained)
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -614,6 +615,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .ValueGeneratedOnAdd()
                 .Metadata.SetAfterSaveBehavior(
                     Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
+
+            e.Property(x => x.Alliances)
+                .HasColumnType("integer[]")
+                .HasConversion(
+                    v => v == null ? null : v.Select(a => (int)a).ToArray(),           // List<Alliance> -> int[] or null
+                    v => v == null ? null : v.Select(i => (Alliance)i).ToList()        // int[] -> List<Alliance> or null
+                );
         });
 
         builder.Entity<TravelQuoteUser>(e =>

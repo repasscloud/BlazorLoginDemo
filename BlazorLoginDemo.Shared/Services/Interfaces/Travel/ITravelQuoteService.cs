@@ -1,4 +1,5 @@
 // Services/Interfaces/Travel/ITravelQuoteService.cs
+using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Search;
 
@@ -26,6 +27,7 @@ public interface ITravelQuoteService
     // POINT UPDATERS
     Task<bool> ReassignCreatedByAsync(string travelQuoteId, string newUserId, CancellationToken ct = default);
     Task<bool> UpdateStateAsync(string travelQuoteId, QuoteState newState, CancellationToken ct = default);
+    Task IngestTravelQuoteFlightUIResultPatchDto(TravelQuoteFlightUIResultPatchDto dto, CancellationToken ct = default);
 
     // DELETE
     Task<bool> DeleteAsync(string id, CancellationToken ct = default);

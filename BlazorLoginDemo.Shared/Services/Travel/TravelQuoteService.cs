@@ -1,6 +1,7 @@
 // Services/Travel/TravelQuoteService.cs
 using System.Globalization;
 using BlazorLoginDemo.Shared.Data;
+using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Policies;
 using BlazorLoginDemo.Shared.Models.Search;
@@ -215,6 +216,66 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         q.State = newState;
         await _db.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task IngestTravelQuoteFlightUIResultPatchDto(TravelQuoteFlightUIResultPatchDto dto, CancellationToken ct = default)
+    {
+        await _log.InformationAsync(
+            evt: "TRAVEL_QUOTE_UI_PATCH_START",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Start,
+            message: "Ingesting TravelQuote flight UI patch",
+            ent: nameof(TravelQuote),
+            entId: dto.Id,
+            note: "ui_patch");
+            
+        var q = await _db.TravelQuotes.FirstOrDefaultAsync(x => x.Id == dto.Id, ct);
+        if (q is null)
+        {
+            var ex = new InvalidOperationException($"TravelQuote '{dto.Id}' not found.");
+            await _log.ErrorAsync(
+                evt: "TRAVEL_QUOTE_UPDATE_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                ex: ex,
+                message: $"TravelQuote '{dto.Id}' not found.",
+                ent: nameof(TravelQuote),
+                entId: dto.Id,
+                note: "not_found");
+            throw ex;
+        }
+
+        // Update fields if present in DTO
+        q.TripType = dto.TripType ?? null;
+        q.OriginIataCode = dto.OriginIataCode ?? null;
+        q.DestinationIataCode = dto.DestinationIataCode ?? null;
+        q.DepartureDate = dto.DepartureDate ?? null;
+        q.ReturnDate = dto.ReturnDate ?? null;
+        q.DepartEarliestTime = dto.DepartEarliestTime ?? null;
+        q.DepartLatestTime = dto.DepartLatestTime ?? null;
+        q.ReturnEarliestTime = dto.ReturnEarliestTime ?? null;
+        q.ReturnLatestTime = dto.ReturnLatestTime ?? null;
+        q.CabinClass = dto.CabinClass ?? null;
+        q.MaxCabinClass = dto.MaxCabinClass ?? null;
+        q.SelectedAirlines = dto.SelectedAirlines.Length > 0 ? dto.SelectedAirlines : Array.Empty<string>();
+        q.Alliances = dto.Alliances ?? null;
+        q.UpdatedAtUtc = DateTime.UtcNow;
+
+        q.Note = (q.Note ?? "") +
+            $"\n[Auto-Updated {DateTime.UtcNow:o} UTC] Flight Search UI results ingested.";
+
+        await _db.SaveChangesAsync(ct);
+
+        await _log.InformationAsync(
+            evt: "TRAVEL_QUOTE_UPDATED",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Update,
+            message: "TravelQuote updated from flight UI patch",
+            ent: nameof(TravelQuote),
+            entId: dto.Id,
+            note: "ui_patch");
+
+        return;
     }
 
     // ---------------- DELETE ----------------

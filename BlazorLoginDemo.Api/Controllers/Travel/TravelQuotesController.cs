@@ -4,6 +4,7 @@ using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 using BlazorLoginDemo.Shared.Models.Search;
+using BlazorLoginDemo.Shared.Models.DTOs;
 
 namespace BlazorLoginDemo.Api.Controllers.Travel;
 
@@ -99,6 +100,17 @@ public sealed class TravelQuotesController : ControllerBase
     {
         var expiredCount = await _svc.ExpireOldQuotesAsync(ct);
         return Ok(new { expiredCount });
+    }
+
+    [HttpPost("run-search/flight")]
+    public async Task<ActionResult> RunFlightSearch(
+        [FromBody] TravelQuoteFlightUIResultPatchDto dto,
+        CancellationToken ct)
+    {
+        if (dto is null) return BadRequest("Body required.");
+
+        await _svc.IngestTravelQuoteFlightUIResultPatchDto(dto, ct);
+        return Ok();  // always OK even if no matching quote found
     }
 
     // ---------- Request contracts ----------

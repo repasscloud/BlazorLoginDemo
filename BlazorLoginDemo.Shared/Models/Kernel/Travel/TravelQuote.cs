@@ -1,7 +1,9 @@
 // Models/Kernel/Travel/TravelQuote.cs
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
+using BlazorLoginDemo.Shared.Models.Search;
 
 namespace BlazorLoginDemo.Shared.Models.Kernel.Travel;
 
@@ -50,9 +52,36 @@ public sealed class TravelQuote
 
     // Timestamp
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 
     // Travellers
     public ICollection<TravelQuoteUser> Travellers { get; set; } = new List<TravelQuoteUser>();
+
+    // Customer Query Data (FLIGHT)
+    public TripType? TripType { get; set; }
+    [MaxLength(3)] public string? OriginIataCode { get; set; }
+    [MaxLength(3)] public string? DestinationIataCode { get; set; }
+    [MaxLength(10)] public string? DepartureDate { get; set; }
+    [MaxLength(10)] public string? ReturnDate { get; set; }
+    [MaxLength(8)] public string? DepartEarliestTime { get; set; }
+    [MaxLength(8)] public string? DepartLatestTime { get; set; }
+    [MaxLength(8)] public string? ReturnEarliestTime { get; set; }
+    [MaxLength(8)] public string? ReturnLatestTime { get; set; }
+    public CoverageType? CoverageType { get; set; }
+    public CabinClass? CabinClass { get; set; }
+    public CabinClass? MaxCabinClass { get; set; }
+    public string[] SelectedAirlines { get; set; } = Array.Empty<string>();
+    public List<Alliance>? Alliances { get; set; }
+    
+    // Helper properties for CSV serialization
+    [NotMapped]
+    public string SelectedAirlinesCsv
+    {
+        get => string.Join(", ", SelectedAirlines);
+        set => SelectedAirlines = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
+    }
 }
 
 public sealed class TravelQuoteUser
@@ -83,15 +112,26 @@ public enum TravelQuoteType
     mixed = 9
 }
 
-public enum QuoteState
+public enum QuoteState : short
 {
-    Draft = 0,
-    Submitted = 1,
-    Approved = 2,
-    Rejected = 3,
-    Cancelled = 4,
-    Expired = 5,
-    Archived = 6
+    // 00–09: Drafting / local-only UI states
+    Draft = 00,
+    RetrievedUI = 10,            // UI loaded a previously-saved quote for editing/view
+    SearchResultsRequested = 11, // UI triggered a search to build a quote
+
+    // 20–39: Submission lifecycle
+    Submitted = 20,
+
+    // 40–59: Decision outcomes
+    Approved = 40,
+    Rejected = 41,
+
+    // 60–79: Terminations and timeouts
+    Cancelled = 60,
+    Expired = 61,
+
+    // 90–99: Post-lifecycle storage
+    Archived = 90
 }
 
 public sealed class TravelQuoteDto
