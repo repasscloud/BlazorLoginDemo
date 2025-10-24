@@ -272,57 +272,61 @@ public sealed class TravelPolicyService : ITravelPolicyService
     // -----------------------------
     public async Task<IReadOnlyList<Country>> ResolveAllowedCountriesAsync(string policyId, CancellationToken ct = default)
     {
+        // Load policy
         var tp = await _db.TravelPolicies.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == policyId, ct)
             ?? throw new InvalidOperationException($"TravelPolicy '{policyId}' not found");
 
-        // Start with explicit country IDs on the policy
-        var countryIdSet = tp.CountryIds.Distinct().ToHashSet();
+        // 1) Start with explicit country IDs from policy
+        var bag = new List<int>(tp.CountryIds);
 
-        // Add countries from continents on the policy
+        // 2) Add countries for explicit continents
         if (tp.ContinentIds.Length > 0)
         {
+            var contIds = tp.ContinentIds; // capture to local for translation
             var contCountryIds = await _db.Countries.AsNoTracking()
-                .Where(c => c.ContinentId.HasValue && tp.ContinentIds.Contains(c.ContinentId.Value))
+                .Where(c => c.ContinentId.HasValue && contIds.Contains(c.ContinentId.Value))
                 .Select(c => c.Id)
                 .ToListAsync(ct);
-            foreach (var id in contCountryIds) countryIdSet.Add(id);
+            bag.AddRange(contCountryIds);
         }
 
-        // Add countries from regions on the policy
+        // 3) Add countries for regions → continents → countries
         if (tp.RegionIds.Length > 0)
         {
-            // First get continent ids for those regions
+            var regionIds = tp.RegionIds;
             var regionContinentIds = await _db.Continents.AsNoTracking()
-                .Where(cont => cont.RegionId.HasValue && tp.RegionIds.Contains(cont.RegionId.Value))
-                .Select(cont => cont.Id)
+                .Where(x => x.RegionId.HasValue && regionIds.Contains(x.RegionId.Value))
+                .Select(x => x.Id)
                 .ToListAsync(ct);
 
             if (regionContinentIds.Count > 0)
             {
+                var regContIds = regionContinentIds;
                 var regCountryIds = await _db.Countries.AsNoTracking()
-                    .Where(c => c.ContinentId.HasValue && regionContinentIds.Contains(c.ContinentId.Value))
+                    .Where(c => c.ContinentId.HasValue && regContIds.Contains(c.ContinentId.Value))
                     .Select(c => c.Id)
                     .ToListAsync(ct);
-                foreach (var id in regCountryIds) countryIdSet.Add(id);
+                bag.AddRange(regCountryIds);
             }
         }
 
-        // Remove disabled country ids
+        // 4) Remove disabled, then dedupe
         if (tp.DisabledCountryIds.Length > 0)
         {
-            foreach (var dc in tp.DisabledCountryIds) countryIdSet.Remove(dc);
+            var disabled = tp.DisabledCountryIds;
+            bag.RemoveAll(id => disabled.Contains(id));
         }
+        var distinctIds = bag.Distinct().ToArray();
 
-        if (countryIdSet.Count == 0)
+        if (distinctIds.Length == 0)
             return Array.Empty<Country>();
 
-        var result = await _db.Countries.AsNoTracking()
-            .Where(c => countryIdSet.Contains(c.Id))
+        // 5) Return countries sorted by name
+        return await _db.Countries.AsNoTracking()
+            .Where(c => distinctIds.Contains(c.Id))
             .OrderBy(c => c.Name)
             .ToListAsync(ct);
-
-        return result;
     }
 
     // -----------------------------
@@ -375,9 +379,9 @@ public sealed class TravelPolicyService : ITravelPolicyService
         static int[] Clean(int[]? ids) =>
             (ids ?? Array.Empty<int>()).Where(i => i > 0).Distinct().ToArray();
 
-        policy.RegionIds          = Clean(policy.RegionIds);
-        policy.ContinentIds       = Clean(policy.ContinentIds);
-        policy.CountryIds         = Clean(policy.CountryIds);
+        policy.RegionIds = Clean(policy.RegionIds);
+        policy.ContinentIds = Clean(policy.ContinentIds);
+        policy.CountryIds = Clean(policy.CountryIds);
         policy.DisabledCountryIds = Clean(policy.DisabledCountryIds);
     }
 }

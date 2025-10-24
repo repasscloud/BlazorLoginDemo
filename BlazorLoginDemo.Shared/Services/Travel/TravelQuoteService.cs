@@ -335,7 +335,23 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         var quote = await GetByIdAsync(travelQuoteId, ct)
             ?? throw new InvalidOperationException($"TravelQuote '{travelQuoteId}' not found.");
 
+        await _log.InformationAsync(
+            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_START",
+            cat: SysLogCatType.App,
+            act: SysLogActionType.Start,
+            message: $"Generating flight search UI options for TravelQuote '{travelQuoteId}'",
+            ent: nameof(TravelQuote),
+            entId: travelQuoteId);
+
         var orgName = quote.Organization?.Name ?? "Unknown Org";
+
+        await _log.InformationAsync(
+            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+            cat: SysLogCatType.App,
+            act: SysLogActionType.Step,
+            message: $"orgName set to '{orgName}'",
+            ent: nameof(TravelQuote),
+            entId: travelQuoteId);
 
         // Find policy
         TravelPolicy? travelPolicy = null;
@@ -343,12 +359,26 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         {
             case TravelQuotePolicyType.OrgDefault:
             case TravelQuotePolicyType.UserDefined:
+                await _log.InformationAsync(
+                    evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+                    cat: SysLogCatType.App,
+                    act: SysLogActionType.Step,
+                    message: $"TravelPolicy type is '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
+                    ent: nameof(TravelQuote),
+                    entId: travelQuoteId);
                 travelPolicy = await _db.TravelPolicies
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
                 break;
 
             case TravelQuotePolicyType.Ephemeral:
+                await _log.InformationAsync(
+                    evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+                    cat: SysLogCatType.App,
+                    act: SysLogActionType.Step,
+                    message: $"TravelPolicy type is '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
+                    ent: nameof(TravelQuote),
+                    entId: travelQuoteId);
                 var eph = await _db.EphemeralTravelPolicies
                     .AsNoTracking()
                     .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
@@ -360,7 +390,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                         evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_EPHEMERAL_CONVERTED",
                         cat: SysLogCatType.Workflow,
                         act: SysLogActionType.Step,
-                        message: $"Converted EphemeralTravelPolicy '{eph.Id}' to TravelPolicy for TravelQuote '{travelQuoteId}'",
+                        message: $"Converted EphemeralTravelPolicy '{eph.Id}' from TravelPolicy for TravelQuote '{travelQuoteId}'",
                         ent: nameof(TravelQuote),
                         entId: travelQuoteId);
                 }
@@ -371,7 +401,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_UNKNOWN_POLICY_TYPE",
                     cat: SysLogCatType.Workflow,
                     act: SysLogActionType.Validate,
-                    message: $"Unknown TravelQuotePolicyType '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
+                    message: $"Unknown TravelPolicy type '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
                     ent: nameof(TravelQuote),
                     entId: travelQuoteId,
                     note: "unknown_policy_type");
@@ -379,7 +409,22 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         }
 
         var policyName = travelPolicy?.PolicyName ?? "Unknown Policy";
+        await _log.InformationAsync(
+            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+            cat: SysLogCatType.App,
+            act: SysLogActionType.Step,
+            message: $"TravelPolicy name '{policyName}' for TravelQuote '{travelQuoteId}'",
+            ent: nameof(TravelQuote),
+            entId: travelQuoteId);
+
         var adults = quote.Travellers.Count;
+        await _log.InformationAsync(
+            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+            cat: SysLogCatType.App,
+            act: SysLogActionType.Step,
+            message: $"TravelPolicy adult count '{adults}' for TravelQuote '{travelQuoteId}'",
+            ent: nameof(TravelQuote),
+            entId: travelQuoteId);
 
         // Min departure date per policy
         DateTime earliestDepartureDate = DateTime.UtcNow;
@@ -420,16 +465,38 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 entId: travelQuoteId,
                 note: "no_allowed_countries");
         }
+        else
+        {
+            await _log.InformationAsync(
+                evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_ALLOWED_COUNTRIES_FOUND",
+                cat: SysLogCatType.App,
+                act: SysLogActionType.Step,
+                message: $"Found {allowedCountries.Count} allowed countries for TravelPolicy '{travelPolicy?.Id}' associated with TravelQuote '{travelQuoteId}'",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
+        }
 
         var allowedIso3166_Alpha2 =
-            allowedCountries
+            (allowedCountries ?? Array.Empty<Country>())
                 .Select(c => c.IsoCode)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => Enum.TryParse<Iso3166_Alpha2>(s!.Trim(), true, out var e) ? e : (Iso3166_Alpha2?)null)
-                .Where(e => e.HasValue)
-                .Select(e => e!.Value)
+                .Select(s => s!.Trim().ToUpperInvariant())
+                .Where(s => s.Length == 2) // only alpha-2
+                .Select(s => Enum.TryParse<Iso3166_Alpha2>(s, ignoreCase: true, out var e) ? (Iso3166_Alpha2?)e : null)
+                .OfType<Iso3166_Alpha2>()   // unwrap non-nulls
                 .Distinct()
                 .ToList();
+
+        if (allowedIso3166_Alpha2.Count > 0)
+        {
+            await _log.InformationAsync(
+                evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_ALLOWED_ISO3166_ALPHA2",
+                cat: SysLogCatType.App,
+                act: SysLogActionType.Step,
+                message: $"Allowed ISO3166 Alpha-2 country codes for TravelPolicy '{travelPolicy?.Id}' associated with TravelQuote '{travelQuoteId}': {string.Join(", ", allowedIso3166_Alpha2)}",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
+        }
 
         var originsDestinations =
             (await _airportInfoSvc.SearchMultiAsync(

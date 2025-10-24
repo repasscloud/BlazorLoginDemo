@@ -198,7 +198,11 @@ docker compose up -d api
 # ── 🌱 9) Seed the DB with airport data ──────────────────────────────────
 echo
 echo "🌱 9) Seed the DB with airport data"
-pwsh -File .scripts/import-airports.ps1 -CsvPath .scripts/data/airports.csv -Batch 500
+curl -X 'POST' \
+  'http://localhost:8090/api/v1/admin/kerneldata/airport-info/bulk-upsert-from-csv?batchSize=1000' \
+  -H 'accept: text/plain' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'File=@.scripts/data/airports.csv;type=text/csv'
 
 # ── 📤 10) Commit & push version bump ──────────────────────────────────────────
 echo
