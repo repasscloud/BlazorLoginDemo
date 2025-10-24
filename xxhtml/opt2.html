@@ -1,0 +1,438 @@
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flight Results UI Gallery · Bootstrap 5</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    /* ===== Custom tokens ===== */
+    :root{
+      --card-radius: 1rem;
+      --muted: #6c757d;
+      --ok: #198754;
+      --warn: #fd7e14;
+      --danger: #dc3545;
+      --sky: #e9f5ff;
+    }
+    body{background:#f7f8fa}
+    .section-title{font-weight:700; letter-spacing:.2px}
+    .airline-chip{display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .6rem;border:1px solid #e5e7eb;border-radius:999px;background:#fff}
+    .airline-chip img{width:20px;height:20px;object-fit:contain}
+    .fare-card{border-radius:var(--card-radius); border:1px solid #e5e7eb; background:#fff}
+    .fare-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .route{font-variant-numeric:tabular-nums}
+    .route .dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#0d6efd;margin:0 .4rem}
+    .divider{height:1px;background:#edf0f2}
+    .price-tag{font-size:1.25rem;font-weight:700}
+    .amenities i{font-size:1rem}
+    .amenities .text-muted{font-size:.875rem}
+    .selectable{cursor:pointer}
+    .selected{outline:2px solid #0d6efd; outline-offset:2px}
+    .badge-fare{background:#eef2ff;color:#3f51b5}
+    .timeline{display:flex;align-items:center;gap:.5rem}
+    .timeline .bar{height:4px;background:#0d6efd;border-radius:4px;flex:1}
+    .stop{background:#ffc107;color:#000}
+    .nonstop{background:#d1e7dd;color:#0f5132}
+    .grid-card{transition:transform .15s ease}
+    .grid-card:hover{transform:translateY(-2px); box-shadow:0 10px 28px rgba(0,0,0,.08)}
+    .table thead th{position:sticky; top:0; background:#fff; z-index:1}
+    /* miniature airline avatar if no logo */
+    .air-avatar{width:28px;height:28px;display:inline-grid;place-items:center;border-radius:50%;background:#0d6efd;color:#fff;font-weight:700}
+  </style>
+</head>
+<body>
+  <main class="container py-4 py-md-5">
+    <header class="mb-4 mb-md-5">
+      <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+        <div>
+          <h1 class="h3 mb-1">Flight Results UI Gallery</h1>
+          <p class="text-secondary mb-0">Five variants. Bootstrap 5.3.3. Crisp. Production-ready markup.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-outline-secondary btn-sm" id="themeToggle" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sample metadata / filters -->
+    <section class="mb-4">
+      <div class="p-3 p-md-4 rounded-4" style="background:var(--sky)">
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-3">
+            <label class="form-label">From</label>
+            <input type="text" class="form-control" value="SYD" disabled>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">To</label>
+            <input type="text" class="form-control" value="LAX" disabled>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">Date</label>
+            <input type="text" class="form-control" value="2025-11-10" disabled>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">Sort</label>
+            <select class="form-select">
+              <option selected>Lowest price</option>
+              <option>Shortest duration</option>
+              <option>Earliest depart</option>
+              <option>Latest arrive</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Variant 1: Rich card list -->
+    <section class="mb-5">
+      <h2 class="section-title h5 mb-3">Variant 1 · Rich cards</h2>
+      <div class="vstack gap-3">
+        <!-- Card 1 -->
+        <label class="fare-card selectable p-3 p-md-4 d-block">
+          <input class="form-check-input float-end mt-1 select-radio" type="radio" name="pick1" aria-label="Select this flight">
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <div class="airline-chip">
+              <span class="air-avatar">QF</span>
+              <span class="fw-semibold">Qantas 11</span>
+            </div>
+            <span class="badge badge-fare">Economy Flex</span>
+            <span class="badge bg-opacity-10 text-dark border">1 bag</span>
+            <span class="ms-auto price-tag">$1,238 <span class="text-muted fs-6">AUD</span></span>
+          </div>
+          <div class="divider my-3"></div>
+          <div class="row g-3 align-items-center">
+            <div class="col-12 col-lg-5">
+              <div class="route">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="fs-5 fw-semibold">10:15</div><div class="dot"></div><div>SYD</div>
+                  <div class="ms-2 text-secondary">Mon 10 Nov</div>
+                </div>
+                <div class="timeline my-2"><div class="bar"></div><span class="badge rounded-pill stop">1 stop</span><div class="bar"></div></div>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="fs-5 fw-semibold">06:05</div><div class="dot"></div><div>LAX</div>
+                  <div class="ms-2 text-secondary">Mon 10 Nov</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-lg-2">
+              <div class="text-secondary small">Duration</div>
+              <div class="fw-semibold">14h 50m</div>
+            </div>
+            <div class="col-6 col-lg-2">
+              <div class="text-secondary small">Seat</div>
+              <div class="fw-semibold">3-3-3</div>
+            </div>
+            <div class="col-12 col-lg-3">
+              <div class="amenities d-flex flex-wrap gap-3 text-secondary">
+                <span><i class="bi bi-wifi"></i> Wi-Fi</span>
+                <span><i class="bi bi-usb-symbol"></i> USB</span>
+                <span><i class="bi bi-cup-hot"></i> Meal</span>
+                <span><i class="bi bi-tv"></i> IFE</span>
+              </div>
+            </div>
+          </div>
+        </label>
+
+        <!-- Card 2 -->
+        <label class="fare-card selectable p-3 p-md-4 d-block">
+          <input class="form-check-input float-end mt-1 select-radio" type="radio" name="pick1" aria-label="Select this flight">
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <div class="airline-chip">
+              <span class="air-avatar">SQ</span>
+              <span class="fw-semibold">Singapore 232</span>
+            </div>
+            <span class="badge badge-fare">Premium Economy</span>
+            <span class="badge bg-opacity-10 text-dark border">2 bags</span>
+            <span class="ms-auto price-tag">$1,590 <span class="text-muted fs-6">AUD</span></span>
+          </div>
+          <div class="divider my-3"></div>
+          <div class="row g-3 align-items-center">
+            <div class="col-12 col-lg-5">
+              <div class="route">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="fs-5 fw-semibold">09:20</div><div class="dot"></div><div>SYD</div>
+                  <div class="ms-2 text-secondary">Mon 10 Nov</div>
+                </div>
+                <div class="timeline my-2"><div class="bar"></div><span class="badge rounded-pill nonstop">Nonstop</span><div class="bar"></div></div>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="fs-5 fw-semibold">15:05</div><div class="dot"></div><div>SIN</div>
+                  <div class="ms-2 text-secondary">Mon 10 Nov</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-lg-2">
+              <div class="text-secondary small">Duration</div>
+              <div class="fw-semibold">8h 45m</div>
+            </div>
+            <div class="col-6 col-lg-2">
+              <div class="text-secondary small">Seat</div>
+              <div class="fw-semibold">2-4-2</div>
+            </div>
+            <div class="col-12 col-lg-3">
+              <div class="amenities d-flex flex-wrap gap-3 text-secondary">
+                <span><i class="bi bi-wifi"></i> Wi-Fi</span>
+                <span><i class="bi bi-cup-hot"></i> Meal</span>
+                <span><i class="bi bi-lightning-charge"></i> Power</span>
+              </div>
+            </div>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <!-- Variant 2: Compact table -->
+    <section class="mb-5">
+      <h2 class="section-title h5 mb-3">Variant 2 · Compact table</h2>
+      <div class="table-responsive rounded-4 border bg-white">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:44px"></th>
+              <th>Airline</th>
+              <th>Depart</th>
+              <th>Arrive</th>
+              <th>Duration</th>
+              <th>Stops</th>
+              <th>Seat</th>
+              <th>Amenities</th>
+              <th class="text-end">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="selectable">
+              <td><input class="form-check-input select-radio" type="radio" name="pick2" aria-label="Select row"></td>
+              <td><span class="air-avatar me-2">VA</span> Virgin 568</td>
+              <td>07:40 SYD<br><small class="text-secondary">10 Nov</small></td>
+              <td>09:15 MEL<br><small class="text-secondary">10 Nov</small></td>
+              <td>1h 35m</td>
+              <td><span class="badge bg-success-subtle text-success border">Nonstop</span></td>
+              <td>3-3</td>
+              <td class="text-secondary"><i class="bi bi-wifi me-2"></i><i class="bi bi-usb-symbol me-2"></i><i class="bi bi-cup-hot"></i></td>
+              <td class="text-end fw-bold">$179 <span class="text-muted">AUD</span></td>
+            </tr>
+            <tr class="selectable">
+              <td><input class="form-check-input select-radio" type="radio" name="pick2" aria-label="Select row"></td>
+              <td><span class="air-avatar me-2">JQ</span> Jetstar 404</td>
+              <td>08:25 SYD<br><small class="text-secondary">10 Nov</small></td>
+              <td>11:50 OOL<br><small class="text-secondary">10 Nov</small></td>
+              <td>3h 25m</td>
+              <td><span class="badge bg-warning-subtle text-warning border">1 stop</span></td>
+              <td>3-3</td>
+              <td class="text-secondary"><i class="bi bi-tv me-2"></i><i class="bi bi-lightning-charge me-2"></i></td>
+              <td class="text-end fw-bold">$139 <span class="text-muted">AUD</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Variant 3: Tile grid -->
+    <section class="mb-5">
+      <h2 class="section-title h5 mb-3">Variant 3 · Tile grid</h2>
+      <div class="row g-3">
+        <div class="col-12 col-md-6 col-xl-4">
+          <label class="d-block grid-card border rounded-4 p-3 bg-white selectable">
+            <input class="form-check-input float-end mt-1 select-radio" type="radio" name="pick3">
+            <div class="d-flex align-items-center gap-2">
+              <span class="air-avatar">UA</span>
+              <div class="fw-semibold">United 842 · Economy</div>
+            </div>
+            <div class="mt-3 d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-semibold">12:10 SYD → 06:30 SFO</div>
+                <div class="text-secondary small">14h 20m · Nonstop</div>
+              </div>
+              <div class="text-end">
+                <div class="price-tag">$1,120</div>
+                <div class="text-secondary small">AUD</div>
+              </div>
+            </div>
+            <div class="mt-2 d-flex flex-wrap gap-2 text-secondary">
+              <span class="badge bg-light border"><i class="bi bi-wifi me-1"></i>Wi-Fi</span>
+              <span class="badge bg-light border"><i class="bi bi-cup-hot me-1"></i>Meal</span>
+              <span class="badge bg-light border"><i class="bi bi-tv me-1"></i>IFE</span>
+              <span class="badge bg-light border"><i class="bi bi-lightning-charge me-1"></i>Power</span>
+            </div>
+          </label>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+          <label class="d-block grid-card border rounded-4 p-3 bg-white selectable">
+            <input class="form-check-input float-end mt-1 select-radio" type="radio" name="pick3">
+            <div class="d-flex align-items-center gap-2">
+              <span class="air-avatar">DL</span>
+              <div class="fw-semibold">Delta 40 · Premium</div>
+            </div>
+            <div class="mt-3 d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-semibold">11:00 SYD → 18:20 LAX</div>
+                <div class="text-secondary small">13h 20m · Nonstop</div>
+              </div>
+              <div class="text-end">
+                <div class="price-tag">$1,450</div>
+                <div class="text-secondary small">AUD</div>
+              </div>
+            </div>
+            <div class="mt-2 d-flex flex-wrap gap-2 text-secondary">
+              <span class="badge bg-light border"><i class="bi bi-wifi me-1"></i>Wi-Fi</span>
+              <span class="badge bg-light border"><i class="bi bi-cup-hot me-1"></i>Meal</span>
+              <span class="badge bg-light border"><i class="bi bi-usb-symbol me-1"></i>USB</span>
+            </div>
+          </label>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+          <label class="d-block grid-card border rounded-4 p-3 bg-white selectable">
+            <input class="form-check-input float-end mt-1 select-radio" type="radio" name="pick3">
+            <div class="d-flex align-items-center gap-2">
+              <span class="air-avatar">AA</span>
+              <div class="fw-semibold">American 72 · Business</div>
+            </div>
+            <div class="mt-3 d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-semibold">20:15 SYD → 16:45 DFW</div>
+                <div class="text-secondary small">15h 30m · 1 stop</div>
+              </div>
+              <div class="text-end">
+                <div class="price-tag">$3,480</div>
+                <div class="text-secondary small">AUD</div>
+              </div>
+            </div>
+            <div class="mt-2 d-flex flex-wrap gap-2 text-secondary">
+              <span class="badge bg-light border"><i class="bi bi-wifi me-1"></i>Wi-Fi</span>
+              <span class="badge bg-light border"><i class="bi bi-cup-hot me-1"></i>Meal</span>
+              <span class="badge bg-light border"><i class="bi bi-tv me-1"></i>IFE</span>
+              <span class="badge bg-light border"><i class="bi bi-lightning-charge me-1"></i>Power</span>
+              <span class="badge bg-light border"><i class="bi bi-moon-stars me-1"></i>Lie-flat</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Variant 4: Accordion groups (by airline) -->
+    <section class="mb-5">
+      <h2 class="section-title h5 mb-3">Variant 4 · Accordion groups</h2>
+      <div class="accordion" id="airlineAccordion">
+        <div class="accordion-item rounded-4 overflow-hidden mb-2">
+          <h2 class="accordion-header">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#acQF">
+              <span class="air-avatar me-2">QF</span> Qantas · 2 options
+            </button>
+          </h2>
+          <div id="acQF" class="accordion-collapse collapse show" data-bs-parent="#airlineAccordion">
+            <div class="accordion-body p-0">
+              <div class="list-group list-group-flush">
+                <label class="list-group-item selectable d-flex align-items-center gap-3">
+                  <input class="form-check-input me-2 select-radio" type="radio" name="pick4">
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">SYD 10:15 → LAX 06:05 · 14h 50m · 1 stop</div>
+                    <div class="text-secondary small">Economy Flex · 1 bag · Wi-Fi · USB · IFE</div>
+                  </div>
+                  <div class="text-end fw-bold">$1,238</div>
+                </label>
+                <label class="list-group-item selectable d-flex align-items-center gap-3">
+                  <input class="form-check-input me-2 select-radio" type="radio" name="pick4">
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">SYD 13:05 → LAX 08:45 · 13h 40m · Nonstop</div>
+                    <div class="text-secondary small">Premium Economy · 2 bags · Wi-Fi · Power</div>
+                  </div>
+                  <div class="text-end fw-bold">$1,920</div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item rounded-4 overflow-hidden">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acSQ">
+              <span class="air-avatar me-2">SQ</span> Singapore · 1 option
+            </button>
+          </h2>
+          <div id="acSQ" class="accordion-collapse collapse" data-bs-parent="#airlineAccordion">
+            <div class="accordion-body p-0">
+              <label class="list-group-item selectable d-flex align-items-center gap-3">
+                <input class="form-check-input me-2 select-radio" type="radio" name="pick4">
+                <div class="flex-grow-1">
+                  <div class="fw-semibold">SYD 09:20 → SIN 15:05 · 8h 45m · Nonstop</div>
+                  <div class="text-secondary small">Premium Economy · 2 bags · Wi-Fi · Meal · Power</div>
+                </div>
+                <div class="text-end fw-bold">$1,590</div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Variant 5: Minimal list -->
+    <section class="mb-5">
+      <h2 class="section-title h5 mb-3">Variant 5 · Minimal list</h2>
+      <div class="fare-card p-0 overflow-hidden">
+        <div class="list-group list-group-flush">
+          <label class="list-group-item d-flex align-items-center gap-3 selectable">
+            <input class="form-check-input select-radio" type="radio" name="pick5">
+            <div class="w-100 d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-semibold">SYD 07:00 → BNE 08:30</div>
+                <div class="text-secondary small">1h 30m · Nonstop · Economy · Wi-Fi</div>
+              </div>
+              <div class="fw-bold">$129</div>
+            </div>
+          </label>
+          <label class="list-group-item d-flex align-items-center gap-3 selectable">
+            <input class="form-check-input select-radio" type="radio" name="pick5">
+            <div class="w-100 d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-semibold">SYD 18:10 → PER 20:55</div>
+                <div class="text-secondary small">4h 45m · Nonstop · Economy · USB · IFE</div>
+              </div>
+              <div class="fw-bold">$289</div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer action -->
+    <section class="sticky-bottom bg-body border-top py-3">
+      <div class="container px-0">
+        <div class="d-flex gap-2 justify-content-end">
+          <button class="btn btn-outline-secondary">Compare</button>
+          <button class="btn btn-primary">Continue with selected</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Theme toggle
+    const btn = document.getElementById('themeToggle');
+    btn?.addEventListener('click', () => {
+      const html = document.documentElement;
+      const mode = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-bs-theme', mode);
+    });
+
+    // Selection outline behavior
+    const radios = document.querySelectorAll('.select-radio');
+    function clearSelected(container){
+      container.querySelectorAll('.selected')?.forEach(el => el.classList.remove('selected'));
+    }
+    radios.forEach(r => {
+      r.addEventListener('change', (e) => {
+        const label = r.closest('.selectable');
+        const groupName = r.name;
+        // find all radios with same name, clear their selected containers
+        document.querySelectorAll(`input[name="${groupName}"]`).forEach(rr => {
+          const lbl = rr.closest('.selectable');
+          lbl && lbl.classList.remove('selected');
+        });
+        label && label.classList.add('selected');
+      });
+    });
+  </script>
+</body>
+</html>

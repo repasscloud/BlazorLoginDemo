@@ -1,0 +1,213 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace BlazorLoginDemo.Shared.Models.Demo
+{
+    public record Carrier(string Code, string Name, string LogoUrl);
+
+    public class Layover
+    {
+        public string Airport { get; set; } = "";
+        public int Minutes { get; set; }
+        public string DurationText => $"{Minutes/60}h {Minutes%60:D2}m";
+    }
+
+    public class FlightLeg
+    {
+        public Carrier Carrier { get; set; } = new Carrier("XX","Carrier","");
+        public string FlightNumber { get; set; } = "";
+        public string Origin { get; set; } = "";
+        public string Destination { get; set; } = "";
+        public DateTime Depart { get; set; }
+        public DateTime Arrive { get; set; }
+        public string Equipment { get; set; } = "";
+        public string SeatLayout { get; set; } = "";
+        public Amenities Amenities { get; set; } = new();
+        public Layover? Layover { get; set; }
+
+        public TimeSpan Duration => Arrive - Depart;
+        public string DurationText => $"{(int)Duration.TotalHours}h {Duration.Minutes:D2}m";
+
+        public IEnumerable<string> AmenityLabels
+        {
+            get
+            {
+                var list = new List<string>();
+                if (Amenities.Wifi) list.Add("Wi‑Fi");
+                if (Amenities.Power) list.Add("Power");
+                if (Amenities.Usb) list.Add("USB");
+                if (Amenities.Ife) list.Add("IFE");
+                if (Amenities.Meal) list.Add("Meal");
+                if (Amenities.LieFlat) list.Add("Lie‑flat");
+                return list;
+            }
+        }
+    }
+
+    public class Amenities
+    {
+        public bool Wifi { get; set; }
+        public bool Power { get; set; }
+        public bool Usb { get; set; }
+        public bool Ife { get; set; }
+        public bool Meal { get; set; }
+        public bool LieFlat { get; set; }
+    }
+
+    public class InclusionBadge { public string Icon { get; set; } = ""; public string Label { get; set; } = ""; }
+
+    public class FlightOption
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public string Origin { get; set; } = "";
+        public string Destination { get; set; } = "";
+        public DateTime DepartTime { get; set; }
+        public DateTime ArriveTime { get; set; }
+        public int PriceAUD { get; set; }
+        public string Cabin { get; set; } = "";
+        public int Stops { get; set; }
+        public Amenities Amenities { get; set; } = new();
+        public List<FlightLeg> Legs { get; set; } = new();
+        public string BaggageText { get; set; } = "";
+        public string ChangePolicy { get; set; } = "";
+        public string RefundPolicy { get; set; } = "";
+        public string SeatPolicy { get; set; } = "";
+
+        public List<Carrier> DisplayCarriers => Legs.Select(l => l.Carrier).Distinct().ToList();
+
+        public bool IsOpen { get; set; }
+
+        public string TotalDurationText
+        {
+            get
+            {
+                var span = ArriveTime - DepartTime;
+                return $"{(int)span.TotalHours}h {span.Minutes:D2}m";
+            }
+        }
+
+        public IEnumerable<InclusionBadge> InclusionBadges
+        {
+            get
+            {
+                var list = new List<InclusionBadge>();
+                if (Amenities.Wifi) list.Add(new InclusionBadge{ Icon="bi bi-wifi", Label="Wi‑Fi"});
+                if (Amenities.Power) list.Add(new InclusionBadge{ Icon="bi bi-lightning-charge", Label="Power"});
+                if (Amenities.Usb) list.Add(new InclusionBadge{ Icon="bi bi-usb-symbol", Label="USB"});
+                if (Amenities.Ife) list.Add(new InclusionBadge{ Icon="bi bi-tv", Label="IFE"});
+                if (Amenities.Meal) list.Add(new InclusionBadge{ Icon="bi bi-cup-hot", Label="Meal"});
+                if (Amenities.LieFlat) list.Add(new InclusionBadge{ Icon="bi bi-moon-stars", Label="Lie‑flat"});
+                return list;
+            }
+        }
+
+        public string SearchText
+        {
+            get
+            {
+                var parts = new List<string> { Origin, Destination, Cabin };
+                parts.AddRange(Legs.Select(l => $"{l.Carrier.Name} {l.Carrier.Code} {l.FlightNumber} {l.Origin} {l.Destination}"));
+                return string.Join(" ", parts);
+            }
+        }
+    }
+
+    public class AmenityQuery : Amenities { }
+
+    public static class DemoData
+    {
+        static readonly Carrier QF = new("QF", "Qantas", "https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/qf.webp");
+        static readonly Carrier SQ = new("SQ", "Singapore Airlines", "https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/sq.webp");
+        static readonly Carrier CA = new("CA", "Air China", "https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/ca.webp");
+
+        public static List<FlightOption> Create()
+        {
+            var baseDate = new DateTime(2025, 11, 10);
+
+            var qfSqHybrid = new FlightOption {
+                Origin="SYD", Destination="LHR",
+                DepartTime = baseDate.AddHours(20).AddMinutes(55),
+                ArriveTime = baseDate.AddDays(1).AddHours(6).AddMinutes(15),
+                PriceAUD = 5480, Cabin="Business", Stops=1,
+                Amenities = new Amenities{ Wifi=true, Power=true, Usb=true, Ife=true, Meal=true, LieFlat=true },
+                BaggageText="2×32kg", ChangePolicy="Flexible", RefundPolicy="Partial", SeatPolicy="Choose later",
+                Legs = new List<FlightLeg> {
+                    new FlightLeg {
+                        Carrier = QF, FlightNumber="QF1", Origin="SYD", Destination="SIN",
+                        Depart = baseDate.AddHours(20).AddMinutes(55),
+                        Arrive = baseDate.AddDays(1).AddHours(2).AddMinutes(10),
+                        Equipment="A380", SeatLayout="1-2-1", Amenities = new Amenities{ Wifi=true, Power=true, Usb=true, Ife=true, Meal=true },
+                        Layover = new Layover{ Airport="SIN", Minutes=75 }
+                    },
+                    new FlightLeg {
+                        Carrier = SQ, FlightNumber="SQ334", Origin="SIN", Destination="LHR",
+                        Depart = baseDate.AddDays(1).AddHours(3).AddMinutes(25),
+                        Arrive = baseDate.AddDays(1).AddHours(6).AddMinutes(15),
+                        Equipment="A380", SeatLayout="1-2-1", Amenities = new Amenities{ Wifi=true, Power=true, Usb=true, Ife=true, Meal=true }
+                    }
+                }
+            };
+
+            var sqNonstop = new FlightOption {
+                Origin="SYD", Destination="SIN",
+                DepartTime = baseDate.AddHours(9).AddMinutes(20),
+                ArriveTime = baseDate.AddHours(15).AddMinutes(5),
+                PriceAUD = 1590, Cabin="Premium Economy", Stops=0,
+                Amenities = new Amenities{ Wifi=true, Power=true, Ife=true, Meal=true },
+                BaggageText="2×23kg", ChangePolicy="Fee applies", RefundPolicy="No", SeatPolicy="Preselect",
+                Legs = new List<FlightLeg> {
+                    new FlightLeg {
+                        Carrier = SQ, FlightNumber="SQ232", Origin="SYD", Destination="SIN",
+                        Depart = baseDate.AddHours(9).AddMinutes(20),
+                        Arrive = baseDate.AddHours(15).AddMinutes(5),
+                        Equipment="A350", SeatLayout="2-4-2", Amenities = new Amenities{ Wifi=true, Power=true, Ife=true, Meal=true }
+                    }
+                }
+            };
+
+            var caOneStop = new FlightOption {
+                Origin="SYD", Destination="LHR",
+                DepartTime = baseDate.AddHours(8).AddMinutes(10),
+                ArriveTime = baseDate.AddDays(1).AddMinutes(45),
+                PriceAUD = 1190, Cabin="Economy", Stops=1,
+                Amenities = new Amenities{ Ife=true, Meal=true },
+                BaggageText="1×23kg", ChangePolicy="No", RefundPolicy="No", SeatPolicy="Auto-assign",
+                Legs = new List<FlightLeg> {
+                    new FlightLeg {
+                        Carrier = CA, FlightNumber="CA176", Origin="SYD", Destination="PEK",
+                        Depart = baseDate.AddHours(8).AddMinutes(10),
+                        Arrive = baseDate.AddHours(18).AddMinutes(30),
+                        Equipment="A330", SeatLayout="2-4-2", Amenities = new Amenities{ Ife=true, Meal=true },
+                        Layover = new Layover{ Airport="PEK", Minutes=130 }
+                    },
+                    new FlightLeg {
+                        Carrier = CA, FlightNumber="CA937", Origin="PEK", Destination="LHR",
+                        Depart = baseDate.AddHours(20).AddMinutes(40),
+                        Arrive = baseDate.AddDays(1).AddMinutes(45),
+                        Equipment="B777", SeatLayout="3-3-3", Amenities = new Amenities{ Ife=true, Meal=true }
+                    }
+                }
+            };
+
+            var qfDomestic = new FlightOption {
+                Origin="SYD", Destination="PER",
+                DepartTime = baseDate.AddHours(13).AddMinutes(5),
+                ArriveTime = baseDate.AddHours(16).AddMinutes(25),
+                PriceAUD = 420, Cabin="Economy", Stops=0,
+                Amenities = new Amenities{ Ife=true, Meal=true },
+                BaggageText="1×23kg", ChangePolicy="Fee applies", RefundPolicy="No", SeatPolicy="Auto-assign",
+                Legs = new List<FlightLeg> {
+                    new FlightLeg {
+                        Carrier = QF, FlightNumber="QF641", Origin="SYD", Destination="PER",
+                        Depart = baseDate.AddHours(13).AddMinutes(5),
+                        Arrive = baseDate.AddHours(16).AddMinutes(25),
+                        Equipment="B737", SeatLayout="3-3", Amenities = new Amenities{ Ife=true, Meal=true }
+                    }
+                }
+            };
+
+            return new List<FlightOption> { qfSqHybrid, sqNonstop, caOneStop, qfDomestic };
+        }
+    }
+}
