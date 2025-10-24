@@ -1,15 +1,19 @@
 using System.Text.Json;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
+using BlazorLoginDemo.Shared.Models.Kernel.FX;
+using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Services.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
+using BlazorLoginDemo.Shared.Services.Interfaces.Persistence;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policies;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
 using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 using BlazorLoginDemo.Shared.Services.Kernel;
+using BlazorLoginDemo.Shared.Services.Persistence;
 using BlazorLoginDemo.Shared.Services.Platform;
 using BlazorLoginDemo.Shared.Services.Policies;
 using BlazorLoginDemo.Shared.Services.Policy;
@@ -17,6 +21,7 @@ using BlazorLoginDemo.Shared.Services.Travel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace BlazorLoginDemo.Shared.Services;
 
@@ -52,6 +57,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
         services.AddScoped<IErrorCodeService, ErrorCodeService>();
+        services.AddScoped<IBillingService, BillingService>();
         return services;
     }
     
@@ -100,9 +106,27 @@ public static class ServiceCollectionExtensions
                 "InboundAPiKeyAuth must specify HeaderName and at least one non-empty key.")
             .ValidateOnStart();
 
+            // ExchangeRate API options
+            services.AddOptions<ExchangeRateApiOptions>()
+                .Bind(config.GetSection("ExchangeRateApi"))
+                .Validate(o =>
+                    !string.IsNullOrWhiteSpace(o.BaseUrl) &&
+                    !string.IsNullOrWhiteSpace(o.ApiKey) &&
+                    !string.IsNullOrWhiteSpace(o.DefaultBaseCode) &&
+                    o.DefaultBaseCode.Length == 3,
+                    "ExchangeRateApi: BaseUrl, ApiKey, and 3-letter DefaultBaseCode are required.")
+                .ValidateOnStart();
+
         // --- infra ---
         services.AddHttpClient();
+        services.AddMemoryCache(); // <-- needed for IMemoryCache
         services.AddSingleton(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        // --- fx http client ---
+        services.AddHttpClient("fx", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
 
         // --- Identity (required by AdminUserServiceUnified) ---
         services
@@ -115,6 +139,25 @@ public static class ServiceCollectionExtensions
             .AddSignInManager()
             .AddDefaultTokenProviders();
 
+        // --- airline service ---
+        services.AddOptions<AirlineIngestionOptions>()
+            .Bind(config.GetSection(AirlineIngestionOptions.SectionName))   // "AirlineIngestion"
+            .Validate(o =>
+                Uri.TryCreate(o.SourceUrl, UriKind.Absolute, out var u) &&
+                (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps),
+                "SourceUrl must be absolute http/https")
+            .Validate(o => o.HttpTimeoutSeconds is > 0 and <= 300, "HttpTimeoutSeconds must be 1-300")
+            .ValidateOnStart();
+
+        services.AddHttpClient("airlines")
+            .ConfigureHttpClient((sp, c) =>
+            {
+                var o = sp.GetRequiredService<IOptions<AirlineIngestionOptions>>().Value;
+                c.Timeout = TimeSpan.FromSeconds(o.HttpTimeoutSeconds);
+            });
+
+        services.AddScoped<IAirlineService, AirlineService>();
+
         // --- shared services ---
         services.AddScoped<ILoggerService, LoggerService>();
         services.AddScoped<IAmadeusAuthService, AmadeusAuthService>();
@@ -125,9 +168,14 @@ public static class ServiceCollectionExtensions
         // --- kernel services ---
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
         services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
+        services.AddScoped<ITravelPolicyService, TravelPolicyService>();
         services.AddScoped<ITravelQuoteService, TravelQuoteService>();
         services.AddScoped<IErrorCodeService, ErrorCodeService>();
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
+
+        // --- fx services ---
+        services.AddScoped<IFxRateStore, EfFxRateStore>();
+        services.AddScoped<IFxRateService, FxRateService>();
 
         // --- geographic services ---
         services.AddScoped<IRegionService, RegionService>();

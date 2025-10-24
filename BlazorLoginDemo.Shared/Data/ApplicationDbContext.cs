@@ -11,7 +11,9 @@ using BlazorLoginDemo.Shared.Models.Kernel.Platform;        // OrganizationUnifi
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;         // LicenseAgreementUnified
 using BlazorLoginDemo.Shared.Models.Policies;               // ExpensePolicy
 using BlazorLoginDemo.Shared.Models.User;
-using BlazorLoginDemo.Shared.Models.DTOs;                   // AvaUserLoyaltyAccount (legacy shape retained)
+using BlazorLoginDemo.Shared.Models.DTOs;
+using BlazorLoginDemo.Shared.Models.Kernel.FX;
+using BlazorLoginDemo.Shared.Models.Search;                   // AvaUserLoyaltyAccount (legacy shape retained)
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -24,6 +26,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
     public DbSet<ErrorCodeUnified> ErrorCodes => Set<ErrorCodeUnified>();
+    public DbSet<ExchangeRateSnapshot> ExchangeRateSnapshots => Set<ExchangeRateSnapshot>();
 
     // ---------------------------
     // Org / Tenancy (Unified)
@@ -42,11 +45,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     public DbSet<LicenseAgreementUnified> LicenseAgreements => Set<LicenseAgreementUnified>();
     public DbSet<ExpensePolicy> ExpensePolicies => Set<ExpensePolicy>();
+    public DbSet<Discount> Discounts => Set<Discount>();
 
     // ---------------------------
     // Travel / Geography
     // ---------------------------
     public DbSet<TravelPolicy> TravelPolicies => Set<TravelPolicy>();
+    public DbSet<EphemeralTravelPolicy> EphemeralTravelPolicies => Set<EphemeralTravelPolicy>();
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<Continent> Continents => Set<Continent>();
     public DbSet<Country> Countries => Set<Country>();
@@ -120,6 +125,54 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .Metadata.SetAfterSaveBehavior(
                     Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
         });
+
+        // ===========================
+        // FX snapshots
+        // ===========================
+        builder.Entity<ExchangeRateSnapshot>(e =>
+        {
+            e.ToTable("fx_rate_snapshots", "ava");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Id).HasColumnName("id");
+
+            e.Property(x => x.BaseCode)
+                .HasColumnName("base_code")
+                .HasMaxLength(3)
+                .IsRequired();
+
+            e.Property(x => x.CreatedAtUtc)
+                .HasColumnName("created_at_utc")
+                .HasColumnType("timestamptz")
+                .HasDefaultValueSql("timezone('utc', now())")
+                .ValueGeneratedOnAdd();
+
+            // prevent updates to created timestamp
+            e.Property(x => x.CreatedAtUtc)
+                .Metadata.SetAfterSaveBehavior(Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
+
+            // jsonb for rate map
+            e.Property(x => x.Rates)
+                .HasColumnName("rates_json")
+                .HasColumnType("jsonb");
+
+            e.Property(x => x.ProviderLastUpdateUtc)
+                .HasColumnName("provider_last_update_utc")
+                .HasColumnType("timestamptz");
+
+            e.Property(x => x.ProviderNextUpdateUtc)
+                .HasColumnName("provider_next_update_utc")
+                .HasColumnType("timestamptz");
+
+            e.Property(x => x.ProviderResult)
+                .HasColumnName("provider_result")
+                .HasMaxLength(32);
+
+            // latest-by-base lookup
+            e.HasIndex(x => new { x.BaseCode, x.CreatedAtUtc })
+                .HasDatabaseName("ix_fx_base_created");
+        });
+
 
         // ===========================
         // ApplicationUser (overhauled)
@@ -282,6 +335,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         }); // :contentReference[oaicite:14]{index=14}
 
         // ===========================
+        // Billing
+        // ===========================
+        builder.Entity<Discount>(e =>
+        {
+            e.ToTable("subscription_discounts", "ava");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.DiscountCode)
+                .IsRequired()
+                .HasMaxLength(30);
+
+            e.HasIndex(x => x.DiscountCode)
+                .IsUnique();
+        });
+
+
+        // ===========================
         // TravelPolicy (attach to Org via many-to-many for now)
         // ===========================
         builder.Entity<TravelPolicy>(e =>
@@ -433,24 +502,34 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.ToTable("airlines", "ava");
             e.HasKey(x => x.Id);
-            e.HasIndex(x => x.Iata).IsUnique();
-            e.Property(x => x.Iata).HasMaxLength(3).IsRequired();
-            e.Property(x => x.Icao).HasMaxLength(4);
-            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
-        });
 
+            e.HasIndex(x => x.Iata);
+            e.HasIndex(x => x.Icao);
+
+            e.Property(x => x.Iata).HasMaxLength(2);  // IATA = 2 chars
+            e.Property(x => x.Icao).HasMaxLength(3);  // ICAO = 3 chars
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Alias).HasMaxLength(200);
+            e.Property(x => x.CallSign).HasMaxLength(200);
+            e.Property(x => x.Country).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Alliance).HasConversion<int>();
+            e.Property(x => x.FoundedYear);
+        });
+                
         builder.Entity<LoyaltyProgram>(e =>
         {
             e.ToTable("loyalty_programs", "ava");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Code).IsUnique();
-            e.Property(x => x.Code).HasMaxLength(32).IsRequired();
-            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+            e.HasIndex(x => x.AirlineId).IsUnique(); // 1:0..1
+            e.Property(x => x.Code).HasMaxLength(40).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Alliance).HasConversion<int>();
 
             e.HasOne(x => x.Airline)
-                .WithMany(a => a.Programs)
-                .HasForeignKey(x => x.AirlineId)
-                .OnDelete(DeleteBehavior.Restrict);
+             .WithOne(a => a.LoyaltyProgram)
+             .HasForeignKey<LoyaltyProgram>(x => x.AirlineId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Rehome AvaUserLoyaltyAccount to ApplicationUser (shadow FK) and ignore legacy nav
@@ -536,6 +615,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .ValueGeneratedOnAdd()
                 .Metadata.SetAfterSaveBehavior(
                     Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
+
+            e.Property(x => x.Alliances)
+                .HasColumnType("integer[]")
+                .HasConversion(
+                    v => v == null ? null : v.Select(a => (int)a).ToArray(),           // List<Alliance> -> int[] or null
+                    v => v == null ? null : v.Select(i => (Alliance)i).ToList()        // int[] -> List<Alliance> or null
+                );
         });
 
         builder.Entity<TravelQuoteUser>(e =>

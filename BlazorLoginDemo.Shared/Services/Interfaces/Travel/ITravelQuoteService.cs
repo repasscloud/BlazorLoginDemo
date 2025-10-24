@@ -1,5 +1,7 @@
 // Services/Interfaces/Travel/ITravelQuoteService.cs
+using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
+using BlazorLoginDemo.Shared.Models.Search;
 
 namespace BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 
@@ -25,10 +27,15 @@ public interface ITravelQuoteService
     // POINT UPDATERS
     Task<bool> ReassignCreatedByAsync(string travelQuoteId, string newUserId, CancellationToken ct = default);
     Task<bool> UpdateStateAsync(string travelQuoteId, QuoteState newState, CancellationToken ct = default);
+    Task IngestTravelQuoteFlightUIResultPatchDto(TravelQuoteFlightUIResultPatchDto dto, CancellationToken ct = default);
 
     // DELETE
     Task<bool> DeleteAsync(string id, CancellationToken ct = default);
 
     // HELPERS
     bool TryParseQuoteType(string value, out TravelQuoteType type);
+    Task<int> ExpireOldQuotesAsync(CancellationToken ct = default);
+
+    // UI HELPERS
+    Task<FlightSearchPageConfig> GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default);
 }

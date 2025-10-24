@@ -1,5 +1,6 @@
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Policies;
+using BlazorLoginDemo.Shared.Models.Static.SysVar;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
 using Microsoft.EntityFrameworkCore;
@@ -39,9 +40,13 @@ public sealed class TravelPolicyService : ITravelPolicyService
         var orgExists = await _db.Organizations.AsNoTracking().AnyAsync(o => o.Id == policy.OrganizationUnifiedId, ct);
         if (!orgExists) throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found.");
 
-        await _logger.LogInfoAsync($"Creating TravelPolicy '{policy.PolicyName}' for Org '{policy.OrganizationUnifiedId}'");
-
-        policy.Id = NanoidDotNet.Nanoid.Generate(NanoidDotNet.Nanoid.Alphabets.LettersAndDigits.ToUpper(), 14);
+        await _logger.InformationAsync(
+            evt: "TRAVEL_POLICY_CREATE",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Create,
+            message: $"Creating TravelPolicy '{policy.PolicyName}' for Org '{policy.OrganizationUnifiedId}'",
+            ent: nameof(TravelPolicy),
+            entId: policy.Id);
 
         static DateTime? EnsureUtc(DateTime? d) =>
             d is null ? null :
@@ -55,6 +60,32 @@ public sealed class TravelPolicyService : ITravelPolicyService
         policy.LastUpdatedUtc = DateTime.UtcNow;
 
         await _db.TravelPolicies.AddAsync(policy, ct);
+
+        var org = await _db.Organizations.FirstOrDefaultAsync(
+            o => o.Id == policy.OrganizationUnifiedId, ct);
+        if (org is null)
+            throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found on add.");
+
+        if (string.IsNullOrWhiteSpace(org.DefaultTravelPolicyId))
+        {
+            org.DefaultTravelPolicyId = policy.Id;
+            org.LastUpdatedUtc = DateTime.UtcNow;
+
+            await _logger.InformationAsync(
+                evt: "TRAVEL_POLICY_SET_DEFAULT_ON_CREATE",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                message: $"Organization '{org.Id}' default Travel Policy set to '{policy.Id}' on creation.",
+                ent: nameof(TravelPolicy),
+                entId: policy.Id);
+
+            await _db.SaveChangesAsync(ct);
+        }
+        else
+        {
+            _db.Entry(org).State = EntityState.Detached; // "let go"
+        }
+
         await _db.SaveChangesAsync(ct);
         return policy;
     }
@@ -184,7 +215,15 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         if (tp is null)
         {
-            await _logger.LogErrorAsync(message: $"TravelPolicy '{policyId}' not found.");
+            await _logger.ErrorAsync(
+                evt: "TRAVEL_POLICY_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                ex: new InvalidOperationException($"TravelPolicy '{policyId}' not found."),
+                message: $"TravelPolicy '{policyId}' not found.",
+                ent: nameof(TravelPolicy),
+                entId: policyId,
+                note: "not_found");
             return false;
         }
 
@@ -193,14 +232,34 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         if (org is null)
         {
-            await _logger.LogErrorAsync(message: $"Organization '{tp.OrganizationUnifiedId}' from TravelPolicy '{policyId}' not found.");
+            await _logger.ErrorAsync(
+                evt: "ORGANIZATION_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                ex: new InvalidOperationException($"Organization '{tp.OrganizationUnifiedId}' from TravelPolicy '{policyId}' not found."),
+                message: $"Organization '{tp.OrganizationUnifiedId}' from TravelPolicy '{policyId}' not found.",
+                ent: nameof(policyId),
+                entId: tp.OrganizationUnifiedId,
+                note: "not_found");
             return false;
         }
 
         if (!string.IsNullOrEmpty(org.DefaultExpensePolicyId))
-            await _logger.LogInfoAsync(message: $"Organization '{org.Id}' default Travel Policy updated from '{tp.OrganizationUnifiedId}' to '{policyId}'.");
+            await _logger.InformationAsync(
+                evt: "TRAVEL_POLICY_UPDATE_DEFAULT",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                message: $"Organization '{org.Id}' default Travel Policy updated from '{tp.OrganizationUnifiedId}' to '{policyId}'.",
+                ent: nameof(TravelPolicy),
+                entId: policyId);
         else
-            await _logger.LogInfoAsync(message: $"Organization '{org.Id}' default Travel Policy set to '{policyId}'.");
+            await _logger.InformationAsync(
+                evt: "TRAVEL_POLICY_SET_DEFAULT",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                message: $"Organization '{org.Id}' default Travel Policy set to '{policyId}'.",
+                ent: nameof(TravelPolicy),
+                entId: policyId);
 
         org.DefaultTravelPolicyId = policyId;
         org.LastUpdatedUtc = DateTime.UtcNow;
@@ -213,57 +272,61 @@ public sealed class TravelPolicyService : ITravelPolicyService
     // -----------------------------
     public async Task<IReadOnlyList<Country>> ResolveAllowedCountriesAsync(string policyId, CancellationToken ct = default)
     {
+        // Load policy
         var tp = await _db.TravelPolicies.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == policyId, ct)
             ?? throw new InvalidOperationException($"TravelPolicy '{policyId}' not found");
 
-        // Start with explicit country IDs on the policy
-        var countryIdSet = tp.CountryIds.Distinct().ToHashSet();
+        // 1) Start with explicit country IDs from policy
+        var bag = new List<int>(tp.CountryIds);
 
-        // Add countries from continents on the policy
+        // 2) Add countries for explicit continents
         if (tp.ContinentIds.Length > 0)
         {
+            var contIds = tp.ContinentIds; // capture to local for translation
             var contCountryIds = await _db.Countries.AsNoTracking()
-                .Where(c => c.ContinentId.HasValue && tp.ContinentIds.Contains(c.ContinentId.Value))
+                .Where(c => c.ContinentId.HasValue && contIds.Contains(c.ContinentId.Value))
                 .Select(c => c.Id)
                 .ToListAsync(ct);
-            foreach (var id in contCountryIds) countryIdSet.Add(id);
+            bag.AddRange(contCountryIds);
         }
 
-        // Add countries from regions on the policy
+        // 3) Add countries for regions → continents → countries
         if (tp.RegionIds.Length > 0)
         {
-            // First get continent ids for those regions
+            var regionIds = tp.RegionIds;
             var regionContinentIds = await _db.Continents.AsNoTracking()
-                .Where(cont => cont.RegionId.HasValue && tp.RegionIds.Contains(cont.RegionId.Value))
-                .Select(cont => cont.Id)
+                .Where(x => x.RegionId.HasValue && regionIds.Contains(x.RegionId.Value))
+                .Select(x => x.Id)
                 .ToListAsync(ct);
 
             if (regionContinentIds.Count > 0)
             {
+                var regContIds = regionContinentIds;
                 var regCountryIds = await _db.Countries.AsNoTracking()
-                    .Where(c => c.ContinentId.HasValue && regionContinentIds.Contains(c.ContinentId.Value))
+                    .Where(c => c.ContinentId.HasValue && regContIds.Contains(c.ContinentId.Value))
                     .Select(c => c.Id)
                     .ToListAsync(ct);
-                foreach (var id in regCountryIds) countryIdSet.Add(id);
+                bag.AddRange(regCountryIds);
             }
         }
 
-        // Remove disabled country ids
+        // 4) Remove disabled, then dedupe
         if (tp.DisabledCountryIds.Length > 0)
         {
-            foreach (var dc in tp.DisabledCountryIds) countryIdSet.Remove(dc);
+            var disabled = tp.DisabledCountryIds;
+            bag.RemoveAll(id => disabled.Contains(id));
         }
+        var distinctIds = bag.Distinct().ToArray();
 
-        if (countryIdSet.Count == 0)
+        if (distinctIds.Length == 0)
             return Array.Empty<Country>();
 
-        var result = await _db.Countries.AsNoTracking()
-            .Where(c => countryIdSet.Contains(c.Id))
+        // 5) Return countries sorted by name
+        return await _db.Countries.AsNoTracking()
+            .Where(c => distinctIds.Contains(c.Id))
             .OrderBy(c => c.Name)
             .ToListAsync(ct);
-
-        return result;
     }
 
     // -----------------------------
@@ -316,9 +379,9 @@ public sealed class TravelPolicyService : ITravelPolicyService
         static int[] Clean(int[]? ids) =>
             (ids ?? Array.Empty<int>()).Where(i => i > 0).Distinct().ToArray();
 
-        policy.RegionIds          = Clean(policy.RegionIds);
-        policy.ContinentIds       = Clean(policy.ContinentIds);
-        policy.CountryIds         = Clean(policy.CountryIds);
+        policy.RegionIds = Clean(policy.RegionIds);
+        policy.ContinentIds = Clean(policy.ContinentIds);
+        policy.CountryIds = Clean(policy.CountryIds);
         policy.DisabledCountryIds = Clean(policy.DisabledCountryIds);
     }
 }

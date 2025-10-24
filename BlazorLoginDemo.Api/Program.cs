@@ -129,11 +129,11 @@ public class Program
         // --------------------------
         // MVC / Controllers
         // --------------------------
-        builder.Services.AddControllers()
-            .AddJsonOptions(o =>
-            {
-                o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-            });
+        builder.Services.AddControllers();
+            // .AddJsonOptions(o =>
+            // {
+            //     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            // });
 
         // --------------------------
         // App-specific services

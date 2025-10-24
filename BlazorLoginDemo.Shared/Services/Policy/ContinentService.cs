@@ -53,6 +53,13 @@ public sealed class ContinentService : IContinentService
     public async Task<IReadOnlyList<Country>> GetAssignedCountriesAsync(int id, CancellationToken ct = default)
         => await _db.Set<Country>().AsNoTracking().Where(c => c.ContinentId == id).ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Continent>> GetByRegionIdAsync(int regionId, CancellationToken ct = default)
+        => await _db.Set<Continent>()
+            .AsNoTracking()
+            .Where(x => x.RegionId == regionId)
+            .OrderBy(x => x.Name)
+            .ToListAsync(ct);
+
     public async Task<Continent> UpdateAsync(Continent continent, CancellationToken ct = default)
     {
         if (continent is null) throw new ArgumentNullException(nameof(continent));
@@ -62,7 +69,7 @@ public sealed class ContinentService : IContinentService
             ?? throw new InvalidOperationException($"Continent {continent.Id} not found.");
 
         var newName = NormalizeName(continent.Name);
-        var newIso  = NormalizeIso(continent.IsoCode);
+        var newIso = NormalizeIso(continent.IsoCode);
 
         if (string.IsNullOrWhiteSpace(newName))
             throw new ArgumentException("Name is required.", nameof(continent));
@@ -77,7 +84,7 @@ public sealed class ContinentService : IContinentService
             .AnyAsync(x => x.Id != continent.Id && x.IsoCode == newIso, ct);
         if (codeClash) throw new InvalidOperationException($"Continent with IsoCode '{newIso}' already exists.");
 
-        existing.Name    = newName;
+        existing.Name = newName;
         existing.IsoCode = newIso;
         existing.RegionId = continent.RegionId; // nullable, no FK logic here
 
