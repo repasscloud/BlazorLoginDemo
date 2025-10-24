@@ -106,7 +106,7 @@ public sealed class AirportInfoService : IAirportInfoService
         bool hasIata = true,
         bool hasMunicipality = true,
         int skip = 0,
-        int take = 50,
+        int take = 999999,
         CancellationToken ct = default)
     {
         IQueryable<AirportInfo> q = _db.AirportInfos.AsNoTracking();
@@ -137,14 +137,13 @@ public sealed class AirportInfoService : IAirportInfoService
         if (hasMunicipality)
             q = q.Where(a => a.Municipality != null && a.Municipality != ""); // exclude null/empty
 
-        if (take <= 0) take = 50;
-        if (take > 500) take = 500;
-        if (skip < 0)  skip = 0;
+        // paging: <=50 => take 50, >50 => unbounded (51–n)
+        skip = Math.Max(0, skip);
+        bool bounded = take <= 50;
 
-        q = q.OrderBy(a => a.Name)
-            .ThenBy(a => a.Ident)
-            .Skip(skip)
-            .Take(take);
+        q = q.OrderBy(a => a.Name).ThenBy(a => a.Ident);
+        if (skip > 0) q = q.Skip(skip);
+        if (bounded)  q = q.Take(50);
 
         return await q.ToListAsync(ct);
     }

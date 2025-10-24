@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
+using BlazorLoginDemo.Shared.Models.Search;
+using BlazorLoginDemo.Shared.Models.DTOs;
 
 namespace BlazorLoginDemo.Api.Controllers.Travel;
 
@@ -34,6 +36,13 @@ public sealed class TravelQuotesController : ControllerBase
     {
         var result = await _svc.SearchAsync(organizationId, createdByUserId, tmcAssignedId, type, state, ct);
         return Ok(result);
+    }
+
+    [HttpGet("ui/flightsearchpageconfig/{travelQuoteId}")]
+    public async Task<ActionResult<FlightSearchPageConfig>> GetFlightSearchPageConfig(string travelQuoteId, CancellationToken ct)
+    {
+        var config = await _svc.GenerateFlightSearchUIOptionsAsync(travelQuoteId, ct);
+        return config is null ? NotFound() : Ok(config);
     }
 
     // ---------- CREATE ----------
@@ -84,6 +93,24 @@ public sealed class TravelQuotesController : ControllerBase
             return BadRequest(new { error });
 
         return Ok(new { id = travelQuoteId });
+    }
+
+    [HttpGet("cron/expire-pending-quotes")]
+    public async Task<IActionResult> ExpirePendingQuotes(CancellationToken ct)
+    {
+        var expiredCount = await _svc.ExpireOldQuotesAsync(ct);
+        return Ok(new { expiredCount });
+    }
+
+    [HttpPost("run-search/flight")]
+    public async Task<ActionResult> RunFlightSearch(
+        [FromBody] TravelQuoteFlightUIResultPatchDto dto,
+        CancellationToken ct)
+    {
+        if (dto is null) return BadRequest("Body required.");
+
+        await _svc.IngestTravelQuoteFlightUIResultPatchDto(dto, ct);
+        return Ok();  // always OK even if no matching quote found
     }
 
     // ---------- Request contracts ----------

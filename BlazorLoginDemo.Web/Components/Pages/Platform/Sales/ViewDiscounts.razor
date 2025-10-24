@@ -1,0 +1,188 @@
+@page "/platform/sales/discounts/view"
+@rendermode InteractiveServer
+
+@using BlazorLoginDemo.Shared.Models.Kernel.Billing
+@using BlazorLoginDemo.Shared.Services.Interfaces.Kernel
+@inject IBillingService Billing
+
+
+<div class="container-fluid px-0">
+    <!-- Header / Search -->
+    <div class="d-flex align-items-center mb-3">
+        <i class="bi bi-tags me-2 fs-4"></i>
+        <h5 class="mb-0">Discounts</h5>
+        <span class="ms-2 text-muted">(@_filtered.Count)</span>
+        <div class="ms-auto" style="min-width: 360px;">
+            <input class="form-control"
+                   placeholder="Search name, code, or notes"
+                   @bind="_q" @bind:event="oninput" />
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-muted">
+            <i class="bi bi-arrow-repeat me-2"></i>Loading…
+        </div>
+    }
+    else if (_filtered.Count == 0)
+    {
+        <div class="alert alert-secondary py-2">
+            <i class="bi bi-info-circle me-2"></i>No discounts match your search.
+        </div>
+    }
+    else
+    {
+        <!-- Results list -->
+        <div class="list-group">
+            @foreach (Discount d in _filtered)
+            {
+                <div class="list-group-item">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center">
+                                <strong class="me-2">@d.DisplayName</strong>
+                                @if (!string.IsNullOrWhiteSpace(d.DiscountCode))
+                                {
+                                    <span class="badge text-bg-light border me-2">
+                                        <i class="bi bi-upc-scan me-1"></i>@d.DiscountCode
+                                    </span>
+                                }
+
+                                <!-- Type / Amount -->
+                                <span class="badge text-bg-primary me-2">
+                                    @((d.Type == DiscountType.Percentage)
+                                        ? $"{d.Amount:0.##}%"
+                                        : $"{(string.IsNullOrWhiteSpace(d.Currency) ? "" : d.Currency + " ")}{d.Amount:0.##}")
+                                </span>
+
+                                <!-- Scope -->
+                                <span class="badge text-bg-secondary me-2">@d.Scope</span>
+
+                                <!-- Enabled / Active -->
+                                <span class="badge @(d.IsEnabled ? "text-bg-success" : "text-bg-danger") me-2">
+                                    @(d.IsEnabled ? "Enabled" : "Disabled")
+                                </span>
+                                <span class="badge @(d.IsActive ? "text-bg-success" : "text-bg-danger")">
+                                    @(d.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(d.Notes))
+                            {
+                                <div class="text-muted small mt-1">
+                                    @Truncate(d.Notes!, 220)
+                                </div>
+                            }
+
+                            <div class="small text-muted mt-1">
+                                @if (d.StartsAtUtc.HasValue)
+                                {
+                                    <span class="me-3">
+                                        <i class="bi bi-calendar-check me-1"></i>
+                                        Starts: @d.StartsAtUtc.Value.ToLocalTime()
+                                    </span>
+                                }
+                                @if (d.EndsAtUtc.HasValue)
+                                {
+                                    <span class="me-3">
+                                        <i class="bi bi-calendar-x me-1"></i>
+                                        Ends: @d.EndsAtUtc.Value.ToLocalTime()
+                                    </span>
+                                }
+                                @if (d.SeatMin.HasValue || d.SeatMax.HasValue)
+                                {
+                                    <span class="me-3">
+                                        <i class="bi bi-people me-1"></i>
+                                        Seats: @(d.SeatMin?.ToString() ?? "0")–@(d.SeatMax?.ToString() ?? "∞")
+                                    </span>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="ms-3 d-flex flex-column gap-2">
+                            <a class="btn btn-sm btn-outline-secondary"
+                               href=@($"/platform/sales/discounts/view/{d.Id}")>
+                                <i class="bi bi-eye me-1"></i>View
+                            </a>
+                            <a class="btn btn-sm btn-outline-primary"
+                               href=@($"/platform/finance/discounts/edit/{d.Id}")>
+                                <i class="bi bi-pencil-square me-1"></i>Edit
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    // Hardcoded tenant context provided by you
+    private const string ParentOrgId = "xOmbAtOS9teGXaYHZQIVq";
+
+    private List<Discount> _all = new List<Discount>();
+    private List<Discount> _filtered = new List<Discount>();
+    private string _q = string.Empty;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load once: pull all discounts for the org. Keep in memory for client-side filtering.
+        IReadOnlyList<Discount>? list = await Billing.SearchDiscountsAsync(
+            filters: new IBillingService.DiscountSearchParams(
+                ParentOrgId: ParentOrgId,
+                Skip: 0,
+                Take: 500 // raise if needed
+            ),
+            CancellationToken.None);
+
+        _all = list
+            .OrderBy(d => d.DisplayName ?? string.Empty)
+            .ThenBy(d => d.Id)
+            .ToList();
+
+        ApplyFilter();
+        _loading = false;
+    }
+
+    private void ApplyFilter()
+    {
+        if (string.IsNullOrWhiteSpace(_q))
+        {
+            _filtered = _all;
+            StateHasChanged();
+            return;
+        }
+
+        string? q = _q.Trim();
+        _filtered = _all.Where(d =>
+            ContainsCI(d.DisplayName, q) ||
+            ContainsCI(d.DiscountCode, q) ||
+            ContainsCI(d.Notes, q)
+        ).ToList();
+
+        StateHasChanged();
+    }
+
+    // Case-insensitive substring check, safe for nulls
+    private static bool ContainsCI(string? haystack, string needle)
+        => !string.IsNullOrEmpty(haystack) &&
+           haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
+
+    // Simple truncation for notes preview
+    private static string Truncate(string s, int max) =>
+        s.Length <= max ? s : s.Substring(startIndex: 0, max - 1) + "…";
+
+    // Live filtering as user types
+    private string Q
+    {
+        get => _q;
+        set
+        {
+            _q = value;
+            ApplyFilter();
+        }
+    }
+}

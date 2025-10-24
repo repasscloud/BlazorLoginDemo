@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7-labs
+# syntax=docker/dockerfile:1.19.0
 FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim
 ARG CSPROJ_WEB
 ARG CSPROJ_SHARED

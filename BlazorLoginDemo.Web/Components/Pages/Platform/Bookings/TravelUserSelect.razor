@@ -310,14 +310,14 @@ else
     public sealed record ErrorEnvelope(string? Error);
     public sealed record IdEnvelope(string? Id);
 
-    @* async Task CreateQuoteAsync()
+    async Task CreateQuoteAsync()
     {
         if (string.IsNullOrEmpty(SelectedClientId) || SelectedUserIds.Count == 0)
             return;
 
-        HttpClient? client = HttpClientFactory.CreateClient("AvaApi");
+        HttpClient? client = HttpClientFactory.CreateClient(name: "AvaApi");
 
-        TravelQuoteDto? payload = new TravelQuoteDto
+        TravelQuoteDto payload = new TravelQuoteDto
         {
             QuoteType = BookingTypeNormalized,
             CreatedByUserId = myUserId!,
@@ -328,68 +328,18 @@ else
 
         using HttpResponseMessage? response = await client.PostAsJsonAsync(requestUri: "api/v1/travel/quotes/from-dto", payload, JsonOpts);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            string? raw = await response.Content.ReadAsStringAsync();
-            string msg = $"HTTP {(int)response.StatusCode}";
-
-            try
-            {
-                ErrorEnvelope? e = JsonSerializer.Deserialize<ErrorEnvelope>(raw, JsonOpts);
-                if (!string.IsNullOrWhiteSpace(e?.Error)) msg = e!.Error!;
-                else
-                {
-                    ProblemDetails? p = JsonSerializer.Deserialize<ProblemDetails>(raw, JsonOpts);
-                    if (!string.IsNullOrWhiteSpace(p?.Detail)) msg = p!.Detail!;
-                    else if (!string.IsNullOrWhiteSpace(p?.Title)) msg = p!.Title!;
-                    else if (!string.IsNullOrWhiteSpace(raw)) msg = raw;
-                }
-            }
-            catch { if (!string.IsNullOrWhiteSpace(raw)) msg = raw; }
-
-            throw new InvalidOperationException(msg);
-        }
-
-        IdEnvelope? ok = await response.Content.ReadFromJsonAsync<IdEnvelope>(JsonOpts)
-                ?? throw new InvalidOperationException(message: "Empty response.");
-        string? createdId = ok.Id ?? throw new InvalidOperationException(message: "Missing ID.");
-
-        if (createdId == "Missing ID.")
-            Nav.NavigateTo(uri: "missing-id-error", forceLoad: true);
-
-        Nav.NavigateTo(uri: $"/platform/pnr/create/{BookingTypeNormalized}/{createdId}", forceLoad: true);
-    } *@
-
-    async Task CreateQuoteAsync()
-    {
-        if (string.IsNullOrEmpty(SelectedClientId) || SelectedUserIds.Count == 0)
-            return;
-
-        var client = HttpClientFactory.CreateClient("AvaApi");
-
-        var payload = new TravelQuoteDto
-        {
-            QuoteType = BookingTypeNormalized,
-            CreatedByUserId = myUserId!,
-            TmcAssignedId = SelectedTmcId!,
-            OrganizationId = SelectedClientId!,
-            TravellerUserIds = SelectedUserIds.ToList()
-        };
-
-        using var response = await client.PostAsJsonAsync("api/v1/travel/quotes/from-dto", payload, JsonOpts);
-
         // catch your controller's: return BadRequest(new { error });
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
             // prefer ErrorEnvelope { Error } if you already have that type
             try
             {
-                var err = await response.Content.ReadFromJsonAsync<ErrorEnvelope>(JsonOpts);
+                ErrorEnvelope? err = await response.Content.ReadFromJsonAsync<ErrorEnvelope>(JsonOpts);
                 ErrorMessage = string.IsNullOrWhiteSpace(err?.Error) ? "Bad request." : err!.Error;
             }
             catch
             {
-                var raw = await response.Content.ReadAsStringAsync();
+                string? raw = await response.Content.ReadAsStringAsync();
                 ErrorMessage = string.IsNullOrWhiteSpace(raw) ? "Bad request." : raw;
             }
             return;
@@ -398,20 +348,20 @@ else
         // any other non-success → set a terse message and stop
         if (!response.IsSuccessStatusCode)
         {
-            var raw = await response.Content.ReadAsStringAsync();
+            string? raw = await response.Content.ReadAsStringAsync();
             ErrorMessage = $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}"
                         + (string.IsNullOrWhiteSpace(raw) ? "" : $": {raw}");
             return;
         }
 
-        var ok = await response.Content.ReadFromJsonAsync<IdEnvelope>(JsonOpts);
+        IdEnvelope? ok = await response.Content.ReadFromJsonAsync<IdEnvelope>(JsonOpts);
         if (string.IsNullOrWhiteSpace(ok?.Id))
         {
             ErrorMessage = "Missing ID.";
             return;
         }
 
-        var createdId = ok!.Id!;
-        Nav.NavigateTo($"/platform/pnr/create/{BookingTypeNormalized}/{createdId}", forceLoad: true);
+        string? createdId = ok!.Id!;
+        Nav.NavigateTo(uri: $"/platform/pnr/create/flight/search/{createdId}", forceLoad: true);
     }
 }

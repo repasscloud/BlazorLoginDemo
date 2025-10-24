@@ -1,4 +1,3 @@
-using System.Xml;
 using System.Net;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
@@ -9,7 +8,7 @@ using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using HtmlAgilityPack;
-using Serilog;
+using BlazorLoginDemo.Shared.Models.Static.SysVar;
 
 namespace BlazorLoginDemo.Shared.Services.Platform;
 
@@ -88,7 +87,15 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             throw;
         }
 
-        await _logger.LogInfoAsync($"Created Organization '{org.Name}' (ID: {org.Id})");
+        await _logger.InformationAsync(
+            evt: "ORG_CREATE",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Create,
+            message: $"Created Organization '{org.Name}' (ID: {org.Id})",
+            ent: nameof(req.Name),
+            entId: org.Id,
+            org: org.Id?.ToString());
+
 
         var loaded = await _db.Organizations
             .Include(o => o.Domains)
@@ -103,7 +110,14 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         try
         {
             var agg = await CreateAsync(req, ct);
-            await _logger.LogInfoAsync($"CreateOrgAsync succeeded for Org '{agg.Org.Name}' (ID: {agg.Org.Id})");
+            await _logger.InformationAsync(
+                evt: "ORG_CREATE_END",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.End,
+                message: $"CreateOrgAsync succeeded for Org '{agg.Org.Name}' (ID: {agg.Org.Id})",
+                ent: nameof(req.Name),
+                entId: agg.Org.Id,
+                org: agg.Org.Id?.ToString());
             return new(true, null, agg.Org.Id);
         }
         catch (Exception ex)
@@ -124,7 +138,14 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             .Include(o => o.TravelPolicies)   // load the travel policies #36
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
-        await _logger.LogInfoAsync("Retrieved organization by ID: " + id);
+        await _logger.InformationAsync(
+            evt: "ORG_READ_BY_ID",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Read,
+            message: $"Retrieved organization by ID: {id}",
+            ent: nameof(id),
+            entId: id,
+            org: id?.ToString());
 
         return org is null ? null : new IAdminOrgServiceUnified.OrgAggregate(org, org.Domains.ToList(), org.LicenseAgreement);
     }
@@ -404,42 +425,42 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         switch (taxIdType)
         {
             case "AU ABN" or "AU ACN":
-            {
-                var url = $"{AUBaseUrl}/ABN/View?id={taxId}";
-                var httpClient = _httpClientFactory.CreateClient();
-                var html = await httpClient.GetStringAsync(url);
-
-                var doc = new HtmlDocument();
-                doc.LoadHtml(html);
-
-                string GetField(string label)
                 {
-                    // grab all <th> nodes once
-                    var thNodes = doc.DocumentNode.SelectNodes("//th");
-                    if (thNodes == null)
-                        return "Not found";
+                    var url = $"{AUBaseUrl}/ABN/View?id={taxId}";
+                    var httpClient = _httpClientFactory.CreateClient();
+                    var html = await httpClient.GetStringAsync(url);
 
-                    foreach (var th in thNodes)
+                    var doc = new HtmlDocument();
+                    doc.LoadHtml(html);
+
+                    string GetField(string label)
                     {
-                        var decodedText = WebUtility.HtmlDecode(th.InnerText).Trim();
-                        if (decodedText == label)
+                        // grab all <th> nodes once
+                        var thNodes = doc.DocumentNode.SelectNodes("//th");
+                        if (thNodes == null)
+                            return "Not found";
+
+                        foreach (var th in thNodes)
                         {
-                            // pick up the next <td>
-                            var td = th.SelectSingleNode("following-sibling::td");
-                            if (td != null)
-                                return WebUtility.HtmlDecode(td.InnerText).Trim();
+                            var decodedText = WebUtility.HtmlDecode(th.InnerText).Trim();
+                            if (decodedText == label)
+                            {
+                                // pick up the next <td>
+                                var td = th.SelectSingleNode("following-sibling::td");
+                                if (td != null)
+                                    return WebUtility.HtmlDecode(td.InnerText).Trim();
+                            }
                         }
+
+                        return "Not found";
                     }
 
-                    return "Not found";
+                    var gstStatus = GetField("Goods & Services Tax (GST):");
+                    taxResultStatus = gstStatus.Contains("Not currently registered for GST") || gstStatus.Contains("Not found")
+                        ? false
+                        : true;
+                    break;
                 }
-
-                var gstStatus = GetField("Goods & Services Tax (GST):");
-                taxResultStatus = gstStatus.Contains("Not currently registered for GST") || gstStatus.Contains("Not found")
-                    ? false
-                    : true;
-                break;
-            }
 
             default:
                 break;
@@ -455,9 +476,40 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             org.LastUpdatedUtc = now;
             await _db.SaveChangesAsync(ct);
 
-            await _logger.LogInfoAsync($"Validated Tax ID for Org '{org.Name}' (ID: {org.Id})");
+            await _logger.InformationAsync(
+                evt: "ORG_TAX_ID_VALIDATE",
+                cat: SysLogCatType.Tax,
+                act: SysLogActionType.Validate,
+                message: $"Validated Tax ID for Org '{org.Name}' (ID: {org.Id})",
+                ent: nameof(org.Id),
+                entId: org.Id,
+                org: org.Id?.ToString());
         }
 
         return taxResultStatus;
+    }
+    
+    public async Task<string?> GetOrgDefaultTravelPolicyIdAsync(string orgId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(orgId))
+        {
+            await _logger.ErrorAsync(
+                evt: "ORG_DEFAULT_POLICY_MISSING",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Validate,
+                ex: new InvalidOperationException($"Organization {orgId} has no Default Travel Policy configured."),
+                message: $"Organization {orgId} has no Default Travel Policy configured.",
+                ent: nameof(orgId),
+                entId: orgId,
+                org: orgId?.ToString(),
+                note: "default_policy_missing");
+            return null;
+        }
+
+        var org = await _db.Organizations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == orgId, ct);
+
+        return org?.DefaultTravelPolicyId ?? null;
     }
 }

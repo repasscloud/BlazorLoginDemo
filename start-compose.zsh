@@ -195,10 +195,14 @@ echo
 echo "🚀 8) Start Api app"
 docker compose up -d api
 
-# ── 🌱 9) Seed the DB with additional data ──────────────────────────────────
+# ── 🌱 9) Seed the DB with airport data ──────────────────────────────────
 echo
-echo "🌱 9) Seed the DB with additional data"
-pwsh -File .scripts/import-airports.ps1 -CsvPath .scripts/data/airports.csv -Batch 500
+echo "🌱 9) Seed the DB with airport data"
+curl -X 'POST' \
+  'http://localhost:8090/api/v1/admin/kerneldata/airport-info/bulk-upsert-from-csv?batchSize=1000' \
+  -H 'accept: text/plain' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'File=@.scripts/data/airports.csv;type=text/csv'
 
 # ── 📤 10) Commit & push version bump ──────────────────────────────────────────
 echo
@@ -233,6 +237,12 @@ region_country_data_import_log=".docker/db/pwsh/import.log"
 pwsh -File .docker/db/pwsh/01-import-regions.ps1
 pwsh -File .docker/db/pwsh/02-import-continents.ps1
 pwsh -File .docker/db/pwsh/03-import-countries.ps1
+
+# ── 🐳 12) Start crontab and pgweb ──────────────────────────────────────────
+echo
+echo "🐳 12) Start crontab and pgweb"
+docker compose up -d --build crontab
+docker compose up -d pgweb
 
 # ── 🏁 Done ───────────────────────────────────────────────────────────────────
 echo
