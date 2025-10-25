@@ -13,6 +13,7 @@ set -euo pipefail
 pgContainerName='pgsql'
 aspContainerName='blazor'
 pgadminContainerName='pgadmin'
+apiContainerName='api'
 dbPort=5432
 dbUser='demodb'
 dbPass='YourAppPassword'
@@ -119,6 +120,7 @@ echo
 echo "🐳 0) Stop all docker containers"
 docker compose down -v --remove-orphans # --rmi all
 docker buildx prune --force
+docker buildx history rm --all
 
 # ── 🧹 1) Clean slate: migrations, obj, bin, and blazorlogin* volumes ────────
 echo
@@ -190,30 +192,47 @@ echo
 echo "🚀 7) Start Blazor app"
 docker compose up -d "$aspContainerName"
 
-# ── 🚀 8) Start Api app ───────────────────────────────────────────────────
+# ── 🚀 8) Start API app ───────────────────────────────────────────────────
 echo
-echo "🚀 8) Start Api app"
-docker compose up -d api
+echo "🚀 8) Start API app"
+docker compose up -d "$apiContainerName"
 
-# ── 🌱 9) Seed the DB with airport data ──────────────────────────────────
+# ── ⏳ 9) Wait for API to be healthy ─────────────────────────────────────
 echo
-echo "🌱 9) Seed the DB with airport data"
+echo "⏳ 9) Waiting for API to be healthy..."
+deadline=$((SECONDS + 180))
+state=""
+while :; do
+  if ! state="$(docker inspect --format '{{.State.Health.Status}}' "$apiContainerName" 2>/dev/null)"; then
+    state="unknown"
+  fi
+  echo "   - health: $state"
+  [[ "$state" == "healthy" ]] && break
+  (( SECONDS >= deadline )) && { echo "❌ API did not become healthy in time." >&2; exit 1; }
+  sleep 2
+done
+api_host_port="$(docker port "$apiContainerName" | awk -F '[: ]+' '/tcp/ {print $NF; exit}')"
+echo "✅ API is healthy (container: $apiContainerName, port: $api_host_port)"
+
+# ── 🌱 10) Seed the DB with airport data ──────────────────────────────────
+echo
+echo "🌱 10) Seed the DB with airport data"
 curl -X 'POST' \
   'http://localhost:8090/api/v1/admin/kerneldata/airport-info/bulk-upsert-from-csv?batchSize=1000' \
   -H 'accept: text/plain' \
   -H 'Content-Type: multipart/form-data' \
   -F 'File=@.scripts/data/airports.csv;type=text/csv'
 
-# ── 📤 10) Commit & push version bump ──────────────────────────────────────────
+# ── 📤 11) Commit & push version bump ──────────────────────────────────────────
 echo
-echo "📤 10) Commit & push version bump to Git"
+echo "📤 11) Commit & push version bump to Git"
 git add .
 git commit -m "bump v${NEW_VER}"
 git push
 
-# ── 🌱 11) Seed the DB with additional data ──────────────────────────────────
+# ── 🌱 12) Seed the DB with additional data ──────────────────────────────────
 echo
-echo "🌱 11) Seed the DB with additional data"
+echo "🌱 12) Seed the DB with additional data"
 curl -X 'GET' \
   'http://localhost:8090/api/v1/test/create-org-data' \
   -H 'accept: */*'
@@ -238,9 +257,9 @@ pwsh -File .docker/db/pwsh/01-import-regions.ps1
 pwsh -File .docker/db/pwsh/02-import-continents.ps1
 pwsh -File .docker/db/pwsh/03-import-countries.ps1
 
-# ── 🐳 12) Start crontab and pgweb ──────────────────────────────────────────
+# ── 🐳 13) Start crontab and pgweb ──────────────────────────────────────────
 echo
-echo "🐳 12) Start crontab and pgweb"
+echo "🐳 13) Start crontab and pgweb"
 docker compose up -d --build crontab
 docker compose up -d pgweb
 
