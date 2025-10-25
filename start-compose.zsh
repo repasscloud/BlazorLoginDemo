@@ -260,7 +260,8 @@ pwsh -File .docker/db/pwsh/03-import-countries.ps1
 # ── 🐳 13) Start crontab and pgweb ──────────────────────────────────────────
 echo
 echo "🐳 13) Start crontab and pgweb"
-docker compose up -d --build crontab
+docker compose build crontab
+docker compose up -d crontab
 docker compose up -d pgweb
 
 # ── 🏁 Done ───────────────────────────────────────────────────────────────────
