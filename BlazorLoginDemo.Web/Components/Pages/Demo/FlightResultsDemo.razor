@@ -255,7 +255,7 @@
     AmenityQuery qAmenities = new AmenityQuery();
 
     // Data
-    List<FlightOption> All = new List<FlightOption>();
+    List<FlightOption> FlightResults = new List<FlightOption>();
     HashSet<Guid> Selected = new HashSet<Guid>();
 
     bool ShowCompareJson = false;
@@ -263,10 +263,10 @@
 
     protected override void OnInitialized()
     {
-        All = DemoData.Create();
+        FlightResults = DemoData.Create();
     }
 
-    IEnumerable<FlightOption> Filtered => All.Where(Matches);
+    IEnumerable<FlightOption> Filtered => FlightResults.Where(Matches);
 
     bool Matches(FlightOption o)
     {
@@ -324,7 +324,7 @@
     void Toggle(FlightOption o)
     {
         var willOpen = !o.IsOpen;
-        foreach (FlightOption x in All) x.IsOpen = false;
+        foreach (FlightOption x in FlightResults) x.IsOpen = false;
         o.IsOpen = willOpen;
     }
 
@@ -345,7 +345,7 @@
 
     void ShowCompare()
     {
-        var payload = All.Where(x => Selected.Contains(x.Id))
+        var payload = FlightResults.Where(x => Selected.Contains(x.Id))
             .Select(x => new {
                 x.Id,
                 x.Cabin,

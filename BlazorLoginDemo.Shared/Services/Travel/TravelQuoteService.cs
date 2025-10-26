@@ -645,6 +645,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             OrganizationId = dto.OrganizationId.Trim(),
             TmcAssignedId = dto.TmcAssignedId.Trim(),
             CreatedByUserId = dto.CreatedByUserId.Trim(),
+            CoverageType = CoverageType.MostSegments,  // default; can be updated later
         };
 
         // foreach (var uid in dto.TravellerUserIds.Distinct(StringComparer.Ordinal))
@@ -812,6 +813,21 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         if (pL.Count == 1)
         {
             q.TravelPolicyId = pL[0].Id;  // single policy, assign directly
+            switch(pL[0].CabinClassCoverage)
+            {
+                case "ALL_SEGMENTS":
+                    q.CoverageType = CoverageType.AllSegments;
+                    break;
+                case "MOST_SEGMENTS":
+                    q.CoverageType = CoverageType.MostSegments;
+                    break;
+                case "AT_LEAST_ONE_SEGMENT":
+                    q.CoverageType = CoverageType.AtLeastOneSegment;
+                    break;
+                default:
+                    q.CoverageType = CoverageType.MostSegments;  // default
+                    break;
+            }
             var orgDefaultId = await _orgSvc.GetOrgDefaultTravelPolicyIdAsync(dto.OrganizationId, ct);
 
             q.PolicyType = string.Equals(pL[0].Id, orgDefaultId, StringComparison.Ordinal)
@@ -830,6 +846,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     .Where(o => o.Id == q.OrganizationId)
                     .Select(o => o.DefaultCurrency)
                     .FirstOrDefaultAsync(ct) ?? "AUD", // fallback
+                CabinClassCoverage = await _db.TravelPolicies.AsNoTracking().Where(tp => tp.OrganizationUnifiedId == q.OrganizationId)
+                    .Select(tp => tp.CabinClassCoverage)
+                    .FirstOrDefaultAsync(ct) ?? "MOST_SEGMENTS", // fallback
                 CreatedByUserId = q.CreatedByUserId,
                 CreatedAtUtc = DateTime.UtcNow,
                 LastUpdatedUtc = DateTime.UtcNow,
@@ -844,6 +863,22 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 ent: "EphemeralTravelPolicy",
                 entId: eTravelPolicy.Id,
                 org: q.OrganizationId);
+
+            switch(eTravelPolicy.CabinClassCoverage)
+            {
+                case "ALL_SEGMENTS":
+                    q.CoverageType = CoverageType.AllSegments;
+                    break;
+                case "MOST_SEGMENTS":
+                    q.CoverageType = CoverageType.MostSegments;
+                    break;
+                case "AT_LEAST_ONE_SEGMENT":
+                    q.CoverageType = CoverageType.AtLeastOneSegment;
+                    break;
+                default:
+                    q.CoverageType = CoverageType.MostSegments;  // default
+                    break;
+            }
 
             q.TravelPolicyId = eTravelPolicy.Id;
             q.PolicyType = TravelQuotePolicyType.Ephemeral;

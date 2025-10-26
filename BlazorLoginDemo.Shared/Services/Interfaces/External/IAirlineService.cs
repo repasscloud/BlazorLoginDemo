@@ -1,5 +1,7 @@
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
+using BlazorLoginDemo.Shared.Models.Static.Travel;
 using System.Linq.Expressions;
+using static BlazorLoginDemo.Shared.Services.External.AirlineService;
 
 namespace BlazorLoginDemo.Shared.Services.Interfaces.External;
 
@@ -15,6 +17,7 @@ public interface IAirlineService
     // Writes
     Task<int> AddAsync(Airline entity, CancellationToken ct = default);
     Task<bool> UpdateAsync(Airline entity, CancellationToken ct = default);
+    Task<UpdateAllianceResult> UpdateAirlineAllianceAsync(string? iata_icao, AirlineAlliance alliance, CancellationToken ct = default);
     Task<bool> DeleteAsync(int id, CancellationToken ct = default);
 
     // Upsert by natural keys. If IATA is present, it wins; else fall back to ICAO.

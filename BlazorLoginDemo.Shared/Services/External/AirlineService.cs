@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Static.SysVar;
+using BlazorLoginDemo.Shared.Models.Static.Travel;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using CsvHelper;
@@ -101,6 +102,82 @@ public sealed class AirlineService : IAirlineService
         return changed > 0;
     }
 
+    // Service: no exceptions for validation/not-found; logs at each branch
+    public async Task<UpdateAllianceResult> UpdateAirlineAllianceAsync(
+        string? iata_icao, AirlineAlliance alliance, CancellationToken ct = default)
+    {
+        await _logger.InformationAsync(
+            evt: "AIRLINE_ALLIANCE_UPDATE_START",
+            cat: SysLogCatType.Data,
+            act: SysLogActionType.Start,
+            message: "Update airline alliance request",
+            ent: nameof(Airline),
+            entId: iata_icao ?? "",
+            note: $"alliance:{alliance}");
+
+        if (string.IsNullOrWhiteSpace(iata_icao) || (iata_icao.Length != 2 && iata_icao.Length != 3))
+        {
+            await _logger.WarningAsync(
+                evt: "AIRLINE_ALLIANCE_UPDATE_BAD_CODE",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Validate,
+                message: "IATA/ICAO code must be either 2 or 3 characters",
+                ent: nameof(Airline),
+                entId: iata_icao ?? "",
+                note: "bad_request");
+            return UpdateAllianceResult.BadRequest;
+        }
+
+        Airline? existing = null;
+        var code = iata_icao.Trim().ToUpperInvariant();
+
+        if (code.Length == 2)
+            existing = await _db.Airlines.FirstOrDefaultAsync(a => a.Iata == code, ct);
+        else
+            existing = await _db.Airlines.FirstOrDefaultAsync(a => a.Icao == code, ct);
+
+        if (existing is null)
+        {
+            await _logger.WarningAsync(
+                evt: "AIRLINE_ALLIANCE_UPDATE_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                message: "Airline not found for provided code",
+                ent: nameof(Airline),
+                entId: code,
+                note: "not_found");
+            return UpdateAllianceResult.NotFound;
+        }
+
+        try
+        {
+            existing.Alliance = alliance;
+            await _db.SaveChangesAsync(ct);
+
+            await _logger.InformationAsync(
+                evt: "AIRLINE_ALLIANCE_UPDATE_OK",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                message: $"Alliance updated to {alliance}",
+                ent: nameof(Airline),
+                entId: code);
+
+            return UpdateAllianceResult.Ok;
+        }
+        catch (Exception ex)
+        {
+            await _logger.ErrorAsync(
+                evt: "AIRLINE_ALLIANCE_UPDATE_ERR",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                ex: ex,
+                message: "Failed to update airline alliance",
+                ent: nameof(Airline),
+                entId: code);
+            return UpdateAllianceResult.BadRequest; // or map to a 500 at controller if you prefer
+        }
+    }
+
     public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
     {
         var existing = await _db.Airlines.FirstOrDefaultAsync(a => a.Id == id, ct);
@@ -188,7 +265,7 @@ public sealed class AirlineService : IAirlineService
         var created = 0;
         var updated = 0;
         var skipped = 0;
-        var failed  = 0;
+        var failed = 0;
 
         // HTTP fetch with error logging
         HttpResponseMessage resp;
@@ -231,11 +308,11 @@ public sealed class AirlineService : IAirlineService
         using var reader = new StreamReader(stream);
         using var csv = new CsvReader(reader, new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            HasHeaderRecord   = false,
-            Quote             = '"',
-            BadDataFound      = null,
+            HasHeaderRecord = false,
+            Quote = '"',
+            BadDataFound = null,
             MissingFieldFound = null,
-            TrimOptions       = CsvHelper.Configuration.TrimOptions.Trim
+            TrimOptions = CsvHelper.Configuration.TrimOptions.Trim
         });
 
         static string Clean(string? s)
@@ -258,15 +335,15 @@ public sealed class AirlineService : IAirlineService
             ct.ThrowIfCancellationRequested();
 
             // 1: Id, 2: Name, 3: Alias, 4: IATA, 5: ICAO, 6: Callsign, 7: Country, 8: Active(Y/N)
-            var idRaw     = Clean(csv.GetField(0));
-            var name      = Clean(csv.GetField(1));
-            var alias     = Clean(csv.GetField(2));
-            var iata      = CodeOrEmpty(csv.GetField(3), 2);
-            var icao      = CodeOrEmpty(csv.GetField(4), 3);
-            var callsign  = Clean(csv.GetField(5));
-            var country   = Clean(csv.GetField(6));
+            var idRaw = Clean(csv.GetField(0));
+            var name = Clean(csv.GetField(1));
+            var alias = Clean(csv.GetField(2));
+            var iata = CodeOrEmpty(csv.GetField(3), 2);
+            var icao = CodeOrEmpty(csv.GetField(4), 3);
+            var callsign = Clean(csv.GetField(5));
+            var country = Clean(csv.GetField(6));
             var activeRaw = Clean(csv.GetField(7));
-            var active    = string.Equals(activeRaw, "Y", StringComparison.OrdinalIgnoreCase);
+            var active = string.Equals(activeRaw, "Y", StringComparison.OrdinalIgnoreCase);
 
             _ = int.TryParse(idRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var idValue);
 
@@ -274,20 +351,20 @@ public sealed class AirlineService : IAirlineService
             if (string.IsNullOrWhiteSpace(name)) { skipped++; continue; }
             if (string.IsNullOrEmpty(iata) && string.IsNullOrEmpty(icao)) { skipped++; continue; }
 
-            if (name.Length     > 200) name     = name[..200];
-            if (alias.Length    > 200) alias    = alias[..200];
+            if (name.Length > 200) name = name[..200];
+            if (alias.Length > 200) alias = alias[..200];
             if (callsign.Length > 200) callsign = callsign[..200];
-            if (country.Length  > 100) country  = country[..100];
+            if (country.Length > 100) country = country[..100];
 
             var candidate = new Airline
             {
-                Iata        = iata,
-                Icao        = icao,
-                Name        = name,
-                Alias       = alias,
-                CallSign    = callsign,
-                Country     = country,
-                Alliance    = Models.Static.Travel.AirlineAlliance.Unknown,
+                Iata = iata,
+                Icao = icao,
+                Name = name,
+                Alias = alias,
+                CallSign = callsign,
+                Country = country,
+                Alliance = Models.Static.Travel.AirlineAlliance.Unknown,
                 FoundedYear = null
             };
 
@@ -309,10 +386,10 @@ public sealed class AirlineService : IAirlineService
                 }
                 else
                 {
-                    existing.Name     = candidate.Name;
-                    existing.Alias    = candidate.Alias;
+                    existing.Name = candidate.Name;
+                    existing.Alias = candidate.Alias;
                     existing.CallSign = candidate.CallSign;
-                    existing.Country  = candidate.Country;
+                    existing.Country = candidate.Country;
                     if (!string.IsNullOrEmpty(iata)) existing.Iata = iata;
                     if (!string.IsNullOrEmpty(icao)) existing.Icao = icao;
 
@@ -350,6 +427,23 @@ public sealed class AirlineService : IAirlineService
             }
         }
 
+        try
+        {
+            _ = await FixAirlineCodeAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            await _logger.ErrorAsync(
+                evt: "AIRLINE_IATA_INGEST_FINALIZE_ERROR",
+                cat: SysLogCatType.Automation,
+                act: SysLogActionType.End,
+                ex: ex,
+                message: "Finalization error during Airline IATA ingest",
+                ent: "AirlineIataIngest",
+                entId: runId,
+                note: "cron:finalize_exception");
+        }
+
         // FINISH
         await _logger.InformationAsync(
             evt: "AIRLINE_IATA_INGEST_FINISH",
@@ -361,5 +455,13 @@ public sealed class AirlineService : IAirlineService
             note: "cron:finish");
 
         return new AirlineImportResult(created, updated);
-    }
+        }
+
+    // Domain result
+    public enum UpdateAllianceResult { Ok, BadRequest, NotFound }
+
+    private Task<int> FixAirlineCodeAsync(CancellationToken ct = default) =>
+        _db.Airlines
+        .Where(a => a.Icao == "SWR" && a.Iata != "LX")
+        .ExecuteUpdateAsync(s => s.SetProperty(a => a.Iata, _ => "LX"), ct);
 }

@@ -3,8 +3,11 @@ using System.Globalization;
 using System.Text;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Static;
+using BlazorLoginDemo.Shared.Models.Static.Travel;
+using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
+using BlazorLoginDemo.Shared.Services.External;
 
 namespace BlazorLoginDemo.Api.Controllers.Admin;
 
@@ -14,8 +17,13 @@ namespace BlazorLoginDemo.Api.Controllers.Admin;
 public sealed class KernelDataController : ControllerBase
 {
     private readonly IAirportInfoService _airportInfoService;
+    private readonly IAirlineService _airlineService;
 
-    public KernelDataController(IAirportInfoService aisvc) => _airportInfoService = aisvc;
+    public KernelDataController(IAirportInfoService aisvc, IAirlineService airlineService)
+    {
+        _airportInfoService = aisvc;
+        _airlineService = airlineService;
+    }
 
     // ---------- READ ----------
     [HttpGet("airport-info/{id:int}")]
@@ -126,6 +134,22 @@ public sealed class KernelDataController : ControllerBase
         var changed = await _airportInfoService.BulkUpsertAsync(batch, ct);
         return Ok(new { changed });
     }
+
+
+    // ---------- UPDATE Airline Alliance ----------
+    [HttpPut("airlines/{code}/alliance")]
+    public async Task<IActionResult> UpdateAlliance(string code, [FromBody] AirlineAlliance alliance, CancellationToken ct)
+    {
+        var result = await _airlineService.UpdateAirlineAllianceAsync(code, alliance, ct);
+        return result switch
+        {
+            AirlineService.UpdateAllianceResult.Ok         => Ok(),           // 200
+            AirlineService.UpdateAllianceResult.NotFound   => NotFound(),     // 404
+            AirlineService.UpdateAllianceResult.BadRequest => BadRequest(),   // 400
+            _                                              => BadRequest()
+        };
+    }
+
 
 
 
