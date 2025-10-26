@@ -53,3 +53,9 @@ tbody.result-item.open > tr:first-child > * { border-bottom: 0 !important; }
 
 /* Draw divider at the bottom of the expanded details block only */
 .table.stable tr.collapse-cell.expanded > td { border-top: 0 !important; border-bottom: 1px solid var(--bs-border-color) !important; }
+
+.badge-connectivity { background-color:#0ea5e9; color:#fff; font-weight:600; }
+.badge-seating      { background-color:#8b5cf6; color:#fff; font-weight:600; }
+.badge-catering     { background-color:#f59e0b; color:#111; font-weight:600; }
+.badge-priority     { background-color:#ef4444; color:#fff; font-weight:600; }
+.badge-baggage      { background-color:#10b981; color:#fff; font-weight:600; }

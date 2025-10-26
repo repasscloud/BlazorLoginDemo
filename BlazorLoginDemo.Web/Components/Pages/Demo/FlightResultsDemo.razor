@@ -3,20 +3,11 @@
 @using BlazorLoginDemo.Shared.Models.Demo
 @using System.Linq
 
-<!--
-  Flight Results Demo (Blazor, .NET 8)
-  - No JS: all interactions in C#.
-  - Data-driven from models with four sample records.
-  - Table layout with expandable details rows, no jitter, no gaps, divider at bottom of expanded block.
-  - Filter panel on the left.
-  - Uses Bootstrap 5.x and Bootstrap Icons from your layout (not referenced here).
--->
-
 <div class="container-fluid py-4 py-md-5">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
       <div>
         <h1 class="h4 brand mb-1">Flight Results</h1>
-        <p class="text-secondary mb-0">Hybrid carrier legs with logos and numbers. Table + per-row details. Blazor-only interactions.</p>
+        @* <p class="text-secondary mb-0">Hybrid carrier legs with logos and numbers. Table + per-row details. Blazor-only interactions.</p> *@
       </div>
       <div class="d-flex align-items-center gap-2">
         <button class="btn btn-outline-primary btn-sm" @onclick="ResetFilters">Reset filters</button>
@@ -30,7 +21,7 @@
         <div class="p-3 rounded-4 border bg-white">
           <div class="d-flex align-items-center justify-content-between">
             <strong>Filters</strong>
-            <span class="text-secondary small">@($"{Filtered.Count()} shown")</span>
+            <span class="text-secondary small">@(textContent: $"{Filtered.Count()} shown")</span>
           </div>
           <hr class="my-2">
           <div class="mb-3">
@@ -109,7 +100,7 @@
             </tr>
           </thead>
 
-          @foreach (var opt in Filtered)
+          @foreach (FlightOption opt in Filtered)
           {
             <tbody class="result-item @(opt.IsOpen ? "open" : null)">
               <!-- header row -->
@@ -123,11 +114,11 @@
                   </div>
                 </td>
                 <td>
-                  @opt.DepartTime.ToString("HH:mm") @opt.Origin
+                  @opt.DepartTime.ToString(format: "HH:mm") @opt.Origin
                   @* <br /><span class="subtle">@opt.DepartTime:ddd dd MMM</span> *@
                 </td>
                 <td>
-                  @opt.ArriveTime.ToString("HH:mm") @opt.Destination
+                  @opt.ArriveTime.ToString(format: "HH:mm") @opt.Destination
                   @* <br /><span class="subtle">@opt.ArriveTime:ddd dd MMM</span> *@
                 </td>
                 <td>@opt.TotalDurationText</td>
@@ -135,8 +126,26 @@
                   @if (opt.Stops == 0) { <span class="badge badge-nonstop">Nonstop</span>; }
                   else { <span class="badge badge-stop">@opt.Stops stop@(opt.Stops>1?"s":string.Empty)</span>; }
                 </td>
-                <td><span class="chip">@opt.Cabin</span></td>
-                <td class="text-end"><span class="price">@opt.PriceAUD.ToString("C0")</span> <span class="subtle">AUD</span></td>
+                @* <td><span class="chip">@opt.Cabin</span></td> *@
+                <td>
+                  @{
+                      // Map cabin → (emoji, bg, fg)
+                      var (emoji, bg, fg) = (opt.Cabin ?? "").Trim() switch
+                      {
+                          "Economy"          => ("",   "#DBEAFE", "#1E3A8A"), // light blue / navy text
+                          "Premium Economy"  => ("",   "#D1FAE5", "#065F46"), // mint / teal text
+                          "Business"         => ("",   "#EDE9FE", "#4C1D95"), // lavender / indigo text
+                          "First"            => ("⭐", "#FEF3C7", "#78350F"), // gold / brown text
+                          _                  => ("",   "#E5E7EB", "#111827")  // gray fallback
+                      };
+                  }
+                  <span class="badge rounded-pill"
+                        style="background-color:@bg;color:@fg;font-weight:600;">
+                      @if (!string.IsNullOrEmpty(emoji)) { <span class="me-1">@emoji</span> }
+                      @opt.Cabin
+                  </span>
+                </td>
+                <td class="text-end"><span class="price">@opt.PriceAUD.ToString(format: "C0")</span> <span class="subtle">AUD</span></td>
                 <td class="text-end">
                   <button class="btn btn-sm @(Selected.Contains(opt.Id)?"btn-success":"btn-primary")"
                           @onclick="(e)=>Select(opt)" @onclick:stopPropagation="true">
@@ -161,9 +170,18 @@
                               <div>
                                 <div class="d-flex align-items-center gap-2">
                                   <img class="logo" src="@leg.Carrier.LogoUrl" alt="@leg.Carrier.Name" />
-                                  <div class="fw-semibold">@leg.FlightNumber · @leg.Origin → @leg.Destination · @leg.Depart.ToString("HH:mm") → @leg.Arrive.ToString("HH:mm")@(leg.Arrive.Day>leg.Depart.Day?" (+1)":"") · @leg.DurationText</div>
+                                  <div class="fw-semibold">@leg.FlightNumber · @leg.Origin → @leg.Destination · @leg.Depart.ToString(format: "HH:mm") → @leg.Arrive.ToString(format: "HH:mm")@(leg.Arrive.Day>leg.Depart.Day?" (+1)":"") · @leg.DurationText</div>
                                 </div>
-                                <div class="subtle">@leg.Equipment · Seat @leg.SeatLayout · @string.Join(" · ", leg.AmenityLabels)</div>
+                                <div class="subtle">@leg.Equipment · Seat @leg.SeatLayout</div>
+<div class="d-flex flex-wrap gap-2 mt-1 text-secondary">
+  @foreach (var inc in BuildBadges(leg.Amenities))
+  {
+    <span class="badge border rounded-pill @inc.BadgeClass">
+      <i class="@inc.Icon me-1"></i>@inc.Label
+    </span>
+  }
+</div>
+
                               </div>
                             </div>
 
@@ -187,9 +205,11 @@
                             <div class="col-6"><div class="subtle">Seats</div><div>@opt.SeatPolicy</div></div>
                             <div class="col-12"><div class="subtle">Inclusions</div>
                               <div class="d-flex flex-wrap gap-2 mt-1 text-secondary">
-                                @foreach (var inc in opt.InclusionBadges)
+                                @foreach (InclusionBadge inc in opt.InclusionBadges)
                                 {
-                                  <span class="badge bg-light border"><i class="@inc.Icon me-1"></i>@inc.Label</span>
+                                  <span class="badge border rounded-pill @inc.BadgeClass">
+                                    <i class="@inc.Icon me-1"></i>@inc.Label
+                                  </span>
                                 }
                               </div>
                             </div>
@@ -214,7 +234,7 @@
       @if (ShowCompareJson)
       {
         <div class="mt-3">
-          <div class="alert alert-secondary small mb-2">Selected payload (demo):</div>
+          @* <div class="alert alert-secondary small mb-2">Selected payload (demo):</div> *@
           <pre class="bg-dark text-light p-3 rounded-3 small">@SelectedJson</pre>
         </div>
       }
@@ -232,14 +252,14 @@
     int? qMaxPrice = null;
     string? qDepartBucket = "";
 
-    AmenityQuery qAmenities = new();
+    AmenityQuery qAmenities = new AmenityQuery();
 
     // Data
-    List<FlightOption> All = new();
-    HashSet<Guid> Selected = new();
+    List<FlightOption> All = new List<FlightOption>();
+    HashSet<Guid> Selected = new HashSet<Guid>();
 
     bool ShowCompareJson = false;
-    string SelectedJson = "";
+    private string SelectedJson = string.Empty;
 
     protected override void OnInitialized()
     {
@@ -252,8 +272,8 @@
     {
         if (!string.IsNullOrWhiteSpace(qText))
         {
-            var q = qText!.Trim().ToLowerInvariant();
-            var hay = o.SearchText.ToLowerInvariant();
+            string? q = qText!.Trim().ToLowerInvariant();
+            string? hay = o.SearchText.ToLowerInvariant();
             if (!hay.Contains(q)) return false;
         }
         if (!string.IsNullOrWhiteSpace(qCabin) && !o.Cabin.Equals(qCabin, StringComparison.OrdinalIgnoreCase)) return false;
@@ -265,7 +285,7 @@
 
         if (!string.IsNullOrEmpty(qDepartBucket))
         {
-            var bucket = DepartBucket(o.DepartTime);
+            string? bucket = DepartBucket(o.DepartTime);
             if (!string.Equals(bucket, qDepartBucket, StringComparison.OrdinalIgnoreCase)) return false;
         }
 
@@ -282,7 +302,7 @@
 
     static string DepartBucket(DateTime dt)
     {
-        var mins = dt.Hour * 60 + dt.Minute;
+        int mins = dt.Hour * 60 + dt.Minute;
         if (mins < 300) return "overnight";
         if (mins < 720) return "morning";
         if (mins < 1080) return "afternoon";
@@ -298,13 +318,13 @@
         qMinPrice = null;
         qMaxPrice = null;
         qDepartBucket = "";
-        qAmenities = new();
+        qAmenities = new AmenityQuery();
     }
 
     void Toggle(FlightOption o)
     {
         var willOpen = !o.IsOpen;
-        foreach (var x in All) x.IsOpen = false;
+        foreach (FlightOption x in All) x.IsOpen = false;
         o.IsOpen = willOpen;
     }
 
@@ -333,7 +353,7 @@
                 x.Stops,
                 x.Origin,
                 x.Destination,
-                Legs = x.Legs.Select(l => new { l.Carrier.Code, l.FlightNumber, l.Origin, l.Destination, Depart = l.Depart.ToString("O"), Arrive = l.Arrive.ToString("O") })
+                Legs = x.Legs.Select(l => new { l.Carrier.Code, l.FlightNumber, l.Origin, l.Destination, Depart = l.Depart.ToString(format: "O"), Arrive = l.Arrive.ToString(format: "O") })
             });
         SelectedJson = System.Text.Json.JsonSerializer.Serialize(payload, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         ShowCompareJson = true;
@@ -343,5 +363,23 @@
     {
         ShowCompare();
         // In production, raise an event or navigate with selected IDs.
+    }
+
+    private static IEnumerable<InclusionBadge> BuildBadges(Amenities a)
+    {
+        if (a.Wifi)             yield return new InclusionBadge { Icon="bi bi-wifi",               Label="Wi-Fi",             BadgeClass="badge-connectivity" };
+        if (a.Power)            yield return new InclusionBadge { Icon="bi bi-lightning-charge",  Label="Power",             BadgeClass="badge-connectivity" };
+        if (a.Usb)              yield return new InclusionBadge { Icon="bi bi-usb-symbol",         Label="USB",               BadgeClass="badge-connectivity" };
+        if (a.Ife)              yield return new InclusionBadge { Icon="bi bi-tv",                 Label="IFE",               BadgeClass="badge-connectivity" };
+
+        if (a.ExtraLegroom)     yield return new InclusionBadge { Icon="bi bi-arrows-expand",      Label="Extra legroom",     BadgeClass="badge-seating" };
+        if (a.LieFlat)          yield return new InclusionBadge { Icon="bi bi-moon-stars",         Label="Lie-flat",          BadgeClass="badge-seating" };
+
+        if (a.Meal)             yield return new InclusionBadge { Icon="bi bi-cup-hot",            Label="Meal",              BadgeClass="badge-catering" };
+        if (a.Alcohol)          yield return new InclusionBadge { Icon="bi bi-cup-straw",          Label="Alcohol",           BadgeClass="badge-catering" };
+
+        if (a.PriorityBoarding) yield return new InclusionBadge { Icon="bi bi-rocket-takeoff",     Label="Priority boarding", BadgeClass="badge-priority" };
+
+        if (a.CheckedBag)       yield return new InclusionBadge { Icon="bi bi-suitcase2",          Label="Checked bag",       BadgeClass="badge-baggage" };
     }
 }
