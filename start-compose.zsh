@@ -264,6 +264,14 @@ docker compose build crontab
 docker compose up -d crontab
 docker compose up -d pgweb
 
+# ── 🐳 14) Run once-off crontab job ──────────────────────────────────────────
+echo
+echo "🐳 14) Run once-off crontab job"
+sleep 5
+docker exec crontab sh -lc \
+  "curl -fsS --max-time 10 --retry 2 --retry-connrefused \
+  http://api:8080/api/v1/admin/ingress/airlines-data"
+
 # ── 🏁 Done ───────────────────────────────────────────────────────────────────
 echo
 echo "✅ Done."
