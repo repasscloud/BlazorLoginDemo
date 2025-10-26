@@ -272,6 +272,14 @@ docker exec crontab sh -lc \
   "curl -fsS --max-time 10 --retry 2 --retry-connrefused \
   http://api:8080/api/v1/admin/ingress/airlines-data"
 
+# ── 🐳 15) Run once-off data update following crontab job ──────────────────────────────────────────
+echo
+echo "🐳 15) Run once-off data update following crontab job"
+sleep 5
+pwsh -File .scripts/data/update-airlinealliance-oneworld.ps1
+pwsh -File .scripts/data/update-airlinealliance-staralliance.ps1
+pwsh -File .scripts/data/update-airlinealliance-skyteam.ps1
+
 # ── 🏁 Done ───────────────────────────────────────────────────────────────────
 echo
 echo "✅ Done."
