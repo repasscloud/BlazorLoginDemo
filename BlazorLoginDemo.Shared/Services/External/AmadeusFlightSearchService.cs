@@ -6,9 +6,11 @@ using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
+using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Static.SysVar;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NanoidDotNet;
@@ -126,7 +128,7 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             {
                 Id = i.ToString(),
                 TravelerType = "ADULT",
-                FareOptions = [ "STANDARD" ]
+                FareOptions = ["STANDARD"]
             });
         }
 
@@ -265,5 +267,33 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
                 note: "provider:Amadeus");
             throw new InvalidOperationException($"Error '{response.StatusCode}' Response: {errorBody}");
         }
+    }
+    
+    public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersFromTravelQuoteAsync(TravelQuote quote, CancellationToken ct = default)
+    {
+        await _loggerService.InformationAsync(
+            evt: "FLIGHT_OFFERS_REQ_START",
+            cat: SysLogCatType.Api,  // we RECEIVED a request (not calling Amadeus yet)
+            act: SysLogActionType.Start,
+            message: $"Received flight offers request (dto={nameof(FlightOfferSearchRequestDto)}, id={dto.Id})",
+            ent: nameof(FlightOfferSearchRequestDto),
+            entId: quote.Id,
+            note: "ingress:start");
+
+        // the travel quote has everything we need to call Amadeus api directly
+        // var flightOfferSearch = new AmadeusFlightOfferSearch
+        // {
+        //     CurrencyCode = quote.
+        //     OriginDestinations = quote.OriginDestinations,
+        //     Travelers = quote.Travelers,
+        //     SearchCriteria = quote.SearchCriteria
+        // };
+
+
+
+        return new AmadeusFlightOfferSearchResult
+        {
+            Meta = new Meta { Count = 0 }
+        };
     }
 }

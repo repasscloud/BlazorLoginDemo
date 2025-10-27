@@ -5,6 +5,7 @@ using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
 using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Models.Static.SysVar;
+using BlazorLoginDemo.Shared.Models.Demo;
 
 namespace BlazorLoginDemo.Api.Controllers.Flights;
 
@@ -89,5 +90,12 @@ public class FlightsController : ControllerBase
         {
             return Ok();
         }
+    }
+
+    [HttpGet("quote/{travelQuoteId}/options")]
+    public async Task<ActionResult<List<FlightOption>>> GetFlightSearchOptions(string travelQuoteId, CancellationToken ct = default)
+    {
+        // Implementation for retrieving flight search options based on quote ID
+        return Ok();
     }
 }

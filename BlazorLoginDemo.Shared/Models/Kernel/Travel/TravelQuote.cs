@@ -31,12 +31,15 @@ public sealed class TravelQuote
     public string TmcAssignedId { get; set; } = null!;
     public OrganizationUnified TmcAssigned { get; set; } = null!;
 
-
     // Ephemeral travel policy is stored in a separate table that was introduced in issue 
     public TravelQuotePolicyType PolicyType { get; set; } = TravelQuotePolicyType.Unknown;
-    
+
     [MaxLength(14)]
     public string TravelPolicyId { get; set; } = null!;  // (invisible) FK to TravelPolicy.Id
+
+    // Currency (#68)
+    [MaxLength(3)]
+    public string Currency { get; set; } = "AUD";
 
     // note: optional internal note about this quote
     [MaxLength(4096)]
