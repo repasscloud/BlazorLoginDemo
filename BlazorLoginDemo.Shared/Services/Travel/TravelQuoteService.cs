@@ -367,8 +367,8 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     ent: nameof(TravelQuote),
                     entId: travelQuoteId);
                 travelPolicy = await _db.TravelPolicies
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == quote.TravelPolicyId, ct);
                 break;
 
             case TravelQuotePolicyType.Ephemeral:
@@ -833,6 +833,8 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             q.PolicyType = string.Equals(pL[0].Id, orgDefaultId, StringComparison.Ordinal)
                 ? TravelQuotePolicyType.OrgDefault
                 : TravelQuotePolicyType.UserDefined;
+
+            q.Currency = pL[0].DefaultCurrencyCode; // set quote currency from policy (#68)
         }
 
         else if (pL.Count > 1)
@@ -882,6 +884,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
             q.TravelPolicyId = eTravelPolicy.Id;
             q.PolicyType = TravelQuotePolicyType.Ephemeral;
+            q.Currency = eTravelPolicy.DefaultCurrencyCode;  // set quote currency from policy (#68)
         }
 
         return q;
