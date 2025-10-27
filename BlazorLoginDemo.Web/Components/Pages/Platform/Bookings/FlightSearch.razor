@@ -651,7 +651,6 @@ else
         };
 
         string jsonString = JsonSerializer.Serialize(patchDto, JsonOpts);
-        File.WriteAllText(path: @"/app/wwwroot/tmp/flightsearch_vm.json", jsonString);
 
         string? url  = "/api/v1/travel/quotes/run-search/flight";
         using HttpRequestMessage? req = new HttpRequestMessage(HttpMethod.Post, url)
