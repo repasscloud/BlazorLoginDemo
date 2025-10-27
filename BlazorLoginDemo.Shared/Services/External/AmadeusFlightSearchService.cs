@@ -275,8 +275,8 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             evt: "FLIGHT_OFFERS_REQ_START",
             cat: SysLogCatType.Api,  // we RECEIVED a request (not calling Amadeus yet)
             act: SysLogActionType.Start,
-            message: $"Received flight offers request (dto={nameof(FlightOfferSearchRequestDto)}, id={dto.Id})",
-            ent: nameof(FlightOfferSearchRequestDto),
+            message: $"Received flight offers request (quoteId={nameof(TravelQuote)}, id={quote.Id})",
+            ent: nameof(TravelQuote),
             entId: quote.Id,
             note: "ingress:start");
 
