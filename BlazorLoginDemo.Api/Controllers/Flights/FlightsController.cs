@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using BlazorLoginDemo.Shared.Security;
 using BlazorLoginDemo.Shared.Models.Static.SysVar;
 using BlazorLoginDemo.Shared.Models.Demo;
+using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
+using BlazorLoginDemo.Shared.Models.Kernel.Travel;
+using NanoidDotNet;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
+using BlazorLoginDemo.Shared.Models.Search;
 
 namespace BlazorLoginDemo.Api.Controllers.Flights;
 
@@ -16,17 +21,20 @@ public class FlightsController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly IAmadeusAuthService _authService;
     private readonly IAmadeusFlightSearchService _flightSearchService;
+    private readonly ITravelQuoteService _travelQuoteService;
     private readonly ILoggerService _log;
 
     public FlightsController(
         ApplicationDbContext db,
         IAmadeusAuthService authService,
         IAmadeusFlightSearchService flightSearchService,
+        ITravelQuoteService travelQuoteService,
         ILoggerService loggerService)
     {
         _db = db;
         _authService = authService;
         _flightSearchService = flightSearchService;
+        _travelQuoteService = travelQuoteService;
         _log = loggerService;
     }
 
@@ -93,9 +101,27 @@ public class FlightsController : ControllerBase
     }
 
     [HttpGet("quote/{travelQuoteId}/options")]
-    public async Task<ActionResult<List<FlightOption>>> GetFlightSearchOptions(string travelQuoteId, CancellationToken ct = default)
+    public async Task<ActionResult<List<FlightOption>?>> GetFlightSearchOptions(string travelQuoteId, CancellationToken ct = default)
     {
-        // Implementation for retrieving flight search options based on quote ID
-        return Ok();
+        // Retrieve flight search options based on travel quote ID
+        var quote = await _travelQuoteService.GetByIdAsync(travelQuoteId, ct);
+        if (quote == null)
+        {
+            // we should never reach this path at this point, this is called from a series of steps where the quote existence is already validated
+            await _log.ErrorAsync(
+                evt: "FLIGHT_SEARCH_OPTIONS_QUOTE_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                ex: new KeyNotFoundException($"Travel quote with ID '{travelQuoteId}' not found."),
+                message: $"Travel quote with ID '{travelQuoteId}' not found when retrieving flight search options.",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
+            return NotFound();
+        }
+
+        AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, ct);
+
+        var response = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
+        return Ok(response);
     }
 }

@@ -44,12 +44,18 @@ public class OriginDestination
 public class DepartureDateTimeRange
 {
     [JsonPropertyName("date")]
-    [Required]
-    public required string Date { get; set; }  // Dates are specified in the ISO 8601 YYYY-MM-DD format, e.g. 2018-12-25
+    [Required(AllowEmptyStrings = false)]
+    [RegularExpression(
+        @"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$",
+        ErrorMessage = "Date must be YYYY-MM-DD.")]
+    public required string Date { get; set; }  // e.g., "2018-12-25"
 
     [JsonPropertyName("time")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Time { get; set; }  // Local time. hh:mm:ss format, e.g 10:30:00
+    [RegularExpression(
+        @"^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$",
+        ErrorMessage = "Time must be hh:mm:ss (24-hour).")]
+    public string? Time { get; set; }  // e.g., "10:30:00" or null
 }
 
 public class Traveler

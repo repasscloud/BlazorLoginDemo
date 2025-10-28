@@ -1,12 +1,15 @@
 // Services/Travel/TravelQuoteService.cs
 using System.Globalization;
+using System.Threading.Tasks;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.DTOs;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Policies;
 using BlazorLoginDemo.Shared.Models.Search;
 using BlazorLoginDemo.Shared.Models.Static;
 using BlazorLoginDemo.Shared.Models.Static.SysVar;
+using BlazorLoginDemo.Shared.Models.Static.Travel;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
 using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
@@ -326,6 +329,27 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             note: "bulk_expire");
 
         return affected;
+    }
+
+    public async Task<List<string>?> GetExcludedAirlinesFromPolicyAsync(string travelPolicyId, TravelQuotePolicyType policyType, CancellationToken ct = default)
+    {
+        // Implementation goes here
+        switch (policyType)
+        {
+            case TravelQuotePolicyType.OrgDefault:
+            case TravelQuotePolicyType.Unknown:
+                return await _db.TravelPolicies.Where(p => p.Id == travelPolicyId).FirstOrDefaultAsync(ct) is TravelPolicy tp
+                    ? tp.ExcludedAirlineCodesCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+                    : null;
+            case TravelQuotePolicyType.Ephemeral:
+                return await _db.EphemeralTravelPolicies.Where(p => p.Id == travelPolicyId).FirstOrDefaultAsync(ct) is EphemeralTravelPolicy etp
+                   ? etp.ExcludedAirlineCodesCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+                   : null;
+            case TravelQuotePolicyType.UserDefined:
+                return null;
+            default:
+                return null;
+        }
     }
 
     // ---------------- UI HELPERS ----------------
@@ -1059,10 +1083,153 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         var key = s.Trim().ToUpperInvariant().Replace(" ", "").Replace("-", "").Replace("_", "");
         return key switch
         {
-            "MOSTSEGMENTS"        => (coverage = CoverageType.MostSegments) is var _ && true,
-            "ATLEASTONESEGMENT"   => (coverage = CoverageType.AtLeastOneSegment) is var _ && true,
-            "ALLSEGMENTS"         => (coverage = CoverageType.AllSegments) is var _ && true,
+            "MOSTSEGMENTS" => (coverage = CoverageType.MostSegments) is var _ && true,
+            "ATLEASTONESEGMENT" => (coverage = CoverageType.AtLeastOneSegment) is var _ && true,
+            "ALLSEGMENTS" => (coverage = CoverageType.AllSegments) is var _ && true,
             _ => false
         };
+    }
+
+    public async Task<AmadeusFlightOfferSearch> BuildAmadeusFlightOfferSearchFromQuote(TravelQuote quote, CancellationToken ct = default)
+    {
+        // currency code
+        // (handled directly in the return statement)
+
+        // origin destinations
+        List<OriginDestination> originDestinations = new List<OriginDestination>();
+        switch (quote.TripType)
+        {
+            case TripType.OneWay:
+                originDestinations.Add(new OriginDestination
+                {
+                    Id = "1",
+                    OriginLocationCode = quote.OriginIataCode!,
+                    DestinationLocationCode = quote.DestinationIataCode!,
+                    DateTimeRange = new DepartureDateTimeRange { Date = quote.DepartureDate!, Time = quote.DepartEarliestTime ?? null }
+                });
+                break;
+            case TripType.Return:
+                originDestinations.Add(new OriginDestination
+                {
+                    Id = "1",
+                    OriginLocationCode = quote.OriginIataCode!,
+                    DestinationLocationCode = quote.DestinationIataCode!,
+                    DateTimeRange = new DepartureDateTimeRange { Date = quote.DepartureDate!, Time = quote.DepartEarliestTime ?? null }
+                });
+                originDestinations.Add(new OriginDestination
+                {
+                    Id = "2",
+                    OriginLocationCode = quote.DestinationIataCode!,
+                    DestinationLocationCode = quote.OriginIataCode!,
+                    DateTimeRange = new DepartureDateTimeRange { Date = quote.ReturnDate!, Time = quote.ReturnEarliestTime ?? null }
+                });
+                break;
+        }
+
+        // travelers
+        var count = quote.Travellers?.Count ?? 0;
+        var travelers = Enumerable.Range(1, count)
+            .Select(i => new Traveler
+            {
+                Id = i.ToString(CultureInfo.InvariantCulture),
+                TravelerType = "ADULT",
+                FareOptions = new List<string> { "STANDARD" },
+            })
+            .ToList();
+
+
+        // search criteria
+        List<CabinRestriction> cabinRestrictions = new List<CabinRestriction>
+        {
+            new CabinRestriction
+            {
+                Cabin = quote.CabinClass switch
+                {
+                    CabinClass.Economy          => "ECONOMY",
+                    CabinClass.PremiumEconomy   => "PREMIUM_ECONOMY",
+                    CabinClass.Business         => "BUSINESS",
+                    CabinClass.First            => "FIRST",
+                    _                           => "ECONOMY"
+                },
+                Coverage = quote.CoverageType switch
+                {
+                    CoverageType.MostSegments       => "MOST_SEGMENTS",
+                    CoverageType.AtLeastOneSegment  => "AT_LEAST_ONE_SEGMENT",
+                    CoverageType.AllSegments        => "ALL_SEGMENTS",
+                    _                               => "MOST_SEGMENTS"
+                },
+                OriginDestinationIds = quote.TripType switch
+                {
+                    TripType.OneWay => new List<string> { "1" },
+                    TripType.Return => new List<string> { "1", "2" },
+                    _               => new List<string> { "1" }
+                }
+            }
+        };
+
+
+        // is there any TravelPolicy.ExcludedAirlineCodes to consider?
+        // Excluded airlines take precedence over included
+        var excludedAirlineCodes = await GetExcludedAirlinesFromPolicyAsync(quote.TravelPolicyId, quote.PolicyType, ct);
+
+        List<string> includedAirlineCodes;
+        if (excludedAirlineCodes is not null)
+        {
+            includedAirlineCodes = new();                 // no preference when exclusions are defined
+        }
+        else
+        {
+            var included = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // From explicit selections
+            if (quote.SelectedAirlines is not null)
+                included.UnionWith(quote.SelectedAirlines.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+            // From alliances (single round-trip)
+            if (quote.Alliances is not null && quote.Alliances.Count > 0)
+            {
+                var allianceCodes = await _db.Airlines
+                    .AsNoTracking()
+                    .Where(a => a.Iata != null && quote.Alliances.Contains(a.Alliance))
+                    .Select(a => a.Iata!)                 // IATA is 2-letter
+                    .Distinct()
+                    .ToListAsync(ct);
+
+                included.UnionWith(allianceCodes);
+            }
+
+            includedAirlineCodes = included.Count == 0 ? new() : included.ToList(); // empty => no preference
+        }
+
+        CarrierRestriction carrierRestriction = new CarrierRestriction
+        {
+            BlacklistedInEUAllowed = false
+        };
+        if (excludedAirlineCodes is not null && excludedAirlineCodes.Count > 0)
+        {
+            carrierRestriction.ExcludedCarrierCodes = excludedAirlineCodes;
+        }
+        else if (includedAirlineCodes.Count > 0)
+        {
+            carrierRestriction.IncludedCarrierCodes = includedAirlineCodes;
+        }
+
+        return new AmadeusFlightOfferSearch
+        {
+            CurrencyCode = quote.Currency,
+            OriginDestinations = originDestinations,
+            Travelers = travelers,
+            Sources = new List<string> { "GDS" },
+            SearchCriteria = new SearchCriteria
+            {
+                MaxFlightOffers = 250,
+                Filters = new FlightFilters
+                {
+                    CabinRestrictions = cabinRestrictions,
+                    CarrierRestrictions = carrierRestriction
+                }
+            }
+        };
+
     }
 }

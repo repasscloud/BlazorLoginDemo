@@ -13,7 +13,8 @@ using BlazorLoginDemo.Shared.Models.Policies;               // ExpensePolicy
 using BlazorLoginDemo.Shared.Models.User;
 using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.Kernel.FX;
-using BlazorLoginDemo.Shared.Models.Search;                   // AvaUserLoyaltyAccount (legacy shape retained)
+using BlazorLoginDemo.Shared.Models.Search;
+using BlazorLoginDemo.Shared.Models.Static.Travel;                   // AvaUserLoyaltyAccount (legacy shape retained)
 
 namespace BlazorLoginDemo.Shared.Data;
 
@@ -620,7 +621,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasColumnType("integer[]")
                 .HasConversion(
                     v => v == null ? null : v.Select(a => (int)a).ToArray(),           // List<Alliance> -> int[] or null
-                    v => v == null ? null : v.Select(i => (Alliance)i).ToList()        // int[] -> List<Alliance> or null
+                    v => v == null ? null : v.Select(i => (AirlineAlliance)i).ToList()        // int[] -> List<Alliance> or null
                 );
         });
 

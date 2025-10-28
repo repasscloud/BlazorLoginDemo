@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
 using BlazorLoginDemo.Shared.Models.Search;
+using BlazorLoginDemo.Shared.Models.Static.Travel;
 
 namespace BlazorLoginDemo.Shared.Models.Kernel.Travel;
 
@@ -74,7 +75,7 @@ public sealed class TravelQuote
     public CabinClass? CabinClass { get; set; }
     public CabinClass? MaxCabinClass { get; set; }
     public string[] SelectedAirlines { get; set; } = Array.Empty<string>();
-    public List<Alliance>? Alliances { get; set; }
+    public List<AirlineAlliance>? Alliances { get; set; }
     
     // Helper properties for CSV serialization
     [NotMapped]

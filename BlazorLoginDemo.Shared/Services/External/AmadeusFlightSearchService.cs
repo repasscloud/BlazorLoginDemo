@@ -269,16 +269,16 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         }
     }
     
-    public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersFromTravelQuoteAsync(TravelQuote quote, CancellationToken ct = default)
+    public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersFromAmadeusFlightOfferSearch(AmadeusFlightOfferSearch criteria, CancellationToken ct = default)
     {
-        await _loggerService.InformationAsync(
-            evt: "FLIGHT_OFFERS_REQ_START",
-            cat: SysLogCatType.Api,  // we RECEIVED a request (not calling Amadeus yet)
-            act: SysLogActionType.Start,
-            message: $"Received flight offers request (quoteId={nameof(TravelQuote)}, id={quote.Id})",
-            ent: nameof(TravelQuote),
-            entId: quote.Id,
-            note: "ingress:start");
+        // await _loggerService.InformationAsync(
+        //     evt: "FLIGHT_OFFERS_REQ_START",
+        //     cat: SysLogCatType.Api,  // we RECEIVED a request (not calling Amadeus yet)
+        //     act: SysLogActionType.Start,
+        //     message: $"Received flight offers request (quoteId={nameof(TravelQuote)}, id={quote.Id})",
+        //     ent: nameof(TravelQuote),
+        //     entId: quote.Id,
+        //     note: "ingress:start");
 
         // the travel quote has everything we need to call Amadeus api directly
         // var flightOfferSearch = new AmadeusFlightOfferSearch
@@ -289,11 +289,60 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         //     SearchCriteria = quote.SearchCriteria
         // };
 
+        var token = await _authService.GetTokenInformationAsync();
 
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        return new AmadeusFlightOfferSearchResult
+        string flightOfferUrl = _settings.Url.FlightOffer
+            ?? throw new ArgumentNullException("Amadeus:Url:FlightOffer is missing in configuration.");
+
+        var response = await httpClient.PostAsJsonAsync(flightOfferUrl, criteria, _jsonOptions, ct);
+
+        if (response.IsSuccessStatusCode)
         {
-            Meta = new Meta { Count = 0 }
-        };
+            var result = await response.Content.ReadFromJsonAsync<AmadeusFlightOfferSearchResult>(cancellationToken: ct);
+            if (result is null)
+                throw new InvalidOperationException("Deserialization returned null.");
+
+            // // 10) Persist a record of the search
+            // var record = new FlightOfferSearchResultRecord
+            // {
+            //     Id = await Nanoid.GenerateAsync(),
+            //     MetaCount = result.Meta.Count,
+            //     FlightOfferSearchRequestDtoId = dto.Id,
+            //     ClientId = dto.ClientId,                // unchanged field in your record model
+            //     AvaUserId = dto.CustomerId,             // now stores ApplicationUser.Id
+            //     Source = SearchResultSource.Amadeus,
+            //     AmadeusPayload = result
+            // };
+
+            // await _db.FlightOfferSearchResultRecords.AddAsync(record, ct);
+            // await _db.SaveChangesAsync(ct);
+            // await _loggerService.InformationAsync(
+            //     evt: "AMADEUS_FLIGHT_REQ_SUCCESS",
+            //     cat: SysLogCatType.Integration,
+            //     act: SysLogActionType.Exec,
+            //     message: "Calling Amadeus Flight Offers",
+            //     ent: "FlightOfferSearch",
+            //     entId: dto.Id,
+            //     note: "provider:Amadeus");
+
+            return result;
+        }
+        else
+        {
+            string errorBody = await response.Content.ReadAsStringAsync(ct);
+            await _loggerService.ErrorAsync(
+                evt: "AMADEUS_API_ERROR",
+                cat: SysLogCatType.Integration,
+                act: SysLogActionType.Exec,
+                ex: new HttpRequestException($"Amadeus error {response.StatusCode}: {errorBody}"),
+                message: "Amadeus API call failed",
+                ent: "Amadeus",
+                stat: (int)response.StatusCode,
+                note: "provider:Amadeus");
+            throw new InvalidOperationException($"Error '{response.StatusCode}' Response: {errorBody}");
+        }
     }
 }

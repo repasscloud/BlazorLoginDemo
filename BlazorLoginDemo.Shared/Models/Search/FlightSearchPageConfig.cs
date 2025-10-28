@@ -33,7 +33,6 @@ public sealed class FlightSearchPageConfig
 }
 
 public enum CabinClass { Economy = 0, PremiumEconomy = 1, Business = 2, First = 3 }
-public enum Alliance { Oneworld = 1, StarAlliance = 2, SkyTeam = 3 }
 public enum TripType { OneWay = 1, Return = 2 }
 public enum FlightSortOption { PriceAsc = 1, PriceDesc = 2, DurationAsc = 3, DurationDesc = 4, DepartureAsc = 5, DepartureDesc = 6, ArrivalAsc = 7, ArrivalDesc = 8 }
 public enum CoverageType { MostSegments = 1, AtLeastOneSegment = 2, AllSegments = 3 }

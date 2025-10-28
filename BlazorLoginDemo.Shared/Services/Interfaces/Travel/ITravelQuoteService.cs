@@ -1,5 +1,6 @@
 // Services/Interfaces/Travel/ITravelQuoteService.cs
 using BlazorLoginDemo.Shared.Models.DTOs;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Search;
 
@@ -35,6 +36,8 @@ public interface ITravelQuoteService
     // HELPERS
     bool TryParseQuoteType(string value, out TravelQuoteType type);
     Task<int> ExpireOldQuotesAsync(CancellationToken ct = default);
+    Task<List<string>?> GetExcludedAirlinesFromPolicyAsync(string travelPolicyId, TravelQuotePolicyType policyType, CancellationToken ct = default);
+    Task<AmadeusFlightOfferSearch> BuildAmadeusFlightOfferSearchFromQuote(TravelQuote quote, CancellationToken ct = default);
 
     // UI HELPERS
     Task<FlightSearchPageConfig> GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default);

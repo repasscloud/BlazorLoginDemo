@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using BlazorLoginDemo.Shared.Models.Search;
+using BlazorLoginDemo.Shared.Models.Static.Travel;
 
 namespace BlazorLoginDemo.Shared.Models.DTOs;
 
@@ -20,5 +21,5 @@ public sealed class TravelQuoteFlightUIResultPatchDto
     public CabinClass? CabinClass { get; set; }
     public CabinClass? MaxCabinClass { get; set; }
     public string[] SelectedAirlines { get; set; } = Array.Empty<string>();
-    public List<Alliance>? Alliances { get; set; }
+    public List<AirlineAlliance>? Alliances { get; set; }
 }

@@ -3,6 +3,7 @@
 
 @using BlazorLoginDemo.Shared.Models.DTOs
 @using BlazorLoginDemo.Shared.Models.Static.SysVar
+@using BlazorLoginDemo.Shared.Models.Static.Travel
 @using BlazorLoginDemo.Shared.Services.Interfaces.Kernel
 @using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
@@ -351,7 +352,7 @@ else
                             <div class="col-12 col-lg-6">
                                 <label class="form-label fw-semibold text-body-emphasis">Alliances &amp; Rewards</label>
                                 <div class="row row-cols-1 row-cols-md-2 g-2">
-                                    @foreach (var al in Enum.GetValues<Alliance>())
+                                    @foreach (var al in Enum.GetValues<AirlineAlliance>())
                                     {
                                         string id = $"al_{al}";
                                         <div class="col">
@@ -725,7 +726,7 @@ else
         }
     }
 
-    private void ToggleAlliance(Alliance a, bool on)
+    private void ToggleAlliance(AirlineAlliance a, bool on)
     {
         if (on)
         {
@@ -900,11 +901,11 @@ else
         _ => "bi bi-person"
     };
 
-    private static string AllianceLabel(Alliance a) => a switch
+    private static string AllianceLabel(AirlineAlliance a) => a switch
     {
-        Alliance.Oneworld => "oneworld",
-        Alliance.StarAlliance => "Star Alliance",
-        Alliance.SkyTeam => "SkyTeam",
+        AirlineAlliance.OneWorld => "oneworld",
+        AirlineAlliance.StarAlliance => "Star Alliance",
+        AirlineAlliance.SkyTeam => "SkyTeam",
         _ => a.ToString()
     };
 
@@ -920,11 +921,11 @@ else
         return null;
     }
 
-    private static string AllianceIconUrl(Alliance a) => a switch
+    private static string AllianceIconUrl(AirlineAlliance a) => a switch
     {
-        Alliance.Oneworld     => "/img/airline_alliance/oneworld.svg",
-        Alliance.StarAlliance => "/img/airline_alliance/star_alliance_logo_cropped.svg",
-        Alliance.SkyTeam      => "/img/airline_alliance/skyteam.svg",
+        AirlineAlliance.OneWorld     => "/img/airline_alliance/oneworld.svg",
+        AirlineAlliance.StarAlliance => "/img/airline_alliance/star_alliance_logo_cropped.svg",
+        AirlineAlliance.SkyTeam      => "/img/airline_alliance/skyteam.svg",
         _ => ""
     };
 
@@ -1037,7 +1038,7 @@ else
         public string ReturnLatest { get; set; } = string.Empty;
 
         public List<string> Airlines { get; set; } = new List<string>();      // list of airline IATA codes
-        public List<Alliance> Alliances { get; set; } = new List<Alliance>();   // reward programs
+        public List<AirlineAlliance> Alliances { get; set; } = new List<AirlineAlliance>();   // reward programs
     }
 
     //Bprivate sealed record Airport(string Code, string Name, string City, string Country);
