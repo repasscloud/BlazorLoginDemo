@@ -364,7 +364,7 @@ public sealed class AirlineService : IAirlineService
                 Alias = alias,
                 CallSign = callsign,
                 Country = country,
-                Alliance = Models.Static.Travel.AirlineAlliance.Unknown,
+                Alliance = AirlineAlliance.None,
                 FoundedYear = null
             };
 

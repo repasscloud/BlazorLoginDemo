@@ -1,9 +1,11 @@
 // Services/Travel/TravelQuoteService.cs
 using System.Globalization;
+using System.Text.Json;
 using System.Threading.Tasks;
 using BlazorLoginDemo.Shared.Data;
 using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
+using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
 using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Policies;
 using BlazorLoginDemo.Shared.Models.Search;
@@ -16,6 +18,8 @@ using BlazorLoginDemo.Shared.Services.Interfaces.Platform;
 using BlazorLoginDemo.Shared.Services.Interfaces.Policy;
 using BlazorLoginDemo.Shared.Services.Interfaces.Travel;
 using Microsoft.EntityFrameworkCore;
+using System.Xml;
+using BlazorLoginDemo.Shared.Models.Static.Billing;
 
 namespace BlazorLoginDemo.Shared.Services.Travel;
 
@@ -27,7 +31,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
     private readonly ITravelPolicyService _travelPolicySvc;
     private readonly IAirportInfoService _airportInfoSvc;
     private readonly IAirlineService _airlineSvc;
+    private readonly IAdminOrgServiceUnified _orgService;
     private readonly ILoggerService _log;
+    private readonly JsonSerializerOptions _jsonOptions;
 
     public TravelQuoteService(
         ApplicationDbContext db,
@@ -36,7 +42,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         ITravelPolicyService travelPolicySvc,
         IAirportInfoService airportInfoSvc,
         IAirlineService airlineSvc,
-        ILoggerService log)
+        IAdminOrgServiceUnified orgService,
+        ILoggerService log,
+        JsonSerializerOptions jsonOptions)
     {
         _db = db;
         _orgSvc = orgSvc;
@@ -44,7 +52,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         _travelPolicySvc = travelPolicySvc;
         _airportInfoSvc = airportInfoSvc;
         _airlineSvc = airlineSvc;
+        _orgService = orgService;
         _log = log;
+        _jsonOptions = jsonOptions;
     }
 
     // ---------------- CREATE ----------------
@@ -231,7 +241,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             ent: nameof(TravelQuote),
             entId: dto.Id,
             note: "ui_patch");
-            
+
         var q = await _db.TravelQuotes.FirstOrDefaultAsync(x => x.Id == dto.Id, ct);
         if (q is null)
         {
@@ -262,6 +272,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         q.MaxCabinClass = dto.MaxCabinClass ?? null;
         q.SelectedAirlines = dto.SelectedAirlines.Length > 0 ? dto.SelectedAirlines : Array.Empty<string>();
         q.Alliances = dto.Alliances ?? null;
+        q.State = QuoteState.SearchInProgress;  // mark as having UI data ingested
         q.UpdatedAtUtc = DateTime.UtcNow;
 
         q.Note = (q.Note ?? "") +
@@ -567,7 +578,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
         // Cabins: parse strings → enum; return enum values (integers on the wire)
         var defaultCabin = TryParseCabin(travelPolicy?.DefaultFlightSeating, out var c1) ? c1 : CabinClass.Economy;
-        var maxCabin     = TryParseCabin(travelPolicy?.MaxFlightSeating,     out var c2) ? c2 : CabinClass.First;
+        var maxCabin = TryParseCabin(travelPolicy?.MaxFlightSeating, out var c2) ? c2 : CabinClass.First;
 
         // Coverage (kept if you need it later)
         var coverageType = TryParseCoverage(travelPolicy?.CabinClassCoverage, out var cov) ? cov : (CoverageType?)null;
@@ -837,7 +848,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         if (pL.Count == 1)
         {
             q.TravelPolicyId = pL[0].Id;  // single policy, assign directly
-            switch(pL[0].CabinClassCoverage)
+            switch (pL[0].CabinClassCoverage)
             {
                 case "ALL_SEGMENTS":
                     q.CoverageType = CoverageType.AllSegments;
@@ -890,7 +901,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 entId: eTravelPolicy.Id,
                 org: q.OrganizationId);
 
-            switch(eTravelPolicy.CabinClassCoverage)
+            switch (eTravelPolicy.CabinClassCoverage)
             {
                 case "ALL_SEGMENTS":
                     q.CoverageType = CoverageType.AllSegments;
@@ -1067,10 +1078,10 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         var key = s.Trim().ToUpperInvariant().Replace("_", "").Replace(" ", "");
         return key switch
         {
-            "ECONOMY"        => (cabin = CabinClass.Economy) is var _ && true,
+            "ECONOMY" => (cabin = CabinClass.Economy) is var _ && true,
             "PREMIUMECONOMY" => (cabin = CabinClass.PremiumEconomy) is var _ && true,
-            "BUSINESS"       => (cabin = CabinClass.Business) is var _ && true,
-            "FIRST"          => (cabin = CabinClass.First) is var _ && true,
+            "BUSINESS" => (cabin = CabinClass.Business) is var _ && true,
+            "FIRST" => (cabin = CabinClass.First) is var _ && true,
             _ => false
         };
     }
@@ -1092,6 +1103,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
     public async Task<AmadeusFlightOfferSearch> BuildAmadeusFlightOfferSearchFromQuote(TravelQuote quote, CancellationToken ct = default)
     {
+
         // currency code
         // (handled directly in the return statement)
 
@@ -1105,7 +1117,13 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     Id = "1",
                     OriginLocationCode = quote.OriginIataCode!,
                     DestinationLocationCode = quote.DestinationIataCode!,
-                    DateTimeRange = new DepartureDateTimeRange { Date = quote.DepartureDate!, Time = quote.DepartEarliestTime ?? null }
+                    DateTimeRange = new DepartureDateTimeRange
+                    {
+                        Date = quote.DepartureDate!,
+                        Time = string.IsNullOrEmpty(quote.DepartEarliestTime)
+                            ? "00:00:00"
+                            : quote.DepartEarliestTime
+                    }
                 });
                 break;
             case TripType.Return:
@@ -1114,14 +1132,26 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     Id = "1",
                     OriginLocationCode = quote.OriginIataCode!,
                     DestinationLocationCode = quote.DestinationIataCode!,
-                    DateTimeRange = new DepartureDateTimeRange { Date = quote.DepartureDate!, Time = quote.DepartEarliestTime ?? null }
+                    DateTimeRange = new DepartureDateTimeRange
+                    {
+                        Date = quote.DepartureDate!,
+                        Time = string.IsNullOrEmpty(quote.DepartEarliestTime)
+                            ? "00:00:00"
+                            : quote.DepartEarliestTime
+                    }
                 });
                 originDestinations.Add(new OriginDestination
                 {
                     Id = "2",
                     OriginLocationCode = quote.DestinationIataCode!,
                     DestinationLocationCode = quote.OriginIataCode!,
-                    DateTimeRange = new DepartureDateTimeRange { Date = quote.ReturnDate!, Time = quote.ReturnEarliestTime ?? null }
+                    DateTimeRange = new DepartureDateTimeRange
+                    {
+                        Date = quote.ReturnDate!,
+                        Time = string.IsNullOrEmpty(quote.ReturnEarliestTime)
+                            ? "00:00:00"
+                            : quote.ReturnEarliestTime
+                    }
                 });
                 break;
         }
@@ -1170,15 +1200,16 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
         // is there any TravelPolicy.ExcludedAirlineCodes to consider?
         // Excluded airlines take precedence over included
-        var excludedAirlineCodes = await GetExcludedAirlinesFromPolicyAsync(quote.TravelPolicyId, quote.PolicyType, ct);
+        List<string>? excludedAirlineCodes = await GetExcludedAirlinesFromPolicyAsync(quote.TravelPolicyId, quote.PolicyType, ct);
 
         List<string> includedAirlineCodes;
-        if (excludedAirlineCodes is not null)
+        if (excludedAirlineCodes is not null && excludedAirlineCodes.Count > 0)
         {
-            includedAirlineCodes = new();                 // no preference when exclusions are defined
+            includedAirlineCodes = new();  // no preference when exclusions are defined
         }
         else
         {
+            // build included airline codes from quote selections and alliances
             var included = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // From explicit selections
@@ -1186,7 +1217,8 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 included.UnionWith(quote.SelectedAirlines.Where(s => !string.IsNullOrWhiteSpace(s)));
 
             // From alliances (single round-trip)
-            if (quote.Alliances is not null && quote.Alliances.Count > 0)
+            //if (quote.Alliances is not null && quote.Alliances.Count > 0)
+            if (quote?.Alliances?.Count > 0)
             {
                 var allianceCodes = await _db.Airlines
                     .AsNoTracking()
@@ -1199,6 +1231,11 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             }
 
             includedAirlineCodes = included.Count == 0 ? new() : included.ToList(); // empty => no preference
+            if (includedAirlineCodes.Count > 150)
+            {
+                // Amadeus max is 150 included carriers; too many selected → ignore
+                includedAirlineCodes = new();
+            }
         }
 
         CarrierRestriction carrierRestriction = new CarrierRestriction
@@ -1214,9 +1251,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             carrierRestriction.IncludedCarrierCodes = includedAirlineCodes;
         }
 
-        return new AmadeusFlightOfferSearch
+        AmadeusFlightOfferSearch result = new AmadeusFlightOfferSearch
         {
-            CurrencyCode = quote.Currency,
+            CurrencyCode = string.IsNullOrWhiteSpace(quote?.Currency) ? "AUD" : quote!.Currency,
             OriginDestinations = originDestinations,
             Travelers = travelers,
             Sources = new List<string> { "GDS" },
@@ -1231,5 +1268,243 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             }
         };
 
+        return result;
+    }
+
+    public async Task<List<FlightOption>?> GetFlightSearchResultsAsync(string travelQuoteId, AmadeusFlightOfferSearchResult results, CancellationToken ct = default)
+    {
+        if (results?.Data == null || results.Data.Count == 0)
+        {
+            await _log.InformationAsync(
+                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_NO_DATA",
+                cat: SysLogCatType.App,
+                act: SysLogActionType.Read,
+                message: $"No flight search results data found for TravelQuote '{travelQuoteId}'",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
+            return null;
+        }
+
+        TravelQuote? quote = await GetByIdAsync(travelQuoteId, ct);
+        if (quote is null)
+        {
+            await _log.WarningAsync(
+                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_QUOTE_NOT_FOUND",
+                cat: SysLogCatType.App,
+                act: SysLogActionType.Read,
+                message: $"TravelQuote '{travelQuoteId}' not found when retrieving flight search results",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
+            return null;
+        }
+
+        // we also need the markup percentage for the quote's organization
+        OrgFeesMarkupDto? orgFees = await _orgService.GetOrgPnrServiceFeesAsync(quote.OrganizationId, ct);
+
+        if (orgFees is null)
+        {
+            await _log.WarningAsync(
+                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_ORG_FEES_NOT_FOUND",
+                cat: SysLogCatType.App,
+                act: SysLogActionType.Read,
+                message: $"Organization fees/markup not found for Organization '{quote.OrganizationId}' when retrieving flight search results for TravelQuote '{travelQuoteId}'",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
+            return null;
+        }
+
+        // fees
+        decimal markupPercentage = 0m;
+        decimal markupAmount = 0m;
+        ServiceFeeType feeType = ServiceFeeType.None;
+
+        if (orgFees.TravelFeeType != ServiceFeeType.None)
+        {
+            // apply markup to each flight option price
+            switch (orgFees.TravelFeeType)
+            {
+                case ServiceFeeType.MarkupOnly:
+                    // markup is percentage-based
+                    markupPercentage = orgFees.TravelMarkupPercent != 0m ? orgFees.TravelMarkupPercent : 0m;
+                    feeType = ServiceFeeType.MarkupOnly;
+                    break;
+                case ServiceFeeType.PerItemFeeOnly:
+                    // markup is amount-based
+                    markupAmount = orgFees.TravelPerItemFee != 0m ? orgFees.TravelPerItemFee : 0m;
+                    feeType = ServiceFeeType.PerItemFeeOnly;
+                    break;
+
+                case ServiceFeeType.MarkupAndPerItemFee:
+                    // both markup and amount-based
+                    markupPercentage = orgFees.TravelMarkupPercent != 0m ? orgFees.TravelMarkupPercent : 0m;
+                    markupAmount = orgFees.TravelPerItemFee != 0m ? orgFees.TravelPerItemFee : 0m;
+                    feeType = ServiceFeeType.MarkupAndPerItemFee;
+                    break;
+            }
+        }
+        else if (orgFees.FlightFeeType != ServiceFeeType.None)
+        {
+            // apply markup to each flight option price
+            switch (orgFees.FlightFeeType)
+            {
+                case ServiceFeeType.MarkupOnly:
+                    // markup is percentage-based
+                    markupPercentage = orgFees.FlightMarkupPercent != 0m ? orgFees.FlightMarkupPercent : 0m;
+                    feeType = ServiceFeeType.MarkupOnly;
+                    break;
+                case ServiceFeeType.PerItemFeeOnly:
+                    // markup is amount-based
+                    markupAmount = orgFees.FlightPerItemFee != 0m ? orgFees.FlightPerItemFee : 0m;
+                    feeType = ServiceFeeType.PerItemFeeOnly;
+                    break;
+
+                case ServiceFeeType.MarkupAndPerItemFee:
+                    // both markup and amount-based
+                    markupPercentage = orgFees.FlightMarkupPercent != 0m ? orgFees.FlightMarkupPercent : 0m;
+                    markupAmount = orgFees.FlightPerItemFee != 0m ? orgFees.FlightPerItemFee : 0m;
+                    feeType = ServiceFeeType.MarkupAndPerItemFee;
+                    break;
+            }
+        }
+        else
+        {
+            // no markup - did someone do something stupid?
+            await _log.WarningAsync(
+                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_NO_ORG_MARKUP",
+                cat: SysLogCatType.App,
+                act: SysLogActionType.Read,
+                message: $"No organization markup defined for Organization '{quote.OrganizationId}' when retrieving flight search results for TravelQuote '{travelQuoteId}'",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
+        }
+
+        List<FlightOption> flightOptions = new List<FlightOption>();
+
+        foreach (var flightOffer in results.Data)
+        {
+            var costBaseAmount = decimal.TryParse(flightOffer?.Price?.Total, NumberStyles.Number, CultureInfo.InvariantCulture, out var amt)
+                ? amt
+                : 0m;
+
+            List<FlightLeg> legs = new List<FlightLeg>();
+
+            foreach (var leg in flightOffer?.Itineraries?.First().Segments ?? Enumerable.Empty<Segment>())
+            {
+                var segmentId = int.Parse(leg.Id!, CultureInfo.InvariantCulture);
+
+                legs.Add(new FlightLeg
+                {
+                    Carrier = new Carrier(
+                        leg.CarrierCode!,
+                        leg.CarrierCode!,  // TODO: lookup name from code
+                        string.Empty),
+                    FlightNumber = leg.Number!,
+                    Origin = leg.Departure?.IATACode!,
+                    Destination = leg.Arrival?.IATACode!,
+                    Depart = DateTime.Parse(leg.Departure?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                    Arrive = DateTime.Parse(leg.Arrival?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                    Equipment = leg.Aircraft?.Code!,
+                    SeatLayout = string.Empty,
+                    CabinClass = flightOffer?
+                        .TravelerPricings?
+                        .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                        .FirstOrDefault(fds => fds.SegmentId == segmentId)
+                        ?.Cabin ?? "ECONOMY",
+                    Amenities = new Amenities
+                    {
+                        Wifi = false,
+                        Power = false,
+                        Usb = false,
+                        Ife = false,
+                        Meal = false,
+                        LieFlat = false,
+                        ExtraLegroom = false,
+                        Lounge = false,
+                        PriorityBoarding = false,
+                        CheckedBag = true,
+                        Alcohol = false,
+                    },
+                    Layover = null,  // TODO: null has to be calculated AFTER the number of legs are known
+                                     // and calculated in the FlightOption object
+                });
+            }
+
+            string cabin = quote?.CabinClass switch
+            {
+                CabinClass.Economy => "Economy",
+                CabinClass.PremiumEconomy => "Premium Economy",
+                CabinClass.Business => "Business",
+                CabinClass.First => "First",
+                _ => "Economy"
+            };
+
+            flightOptions.Add(new FlightOption
+            {
+                Origin = quote?.OriginIataCode!,
+                Destination = quote?.DestinationIataCode!,
+                DepartTime = DateTime.Parse(flightOffer?.Itineraries?.First().Segments?.First().Departure!.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                ArriveTime = DateTime.Parse(flightOffer?.Itineraries?.First().Segments?.First().Departure!.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)
+                    + XmlConvert.ToTimeSpan(flightOffer?.Itineraries?.First().Duration!),
+                Price = CalcTotalFromOrgFeesMarkupDto(costBaseAmount, feeType, markupPercentage, markupAmount),
+                Currency = quote?.Currency!,
+                Cabin = cabin,
+                Stops = flightOffer?.Itineraries?.First().Segments?.Count() ?? 0,
+                Amenities = new Amenities
+                {
+                    Wifi = false,
+                    Power = false,
+                    Usb = false,
+                    Ife = false,
+                    Meal = false,
+                    LieFlat = false,
+                    ExtraLegroom = false,
+                    Lounge = false,
+                    PriorityBoarding = false,
+                    CheckedBag = true,
+                    Alcohol = false,
+                },
+                Legs = legs,
+                BaggageText = string.Empty,
+                ChangePolicy = string.Empty,
+                RefundPolicy = string.Empty,
+                SeatPolicy = string.Empty,
+
+            });
+
+            // await _log.InformationAsync(
+            //     evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_OFFER",
+            //     cat: SysLogCatType.App,
+            //     act: SysLogActionType.Read,
+            //     message: $"Flight offer found for TravelQuote '{travelQuoteId}': OfferId='{flightOffer.Id}', Price='{flightOffer.Price.Total} {flightOffer.Price.Currency}'",
+            //     ent: nameof(TravelQuote),
+            //     entId: travelQuoteId);
+        }
+        
+        return flightOptions;
+    }
+    
+    private decimal CalcTotalFromOrgFeesMarkupDto(decimal baseAmount, ServiceFeeType feeType, decimal? pct, decimal? flat)
+    {
+        decimal total = baseAmount;
+        decimal pctVal = (pct is > 0m) ? pct.Value : 0m;
+        decimal flatVal = (flat is > 0m) ? flat.Value : 0m;
+
+        switch (feeType)
+        {
+            case ServiceFeeType.MarkupOnly:
+                total += baseAmount * pctVal;
+                break;
+
+            case ServiceFeeType.PerItemFeeOnly:
+                total += flatVal;
+                break;
+
+            case ServiceFeeType.MarkupAndPerItemFee:
+                total += baseAmount * pctVal;
+                total += flatVal;
+                break;
+        }
+
+        return total;
     }
 }

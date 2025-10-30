@@ -52,7 +52,7 @@ else
             <div class="d-flex align-items-center gap-3">
                 <div>
                     <h2 class="h4 m-0">Flight Search</h2>
-                    <small class="text-muted">Build a request then run Search.</small>
+                    <small class="text-muted">Set your route and dates, then search.</small>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
@@ -219,7 +219,7 @@ else
                                         <i class="bi bi-dash"></i>
                                     </button>
                                     <span class="input-group-text">Adults</span>
-                                    <input type="number" class="form-control text-center" min="1" max="9" value="@Vm.Adults" />
+                                    <input type="number" class="form-control text-center" min="1" max="9" value="@Vm.Adults" disabled />
                                     <button class="btn btn-outline-secondary" type="button" disabled aria-disabled="true">
                                         <i class="bi bi-plus"></i>
                                     </button>
@@ -302,9 +302,9 @@ else
 
                             <!-- Cabin class -->
                             <div class="col-12 col-lg-6">
-                                <label class="form-label fw-semibold text-body-emphasis">Cabin</label>
+                                <label class="form-label fw-semibold text-body-emphasis">Cabin preference</label>
                                 <InputSelect class="form-select" @bind-Value="Vm.Cabin">
-                                    @foreach (var c in Enum.GetValues<CabinClass>().Where(c => c <= Config.MaxCabin))
+                                    @foreach (CabinClass c in Enum.GetValues<CabinClass>().Where(c => c <= Config.MaxCabin))
                                     {
                                         <option value="@c">@CabinLabel(c)</option>
                                     }
@@ -330,9 +330,9 @@ else
                                 else
                                 {
                                     <div class="row row-cols-1 row-cols-md-2 g-2">
-                                        @foreach (var a in Config.AvailableAirlines)
+                                        @foreach (BookingAirline a in Config.AvailableAirlines)
                                         {
-                                            var id = $"air_{a.Code}";
+                                            string? id = $"air_{a.Code}";
                                             <div class="col">
                                                 <div class="form-check">
                                                     <input class="form-check-input" type="checkbox" id="@id"
@@ -352,8 +352,12 @@ else
                             <div class="col-12 col-lg-6">
                                 <label class="form-label fw-semibold text-body-emphasis">Alliances &amp; Rewards</label>
                                 <div class="row row-cols-1 row-cols-md-2 g-2">
-                                    @foreach (var al in Enum.GetValues<AirlineAlliance>())
+                                    @foreach (AirlineAlliance al in Enum.GetValues<AirlineAlliance>())
                                     {
+                                        if (al == AirlineAlliance.None || al == AirlineAlliance.Independent)
+                                        {
+                                            continue;
+                                        }
                                         string id = $"al_{al}";
                                         <div class="col">
                                             <div class="form-check d-flex align-items-center gap-2">
@@ -903,9 +907,11 @@ else
 
     private static string AllianceLabel(AirlineAlliance a) => a switch
     {
-        AirlineAlliance.OneWorld => "oneworld",
+        AirlineAlliance.OneWorld => "OneWorld",
         AirlineAlliance.StarAlliance => "Star Alliance",
         AirlineAlliance.SkyTeam => "SkyTeam",
+        AirlineAlliance.None => "All Airlines",
+        AirlineAlliance.Independent => "Independent",
         _ => a.ToString()
     };
 
@@ -926,7 +932,9 @@ else
         AirlineAlliance.OneWorld     => "/img/airline_alliance/oneworld.svg",
         AirlineAlliance.StarAlliance => "/img/airline_alliance/star_alliance_logo_cropped.svg",
         AirlineAlliance.SkyTeam      => "/img/airline_alliance/skyteam.svg",
-        _ => ""
+        AirlineAlliance.None         => "/img/airline_alliance/no_alliance.svg",
+        AirlineAlliance.Independent  => "/img/airline_alliance/independent.svg",
+        _                            => "/img/airline_alliance/no_alliance.svg"
     };
 
     private string FormatDate(DateTime? dt) =>
@@ -1040,12 +1048,6 @@ else
         public List<string> Airlines { get; set; } = new List<string>();      // list of airline IATA codes
         public List<AirlineAlliance> Alliances { get; set; } = new List<AirlineAlliance>();   // reward programs
     }
-
-    //Bprivate sealed record Airport(string Code, string Name, string City, string Country);
-
-    //private sealed record Airline(string Code, string Name);
-
-    //private sealed record AirportItem(string Code, string Name, string City, string Country, string NameFormatted);
 
     private sealed class PageConfig
     {

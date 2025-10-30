@@ -1,9 +1,10 @@
 @page "/platform/pnr/create/flight/results/{TravelQuoteId?}"
 @rendermode InteractiveServer
-@using BlazorLoginDemo.Shared.Models.Demo
+
 @using System.Linq
 @using BlazorLoginDemo.Shared.Models.Static.SysVar
 @using BlazorLoginDemo.Shared.Services.Interfaces.Kernel
+@using BlazorLoginDemo.Shared.Models.Kernel.Travel
 
 @inject NavigationManager Nav
 @inject IHttpClientFactory HttpClientFactory
@@ -29,6 +30,27 @@
             <img src="/media/clouds-white.svg" class="cloud-img cloud-front c8" alt="" aria-hidden="true" />
 
             <div class="loading-text">LOADING...</div>
+        </div>
+    </div>
+}
+else if (!hasFlightResults)
+{
+    <div class="container-fluid py-4 py-md-5">
+          <div class="d-flex flex-column align-items-center justify-content-center text-center min-vh-50">
+            <i class="bi bi-search fs-1 text-muted mb-3" aria-hidden="true"></i>
+            <h1 class="h4 mb-2">No results</h1>
+            <p class="text-secondary mb-4">Please change your search criteria and try again.</p>
+
+            <button class="btn btn-primary" @onclick="BackToSearch">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+            Back to search
+            </button>
+
+            <ul class="list-unstyled small text-secondary mt-4">
+            <li class="mb-1"><i class="bi bi-dot" aria-hidden="true"></i>Try nearby airports or flexible dates</li>
+            <li class="mb-1"><i class="bi bi-dot" aria-hidden="true"></i>Remove airline, cabin, or stop filters</li>
+            <li><i class="bi bi-dot" aria-hidden="true"></i>Adjust passenger count or fare type</li>
+            </ul>
         </div>
     </div>
 }
@@ -274,7 +296,6 @@ else
 }
 
 
-
 @code {
     // ===== Parameters =====
     [Parameter] public string? TravelQuoteId { get; set; }
@@ -295,9 +316,6 @@ else
     List<FlightOption> FlightResults = new List<FlightOption>();
 
 
-
-
-
     // Query state
     string? qText = "";
     string? qCabin = "";
@@ -314,6 +332,8 @@ else
 
     bool ShowCompareJson = false;
     private string SelectedJson = string.Empty;
+
+    private bool hasFlightResults => FlightResults != null && FlightResults.Count > 0;
 
 
     IEnumerable<FlightOption> Filtered => FlightResults.Where(Matches);
@@ -527,8 +547,8 @@ else
             Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);  //TODO: better error handling (page? -> error page with cancellationmessage?)
         } *@
 
-        await Task.Delay(millisecondsDelay: 5000);
-
         _pageIsLoading = false;
     }
+
+    private void BackToSearch() => Nav.NavigateTo(uri: $"/platform/pnr/create/flight/search/{TravelQuoteId}");
 }

@@ -121,7 +121,8 @@ public enum QuoteState : short
     // 00–09: Drafting / local-only UI states
     Draft = 00,
     RetrievedUI = 10,            // UI loaded a previously-saved quote for editing/view
-    SearchResultsRequested = 11, // UI triggered a search to build a quote
+    SearchInProgress = 11,     // UI is waiting for search results to build a quote
+    SearchResultsRequested = 12, // UI triggered a search to build a quote
 
     // 20–39: Submission lifecycle
     Submitted = 20,

@@ -1,3 +1,4 @@
+using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.Kernel.Billing;
 using BlazorLoginDemo.Shared.Models.Kernel.Platform;
 using BlazorLoginDemo.Shared.Models.Static.Platform;
@@ -87,4 +88,5 @@ public interface IAdminOrgServiceUnified
     Task<bool> ExistsAsync(string id, CancellationToken ct = default);
     Task<bool> ValidateTaxIdAsync(string orgId, string taxId, string taxIdType, CancellationToken ct = default);
     Task<string?> GetOrgDefaultTravelPolicyIdAsync(string orgId, CancellationToken ct = default);
+    Task<OrgFeesMarkupDto?> GetOrgPnrServiceFeesAsync(string orgId, CancellationToken ct = default);
 }

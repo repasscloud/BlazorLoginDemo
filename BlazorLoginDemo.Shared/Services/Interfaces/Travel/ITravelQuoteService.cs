@@ -41,4 +41,5 @@ public interface ITravelQuoteService
 
     // UI HELPERS
     Task<FlightSearchPageConfig> GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default);
+    Task<List<FlightOption>?> GetFlightSearchResultsAsync(string travelQuoteId, CancellationToken ct = default);
 }

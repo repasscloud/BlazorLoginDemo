@@ -6,11 +6,9 @@ using BlazorLoginDemo.Shared.Models.DTOs;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Amadeus.Flight;
 using BlazorLoginDemo.Shared.Models.ExternalLib.Kernel.Flight;
-using BlazorLoginDemo.Shared.Models.Kernel.Travel;
 using BlazorLoginDemo.Shared.Models.Static.SysVar;
 using BlazorLoginDemo.Shared.Services.Interfaces.External;
 using BlazorLoginDemo.Shared.Services.Interfaces.Kernel;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NanoidDotNet;
@@ -184,20 +182,6 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             Travelers = travelers,
             SearchCriteria = searchCriteria
         };
-
-        // DEBUG persist
-        string debugJsonX = $@"/app/searchRequestDTO_debugJsonX_{dto.Id}.json";
-        await _loggerService.DebugAsync(
-            evt: "FLIGHT_OFFERS_SAVE_RESULTS",
-            cat: SysLogCatType.Storage,                 // file/blob write
-            act: SysLogActionType.Update,               // use Create if writing first time
-            message: $"Saving results for request id={dto.Id} to {debugJsonX}",
-            ent: "FlightOfferResults",
-            entId: dto.Id,
-            note: $"path:{debugJsonX}");
-
-        var xJson = JsonSerializer.Serialize(flightOfferSearch, _jsonOptions);
-        await File.WriteAllTextAsync(debugJsonX, xJson, ct);
 
         // 8) Auth
         var token = await _authService.GetTokenInformationAsync();

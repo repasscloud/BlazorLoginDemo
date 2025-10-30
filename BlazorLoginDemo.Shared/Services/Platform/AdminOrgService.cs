@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using HtmlAgilityPack;
 using BlazorLoginDemo.Shared.Models.Static.SysVar;
+using BlazorLoginDemo.Shared.Models.Static.Billing;
+using BlazorLoginDemo.Shared.Models.DTOs;
 
 namespace BlazorLoginDemo.Shared.Services.Platform;
 
@@ -488,7 +490,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
 
         return taxResultStatus;
     }
-    
+
     public async Task<string?> GetOrgDefaultTravelPolicyIdAsync(string orgId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(orgId))
@@ -512,4 +514,90 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
 
         return org?.DefaultTravelPolicyId ?? null;
     }
+
+    /// <summary>
+    /// Get PNR Service Fees for the given organization
+    /// </summary>
+    /// <param name="orgId"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    public async Task<OrgFeesMarkupDto?> GetOrgPnrServiceFeesAsync(string orgId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(orgId)) return null;
+
+        var org = await _db.Organizations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == orgId, ct);
+
+        if (org == null)
+            return null;
+
+        if (org.LicenseAgreementId == null)
+            return null;
+
+        var licenseAgreement = await _db.LicenseAgreements.AsNoTracking().FirstOrDefaultAsync(la => la.Id == org.LicenseAgreementId, ct);
+        if (licenseAgreement == null)
+        {
+            await _logger.ErrorAsync(
+                evt: "ORG_PNR_FEES_MISSING",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Validate,
+                ex: new InvalidOperationException($"Organization {orgId} has no PNR Service Fees configured."),
+                message: $"Organization {orgId} has no PNR Service Fees configured.",
+                ent: nameof(orgId),
+                entId: orgId,
+                org: orgId?.ToString(),
+                note: "pnr_fees_missing");
+
+            return null;
+        }
+
+        OrgFeesMarkupDto orgFees = new OrgFeesMarkupDto
+        {
+            PnrCreationFee = licenseAgreement.PnrCreationFee,
+            PnrChangeFee = licenseAgreement.PnrChangeFee,
+
+            FlightMarkupPercent = licenseAgreement.FlightMarkupPercent,
+            FlightPerItemFee = licenseAgreement.FlightPerItemFee,
+            FlightFeeType = licenseAgreement.FlightFeeType,
+
+            HotelMarkupPercent = licenseAgreement.HotelMarkupPercent,
+            HotelPerItemFee = licenseAgreement.HotelPerItemFee,
+            HotelFeeType = licenseAgreement.HotelFeeType,
+
+            CarMarkupPercent = licenseAgreement.CarMarkupPercent,
+            CarPerItemFee = licenseAgreement.CarPerItemFee,
+            CarFeeType = licenseAgreement.CarFeeType,
+
+            RailMarkupPercent = licenseAgreement.RailMarkupPercent,
+            RailPerItemFee = licenseAgreement.RailPerItemFee,
+            RailFeeType = licenseAgreement.RailFeeType,
+
+            TransferMarkupPercent = licenseAgreement.TransferMarkupPercent,
+            TransferPerItemFee = licenseAgreement.TransferPerItemFee,
+            TransferFeeType = licenseAgreement.TransferFeeType,
+
+            ActivityMarkupPercent = licenseAgreement.ActivityMarkupPercent,
+            ActivityPerItemFee = licenseAgreement.ActivityPerItemFee,
+            ActivityFeeType = licenseAgreement.ActivityFeeType,
+
+            TravelMarkupPercent = licenseAgreement.TravelMarkupPercent,
+            TravelPerItemFee = licenseAgreement.TravelPerItemFee,
+            TravelFeeType = licenseAgreement.TravelFeeType
+        };
+
+        await _logger.InformationAsync(
+                evt: "ORG_PNR_FEES_RETRIEVED",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                message: $"Organization {orgId} PNR Service Fees retrieved.",
+                ent: nameof(orgId),
+                entId: orgId,
+                org: orgId?.ToString(),
+                note: "pnr_fees_retrieved");
+
+        return orgFees;
+    }
 }
+
+
