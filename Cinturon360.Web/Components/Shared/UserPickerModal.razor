@@ -1,0 +1,171 @@
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@using Cinturon360.Shared.Data
+@inject IAdminUserServiceUnified UserSvc
+
+<div class="modal @( _open ? "show d-block" : "" )" tabindex="-1" role="dialog" style="background: rgba(0,0,0,.5);" aria-hidden="@(!_open)">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">@(_title ?? "Select Manager")</h5>
+                <div class="ms-auto d-flex gap-2">
+                    <!-- Always-available 'Clear manager' -->
+                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="OnClearClicked">
+                        <span class="bi bi-person-x" aria-hidden="true"></span> Clear manager
+                    </button>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="OnCancelClicked"></button>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <div class="input-group mb-3">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input class="form-control" placeholder="Search by name or email…" @bind="_query" @bind:event="oninput" />
+                    <button class="btn btn-outline-secondary" type="button" @onclick="SearchAsync">Search</button>
+                </div>
+
+                @if (_loading)
+                {
+                    <div class="text-center my-4">
+                        <div class="spinner-border" role="status" aria-hidden="true"></div>
+                    </div>
+                }
+                else if (_rows.Count == 0)
+                {
+                    <div class="alert alert-secondary mb-0">
+                        No users found in this organization@((string.IsNullOrWhiteSpace(_query) ? "." : $" matching “{_query}”."))
+                    </div>
+                }
+                else
+                {
+                <ul class="list-group">
+                    @foreach (var r in _rows)
+                    {
+                        <li class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div class="me-3">
+                                <div class="fw-semibold">@r.Label</div>
+                                <div class="small text-muted">
+                                    @r.Email
+                                    @if (!string.IsNullOrWhiteSpace(r.Department))
+                                    {
+                                        <span class="mx-2">·</span><span>@r.Department</span>
+                                    }
+                                </div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" @onclick="() => OnPickClicked(r)">
+                            Select
+                            </button>
+                        </li>
+                    }
+                </ul>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" @onclick="OnCancelClicked">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // ----- public API -----
+    public sealed record SimpleUser(string Id, string Label, string? Email, string? Department);
+    public enum UserPickerAction { Selected, Cleared }
+    public sealed record Result(UserPickerAction Action, SimpleUser? User);
+
+    public async Task<Result?> OpenAsync(string excludeUserId, string organizationId, string? title = null, bool onlyActive = true)
+    {
+        _excludeUserId = excludeUserId;
+        _orgId = organizationId;
+        _title = string.IsNullOrWhiteSpace(title) ? "Select Manager" : title;
+        _onlyActive = onlyActive;
+
+        _query = string.Empty;
+        _rows.Clear();
+
+        _tcs = new TaskCompletionSource<Result?>();
+        _open = true;
+        StateHasChanged();
+
+        await SearchAsync();
+        return await _tcs.Task;
+    }
+
+    // ----- internals -----
+    private bool _open;
+    private string? _title;
+    private string? _orgId;
+    private string? _excludeUserId;
+    private bool _onlyActive = true;
+    private string _query = string.Empty;
+    private bool _loading;
+    private TaskCompletionSource<Result?>? _tcs;
+
+    private readonly List<SimpleUser> _rows = new();
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_orgId))
+        return;
+
+        _loading = true;
+        _rows.Clear();
+        StateHasChanged();
+
+        try
+        {
+            // Search within the SAME org only; exclude the current user; optionally only active
+            var list = await UserSvc.SearchAsync(
+            emailContains: string.IsNullOrWhiteSpace(_query) ? null : _query,
+            nameContains:  string.IsNullOrWhiteSpace(_query) ? null : _query,
+            organizationId: _orgId,
+            isActive: _onlyActive ? true : null);
+
+            foreach (var u in list.Where(x => x.UserId != _excludeUserId))
+            {
+                var user = u.User;
+                var label = !string.IsNullOrWhiteSpace(user.DisplayName)
+                    ? user.DisplayName
+                    : string.Join(" ", new[] { user.FirstName, user.LastName }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+                if (string.IsNullOrWhiteSpace(label))
+                label = user.Email ?? u.UserId;
+
+                _rows.Add(new SimpleUser(
+                    u.UserId,
+                    label,
+                    user.Email,
+                    user.Department
+                ));
+            }
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnPickClicked(SimpleUser r)
+    {
+        Complete(new Result(UserPickerAction.Selected, r));
+    }
+
+    private void OnClearClicked()
+    {
+        Complete(new Result(UserPickerAction.Cleared, null));
+    }
+
+    private void OnCancelClicked()
+    {
+        Complete(null);
+    }
+
+    private void Complete(Result? result)
+    {
+        _open = false;
+        _tcs?.TrySetResult(result);
+        StateHasChanged();
+    }
+}

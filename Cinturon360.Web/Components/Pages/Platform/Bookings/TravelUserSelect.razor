@@ -1,0 +1,367 @@
+@page "/platform/pnr/create/{bookingType}"
+@rendermode InteractiveServer
+@using Cinturon360.Shared.Models.Kernel.Travel
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@using Cinturon360.Shared.Models.Kernel.Platform
+@using Microsoft.AspNetCore.Components.Authorization
+@using Cinturon360.Shared.Models.Static.Platform
+@using System.Text.Json;
+@using System.Runtime.InteropServices.Marshalling
+@using Microsoft.AspNetCore.Mvc
+@using System.Net
+
+@attribute [Authorize(Policy = "Shared:BookingSelect")]
+
+@inject IAdminOrgServiceUnified OrgSvc
+@inject IAdminUserServiceUnified UserSvc
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IHttpClientFactory HttpClientFactory
+
+@if (Unauthorized)
+{
+    <div class="alert alert-danger">You are not authorized to access this page.</div>
+}
+else
+{
+    @if (ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">@ErrorMessage</div>
+    }
+    @if (IsSudo)
+    {
+        <div class="alert alert-info">
+            You are logged in as <strong>Sudo</strong>. You can select any Vendor, TMC, Client and User.
+        </div>
+    }
+    else if (IsPlatformUser)
+    {
+        <div class="alert alert-info">
+            You are logged in as a <strong>Platform User</strong>. The Vendor is pre-selected. You can select any TMC, Client and User under this Vendor.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            You are logged in as a <strong>TMC User</strong>. The TMC is pre-selected. You can select any Client and User under this TMC.
+        </div>
+    }
+
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-xl-8 col-lg-9">
+
+                <div class="alert alert-info">
+                    Booking Type: <strong>@BookingTypeNormalized</strong>
+                </div>
+
+                @if (IsSudo)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header"><strong>Select Vendor</strong></div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <div class="input-group">
+                                    <select class="form-select" @bind="SelectedVendorId" disabled="@VendorLocked">
+                                        <option value="">-- choose --</option>
+                                        @foreach (var v in Vendors)
+                                        {
+                                            <option value="@v.Id">@v.Name</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-outline-primary" type="button" @onclick="ConfirmVendor" disabled="@VendorLocked">Set</button>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(SelectedVendorId) && VendorLocked)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header"><strong>Select TMC</strong></div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <div class="input-group">
+                                    <select class="form-select" @bind="SelectedTmcId" disabled="@TmcLocked">
+                                        <option value="">-- choose --</option>
+                                        @foreach (var t in Tmcs)
+                                        {
+                                            <option value="@t.Id">@t.Name</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-outline-primary" type="button" @onclick="ConfirmTmc" disabled="@TmcLocked">Set</button>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(SelectedTmcId) && TmcLocked)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header"><strong>Select Client</strong></div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <div class="input-group">
+                                    <select class="form-select" @bind="SelectedClientId" disabled="@ClientLocked">
+                                        <option value="">-- choose --</option>
+                                        @foreach (var c in Clients)
+                                        {
+                                            <option value="@c.Id">@c.Name</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-outline-primary" type="button" @onclick="ConfirmClient" disabled="@ClientLocked">Set</button>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                }
+                @if (Users.Any() && ClientLocked)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header">
+                            <strong>Available Users</strong>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group">
+                                @foreach (var u in Users)
+                                {
+                                    <li class="list-group-item d-flex align-items-center">
+                                        <input type="checkbox" class="form-check-input me-2"
+                                            value="@u.UserId"
+                                            @onchange="@((ChangeEventArgs e) => ToggleUserSelection(u.UserId, (bool)e.Value!))" />
+                                        <span>@u.User.DisplayName (@u.User.Email)</span>
+                                    </li>
+                                }
+                            </ul>
+
+                            <button class="btn btn-primary mt-3" @onclick="CreateQuoteAsync">Continue</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? bookingType { get; set; }
+
+    private static readonly HashSet<string> AllowedBookingTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "flight", "accomodation", "taxi", "train", "hirecar", "bus", "simcard", "activity", "mixed"
+    };
+
+    public string BookingTypeNormalized { get; private set; } = string.Empty;
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(bookingType) || !AllowedBookingTypes.Contains(bookingType))
+        {
+            Nav.NavigateTo(uri: "/booking/select", forceLoad: true);
+            return;
+        }
+
+        BookingTypeNormalized = bookingType!.ToLowerInvariant();
+    }
+
+    bool Unauthorized;
+    bool IsSudo;
+    bool IsPlatformUser;
+
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Vendors = new List<IAdminOrgServiceUnified.OrganizationPickerDto>();
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Tmcs = new List<IAdminOrgServiceUnified.OrganizationPickerDto>();
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Clients = new List<IAdminOrgServiceUnified.OrganizationPickerDto>();
+    List<IAdminUserServiceUnified.UserAggregate> Users = new List<IAdminUserServiceUnified.UserAggregate>();
+
+    string? SelectedVendorId;
+    string? SelectedTmcId;
+    string? SelectedClientId;
+    string? myUserId;
+
+    bool VendorLocked;
+    bool TmcLocked;
+    bool ClientLocked;
+
+    string? ErrorMessage;
+    @* private sealed record ErrorDto { public string? Error { get; init; } } *@
+
+    HashSet<string> SelectedUserIds = new HashSet<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState? authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        System.Security.Claims.ClaimsPrincipal? user = authState.User;
+
+        if (!(user.IsInRole("Sudo") ||
+              user.IsInRole("Platform.SuperAdmin") ||
+              user.IsInRole("Platform.SuperUser") ||
+              user.IsInRole("Platform.Admin") ||
+              user.IsInRole("Platform.Support.Admin") ||
+              user.IsInRole("Platform.Support.Agent") ||
+              user.IsInRole("Tmc.Admin") ||
+              user.IsInRole("Tmc.BookingsManager") ||
+              user.IsInRole("Tmc.TravelAgent")))
+        {
+            Unauthorized = true;
+            return;
+        }
+
+        var orgId = user.FindFirst("OrganizationId")?.Value
+                    ?? user.FindFirst("organizationId")?.Value
+                    ?? user.FindFirst("org")?.Value;
+
+        IsSudo = user.IsInRole("Sudo");
+        IsPlatformUser = user.IsInRole("Platform.SuperAdmin") ||
+                         user.IsInRole("Platform.SuperUser") ||
+                         user.IsInRole("Platform.Admin") ||
+                         user.IsInRole("Platform.Support.Admin") ||
+                         user.IsInRole("Platform.Support.Agent");
+
+        if (IsSudo)
+        {
+            Vendors = (await OrgSvc.SearchAsync(type: OrganizationType.Vendor))
+                      .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+                      {
+                          Id = a.Org.Id,
+                          Name = a.Org.Name,
+                          Type = a.Org.Type,
+                          IsActive = a.Org.IsActive
+                      }).ToList();
+        }
+        else if (IsPlatformUser)
+        {
+            SelectedVendorId = orgId;
+            VendorLocked = true;
+            await LoadTmcs();
+        }
+        else if (user.IsInRole("Tmc.Admin") || user.IsInRole("Tmc.BookingsManager") || user.IsInRole("Tmc.TravelAgent"))
+        {
+            SelectedTmcId = orgId;
+            TmcLocked = true;
+            await LoadClients();
+        }
+        else
+        {
+            SelectedClientId = orgId;
+            ClientLocked = true;
+            await LoadUsers();
+        }
+
+        // assign the currently using user user's id
+        myUserId = user.GetUserId();
+    }
+
+    async Task ConfirmVendor()
+    {
+        if (string.IsNullOrEmpty(SelectedVendorId)) return;
+        VendorLocked = true;
+        await LoadTmcs();
+    }
+
+    async Task ConfirmTmc()
+    {
+        if (string.IsNullOrEmpty(SelectedTmcId)) return;
+        TmcLocked = true;
+        await LoadClients();
+    }
+
+    async Task ConfirmClient()
+    {
+        if (string.IsNullOrEmpty(SelectedClientId)) return;
+        ClientLocked = true;
+        await LoadUsers();
+    }
+
+    async Task LoadTmcs()
+    {
+        Tmcs = (await OrgSvc.SearchAsync(type: OrganizationType.Tmc, parentOrgId: SelectedVendorId))
+               .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+               {
+                   Id = a.Org.Id,
+                   Name = a.Org.Name,
+                   Type = a.Org.Type,
+                   IsActive = a.Org.IsActive
+               }).ToList();
+    }
+
+    async Task LoadClients()
+    {
+        Clients = (await OrgSvc.SearchAsync(type: OrganizationType.Client, parentOrgId: SelectedTmcId))
+                  .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
+                  {
+                      Id = a.Org.Id,
+                      Name = a.Org.Name,
+                      Type = a.Org.Type,
+                      IsActive = a.Org.IsActive
+                  }).ToList();
+    }
+
+    async Task LoadUsers()
+    {
+        Users = (await UserSvc.SearchAsync(organizationId: SelectedClientId)).ToList();
+    }
+
+    void ToggleUserSelection(string userId, bool selected)
+    {
+        if (selected) SelectedUserIds.Add(userId);
+        else SelectedUserIds.Remove(userId);
+    }
+
+    static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
+    public sealed record ErrorEnvelope(string? Error);
+    public sealed record IdEnvelope(string? Id);
+
+    async Task CreateQuoteAsync()
+    {
+        if (string.IsNullOrEmpty(SelectedClientId) || SelectedUserIds.Count == 0)
+            return;
+
+        HttpClient? client = HttpClientFactory.CreateClient(name: "AvaApi");
+
+        TravelQuoteDto payload = new TravelQuoteDto
+        {
+            QuoteType = BookingTypeNormalized,
+            CreatedByUserId = myUserId!,
+            TmcAssignedId = SelectedTmcId!,
+            OrganizationId = SelectedClientId!,
+            TravellerUserIds = SelectedUserIds.ToList()
+        };
+
+        using HttpResponseMessage? response = await client.PostAsJsonAsync(requestUri: "api/v1/travel/quotes/from-dto", payload, JsonOpts);
+
+        // catch your controller's: return BadRequest(new { error });
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            // prefer ErrorEnvelope { Error } if you already have that type
+            try
+            {
+                ErrorEnvelope? err = await response.Content.ReadFromJsonAsync<ErrorEnvelope>(JsonOpts);
+                ErrorMessage = string.IsNullOrWhiteSpace(err?.Error) ? "Bad request." : err!.Error;
+            }
+            catch
+            {
+                string? raw = await response.Content.ReadAsStringAsync();
+                ErrorMessage = string.IsNullOrWhiteSpace(raw) ? "Bad request." : raw;
+            }
+            return;
+        }
+
+        // any other non-success → set a terse message and stop
+        if (!response.IsSuccessStatusCode)
+        {
+            string? raw = await response.Content.ReadAsStringAsync();
+            ErrorMessage = $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}"
+                        + (string.IsNullOrWhiteSpace(raw) ? "" : $": {raw}");
+            return;
+        }
+
+        IdEnvelope? ok = await response.Content.ReadFromJsonAsync<IdEnvelope>(JsonOpts);
+        if (string.IsNullOrWhiteSpace(ok?.Id))
+        {
+            ErrorMessage = "Missing ID.";
+            return;
+        }
+
+        string? createdId = ok!.Id!;
+        Nav.NavigateTo(uri: $"/platform/pnr/create/flight/search/{createdId}", forceLoad: true);
+    }
+}

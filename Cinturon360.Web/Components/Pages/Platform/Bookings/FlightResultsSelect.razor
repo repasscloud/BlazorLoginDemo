@@ -1,0 +1,554 @@
+@page "/platform/pnr/create/flight/results/{TravelQuoteId?}"
+@rendermode InteractiveServer
+
+@using System.Linq
+@using Cinturon360.Shared.Models.Static.SysVar
+@using Cinturon360.Shared.Services.Interfaces.Kernel
+@using Cinturon360.Shared.Models.Kernel.Travel
+
+@inject NavigationManager Nav
+@inject IHttpClientFactory HttpClientFactory
+@inject ILoggerService _log
+
+@if (_pageIsLoading == true)
+{
+    <div class="loading-overlay" role="status" aria-live="polite" aria-label="Loading">
+        <div class="sky">
+            <!-- Clouds (behind the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c1" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c2" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c3" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c4" alt="" aria-hidden="true" />
+
+            <!-- Plane -->
+            <img src="/media/airplane.svg" class="plane-svg" alt="Airplane loading" />
+
+            <!-- Clouds (in front of the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c5" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c6" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c7" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c8" alt="" aria-hidden="true" />
+
+            <div class="loading-text">LOADING...</div>
+        </div>
+    </div>
+}
+else if (!hasFlightResults)
+{
+    <div class="container-fluid py-4 py-md-5">
+          <div class="d-flex flex-column align-items-center justify-content-center text-center min-vh-50">
+            <i class="bi bi-search fs-1 text-muted mb-3" aria-hidden="true"></i>
+            <h1 class="h4 mb-2">No results</h1>
+            <p class="text-secondary mb-4">Please change your search criteria and try again.</p>
+
+            <button class="btn btn-primary" @onclick="BackToSearch">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+            Back to search
+            </button>
+
+            <ul class="list-unstyled small text-secondary mt-4">
+            <li class="mb-1"><i class="bi bi-dot" aria-hidden="true"></i>Try nearby airports or flexible dates</li>
+            <li class="mb-1"><i class="bi bi-dot" aria-hidden="true"></i>Remove airline, cabin, or stop filters</li>
+            <li><i class="bi bi-dot" aria-hidden="true"></i>Adjust passenger count or fare type</li>
+            </ul>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container-fluid py-4 py-md-5">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h1 class="h4 brand mb-1">Flight Results</h1>
+                @* <p class="text-secondary mb-0">Hybrid carrier legs with logos and numbers. Table + per-row details. Blazor-only interactions.</p> *@
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-primary btn-sm" @onclick="ResetFilters">Reset filters</button>
+            </div>
+        </div>
+
+        <div class="row g-4">
+        <!-- Sidebar filters -->
+            <aside class="col-12 col-lg-3 col-xl-2">
+                <div class="sidebar">
+                    <div class="p-3 rounded-4 border bg-white">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <strong>Filters</strong>
+                            <span class="text-secondary small">@(textContent: $"{Filtered.Count()} shown")</span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="mb-3">
+                            <label class="form-label">Search</label>
+                            <input class="form-control form-control-sm" placeholder="Airline, route, number" @bind="qText">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cabin</label>
+                            <select class="form-select form-select-sm" @bind="qCabin">
+                                <option value="">Any</option>
+                                <option>Economy</option>
+                                <option>Premium Economy</option>
+                                <option>Business</option>
+                                <option>First</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Stops</label>
+                            <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="fNonstop" @bind="qNonstopOnly">
+                                <label class="form-check-label" for="fNonstop">Nonstop only</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="fOneStop" @bind="qAtMostOneStop">
+                                <label class="form-check-label" for="fOneStop">≤ 1 stop</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Amenities</label>
+                            <div class="d-grid gap-2">
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="aWifi" @bind="qAmenities.Wifi"><label class="form-check-label" for="aWifi"><i class="bi bi-wifi me-1"></i> Wi‑Fi</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="aPower" @bind="qAmenities.Power"><label class="form-check-label" for="aPower"><i class="bi bi-lightning-charge me-1"></i> Power</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="aUsb" @bind="qAmenities.Usb"><label class="form-check-label" for="aUsb"><i class="bi bi-usb-symbol me-1"></i> USB</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="aIfe" @bind="qAmenities.Ife"><label class="form-check-label" for="aIfe"><i class="bi bi-tv me-1"></i> IFE</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="aMeal" @bind="qAmenities.Meal"><label class="form-check-label" for="aMeal"><i class="bi bi-cup-hot me-1"></i> Meal</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="aLieflat" @bind="qAmenities.LieFlat"><label class="form-check-label" for="aLieflat"><i class="bi bi-moon-stars me-1"></i> Lie‑flat</label></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Price (AUD)</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">$</span>
+                                <input class="form-control" type="number" placeholder="Min" @bind="qMinPrice">
+                                <span class="input-group-text">$</span>
+                                <input class="form-control" type="number" placeholder="Max" @bind="qMaxPrice">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Depart window</label>
+                            <select class="form-select form-select-sm" @bind="qDepartBucket">
+                                <option value="">Any</option>
+                                <option value="morning">Morning 05:00–11:59</option>
+                                <option value="afternoon">Afternoon 12:00–17:59</option>
+                                <option value="evening">Evening 18:00–23:59</option>
+                                <option value="overnight">Overnight 00:00–04:59</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main content -->
+            <section class="col-12 col-lg-9 col-xl-10">
+                <div class="table-responsive rounded-4 border bg-white results-scope">
+                    <table class="table table-hover align-middle mb-0 stable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Airline</th>
+                                <th>Depart</th>
+                                <th>Arrive</th>
+                                <th>Duration</th>
+                                <th>Stops</th>
+                                <th>Cabin</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-end" style="width:130px">Action</th>
+                            </tr>
+                        </thead>
+
+                        @foreach (FlightOption opt in Filtered)
+                        {
+                            <tbody class="result-item @(opt.IsOpen ? "open" : null)">
+                                <!-- header row -->
+                                    <tr role="button" aria-expanded="@opt.IsOpen" @onclick="() => Toggle(opt)">
+                                        <td>
+                                            <div class="carrier-stack">
+                                                @foreach (var c in opt.DisplayCarriers)
+                                                {
+                                                <img class="air-logo" src="@c.LogoUrl" alt="@c.Name" />
+                                                }
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @opt.DepartTime.ToString(format: "HH:mm") @opt.Origin
+                                            @* <br /><span class="subtle">@opt.DepartTime:ddd dd MMM</span> *@
+                                        </td>
+                                        <td>
+                                            @opt.ArriveTime.ToString(format: "HH:mm") @opt.Destination
+                                            @* <br /><span class="subtle">@opt.ArriveTime:ddd dd MMM</span> *@
+                                        </td>
+                                        <td>@opt.TotalDurationText</td>
+                                        <td>
+                                            @if (opt.Stops == 0) { <span class="badge badge-nonstop">Nonstop</span>; }
+                                            else { <span class="badge badge-stop">@opt.Stops stop@(opt.Stops>1?"s":string.Empty)</span>; }
+                                        </td>
+                                        @* <td><span class="chip">@opt.Cabin</span></td> *@
+                                        <td>
+                                            @{
+                                                // Map cabin → (emoji, bg, fg)
+                                                var (emoji, bg, fg) = (opt.Cabin ?? "").Trim() switch
+                                                {
+                                                "Economy"          => ("",   "#DBEAFE", "#1E3A8A"), // light blue / navy text
+                                                "Premium Economy"  => ("",   "#D1FAE5", "#065F46"), // mint / teal text
+                                                "Business"         => ("",   "#EDE9FE", "#4C1D95"), // lavender / indigo text
+                                                "First"            => ("⭐", "#FEF3C7", "#78350F"), // gold / brown text
+                                                _                  => ("",   "#E5E7EB", "#111827")  // gray fallback
+                                                };
+                                            }
+                                            <span class="badge rounded-pill"
+                                                style="background-color:@bg;color:@fg;font-weight:600;">
+                                                @if (!string.IsNullOrEmpty(emoji)) { <span class="me-1">@emoji</span> }
+                                                @opt.Cabin
+                                            </span>
+                                        </td>
+                                        <td class="text-end"><span class="price">@opt.PriceAUD.ToString(format: "C0")</span> <span class="subtle">AUD</span></td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm @(Selected.Contains(opt.Id)?"btn-success":"btn-primary")"
+                                                @onclick="(e)=>Select(opt)" @onclick:stopPropagation="true">
+                                                @(Selected.Contains(opt.Id)?"Selected":"Select")
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                            <!-- details row -->
+                            <tr class="collapse-cell @(opt.IsOpen ? "expanded" : null)" style="display:@(opt.IsOpen ? "table-row" : "none")">
+                                <td></td>
+                                <td colspan="7" class="p-0">
+                                    <div class="collapse-body-wrap @(opt.IsOpen ? "show" : string.Empty)">
+                                        <div class="collapse-body">
+                                            <div class="row g-4">
+                                                <div class="col-12 col-lg-7">
+                                                    @foreach (var leg in opt.Legs)
+                                                    {
+                                                        <div class="leg">
+                                                            <span class="dot"></span>
+                                                            <div>
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <img class="logo" src="@leg.Carrier.LogoUrl" alt="@leg.Carrier.Name" />
+                                                                    <div class="fw-semibold">@leg.FlightNumber · @leg.Origin → @leg.Destination · @leg.Depart.ToString(format: "HH:mm") → @leg.Arrive.ToString(format: "HH:mm")@(leg.Arrive.Day>leg.Depart.Day?" (+1)":"") · @leg.DurationText</div>
+                                                                </div>
+                                                                <div class="subtle">@leg.Equipment · Seat @leg.SeatLayout</div>
+                                                                <div class="d-flex flex-wrap gap-2 mt-1 text-secondary">
+                                                                    @foreach (var inc in BuildBadges(leg.Amenities))
+                                                                    {
+                                                                        <span class="badge border rounded-pill @inc.BadgeClass">
+                                                                            <i class="@inc.Icon me-1"></i>@inc.Label
+                                                                        </span>
+                                                                    }
+                                                                </div>
+
+                                                            </div>
+                                                        </div>
+
+                                                        @if (leg.Layover != null)
+                                                        {
+                                                            <div class="ms-4 my-2">
+                                                                <div class="timeline">
+                                                                    <span class="subtle small">Layover @leg.Layover.Airport</span>
+                                                                    <div class="bar" style="--mins: @leg.Layover.Minutes;"></div>
+                                                                    <span class="subtle small">@leg.Layover.DurationText</span>
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    }
+                                                </div>
+                                                <div class="col-12 col-lg-5">
+                                                    <div class="row g-2">
+                                                        <div class="col-6"><div class="subtle">Baggage</div><div>@opt.BaggageText</div></div>
+                                                        <div class="col-6"><div class="subtle">Change</div><div>@opt.ChangePolicy</div></div>
+                                                        <div class="col-6"><div class="subtle">Refund</div><div>@opt.RefundPolicy</div></div>
+                                                        <div class="col-6"><div class="subtle">Seats</div><div>@opt.SeatPolicy</div></div>
+                                                        <div class="col-12"><div class="subtle">Inclusions</div>
+                                                            <div class="d-flex flex-wrap gap-2 mt-1 text-secondary">
+                                                                @foreach (InclusionBadge inc in opt.InclusionBadges)
+                                                                {
+                                                                    <span class="badge border rounded-pill @inc.BadgeClass">
+                                                                        <i class="@inc.Icon me-1"></i>@inc.Label
+                                                                    </span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        }
+                    </table>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button class="btn btn-outline-secondary" @onclick="ShowCompare" disabled="@(Selected.Count < 2)">Compare</button>
+                    <button class="btn btn-primary" @onclick="ContinueWithSelected" disabled="@(Selected.Count < 1)">Continue with selected</button>
+                </div>
+
+                @if (ShowCompareJson)
+                {
+                    <div class="mt-3">
+                        @* <div class="alert alert-secondary small mb-2">Selected payload (demo):</div> *@
+                        <pre class="bg-dark text-light p-3 rounded-3 small">@SelectedJson</pre>
+                    </div>
+                }
+            </section>
+        </div>
+    </div>
+}
+
+
+@code {
+    // ===== Parameters =====
+    [Parameter] public string? TravelQuoteId { get; set; }
+
+    // Also allow query-string usage if preferred later.
+    [SupplyParameterFromQuery] public string? tq { get; set; }
+
+
+    // ===== Http Client =====
+    private HttpClient _client = default!;
+
+    // ===== Page State =====
+    bool? _pageIsLoading = true;
+    private CancellationTokenSource? _cts;
+
+    // ===== Data =====
+    //private string? _error;
+    List<FlightOption> FlightResults = new List<FlightOption>();
+
+
+    // Query state
+    string? qText = "";
+    string? qCabin = "";
+    bool qNonstopOnly = false;
+    bool qAtMostOneStop = false;
+    int? qMinPrice = null;
+    int? qMaxPrice = null;
+    string? qDepartBucket = "";
+
+    AmenityQuery qAmenities = new AmenityQuery();
+
+    // Data
+    HashSet<Guid> Selected = new HashSet<Guid>();
+
+    bool ShowCompareJson = false;
+    private string SelectedJson = string.Empty;
+
+    private bool hasFlightResults => FlightResults != null && FlightResults.Count > 0;
+
+
+    IEnumerable<FlightOption> Filtered => FlightResults.Where(Matches);
+
+    bool Matches(FlightOption o)
+    {
+        if (!string.IsNullOrWhiteSpace(qText))
+        {
+            string? q = qText!.Trim().ToLowerInvariant();
+            string? hay = o.SearchText.ToLowerInvariant();
+            if (!hay.Contains(q)) return false;
+        }
+        if (!string.IsNullOrWhiteSpace(qCabin) && !o.Cabin.Equals(qCabin, StringComparison.OrdinalIgnoreCase)) return false;
+        if (qNonstopOnly && o.Stops != 0) return false;
+        if (qAtMostOneStop && o.Stops > 1) return false;
+
+        if (qMinPrice.HasValue && o.PriceAUD < qMinPrice.Value) return false;
+        if (qMaxPrice.HasValue && o.PriceAUD > qMaxPrice.Value) return false;
+
+        if (!string.IsNullOrEmpty(qDepartBucket))
+        {
+            string? bucket = DepartBucket(o.DepartTime);
+            if (!string.Equals(bucket, qDepartBucket, StringComparison.OrdinalIgnoreCase)) return false;
+        }
+
+        // amenities AND filter
+        if (qAmenities.Wifi     && !o.Amenities.Wifi) return false;
+        if (qAmenities.Power    && !o.Amenities.Power) return false;
+        if (qAmenities.Usb      && !o.Amenities.Usb) return false;
+        if (qAmenities.Ife      && !o.Amenities.Ife) return false;
+        if (qAmenities.Meal     && !o.Amenities.Meal) return false;
+        if (qAmenities.LieFlat  && !o.Amenities.LieFlat) return false;
+
+        return true;
+    }
+
+    static string DepartBucket(DateTime dt)
+    {
+        int mins = dt.Hour * 60 + dt.Minute;
+        if (mins < 300) return "overnight";
+        if (mins < 720) return "morning";
+        if (mins < 1080) return "afternoon";
+        return "evening";
+    }
+
+    void ResetFilters()
+    {
+        qText = "";
+        qCabin = "";
+        qNonstopOnly = false;
+        qAtMostOneStop = false;
+        qMinPrice = null;
+        qMaxPrice = null;
+        qDepartBucket = "";
+        qAmenities = new AmenityQuery();
+    }
+
+    void Toggle(FlightOption o)
+    {
+        bool willOpen = !o.IsOpen;
+        foreach (FlightOption x in FlightResults) x.IsOpen = false;
+        o.IsOpen = willOpen;
+    }
+
+    void Select(FlightOption o)
+    {
+        // Toggle selection
+        if (Selected.Contains(o.Id)) Selected.Remove(o.Id);
+        else Selected.Add(o.Id);
+
+        // If nothing is selected anymore, hide the payload panel
+        if (Selected.Count < 2)
+        {
+            ShowCompareJson = false;
+            SelectedJson = string.Empty;
+        }
+    }
+
+
+    void ShowCompare()
+    {
+        var payload = FlightResults.Where(x => Selected.Contains(x.Id))
+            .Select(x => new {
+                x.Id,
+                x.Cabin,
+                x.PriceAUD,
+                x.Stops,
+                x.Origin,
+                x.Destination,
+                Legs = x.Legs.Select(l => new { l.Carrier.Code, l.FlightNumber, l.Origin, l.Destination, Depart = l.Depart.ToString(format: "O"), Arrive = l.Arrive.ToString(format: "O") })
+            });
+            SelectedJson = System.Text.Json.JsonSerializer.Serialize(payload, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            ShowCompareJson = true;
+    }
+
+    void ContinueWithSelected()
+    {
+        ShowCompare();
+        // In production, raise an event or navigate with selected IDs.
+    }
+
+    private static IEnumerable<InclusionBadge> BuildBadges(Amenities a)
+    {
+        if (a.Wifi)             yield return new InclusionBadge { Icon="bi bi-wifi",               Label="Wi-Fi",             BadgeClass="badge-connectivity" };
+        if (a.Power)            yield return new InclusionBadge { Icon="bi bi-lightning-charge",  Label="Power",             BadgeClass="badge-connectivity" };
+        if (a.Usb)              yield return new InclusionBadge { Icon="bi bi-usb-symbol",         Label="USB",               BadgeClass="badge-connectivity" };
+        if (a.Ife)              yield return new InclusionBadge { Icon="bi bi-tv",                 Label="IFE",               BadgeClass="badge-connectivity" };
+
+        if (a.ExtraLegroom)     yield return new InclusionBadge { Icon="bi bi-arrows-expand",      Label="Extra legroom",     BadgeClass="badge-seating" };
+        if (a.LieFlat)          yield return new InclusionBadge { Icon="bi bi-moon-stars",         Label="Lie-flat",          BadgeClass="badge-seating" };
+
+        if (a.Meal)             yield return new InclusionBadge { Icon="bi bi-cup-hot",            Label="Meal",              BadgeClass="badge-catering" };
+        if (a.Alcohol)          yield return new InclusionBadge { Icon="bi bi-cup-straw",          Label="Alcohol",           BadgeClass="badge-catering" };
+
+        if (a.PriorityBoarding) yield return new InclusionBadge { Icon="bi bi-rocket-takeoff",     Label="Priority boarding", BadgeClass="badge-priority" };
+
+        if (a.CheckedBag)       yield return new InclusionBadge { Icon="bi bi-suitcase2",          Label="Checked bag",       BadgeClass="badge-baggage" };
+    }
+
+
+
+
+    // ===== Lifecycle =====
+    protected override void OnInitialized()
+    {
+        _client = HttpClientFactory.CreateClient(name: "AvaApi");
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Route param wins, else fall back to ?tq=
+        string? id = !string.IsNullOrWhiteSpace(TravelQuoteId) ? TravelQuoteId : tq;
+
+        // Require an ID
+        if (string.IsNullOrWhiteSpace(id))
+            Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);  //TODO: better error handling (page? -> error page with message?)
+
+        // Cancel prior load if any
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        CancellationToken ct = _cts.Token;
+
+        // Build URL
+        string? url  = $"api/v1/travel/quotes/ui/getflightresults/{Uri.EscapeDataString(id ?? string.Empty)}";
+
+        @* await _log.InformationAsync(
+            evt: "BOOKING_REQ_RESULTS_FETCH_START",
+            cat: SysLogCatType.Api,
+            act: SysLogActionType.Start,
+            message: "Fetching flight results for quote ID",
+            ent: nameof(FlightOption),
+            entId: url,
+            note: "ingress:client");
+
+        try
+        {
+            List<FlightOption>? result = await _client.GetFromJsonAsync<List<FlightOption>?>(url, ct);
+
+            if (result == null)
+            {
+                _error = "Flight results data is null";
+                await _log.WarningAsync(
+                    evt: "BOOKING_REQ_RESULTS_EMPTY",
+                    cat: SysLogCatType.Api,
+                    act: SysLogActionType.Read,
+                    message: _error,
+                    ent: nameof(FlightOption),
+                    entId: url);
+                Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);  //TODO: better error handling (page? -> error page with message?)
+                return;
+            }
+            
+            _error = null;
+
+            await _log.InformationAsync(
+                evt: "BOOKING_REQ_RESULTS_FETCH_OK",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.End,
+                message: "Fetched flight results",
+                ent: nameof(FlightOption),
+                entId: url);
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Error loading configuration: {ex.Message}";
+
+            await _log.ErrorAsync(
+                evt: "BOOKING_REQ_RESULTS_FETCH_ERR",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Read,
+                ex: ex,
+                message: "HTTP error while fetching flight results",
+                ent: nameof(FlightOption),
+                entId: url,
+                note: "http_error");
+                
+            Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);  //TODO: better error handling (page? -> error page with message?)
+        }
+        catch (TaskCanceledException)
+        {
+            await _log.WarningAsync(
+                evt: "BOOKING_REQ_RESULTS_FETCH_CANCEL",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Read,
+                message: "Flight results fetch cancelled",
+                ent: nameof(FlightOption),
+                entId: url,
+                note: "task_canceled");
+
+            // Ignore cancellations
+            Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);  //TODO: better error handling (page? -> error page with cancellationmessage?)
+        } *@
+
+        _pageIsLoading = false;
+    }
+
+    private void BackToSearch() => Nav.NavigateTo(uri: $"/platform/pnr/create/flight/search/{TravelQuoteId}");
+}
