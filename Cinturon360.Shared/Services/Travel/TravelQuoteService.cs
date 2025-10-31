@@ -20,6 +20,7 @@ using Cinturon360.Shared.Services.Interfaces.Travel;
 using Microsoft.EntityFrameworkCore;
 using System.Xml;
 using Cinturon360.Shared.Models.Static.Billing;
+using System.Net;
 
 namespace Cinturon360.Shared.Services.Travel;
 
@@ -1138,19 +1139,6 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             case true:  // return
                 originDestinations.Add(new OriginDestination
                 {
-                    Id = "1",
-                    OriginLocationCode = quote.OriginIataCode!,
-                    DestinationLocationCode = quote.DestinationIataCode!,
-                    DateTimeRange = new DepartureDateTimeRange
-                    {
-                        Date = quote.DepartureDate!,
-                        Time = string.IsNullOrEmpty(quote.DepartEarliestTime)
-                            ? "00:00:00"
-                            : quote.DepartEarliestTime
-                    }
-                });
-                originDestinations.Add(new OriginDestination
-                {
                     Id = "2",
                     OriginLocationCode = quote.DestinationIataCode!,
                     DestinationLocationCode = quote.OriginIataCode!,
@@ -1287,8 +1275,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
     /// <param name="results"></param>
     /// <param name="ct"></param>
     /// <returns></returns>
-    public async Task<List<FlightViewOption>?> GetFlightSearchResultsAsync(string travelQuoteId, AmadeusFlightOfferSearchResult results, CancellationToken ct = default)
+    public async Task<FlightSearchResponse> GetFlightSearchResultsAsync(string travelQuoteId, AmadeusFlightOfferSearchResult results, CancellationToken ct = default)
     {
+        // validate results
         if (results?.Data == null || results.Data.Count == 0)
         {
             await _log.InformationAsync(
@@ -1298,9 +1287,17 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 message: $"No flight search results data found for TravelQuote '{travelQuoteId}'",
                 ent: nameof(TravelQuote),
                 entId: travelQuoteId);
-            return null;  // TODO: return new object instead with message
+            return new FlightSearchResponse
+            {
+                QuoteId = travelQuoteId,
+                StatusCode = HttpStatusCode.NoContent,
+                Message = $"No flight search results data found for TravelQuote '{travelQuoteId}'",
+                // Options not set → stays []
+                MoreResultsAvailable = false
+            };
         }
 
+        // get the TravelQuote
         TravelQuote? quote = await GetByIdAsync(travelQuoteId, ct);
         if (quote is null)
         {
@@ -1311,7 +1308,14 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 message: $"TravelQuote '{travelQuoteId}' not found when retrieving flight search results",
                 ent: nameof(TravelQuote),
                 entId: travelQuoteId);
-            return null;  // TODO: return new object instead with message
+            return new FlightSearchResponse
+            {
+                QuoteId = travelQuoteId,
+                StatusCode = HttpStatusCode.NoContent,
+                Message = $"TravelQuote '{travelQuoteId}' not found when retrieving flight search results",
+                // Options not set → stays []
+                MoreResultsAvailable = false
+            };
         }
 
         // we also need the markup percentage for the quote's organization
@@ -1326,7 +1330,14 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 message: $"Organization fees/markup not found for Organization '{quote.OrganizationId}' when retrieving flight search results for TravelQuote '{travelQuoteId}'",
                 ent: nameof(TravelQuote),
                 entId: travelQuoteId);
-            return null;  // TODO: return new object instead with message (also note it should NEVER return this value, there is so many safeguards to prevent this!)
+            return new FlightSearchResponse
+            {
+                QuoteId = travelQuoteId,
+                StatusCode = HttpStatusCode.NoContent,
+                Message = $"Organization fees/markup not found for Organization '{quote.OrganizationId}' when retrieving flight search results for TravelQuote '{travelQuoteId}'",
+                // Options not set → stays []
+                MoreResultsAvailable = false
+            };
         }
 
         // fees
@@ -1394,8 +1405,30 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 entId: travelQuoteId);
         }
 
-        List<FlightViewOption> flightViewOptions = new List<FlightViewOption>();
+        // establish Amadeus results data
+        List<FlightOffer> resultsData;
 
+        // double check and fail fast
+        if (results.Data is not null)
+        {
+            resultsData = results.Data;
+        }
+        else
+        {
+            return new FlightSearchResponse
+            {
+                QuoteId = travelQuoteId,
+                StatusCode = HttpStatusCode.NoContent,
+                Message = $"No flight search results data found for TravelQuote '{travelQuoteId}'",
+                // Options not set → stays []
+                MoreResultsAvailable = false
+            };    
+        }
+
+        // init FlightViewOptions
+        List<FlightViewOption> flightViewOptions = new List<FlightViewOption>(resultsData.Count);
+
+        // process each flight offer
         foreach (var flightOffer in results.Data)
         {
             var costBaseAmount = decimal.TryParse(flightOffer?.Price?.Total, NumberStyles.Number, CultureInfo.InvariantCulture, out var amt)
@@ -1421,11 +1454,11 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     Arrive = DateTime.Parse(leg.Arrival?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
                     Equipment = leg.Aircraft?.Code!,
                     SeatLayout = string.Empty,
-                    CabinClass = flightOffer?
-                        .TravelerPricings?
-                        .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
-                        .FirstOrDefault(fds => fds.SegmentId == segmentId)
-                        ?.Cabin ?? "ECONOMY",
+                    // CabinClass = flightOffer?
+                    //     .TravelerPricings?
+                    //     .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                    //     .FirstOrDefault(fds => fds.SegmentId == segmentId)
+                    //     ?.Cabin ?? "ECONOMY",
                     Amenities = new Amenities
                     {
                         Wifi = false,
@@ -1497,7 +1530,14 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             //     entId: travelQuoteId);
         }
 
-        return flightViewOptions;
+        return new FlightSearchResponse
+        {
+            QuoteId = travelQuoteId,
+            StatusCode = flightViewOptions.Count > 0 ? HttpStatusCode.OK : HttpStatusCode.NoContent,
+            Message = flightViewOptions.Count > 0 ? "Flight search results retrieved successfully." : "No flight search results found.",
+            Options = flightViewOptions,
+            MoreResultsAvailable = quote?.TripType == TripType.Return ? true : false
+        };
     }
     
     private decimal CalcTotalFromOrgFeesMarkupDto(decimal baseAmount, ServiceFeeType feeType, decimal? pct, decimal? flat)

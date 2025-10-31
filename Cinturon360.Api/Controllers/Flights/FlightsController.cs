@@ -101,7 +101,7 @@ public class FlightsController : ControllerBase
     }
 
     [HttpGet("quote/{travelQuoteId}/options")]
-    public async Task<ActionResult<List<FlightOption>?>> GetFlightSearchOptions(string travelQuoteId, CancellationToken ct = default)
+    public async Task<ActionResult<List<FlightViewOption>?>> GetFlightSearchOptions(string travelQuoteId, CancellationToken ct = default)
     {
         // Retrieve flight search options based on travel quote ID
         var quote = await _travelQuoteService.GetByIdAsync(travelQuoteId, ct);
@@ -119,7 +119,7 @@ public class FlightsController : ControllerBase
             return NotFound();
         }
 
-        AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, ct);
+        AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, false, ct);
 
         var response = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
         return Ok(response);

@@ -57,7 +57,7 @@ public sealed class TravelQuotesController : ControllerBase
     }
 
     [HttpGet("ui/getflightresults/{travelQuoteId}")]
-    public async Task<ActionResult<List<FlightOption>?>> GetFlightSearchResults(string travelQuoteId, CancellationToken ct)
+    public async Task<ActionResult<List<FlightViewOption>?>> GetFlightSearchResults(string travelQuoteId, CancellationToken ct)
     {
         // Retrieve flight search options based on travel quote ID
         var quote = await _travelQuoteService.GetByIdAsync(travelQuoteId, ct);
@@ -76,7 +76,41 @@ public sealed class TravelQuotesController : ControllerBase
             return NotFound(null);
         }
 
-        AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, ct);
+        // because this is one-way search we pass false for isReturn
+        AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, false, ct);
+
+        var amadeusFlightResultsResponse = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
+
+        if (amadeusFlightResultsResponse == null)
+            return NotFound();
+
+        var uiResults = await _travelQuoteService.GetFlightSearchResultsAsync(travelQuoteId, amadeusFlightResultsResponse, ct);
+
+        return uiResults is null ? NotFound() : Ok(uiResults);
+    }
+
+    [HttpGet("ui/getreturnflightresults/{travelQuoteId}")]
+    public async Task<ActionResult<List<FlightViewOption>?>> GetReturnFlightSearchResults(string travelQuoteId, CancellationToken ct)
+    {
+        // Retrieve flight search options based on travel quote ID
+        var quote = await _travelQuoteService.GetByIdAsync(travelQuoteId, ct);
+        if (quote == null)
+        {
+            // we should never reach this path at this point, this is called from a series of steps where the quote existence is already validated
+            await _log.ErrorAsync(
+                evt: "FLIGHT_SEARCH_OPTIONS_QUOTE_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                ex: new KeyNotFoundException($"Travel quote with ID '{travelQuoteId}' not found."),
+                message: $"Travel quote with ID '{travelQuoteId}' not found when retrieving flight search options.",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
+
+            return NotFound(null);
+        }
+
+        // because this is return search we pass true for isReturn
+        AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, true, ct);
 
         var response = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
 

@@ -1,6 +1,7 @@
 // Services/Interfaces/Travel/ITravelQuoteService.cs
 using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
+using Cinturon360.Shared.Models.ExternalLib.Amadeus.Flight;
 using Cinturon360.Shared.Models.Kernel.Travel;
 using Cinturon360.Shared.Models.Search;
 
@@ -37,9 +38,9 @@ public interface ITravelQuoteService
     bool TryParseQuoteType(string value, out TravelQuoteType type);
     Task<int> ExpireOldQuotesAsync(CancellationToken ct = default);
     Task<List<string>?> GetExcludedAirlinesFromPolicyAsync(string travelPolicyId, TravelQuotePolicyType policyType, CancellationToken ct = default);
-    Task<AmadeusFlightOfferSearch> BuildAmadeusFlightOfferSearchFromQuote(TravelQuote quote, CancellationToken ct = default);
+    Task<AmadeusFlightOfferSearch> BuildAmadeusFlightOfferSearchFromQuote(TravelQuote quote, bool returnTrip, CancellationToken ct = default);
 
     // UI HELPERS
     Task<FlightSearchPageConfig> GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default);
-    Task<List<FlightOption>?> GetFlightSearchResultsAsync(string travelQuoteId, CancellationToken ct = default);
+    Task<FlightSearchResponse> GetFlightSearchResultsAsync(string travelQuoteId, AmadeusFlightOfferSearchResult results, CancellationToken ct = default);
 }

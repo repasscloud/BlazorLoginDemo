@@ -101,7 +101,7 @@
             </tr>
           </thead>
 
-          @foreach (FlightOption opt in Filtered)
+          @foreach (FlightViewOption opt in Filtered)
           {
             <tbody class="result-item @(opt.IsOpen ? "open" : null)">
               <!-- header row -->
@@ -256,7 +256,7 @@
     AmenityQuery qAmenities = new AmenityQuery();
 
     // Data
-    List<FlightOption> FlightResults = new List<FlightOption>();
+    List<FlightViewOption> FlightResults = new List<FlightViewOption>();
     HashSet<Guid> Selected = new HashSet<Guid>();
 
     bool ShowCompareJson = false;
@@ -267,9 +267,9 @@
         FlightResults = DemoData.Create();
     }
 
-    IEnumerable<FlightOption> Filtered => FlightResults.Where(Matches);
+    IEnumerable<FlightViewOption> Filtered => FlightResults.Where(Matches);
 
-    bool Matches(FlightOption o)
+    bool Matches(FlightViewOption o)
     {
         if (!string.IsNullOrWhiteSpace(qText))
         {
@@ -322,14 +322,14 @@
         qAmenities = new AmenityQuery();
     }
 
-    void Toggle(FlightOption o)
+    void Toggle(FlightViewOption o)
     {
         var willOpen = !o.IsOpen;
-        foreach (FlightOption x in FlightResults) x.IsOpen = false;
+        foreach (FlightViewOption x in FlightResults) x.IsOpen = false;
         o.IsOpen = willOpen;
     }
 
-    void Select(FlightOption o)
+    void Select(FlightViewOption o)
     {
         // Toggle selection
         if (Selected.Contains(o.Id)) Selected.Remove(o.Id);
