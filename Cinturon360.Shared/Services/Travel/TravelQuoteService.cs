@@ -1431,11 +1431,126 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         // process each flight offer
         foreach (var flightOffer in results.Data)
         {
+            // metadata
+            string origin = quote?.OriginIataCode ?? string.Empty;
+            string destination = quote?.DestinationIataCode ?? string.Empty;
+
+            // base amount for flight offer
             var costBaseAmount = decimal.TryParse(flightOffer?.Price?.Total, NumberStyles.Number, CultureInfo.InvariantCulture, out var amt)
                 ? amt
                 : 0m;
 
+            // calculate cost
+            decimal costMarkup = feeType switch
+            {
+                ServiceFeeType.MarkupOnly => costBaseAmount * (1 + markupPercentage / 100),
+                ServiceFeeType.PerItemFeeOnly => costBaseAmount + markupAmount,
+                ServiceFeeType.MarkupAndPerItemFee => costBaseAmount * (1 + markupPercentage / 100) + markupAmount,
+                _ => costBaseAmount
+            };
+
+            // set currency code
+            string currencyCode = quote?.Currency ?? "AUD";
+
+            // hold a list of all the cabins being flown here:
+            List<string> _cabins = new();
+
+            // stops the number in between leg counts
+            int stops = (flightOffer?.Itineraries?.First().Segments?.Count() ?? 0) - 1;
+
+            // create legs of the flight
             List<FlightLeg> legs = new List<FlightLeg>();
+
+            foreach (var itinerary in flightOffer?.Itineraries ?? Enumerable.Empty<Itinerary>())
+            {
+                foreach (var seg in itinerary.Segments ?? Enumerable.Empty<Segment>())
+                {
+                    var fLeg = new FlightLeg();
+
+                    var segmentId = seg.Id;
+
+                    fLeg.Carrier = new Carrier(
+                        seg.CarrierCode!,
+                        seg.CarrierCode!,  // TODO: lookup name from code
+                        string.Empty);
+
+                    fLeg.FlightNumber = seg.Number!;
+
+                    fLeg.Origin = seg.Departure?.IATACode!;
+                    fLeg.OriginTerminal = seg.Departure?.Terminal!;
+
+                    fLeg.Destination = seg.Arrival?.IATACode!;
+                    fLeg.DestinationTerminal = seg.Arrival?.Terminal!;
+
+                    fLeg.Depart = DateTime.Parse(seg.Departure?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+                    fLeg.Arrive = DateTime.Parse(seg.Arrival?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+
+                    fLeg.Equipment = seg.Aircraft?.Code!;
+                    fLeg.EquipmentName =
+                        seg.Aircraft?.Code is { Length: > 0 } c
+                        && results.Dictionaries?.Aircraft is { } ac
+                        && ac.TryGetValue(c, out var n)
+                            ? n
+                            : seg.Aircraft?.Code ?? "UNKNOWN";
+
+                    fLeg.SeatLayout = string.Empty;  //TODO: Find out how the seat layouts can be identified PER aircraft PER airline later
+
+                    // map the cabin class for the leg of the flight
+                    var _cabin =
+                        flightOffer?.TravelerPricings?
+                            .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                            .FirstOrDefault(fds => fds.SegmentId == segmentId)?
+                            .Cabin
+                        ?? string.Empty;
+
+                    if (!string.IsNullOrWhiteSpace(_cabin))
+                        _cabins.Add(_cabin);
+
+                    fLeg.CabinClass = _cabin;
+
+
+
+
+                    
+
+                    legs.Add(new FlightLeg
+                    {
+                        Carrier = new Carrier(
+                            seg.CarrierCode!,
+                            seg.CarrierCode!,  // TODO: lookup name from code
+                            string.Empty),
+                        FlightNumber = seg.Number!,
+                        Origin = seg.Departure?.IATACode!,
+                        Destination = seg.Arrival?.IATACode!,
+                        Depart = DateTime.Parse(seg.Departure?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                        Arrive = DateTime.Parse(seg.Arrival?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                        Equipment = seg.Aircraft?.Code!,
+                        SeatLayout = string.Empty,
+                        // CabinClass = flightOffer?
+                        //     .TravelerPricings?
+                        //     .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                        //     .FirstOrDefault(fds => fds.SegmentId == segmentId)
+                        //     ?.Cabin ?? "ECONOMY",
+                        Amenities = new Amenities
+                        {
+                            Wifi = false,
+                            Power = false,
+                            Usb = false,
+                            Ife = false,
+                            Meal = false,
+                            LieFlat = false,
+                            ExtraLegroom = false,
+                            Lounge = false,
+                            PriorityBoarding = false,
+                            CheckedBag = true,
+                            Alcohol = false,
+                        },
+                        Layover = null,  // TODO: null has to be calculated AFTER the number of legs are known
+                                         // and calculated in the FlightViewOption object
+                })
+            }
+
+
 
             foreach (var leg in flightOffer?.Itineraries?.First().Segments ?? Enumerable.Empty<Segment>())
             {

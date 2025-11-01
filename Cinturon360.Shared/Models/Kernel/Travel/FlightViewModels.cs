@@ -19,7 +19,8 @@ public sealed class FlightViewOption
     public decimal Price { get; set; } = 0m;
     public string Currency { get; set; } = "AUD";
 
-    public string Cabin { get; set; } = string.Empty;
+    public List<string> Cabins { get; set; } = new();
+
     public int Stops { get; set; }
 
     // persisted as owned value object (see DbContext)
@@ -107,7 +108,7 @@ public sealed class FlightViewOption
     {
         get
         {
-            var parts = new List<string> { Origin, Destination, Cabin };
+            var parts = new List<string> { Origin, Destination, Cabins };
             parts.AddRange(
                 Legs.Select(l => $"{l.Carrier.Name} {l.Carrier.Code} {l.FlightNumber} {l.Origin} {l.Destination}")
             );
@@ -145,10 +146,13 @@ public class FlightLeg
     public Carrier Carrier { get; set; } = new("XX", "Carrier", "");
     public string FlightNumber { get; set; } = string.Empty;
     public string Origin { get; set; } = string.Empty;
+    public string OriginTerminal { get; set; } = string.Empty;
     public string Destination { get; set; } = string.Empty;
+    public string DestinationTerminal { get; set; } = string.Empty;
     public DateTime Depart { get; set; }
     public DateTime Arrive { get; set; }
     public string Equipment { get; set; } = string.Empty;
+    public string EquipmentName { get; set; } = string.Empty;
     public string SeatLayout { get; set; } = string.Empty;
     public string CabinClass { get; set; } = string.Empty;
     public Amenities Amenities { get; set; } = new();
