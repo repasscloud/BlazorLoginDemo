@@ -1,5 +1,7 @@
+using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Cinturon360.Shared.Models.Demo;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus.Flight;
 using NanoidDotNet;
 
@@ -24,7 +26,7 @@ public sealed class FlightViewOption
     public int Stops { get; set; }
 
     // persisted as owned value object (see DbContext)
-    public Amenities Amenities { get; set; } = new();
+    public Amenity Amenities { get; set; } = new();
 
     // persisted as jsonb
     [Column(TypeName = "jsonb")]
@@ -155,7 +157,7 @@ public class FlightLeg
     public string EquipmentName { get; set; } = string.Empty;
     public string SeatLayout { get; set; } = string.Empty;
     public string CabinClass { get; set; } = string.Empty;
-    public Amenities Amenities { get; set; } = new();
+    public List<Amenity> Amenities { get; set; } = new();
     public Layover? Layover { get; set; }
 
     [NotMapped]
@@ -182,20 +184,26 @@ public class FlightLeg
 }
 
 // persists as owned on FlightViewOption
-public class Amenities
+public sealed class Amenity
 {
-    public bool Wifi { get; set; }
-    public bool Power { get; set; }
-    public bool Usb { get; set; }
-    public bool Ife { get; set; }
-    public bool Meal { get; set; }
-    public bool LieFlat { get; set; }
+    public AmenityType Type { get; init; }
+    public string Name { get; init; } = string.Empty;
 
-    public bool ExtraLegroom { get; set; }
-    public bool Lounge { get; set; }
-    public bool PriorityBoarding { get; set; }
-    public bool CheckedBag { get; set; }
-    public bool Alcohol { get; set; }
+    //pick one of these two in UI
+    public string? SvgPath { get; init; }  // eg "img/amenities/wifi.svg"
+    public string? IconClass { get; init; }  // eg "bi bi-wifi
+
+    public bool IsChargeable { get; init; } = false;
+    public bool IsActive { get; set; }  // user/product specific
+}
+
+public enum AmenityType
+{
+    UNKNOWN,
+    BAGGAGE,
+    BRANDED_FARES,
+    MEAL,
+    TRAVEL_SERVICES
 }
 
 // VIEW-ONLY. keep as class.

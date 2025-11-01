@@ -123,54 +123,6 @@
                   "amenityProvider": {
                     "name": "BrandedFare"
                   }
-                },
-                {
-                  "description": "COMPLIMENTARY BEVERAGES",
-                  "isChargeable": false,
-                  "amenityType": "MEAL",
-                  "amenityProvider": {
-                    "name": "BrandedFare"
-                  }
-                },
-                {
-                  "description": "MEAL OR SNACK",
-                  "isChargeable": false,
-                  "amenityType": "MEAL",
-                  "amenityProvider": {
-                    "name": "BrandedFare"
-                  }
-                },
-                {
-                  "description": "DOMESTIC NAME CHANGE FEE",
-                  "isChargeable": true,
-                  "amenityType": "TRAVEL_SERVICES",
-                  "amenityProvider": {
-                    "name": "BrandedFare"
-                  }
-                },
-                {
-                  "description": "STANDARD SEATING",
-                  "isChargeable": false,
-                  "amenityType": "BRANDED_FARES",
-                  "amenityProvider": {
-                    "name": "BrandedFare"
-                  }
-                },
-                {
-                  "description": "STATUS CREDIT ACCRUAL",
-                  "isChargeable": false,
-                  "amenityType": "BRANDED_FARES",
-                  "amenityProvider": {
-                    "name": "BrandedFare"
-                  }
-                },
-                {
-                  "description": "POINTS ACCRUAL",
-                  "isChargeable": false,
-                  "amenityType": "BRANDED_FARES",
-                  "amenityProvider": {
-                    "name": "BrandedFare"
-                  }
                 }
               ]
             },

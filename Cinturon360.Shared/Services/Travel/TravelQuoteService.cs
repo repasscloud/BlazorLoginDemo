@@ -1472,7 +1472,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     fLeg.Carrier = new Carrier(
                         seg.CarrierCode!,
                         seg.CarrierCode!,  // TODO: lookup name from code
-                        string.Empty);
+                        $"https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_vectors/{seg.CarrierCode}.svg");
 
                     fLeg.FlightNumber = seg.Number!;
 
@@ -1503,6 +1503,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                             .Cabin
                         ?? string.Empty;
 
+                    // add the cabin to the list of cabins (will filter later)
                     if (!string.IsNullOrWhiteSpace(_cabin))
                         _cabins.Add(_cabin);
 
@@ -1511,7 +1512,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
 
 
-                    
+
 
                     legs.Add(new FlightLeg
                     {
