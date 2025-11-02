@@ -21,6 +21,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Xml;
 using Cinturon360.Shared.Models.Static.Billing;
 using System.Net;
+using Microsoft.VisualBasic;
 
 namespace Cinturon360.Shared.Services.Travel;
 
@@ -1277,6 +1278,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
     /// <returns></returns>
     public async Task<FlightSearchResponse> GetFlightSearchResultsAsync(string travelQuoteId, AmadeusFlightOfferSearchResult results, CancellationToken ct = default)
     {
+        // establish Amadeus results data
+        List<FlightOffer> resultsData;
+
         // validate results
         if (results?.Data == null || results.Data.Count == 0)
         {
@@ -1295,6 +1299,10 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 // Options not set → stays []
                 MoreResultsAvailable = false
             };
+        }
+        else
+        {
+            resultsData = results.Data;
         }
 
         // get the TravelQuote
@@ -1334,7 +1342,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             {
                 QuoteId = travelQuoteId,
                 StatusCode = HttpStatusCode.NoContent,
-                Message = $"Organization fees/markup not found for Organization '{quote.OrganizationId}' when retrieving flight search results for TravelQuote '{travelQuoteId}'",
+                Message = $"Fees not found for Organization '{quote.OrganizationId}' when retrieving flight search results for TravelQuote '{travelQuoteId}'. Please contact your PNR admin for support.",
                 // Options not set → stays []
                 MoreResultsAvailable = false
             };
@@ -1405,31 +1413,11 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 entId: travelQuoteId);
         }
 
-        // establish Amadeus results data
-        List<FlightOffer> resultsData;
-
-        // double check and fail fast
-        if (results.Data is not null)
-        {
-            resultsData = results.Data;
-        }
-        else
-        {
-            return new FlightSearchResponse
-            {
-                QuoteId = travelQuoteId,
-                StatusCode = HttpStatusCode.NoContent,
-                Message = $"No flight search results data found for TravelQuote '{travelQuoteId}'",
-                // Options not set → stays []
-                MoreResultsAvailable = false
-            };    
-        }
-
-        // init FlightViewOptions
+        // init FlightViewOptions list with count of results from Amadeus
         List<FlightViewOption> flightViewOptions = new List<FlightViewOption>(resultsData.Count);
 
         // process each flight offer
-        foreach (var flightOffer in results.Data)
+        foreach (var flightOffer in resultsData)
         {
             // metadata
             string origin = quote?.OriginIataCode ?? string.Empty;
@@ -1509,7 +1497,67 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
                     fLeg.CabinClass = _cabin;
 
+                    var _amenities =
+                        flightOffer?.TravelerPricings?
+                            .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                            .FirstOrDefault(fds => fds.SegmentId == segmentId)?
+                            .Amenities
+                        ?? null;
 
+                    if (_amenities is not null)
+                    {
+                        foreach (var a in _amenities)
+                        {
+                            switch (a.AmenityType)
+                            {
+                                case "BAGGAGE":
+                                    Amenity amenity = new Amenity
+                                    {
+                                        Type = AmenityType.BAGGAGE,
+                                        Name = a.Description switch
+                                        {
+                                            "PRE PAID BAGGAGE" => "Pre-paid Baggage",
+                                            _ => a.Description!
+                                        },
+                                        SvgPath = "",
+                                        IconClass = "",
+                                        IsChargeable = a.IsChargeable,
+                                        IsActive = true,
+                                    };
+                                    break;
+                                case "BRANDED_FARES":
+                                    break;
+                                case "MEAL":
+                                    Amenity mealAmenity = new Amenity
+                                    {
+                                        Type = AmenityType.MEAL,
+                                        Name = a.Description switch
+                                        {
+                                            "COMPLIMENTARY BEVERAGES" => "Complimentary Beverages",
+                                            "MEAL OR SNACK" => "Meal or Snack",
+                                            "SPECIAL MEAL" => "Special Meal",
+                                            _ => a.Description!
+                                        },
+                                        SvgPath = "",
+                                        IconClass = "",
+                                        IsChargeable = a.IsChargeable,
+                                        IsActive = true,
+                                    };
+                                    break;
+                                case "TRAVEL_SERVICES":
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+                    else
+                    {
+
+                    }
+                    
+
+                    legs.Add(fLeg);
 
 
 
