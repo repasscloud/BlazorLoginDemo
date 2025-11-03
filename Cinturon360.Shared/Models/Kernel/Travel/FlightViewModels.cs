@@ -159,6 +159,10 @@ public class FlightLeg
     public string CabinClass { get; set; } = string.Empty;
     public List<Amenity> Amenities { get; set; } = new();
     public Layover? Layover { get; set; }
+    public string? OperatingCarrierCode { get; set; }
+    public bool IsCodeShare =>
+        !string.IsNullOrWhiteSpace(OperatingCarrierCode) &&
+        !string.Equals(OperatingCarrierCode, Carrier.Code, StringComparison.OrdinalIgnoreCase);
 
     [NotMapped]
     public TimeSpan Duration => Arrive - Depart;
@@ -186,15 +190,16 @@ public class FlightLeg
 // persists as owned on FlightViewOption
 public sealed class Amenity
 {
-    public AmenityType Type { get; init; }
-    public string Name { get; init; } = string.Empty;
+    public AmenityType Type { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     //pick one of these two in UI
-    public string? SvgPath { get; init; }  // eg "img/amenities/wifi.svg"
-    public string? IconClass { get; init; }  // eg "bi bi-wifi
+    public string? SvgPath { get; set; }  // eg "img/amenities/wifi.svg"
+    public string? IconClass { get; set; }  // eg "bi bi-wifi
 
-    public bool IsChargeable { get; init; } = false;
+    public bool IsChargeable { get; set; } = false;
     public bool IsActive { get; set; }  // user/product specific
+    public int? Quantity { get; set; }  // eg number of bags
 }
 
 public enum AmenityType
