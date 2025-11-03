@@ -1,7 +1,5 @@
-using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Cinturon360.Shared.Models.Demo;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus.Flight;
 using NanoidDotNet;
 
@@ -20,13 +18,14 @@ public sealed class FlightViewOption
 
     public decimal Price { get; set; } = 0m;
     public string Currency { get; set; } = "AUD";
+    public string CurrencySymbol { get; set; } = "$";
 
     public List<string> Cabins { get; set; } = new();
 
     public int Stops { get; set; }
 
     // persisted as owned value object (see DbContext)
-    public Amenity Amenities { get; set; } = new();
+    public List<Amenity> Amenities { get; set; } = new();
 
     // persisted as jsonb
     [Column(TypeName = "jsonb")]
@@ -163,6 +162,13 @@ public class FlightLeg
     public bool IsCodeShare =>
         !string.IsNullOrWhiteSpace(OperatingCarrierCode) &&
         !string.Equals(OperatingCarrierCode, Carrier.Code, StringComparison.OrdinalIgnoreCase);
+
+    public int CheckedBagsAllowed { get; set; } = 0;
+    public int? CheckedBagsWeight { get; set; }
+    public string? CheckedBagsWeightUnit { get; set; }
+    public int CabinBagsAllowed { get; set; } = 0;
+    public int? CabinBagsWeight { get; set; }
+    public string? CabinBagsWeightUnit { get; set; }
 
     [NotMapped]
     public TimeSpan Duration => Arrive - Depart;

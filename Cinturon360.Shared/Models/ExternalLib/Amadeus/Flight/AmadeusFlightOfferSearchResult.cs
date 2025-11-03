@@ -329,12 +329,31 @@ public class FareDetailBySegment
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public FareDetailBySegmentIncludedCheckedBags? IncludedCheckedBags { get; set; }
 
+    [JsonPropertyName("includedCabinBags")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public FareDetailBySegmentIncludedCabinBags? IncludedCabinBags { get; set; }
+
     [JsonPropertyName("amenities")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<FareDetailBySegmentAmenity>? Amenities { get; set; }
 }
 
 public class FareDetailBySegmentIncludedCheckedBags
+{
+    [JsonPropertyName("weight")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Weight { get; set; }
+
+    [JsonPropertyName("weightUnit")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? WeightUnit { get; set; }
+
+    [JsonPropertyName("quantity")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Quantity { get; set; }
+}
+
+public class FareDetailBySegmentIncludedCabinBags
 {
     [JsonPropertyName("weight")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

@@ -1485,8 +1485,12 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
             foreach (var itinerary in flightOffer?.Itineraries ?? Enumerable.Empty<Itinerary>())
             {
-                foreach (var seg in itinerary.Segments ?? Enumerable.Empty<Segment>())
+                var segs = itinerary.Segments?.ToList() ?? new List<Segment>();
+
+                for (int i = 0; i < segs.Count; i++)
                 {
+                    var seg = segs[i];
+
                     var fLeg = new FlightLeg();
 
                     var segmentId = seg.Id;
@@ -1537,6 +1541,40 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
                     fLeg.CabinClass = _cabin;
 
+
+                    // checked bags
+                    fLeg.CheckedBagsAllowed = flightOffer?.TravelerPricings?
+                            .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                            .FirstOrDefault(fds => fds.SegmentId == segmentId)?
+                            .IncludedCheckedBags?.Quantity ?? 0;
+
+                    fLeg.CheckedBagsWeight = flightOffer?.TravelerPricings?
+                            .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                            .FirstOrDefault(fds => fds.SegmentId == segmentId)?
+                            .IncludedCheckedBags?.Weight ?? null;
+
+                    fLeg.CheckedBagsWeightUnit = flightOffer?.TravelerPricings?
+                            .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                            .FirstOrDefault(fds => fds.SegmentId == segmentId)?
+                            .IncludedCheckedBags?.WeightUnit ?? string.Empty;
+
+                    // cabin bags
+                    fLeg.CabinBagsAllowed = flightOffer?.TravelerPricings?
+                            .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                            .FirstOrDefault(fds => fds.SegmentId == segmentId)?
+                            .IncludedCabinBags?.Quantity ?? 0;
+
+                    fLeg.CabinBagsWeight = flightOffer?.TravelerPricings?
+                            .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                            .FirstOrDefault(fds => fds.SegmentId == segmentId)?
+                            .IncludedCabinBags?.Weight ?? null;
+
+                    fLeg.CabinBagsWeightUnit = flightOffer?.TravelerPricings?
+                            .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
+                            .FirstOrDefault(fds => fds.SegmentId == segmentId)?
+                            .IncludedCabinBags?.WeightUnit ?? string.Empty;
+
+
                     // map amenities for the leg of the flight
                     List<Amenity> Amenities = new List<Amenity>();
 
@@ -1553,7 +1591,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                         foreach (var a in _amenities)
                         {
                             Amenity _amenity = new Amenity();
-                            
+
                             switch (a.AmenityType)
                             {
                                 case "BAGGAGE":
@@ -1674,51 +1712,49 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                             act: SysLogActionType.Read,
                             message: $"No amenities found when mapping flight offer amenity for TravelQuote '{travelQuoteId}': SegmentId='{segmentId}'");
                     }
-                    
 
-                    legs.Add(fLeg);
+                    // add the amenities to the flight leg
+                    fLeg.Amenities = Amenities;
 
-
-
-
-                    legs.Add(new FlightLeg
-                    {
-                        Carrier = new Carrier(
-                            seg.CarrierCode!,
-                            seg.CarrierCode!,  // TODO: lookup name from code
-                            string.Empty),
-                        FlightNumber = seg.Number!,
-                        Origin = seg.Departure?.IATACode!,
-                        Destination = seg.Arrival?.IATACode!,
-                        Depart = DateTime.Parse(seg.Departure?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
-                        Arrive = DateTime.Parse(seg.Arrival?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
-                        Equipment = seg.Aircraft?.Code!,
-                        SeatLayout = string.Empty,
-                        // CabinClass = flightOffer?
-                        //     .TravelerPricings?
-                        //     .SelectMany(tp => tp.FareDetailsBySegment ?? Enumerable.Empty<FareDetailBySegment>())
-                        //     .FirstOrDefault(fds => fds.SegmentId == segmentId)
-                        //     ?.Cabin ?? "ECONOMY",
-                        Amenities = new Amenities
+                    fLeg.Layover = i < segs.Count - 1
+                        ? new Layover
                         {
-                            Wifi = false,
-                            Power = false,
-                            Usb = false,
-                            Ife = false,
-                            Meal = false,
-                            LieFlat = false,
-                            ExtraLegroom = false,
-                            Lounge = false,
-                            PriorityBoarding = false,
-                            CheckedBag = true,
-                            Alcohol = false,
-                        },
-                        Layover = null,  // TODO: null has to be calculated AFTER the number of legs are known
-                                         // and calculated in the FlightViewOption object
-                })
+                            Airport = seg.Arrival!.IATACode!,
+                            Minutes = segs[i + 1].Departure!.At != null && seg.Arrival!.At != null
+                                ? (int)(DateTime.Parse(segs[i + 1]?.Departure?.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)
+                                    - DateTime.Parse(seg.Arrival.At, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)).TotalMinutes
+                                : 0,
+                        }
+                        : null;
+
+                    // add the flight leg to the list of Legs
+                    legs.Add(fLeg);
+                }
             }
 
+            ///// THIS ONE IS CORRECT ONLY /////
+            FlightViewOption flightViewOption = new FlightViewOption
+            {
+                Origin = quote?.OriginIataCode!,
+                Destination = quote?.DestinationIataCode!,
+                DepartTime = DateTime.Parse(flightOffer?.Itineraries?.First().Segments?.First().Departure!.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                ArriveTime = DateTime.Parse(flightOffer?.Itineraries?.First().Segments?.Last().Arrival!.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                Price = CalcTotalFromOrgFeesMarkupDto(costBaseAmount, feeType, markupPercentage, markupAmount),
+                Currency = quote?.Currency!,
+                CurrencySymbol = currencySymbol,
+                Cabins = _cabins.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                Stops = stops,
+                QuoteId = travelQuoteId,
+                Amenities = legs.SelectMany(l => l.Amenities)
+                    .DistinctBy(a => (a.Type, a.Name, a.IsChargeable, Icon: a.IconClass ?? "", Svg: a.SvgPath ?? ""))
+                    .ToList(),
+                Legs = legs,
+                BaggageText = flightOffer?.
+                ChangePolicy = string.Empty,
+                RefundPolicy = string.Empty,
+                SeatPolicy = string.Empty,
 
+            };
 
             foreach (var leg in flightOffer?.Itineraries?.First().Segments ?? Enumerable.Empty<Segment>())
             {
@@ -1772,8 +1808,8 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
             flightViewOptions.Add(new FlightViewOption
             {
-                Origin = quote?.OriginIataCode!,
-                Destination = quote?.DestinationIataCode!,
+                Origin = origin,
+                Destination = destination,
                 DepartTime = DateTime.Parse(flightOffer?.Itineraries?.First().Segments?.First().Departure!.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
                 ArriveTime = DateTime.Parse(flightOffer?.Itineraries?.First().Segments?.First().Departure!.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)
                     + XmlConvert.ToTimeSpan(flightOffer?.Itineraries?.First().Duration!),
