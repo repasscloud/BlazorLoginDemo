@@ -556,33 +556,33 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.ToTable("flight_view_options", "ava");
             e.HasKey(x => x.Id);
 
-            // jsonb columns
+            // columns
+            e.Property(x => x.QuoteId)
+                .IsRequired()
+                .HasColumnName("quote_id");
+
+            // JSONB columns
+            e.Property(x => x.Amenities)
+                .HasColumnType("jsonb")
+                .HasColumnName("amenities");               // List<Amenity>
+
             e.Property(x => x.Legs)
-                .HasColumnType("jsonb");
+                .HasColumnType("jsonb")
+                .HasColumnName("legs");                    // List<FlightLeg>
+
             e.Property(x => x.AmadeusFlightOffer)
-                .HasColumnType("jsonb");
+                .HasColumnType("jsonb")
+                .HasColumnName("amadeus_flight_offer");    // FlightOffer?
+
+            // fast lookup by QuoteId
+            e.HasIndex(x => x.QuoteId)
+                .HasDatabaseName("ix_fvo_quote_id");
 
             // view-only
             e.Ignore(x => x.DisplayCarriers);
             e.Ignore(x => x.TotalDurationText);
             e.Ignore(x => x.InclusionBadges);
             e.Ignore(x => x.SearchText);
-
-            // owned amenities -> flattened bool columns
-            e.OwnsOne(x => x.Amenities, nav =>
-            {
-                nav.Property(p => p.Wifi).HasColumnName("amenities_wifi");
-                nav.Property(p => p.Power).HasColumnName("amenities_power");
-                nav.Property(p => p.Usb).HasColumnName("amenities_usb");
-                nav.Property(p => p.Ife).HasColumnName("amenities_ife");
-                nav.Property(p => p.Meal).HasColumnName("amenities_meal");
-                nav.Property(p => p.LieFlat).HasColumnName("amenities_lie_flat");
-                nav.Property(p => p.ExtraLegroom).HasColumnName("amenities_extra_legroom");
-                nav.Property(p => p.Lounge).HasColumnName("amenities_lounge");
-                nav.Property(p => p.PriorityBoarding).HasColumnName("amenities_priority_boarding");
-                nav.Property(p => p.CheckedBag).HasColumnName("amenities_checked_bag");
-                nav.Property(p => p.Alcohol).HasColumnName("amenities_alcohol");
-            });
         });
 
         // ===========================
