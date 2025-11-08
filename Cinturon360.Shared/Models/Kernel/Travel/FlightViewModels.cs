@@ -48,7 +48,6 @@ public sealed class FlightViewOption
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     // VIEW-ONLY
-
     [NotMapped]
     public List<Carrier> DisplayCarriers =>
         Legs.Select(l => l.Carrier).Distinct(new CarrierCodeComparer()).ToList();
@@ -58,8 +57,19 @@ public sealed class FlightViewOption
     {
         get
         {
-            var span = ArriveTime - DepartTime;
-            return $"{(int)span.TotalHours}h {span.Minutes:D2}m";
+            TimeSpan totalDuration = TimeSpan.Zero;
+            foreach (var leg in Legs)
+            {
+                TimeSpan legTotalDuration = TimeSpan.Zero;
+                if (leg.Layover != null)
+                {
+                    // include layover time
+                    var layoverSpan = TimeSpan.FromMinutes(leg.Layover.Minutes);
+                    legTotalDuration += layoverSpan;
+                }
+                totalDuration += leg.Duration;
+            }
+            return $"{(int)totalDuration.TotalHours}h {totalDuration.Minutes:D2}m";
         }
     }
 
