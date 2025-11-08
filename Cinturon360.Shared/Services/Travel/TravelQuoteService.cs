@@ -1502,7 +1502,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     fLeg.Carrier = new Carrier(
                         seg.CarrierCode != null ? seg.CarrierCode : "XX",
                         seg.CarrierCode != null ? seg.CarrierCode : "Unknown",  // TODO: lookup name from code
-                        $"https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_vectors/{seg.CarrierCode!.ToUpper()}.svg");
+                        $"https://raw.githubusercontent.com/repasscloud/IATAScraper/refs/heads/main/airline_bitmaps/{seg.CarrierCode!.ToUpper()}.svg");
 
                     // operating carrier (if different)
                     fLeg.OperatingCarrierCode = seg.Operating?.CarrierCode ?? seg.CarrierCode ?? null;
