@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Error Page Preview</title>
+  <!-- Bootstrap 5 via CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .error-header { border-top-left-radius: .5rem; border-top-right-radius: .5rem; }
+    .meta-badges .badge { margin-right: .25rem; }
+    .code-pill { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .footer-muted { font-size: .9rem; color: #6c757d; }
+    .link-wrap { word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8">
+        <!-- Header -->
+        <div class="d-flex align-items-center mb-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" class="bi bi-exclamation-triangle text-danger me-2" viewBox="0 0 16 16">
+            <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.03.053.03.119 0 .172a.145.145 0 0 1-.125.066H1.204a.145.145 0 0 1-.125-.066.176.176 0 0 1 0-.172L7.936 2.016zM8 4.58a.5.5 0 0 0-.496.438l-.35 4.2a.5.5 0 0 0 .496.546h.7a.5.5 0 0 0 .496-.546l-.35-4.2A.5.5 0 0 0 8 4.58zm.002 6.918a.905.905 0 1 0 0 1.81.905.905 0 0 0 0-1.81z"/>
+          </svg>
+          <h1 class="h3 mb-0">Error</h1>
+        </div>
+
+        <!-- Card -->
+        <div class="card shadow-sm">
+          <div id="errorHeader" class="card-header error-header bg-danger text-white">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="small opacity-75">Code</div>
+                <div id="errorCode" class="fw-bold code-pill">—</div>
+              </div>
+              <div class="meta-badges">
+                <span id="badgeClient" class="badge bg-secondary d-none">Client-facing</span>
+                <span id="badgeInternal" class="badge bg-dark d-none">Internal</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h2 id="title" class="h4 mb-2">—</h2>
+            <p id="message" class="mb-3">—</p>
+
+            <div id="resolutionWrap" class="alert alert-info d-none">
+              <div class="fw-semibold mb-1">Resolution</div>
+              <div id="resolution" class="mb-0"></div>
+            </div>
+
+            <div id="supportWrap" class="mt-3 d-none">
+              <a id="supportLink" class="btn btn-primary" target="_blank" rel="noopener">Contact Support</a>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="footer-muted">
+                <span class="me-2">Created (UTC):</span>
+                <span id="createdOn" class="code-pill">—</span>
+              </div>
+              <div class="footer-muted">
+                <span>Preview only</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unknown notice -->
+        <div id="unknown" class="alert alert-warning mt-3 d-none">
+          Unknown error code. No details found for <span class="fw-semibold" id="unknownCode">—</span>.
+        </div>
+
+        <!-- Example links -->
+        <div class="mt-4">
+          <div class="small text-muted mb-1">Examples:</div>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary btn-sm" href="?code=AUTH001">?code=AUTH001</a>
+            <a class="btn btn-outline-secondary btn-sm" href="?code=PAY001">?code=PAY001</a>
+            <a class="btn btn-outline-secondary btn-sm" href="?code=SYS500">?code=SYS500</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simulated lookup table. Must mirror your EF entity fields.
+    const DB = {
+      "AUTH001": {
+        ErrorCode: "AUTH001",
+        Title: "Authentication failed",
+        Message: "Your session could not be validated. Please sign in again.",
+        Resolution: "Sign out, clear site data, then sign in with your corporate SSO.",
+        ContactSupportLink: "mailto:support@example.com?subject=AUTH001%20Authentication%20failed",
+        IsClientFacing: true,
+        IsInternalFacing: false,
+        CreatedOnUtc: "2025-10-07T00:00:00Z"
+      },
+      "PAY001": {
+        ErrorCode: "PAY001",
+        Title: "Payment declined",
+        Message: "The payment gateway returned a decline for the provided card.",
+        Resolution: "Confirm the card details, try another card, or contact your bank.",
+        ContactSupportLink: "https://support.example.com/kb/payments#PAY001",
+        IsClientFacing: true,
+        IsInternalFacing: false,
+        CreatedOnUtc: "2025-10-06T22:40:00Z"
+      },
+      "SYS500": {
+        ErrorCode: "SYS500",
+        Title: "Unexpected server error",
+        Message: "A non-recoverable error occurred. Engineers have been paged.",
+        Resolution: null,
+        ContactSupportLink: "mailto:oncall@example.com?subject=SYS500%20Server%20error",
+        IsClientFacing: false,
+        IsInternalFacing: true,
+        CreatedOnUtc: "2025-10-05T12:30:00Z"
+      }
+    };
+
+    function getQueryParam(...names) {
+      const params = new URLSearchParams(window.location.search);
+      for (const n of names) {
+        const v = params.get(n);
+        if (v) return v;
+      }
+      return null;
+    }
+
+    function formatUtc(iso) {
+      if (!iso) return "—";
+      try {
+        const d = new Date(iso);
+        return d.toISOString().replace("T", " ").replace("Z", " UTC");
+      } catch {
+        return iso;
+      }
+    }
+
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text ?? "—";
+    }
+
+    function setHtml(id, html) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = html ?? "—";
+    }
+
+    function toggle(id, show) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (show) el.classList.remove("d-none");
+      else el.classList.add("d-none");
+    }
+
+    function load() {
+      const code = getQueryParam("code", "error");
+      const rec = code ? DB[code] : null;
+
+      setText("errorCode", code ?? "—");
+
+      if (!rec) {
+        toggle("unknown", true);
+        setText("unknownCode", code ?? "(missing)");
+        setText("title", "Unknown error");
+        setText("message", "No record for the supplied error code.");
+        toggle("resolutionWrap", false);
+        toggle("supportWrap", false);
+        toggle("badgeClient", false);
+        toggle("badgeInternal", false);
+        setText("createdOn", "—");
+        return;
+      }
+
+      toggle("unknown", false);
+      setText("title", rec.Title);
+      setText("message", rec.Message);
+      setHtml("resolution", rec.Resolution);
+      toggle("resolutionWrap", !!rec.Resolution);
+
+      if (rec.ContactSupportLink) {
+        const a = document.getElementById("supportLink");
+        a.href = rec.ContactSupportLink;
+        a.textContent = "Contact Support";
+        toggle("supportWrap", true);
+      } else {
+        toggle("supportWrap", false);
+      }
+
+      toggle("badgeClient", !!rec.IsClientFacing);
+      toggle("badgeInternal", !!rec.IsInternalFacing);
+
+      setText("createdOn", formatUtc(rec.CreatedOnUtc));
+    }
+
+    document.addEventListener("DOMContentLoaded", load);
+  </script>
+</body>
+</html>

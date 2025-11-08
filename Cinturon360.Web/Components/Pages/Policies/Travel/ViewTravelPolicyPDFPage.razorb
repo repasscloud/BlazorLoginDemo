@@ -1,0 +1,298 @@
+@page "/policies/travel/view/{TravelPolicyId?}"
+@using Cinturon360.Shared.Models.Policies
+@using Cinturon360.Shared.Models.Kernel.Travel
+@using Cinturon360.Shared.Models.User
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject Cinturon360.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
+@inject Cinturon360.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
+@inject NavigationManager Nav
+
+<!-- Optional: inject your actual data service once you’re ready -->
+@* @inject ITravelPolicyReader PolicyReader *@
+
+<PageTitle>My Travel Policy</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="container py-5 text-center">
+        <div class="spinner-border" role="status" aria-hidden="true"></div>
+        <div class="mt-3">Loading your travel policy…</div>
+    </div>
+}
+else if (_policy is not null)
+{
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h3 mb-0">Travel Policy (@_policy.Id)</h1>
+        @* <span class="badge text-bg-secondary">Policy ID: @_policy.Id</span> *@
+    </div>
+
+    <!-- Policy Summary -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="fw-semibold text-muted">Policy Name</div>
+                    <div class="fs-5">@_policy.PolicyName</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="fw-semibold text-muted">Default Currency</div>
+                    <div class="fs-5">@_policy.DefaultCurrencyCode</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="fw-semibold text-muted">Client</div>
+                    <div class="fs-6">@(_policy.AvaClientId ?? "—")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flight Rules -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-transparent">
+            <div class="h5 mb-0">Flight Rules</div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="fw-semibold text-muted">Default Cabin</div>
+                    <div>@_policy.DefaultFlightSeating</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="fw-semibold text-muted">Max Cabin</div>
+                    <div>@_policy.MaxFlightSeating</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="fw-semibold text-muted">Max Flight Price</div>
+                    <div>@FormatCurrency(_policy.MaxFlightPrice, _policy.DefaultCurrencyCode)</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="fw-semibold text-muted">Cabin Coverage</div>
+                    <div>@_policy.CabinClassCoverage</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="fw-semibold text-muted">Non-Stop Only</div>
+                    <div>@RenderBool(_policy.NonStopFlight)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Windows -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-transparent">
+            <div class="h5 mb-0">Booking Windows</div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="fw-semibold text-muted">Available From (Local)</div>
+                    <div>@DisplayOrDash(_policy.FlightBookingTimeAvailableFrom)</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="fw-semibold text-muted">Available To (Local)</div>
+                    <div>@DisplayOrDash(_policy.FlightBookingTimeAvailableTo)</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="fw-semibold text-muted">Days in Advance (Default)</div>
+                    <div>@DisplayOrDash(_policy.DefaultCalendarDaysInAdvanceForFlightBooking?.ToString())</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="fw-semibold text-muted">Allow Saturday Bookings</div>
+                    <div>@RenderBool(_policy.EnableSaturdayFlightBookings)</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="fw-semibold text-muted">Allow Sunday Bookings</div>
+                    <div>@RenderBool(_policy.EnableSundayFlightBookings)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Airlines -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-transparent">
+            <div class="h5 mb-0">Airlines</div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="fw-semibold text-muted mb-2">Included Airline Codes</div>
+                    @RenderBadgeList(_policy.IncludedAirlineCodes)
+                </div>
+                <div class="col-md-6">
+                    <div class="fw-semibold text-muted mb-2">Excluded Airline Codes</div>
+                    @RenderBadgeList(_policy.ExcludedAirlineCodes)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Geography -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-transparent">
+            <div class="h5 mb-0">Geographic Scope</div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="fw-semibold text-muted mb-2">Continents</div>
+                    @RenderNamedBadgeList(_policy.Continents?.Select(x => x.Name))
+                </div>
+                <div class="col-md-4">
+                    <div class="fw-semibold text-muted mb-2">Regions</div>
+                    @RenderNamedBadgeList(_policy.Regions?.Select(x => x.Name))
+                </div>
+                <div class="col-md-4">
+                    <div class="fw-semibold text-muted mb-2">Countries</div>
+                    @RenderNamedBadgeList(_policy.Countries?.Select(x => x.Name))
+                </div>
+                <div class="col-12">
+                    <div class="fw-semibold text-muted mb-2">Disabled Countries (Overrides)</div>
+                    @RenderNamedBadgeList(_policy.DisabledCountries?.Select(x => x.Country?.Name ?? x.Country?.IsoCode))
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer note -->
+    <div class="text-muted small">
+        Read-only view. Contact your admin to request changes.
+    </div>
+}
+
+@code {
+    [Parameter] public string TravelPolicyId { get; set; } = string.Empty;
+    private bool _isLoading = true;
+    private TravelPolicy? _policy;
+    private string _username = string.Empty;
+    private string _travelPolicyId = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+
+        // does travelpolicy mapped match input value from parameter?
+        if (_travelPolicyId != TravelPolicyId)
+        {
+            Nav.NavigateTo("/admin/clients");
+            return;
+        }
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(TravelPolicyId))
+            {
+                var travelPolicy = await TravelPolicyService.GetByIdAsync(TravelPolicyId);
+
+                if (travelPolicy is null)
+                {
+                    Nav.NavigateTo("/admin/clients");
+                    return;
+                }
+
+                _policy = travelPolicy;
+            }
+            else
+            {
+                Nav.NavigateTo("/admin/clients");
+                return;
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1) Auth check
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            Nav.NavigateTo("/error/not-logged-in", forceLoad: true);
+            return;
+        }
+
+        _username = user.Identity.Name ?? string.Empty;;
+
+        if (string.IsNullOrWhiteSpace(_username))
+        {
+            Nav.NavigateTo("/user-has-no-assigned-username-error");
+            return;
+        }
+
+        var avaUser = await AvaUserService.GetByEmailAsync(_username);
+        if (string.IsNullOrWhiteSpace(avaUser?.TravelPolicyId))
+        {
+            Nav.NavigateTo("/user-has-no-assigned-travelpolicyid-error");
+            return;
+        }
+
+        _travelPolicyId = avaUser.TravelPolicyId;
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    // ===== Render helpers (keep readonly formatting simple & consistent) =====
+
+    private static string DisplayOrDash(string? v) => string.IsNullOrWhiteSpace(v) ? "—" : v;
+    private static string RenderBool(bool? v) =>
+        v is null ? "—" : (v.Value ? "Allowed" : "Not Allowed");
+
+    private static string FormatCurrency(decimal amount, string currency) =>
+        amount <= 0 ? "—" : $"{currency} {amount:0,0.##}";
+
+    private RenderFragment RenderBadgeList(IEnumerable<string>? codes) => builder =>
+    {
+        var items = (codes ?? Array.Empty<string>())
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.ToUpperInvariant())
+            .Distinct()
+            .ToArray();
+
+        if (items.Length == 0)
+        {
+            builder.AddContent(0, "—");
+            return;
+        }
+
+        int seq = 0;
+        foreach (var code in items)
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "badge text-bg-light me-1 mb-1");
+            builder.AddContent(seq++, code);
+            builder.CloseElement();
+        }
+    };
+
+    private RenderFragment RenderNamedBadgeList(IEnumerable<string?>? names) => builder =>
+    {
+        var items = (names ?? Array.Empty<string?>())
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n!.Trim())
+            .Distinct()
+            .ToArray();
+
+        if (items.Length == 0)
+        {
+            builder.AddContent(0, "—");
+            return;
+        }
+
+        int seq = 0;
+        foreach (var name in items)
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "badge text-bg-light me-1 mb-1");
+            builder.AddContent(seq++, name);
+            builder.CloseElement();
+        }
+    };
+}

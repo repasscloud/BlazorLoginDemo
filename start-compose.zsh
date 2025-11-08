@@ -13,11 +13,12 @@ set -euo pipefail
 pgContainerName='pgsql'
 aspContainerName='blazor'
 pgadminContainerName='pgadmin'
+apiContainerName='api'
 dbPort=5432
 dbUser='demodb'
 dbPass='YourAppPassword'
 dbName='demodb'
-FILE="BlazorLoginDemo.Web/Components/Layout/MainLayout.razor"
+FILE="Cinturon360.Web/Components/Layout/MainLayout.razor"
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=YourAdminPassword
 LINE_NUMBER=12  # keep this in one place
@@ -119,17 +120,18 @@ echo
 echo "🐳 0) Stop all docker containers"
 docker compose down -v --remove-orphans # --rmi all
 docker buildx prune --force
+docker buildx history rm --all
 
-# ── 🧹 1) Clean slate: migrations, obj, bin, and blazorlogin* volumes ────────
+# ── 🧹 1) Clean slate: migrations, obj, bin, and cinturon360* volumes ────────
 echo
-echo "🧹 1) Cleaning slate: removing Migrations, obj, bin, and blazorlogin* volumes"
-rm -rf BlazorLoginDemo.Web/bin BlazorLoginDemo.Web/obj BlazorLoginDemo.Web/Migrations || true
-rm -rf BlazorLoginDemo.Api/bin BlazorLoginDemo.Api/obj || true
-rm -rf BlazorLoginDemo.Shared/bin BlazorLoginDemo.Shared/obj || true
+echo "🧹 1) Cleaning slate: removing Migrations, obj, bin, and cinturon360* volumes"
+rm -rf Cinturon360.Web/bin Cinturon360.Web/obj Cinturon360.Web/Migrations || true
+rm -rf Cinturon360.Api/bin Cinturon360.Api/obj || true
+rm -rf Cinturon360.Shared/bin Cinturon360.Shared/obj || true
 
-vols="$(docker volume ls -q --filter name=blazorlogindemo_postgresql || true)"
+vols="$(docker volume ls -q --filter name=cinturon360demo_postgresql || true)"
 if [[ -z "$vols" ]]; then
-  echo "   (no blazorlogindemo_postgresql* volumes)"
+  echo "   (no cinturon360demo_postgresql* volumes)"
 else
   echo "$vols" | xargs -n1 docker volume rm -f
 fi
@@ -190,30 +192,47 @@ echo
 echo "🚀 7) Start Blazor app"
 docker compose up -d "$aspContainerName"
 
-# ── 🚀 8) Start Api app ───────────────────────────────────────────────────
+# ── 🚀 8) Start API app ───────────────────────────────────────────────────
 echo
-echo "🚀 8) Start Api app"
-docker compose up -d api
+echo "🚀 8) Start API app"
+docker compose up -d "$apiContainerName"
 
-# ── 🌱 9) Seed the DB with airport data ──────────────────────────────────
+# ── ⏳ 9) Wait for API to be healthy ─────────────────────────────────────
 echo
-echo "🌱 9) Seed the DB with airport data"
+echo "⏳ 9) Waiting for API to be healthy..."
+deadline=$((SECONDS + 180))
+state=""
+while :; do
+  if ! state="$(docker inspect --format '{{.State.Health.Status}}' "$apiContainerName" 2>/dev/null)"; then
+    state="unknown"
+  fi
+  echo "   - health: $state"
+  [[ "$state" == "healthy" ]] && break
+  (( SECONDS >= deadline )) && { echo "❌ API did not become healthy in time." >&2; exit 1; }
+  sleep 2
+done
+api_host_port="$(docker port "$apiContainerName" | awk -F '[: ]+' '/tcp/ {print $NF; exit}')"
+echo "✅ API is healthy (container: $apiContainerName, port: $api_host_port)"
+
+# ── 🌱 10) Seed the DB with airport data ──────────────────────────────────
+echo
+echo "🌱 10) Seed the DB with airport data"
 curl -X 'POST' \
   'http://localhost:8090/api/v1/admin/kerneldata/airport-info/bulk-upsert-from-csv?batchSize=1000' \
   -H 'accept: text/plain' \
   -H 'Content-Type: multipart/form-data' \
   -F 'File=@.scripts/data/airports.csv;type=text/csv'
 
-# ── 📤 10) Commit & push version bump ──────────────────────────────────────────
+# ── 📤 11) Commit & push version bump ──────────────────────────────────────────
 echo
-echo "📤 10) Commit & push version bump to Git"
+echo "📤 11) Commit & push version bump to Git"
 git add .
 git commit -m "bump v${NEW_VER}"
 git push
 
-# ── 🌱 11) Seed the DB with additional data ──────────────────────────────────
+# ── 🌱 12) Seed the DB with additional data ──────────────────────────────────
 echo
-echo "🌱 11) Seed the DB with additional data"
+echo "🌱 12) Seed the DB with additional data"
 curl -X 'GET' \
   'http://localhost:8090/api/v1/test/create-org-data' \
   -H 'accept: */*'
@@ -238,11 +257,28 @@ pwsh -File .docker/db/pwsh/01-import-regions.ps1
 pwsh -File .docker/db/pwsh/02-import-continents.ps1
 pwsh -File .docker/db/pwsh/03-import-countries.ps1
 
-# ── 🐳 12) Start crontab and pgweb ──────────────────────────────────────────
+# ── 🐳 13) Start crontab and pgweb ──────────────────────────────────────────
 echo
-echo "🐳 12) Start crontab and pgweb"
-docker compose up -d --build crontab
+echo "🐳 13) Start crontab and pgweb"
+docker compose build crontab
+docker compose up -d crontab
 docker compose up -d pgweb
+
+# ── 🐳 14) Run once-off crontab job ──────────────────────────────────────────
+echo
+echo "🐳 14) Run once-off crontab job"
+sleep 5
+docker exec crontab sh -lc \
+  "curl -fsS --connect-timeout 3 --max-time 120 --retry 2 --retry-connrefused \
+   http://api:8080/api/v1/admin/ingress/airlines-data"
+
+# ── 🐳 15) Run once-off data update following crontab job ──────────────────────────────────────────
+echo
+echo "🐳 15) Run once-off data update following crontab job"
+sleep 5
+pwsh -File .scripts/data/update-airlinealliance-oneworld.ps1
+pwsh -File .scripts/data/update-airlinealliance-staralliance.ps1
+pwsh -File .scripts/data/update-airlinealliance-skyteam.ps1
 
 # ── 🏁 Done ───────────────────────────────────────────────────────────────────
 echo

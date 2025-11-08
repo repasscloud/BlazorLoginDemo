@@ -1,0 +1,62 @@
+/* Scoped to FlightResultsDemo.razor */
+:root{
+  --ring:#0d6efd;
+  --muted:#6c757d;
+  --chip:#eef2ff;
+  --card-r:1rem;
+}
+body{background:#f7f8fa}
+.sidebar{position:sticky; top:1rem}
+.brand{font-weight:700; letter-spacing:.2px}
+.air-logo-lg{width:48px;height:48px;object-fit:contain;border-radius:6px;background:#fff}
+.air-logo{width:34px;height:34px;object-fit:contain;border-radius:4px;background:#fff}
+.carrier-stack{display:flex; align-items:center; gap:.5rem}
+.flight-chip{background:var(--chip); color:#3949ab; border-radius:999px; padding:.1rem .5rem; font-weight:600; font-size:.75rem}
+.badge-stop{background:#fff3cd;color:#856404;border:1px solid #ffe8a1}
+.badge-nonstop{background:#d1e7dd;color:#0f5132;border:1px solid #badbcc}
+.chip{background:var(--chip); color:#3949ab; border-radius:999px; padding:.15rem .5rem; font-weight:600; font-size:.8rem}
+.price{font-weight:800; font-size:1.15rem}
+.subtle{color:var(--muted); font-size:.875rem}
+.table thead th{position:sticky; top:0; background:#fff; z-index:2}
+.collapse-cell{background:#fff}
+.leg{display:flex; gap:.75rem; align-items:flex-start}
+.leg .dot{width:8px;height:8px;border-radius:50%;background:#0d6efd;margin-top:.5rem}
+.leg .logo{width:20px;height:20px;object-fit:contain;border-radius:4px;background:#fff;margin-top:.2rem}
+.timeline{display:flex; align-items:center; gap:.4rem}
+.timeline .bar{height:4px; background:#0d6efd; border-radius:4px; flex:0 0 calc(var(--mins) * 1.2px);}
+.table-hover>tbody>tr:hover>*{background-color:rgba(13,110,253,.03)}
+tbody.result-item>tr:first-child{cursor:pointer}
+
+/* Keep column widths fixed so header/body do not shift */
+.table.stable { table-layout: fixed; }
+.table.stable th, .table.stable td { white-space: nowrap; }
+
+/* Prevent collapse content from overflowing horizontally */
+.collapse-cell > td { padding: 0; }
+.collapse-body { padding: .75rem; }
+.collapse-body .row { margin-left: 0 !important; margin-right: 0 !important; --bs-gutter-x: 1rem; }
+
+/* Smooth inner collapse only, avoid table reflow */
+.collapse-body-wrap { overflow: hidden; transition: max-height .24s ease, opacity .24s ease; max-height: 0; opacity: 0; }
+.collapse-body-wrap.show { max-height: 2000px; opacity: 1; }
+
+/* Remove selection outlines (no blue lines on compare) */
+.result-selected{ outline: none !important; outline-offset: 0 !important; }
+
+/* No borders on the hidden details row */
+.table.stable tr.collapse-cell > td { border-bottom: 0 !important; }
+
+/* Divider between result groups */
+.table.stable > tbody + tbody { border-top: 1px solid var(--bs-border-color) !important; }
+
+/* When a result is open, hide the main row's bottom border so the divider appears only at the bottom */
+tbody.result-item.open > tr:first-child > * { border-bottom: 0 !important; }
+
+/* Draw divider at the bottom of the expanded details block only */
+.table.stable tr.collapse-cell.expanded > td { border-top: 0 !important; border-bottom: 1px solid var(--bs-border-color) !important; }
+
+.badge-connectivity { background-color:#0ea5e9; color:#fff; font-weight:600; }
+.badge-seating      { background-color:#8b5cf6; color:#fff; font-weight:600; }
+.badge-catering     { background-color:#f59e0b; color:#111; font-weight:600; }
+.badge-priority     { background-color:#ef4444; color:#fff; font-weight:600; }
+.badge-baggage      { background-color:#10b981; color:#fff; font-weight:600; }

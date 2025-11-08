@@ -8,7 +8,7 @@ fi
 
 SVG_FILE="$1"
 CLASS_NAME="$2"
-TARGET_CSS="$(dirname "$0")/BlazorLoginDemo.Web/Components/Layout/NavMenu.razor.css"
+TARGET_CSS="$(dirname "$0")/Cinturon360.Web/Components/Layout/NavMenu.razor.css"
 
 if [ ! -f "$SVG_FILE" ]; then
   echo "Error: File '$SVG_FILE' not found."

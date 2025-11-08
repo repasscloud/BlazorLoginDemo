@@ -12,22 +12,22 @@ RUN dotnet tool install --global dotnet-ef \
 ENV PATH="$PATH:/root/.dotnet/tools" DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 # restore cache
-COPY ${CSPROJ_WEB} BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
-COPY ${CSPROJ_SHARED} BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+COPY ${CSPROJ_WEB} Cinturon360.Web/Cinturon360.Web.csproj
+COPY ${CSPROJ_SHARED} Cinturon360.Shared/Cinturon360.Shared.csproj
 
 
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
-    dotnet restore BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+    dotnet restore Cinturon360.Web/Cinturon360.Web.csproj
 
 # copy sources & build Release
-COPY ./BlazorLoginDemo.Shared/ ./BlazorLoginDemo.Shared/
-COPY ./BlazorLoginDemo.Web/ ./BlazorLoginDemo.Web/
-RUN rm -rf ./BlazorLoginDemo.Web/bin ./BlazorLoginDemo.Web/obj
+COPY ./Cinturon360.Shared/ ./Cinturon360.Shared/
+COPY ./Cinturon360.Web/ ./Cinturon360.Web/
+RUN rm -rf ./Cinturon360.Web/bin ./Cinturon360.Web/obj
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet build BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+    dotnet build Cinturon360.Web/Cinturon360.Web.csproj
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet build BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj -c Release
+    dotnet build Cinturon360.Web/Cinturon360.Web.csproj -c Release
 
 # runner
 COPY ./.docker/migrator/migrate.sh /usr/local/bin/migrate.sh

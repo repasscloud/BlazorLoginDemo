@@ -1,0 +1,1 @@
+docker run --rm -it -v "$PWD":/tool/fontawesome-dl/output -w /app fontawesome-dl:latest person-seat-reclined classic regular

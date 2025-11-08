@@ -1,0 +1,139 @@
+@page "/platform/travelpolicy/list/{OrganizationId}"
+@rendermode InteractiveServer
+
+@using Cinturon360.Shared.Models.Kernel.Platform
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@using Cinturon360.Shared.Services.Interfaces.Policy
+
+@inject IAdminOrgServiceUnified AdminOrgService
+@inject ITravelPolicyService TravelPolicyService
+@inject NavigationManager Nav
+
+<h3 class="mb-3">Travel Policies</h3>
+
+@if (_loading)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border" role="status"></div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <div>
+                <div class="fw-bold">@_org?.Org.Name</div>
+                <small class="text-muted">Policies assigned to this organization</small>
+            </div>
+            <div>
+                <button class="btn btn-outline-secondary" @onclick="GoToEditOrg">Back to Org</button>
+                <button class="btn btn-outline-primary" @onclick="NewTravelPolicy"><i class="bi bi-file-earmark-plus"></i> New Policy</button>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            @if (_policies.Count == 0)
+            {
+                <div class="p-3 text-muted">None</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Effective From</th>
+                                <th>Expires On</th>
+                                <th>Active</th>
+                                <th>Default</th>
+                                <th>Updated</th>
+                                <th></th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (TravelPolicy p in _policies)
+                        {
+                            <tr>
+                                <td class="fw-medium">@p.PolicyName</td>
+                                <td>@(p.EffectiveFromUtc?.ToLocalTime().ToString("yyyy-MM-dd") ?? "—")</td>
+                                <td>@(p.ExpiresOnUtc?.ToLocalTime().ToString("yyyy-MM-dd") ?? "—")</td>
+                                <td>
+                                    @if (p.ExpiresOnUtc is not null && p.ExpiresOnUtc > DateTime.UtcNow)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (_org?.Org.DefaultTravelPolicyId == p.Id)
+                                    {
+                                        <span class="badge bg-primary">Default</span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetAsDefaultPolicyAsync(p.Id))">Set As Default</button>
+                                    }
+                                </td>
+                                <td>@((p.LastUpdatedUtc).ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                                <td>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteTravelPolicyByIdAsync(p.Id)">
+                                        <i class="bi bi-x-circle"></i> Delete
+                                    </button>
+                                </td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" @onclick="() => ViewEditTravelPolicyById(p.Id)">
+                                        <i class="bi bi-pen"></i> View/Edit
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string OrganizationId { get; set; } = default!;
+
+    private IAdminOrgServiceUnified.OrgAggregate? _org;
+    private List<TravelPolicy> _policies = new List<TravelPolicy>();
+    private bool _loading;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _org = await AdminOrgService.GetByIdAsync(OrganizationId); // must include TravelPolicies
+        _policies = _org?.Org.TravelPolicies?.OrderByDescending(x => x.LastUpdatedUtc).ToList()
+                    ?? new List<TravelPolicy>();
+        _loading = false;
+    }
+
+    private async Task SetAsDefaultPolicyAsync(string policyId)
+    {
+        bool result = await TravelPolicyService.SetPolicyAsDefaultAsync(policyId);
+        if (result)
+        {
+            Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrganizationId}", forceLoad: true);
+        }
+   }
+
+   private void GoToEditOrg() => Nav.NavigateTo(uri: $"/platform/organizations/{OrganizationId}/edit");
+
+   public void NewTravelPolicy() => Nav.NavigateTo(uri: $"/platform/travelpolicy/new/{OrganizationId}");
+
+   private async Task DeleteTravelPolicyByIdAsync(string travelPolicyId)
+   {
+        await TravelPolicyService.DeleteAsync(id: travelPolicyId);
+        Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrganizationId}", forceLoad: true);
+   }
+
+   private void ViewEditTravelPolicyById(string travelPolicyId) => Nav.NavigateTo(uri: $"/platform/travelpolicy/edit/{travelPolicyId}", forceLoad: true);
+}
