@@ -1,7 +1,6 @@
 // Services/Travel/TravelQuoteService.cs
 using System.Globalization;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Cinturon360.Shared.Data;
 using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
@@ -21,8 +20,6 @@ using Microsoft.EntityFrameworkCore;
 using System.Xml;
 using Cinturon360.Shared.Models.Static.Billing;
 using System.Net;
-using Microsoft.VisualBasic;
-using NanoidDotNet;
 
 namespace Cinturon360.Shared.Services.Travel;
 
@@ -1776,8 +1773,6 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             ///// THIS ONE IS CORRECT ONLY /////
             FlightViewOption flightViewOption = new FlightViewOption
             {
-                //Id = Nanoid.Generate(), <-- generates a new ID for the flight view option in the class automatically
-
                 Origin = quote?.OriginIataCode!,
                 Destination = quote?.DestinationIataCode!,
 
@@ -1813,14 +1808,13 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
             flightViewOptions.Add(flightViewOption);
 
-
-            // await _log.InformationAsync(
-            //     evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_OFFER",
-            //     cat: SysLogCatType.App,
-            //     act: SysLogActionType.Read,
-            //     message: $"Flight offer found for TravelQuote '{travelQuoteId}': OfferId='{flightOffer.Id}', Price='{flightOffer.Price.Total} {flightOffer.Price.Currency}'",
-            //     ent: nameof(TravelQuote),
-            //     entId: travelQuoteId);
+            await _log.InformationAsync(
+                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_OFFER",
+                cat: SysLogCatType.App,
+                act: SysLogActionType.Read,
+                message: $"Flight offer found for TravelQuote '{travelQuoteId}': OfferId='{flightOffer.Id}', Price='{flightOffer.Price.Total} {flightOffer.Price.Currency}'",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
         }
         // end foreach flight offer
 
