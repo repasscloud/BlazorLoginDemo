@@ -1,5 +1,5 @@
 @* @page "/policies/new/{Id?}"
-@using BlazorLoginDemo.Shared.Models.Policies
+@using Cinturon360.Shared.Models.Policies
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager Nav
 @inject ILogger<TravelPolicyNew> Log

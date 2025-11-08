@@ -18,7 +18,7 @@ dbPort=5432
 dbUser='demodb'
 dbPass='YourAppPassword'
 dbName='demodb'
-FILE="BlazorLoginDemo.Web/Components/Layout/MainLayout.razor"
+FILE="Cinturon360.Web/Components/Layout/MainLayout.razor"
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=YourAdminPassword
 LINE_NUMBER=12  # keep this in one place
@@ -122,16 +122,16 @@ docker compose down -v --remove-orphans # --rmi all
 docker buildx prune --force
 docker buildx history rm --all
 
-# ── 🧹 1) Clean slate: migrations, obj, bin, and blazorlogin* volumes ────────
+# ── 🧹 1) Clean slate: migrations, obj, bin, and cinturon360* volumes ────────
 echo
-echo "🧹 1) Cleaning slate: removing Migrations, obj, bin, and blazorlogin* volumes"
-rm -rf BlazorLoginDemo.Web/bin BlazorLoginDemo.Web/obj BlazorLoginDemo.Web/Migrations || true
-rm -rf BlazorLoginDemo.Api/bin BlazorLoginDemo.Api/obj || true
-rm -rf BlazorLoginDemo.Shared/bin BlazorLoginDemo.Shared/obj || true
+echo "🧹 1) Cleaning slate: removing Migrations, obj, bin, and cinturon360* volumes"
+rm -rf Cinturon360.Web/bin Cinturon360.Web/obj Cinturon360.Web/Migrations || true
+rm -rf Cinturon360.Api/bin Cinturon360.Api/obj || true
+rm -rf Cinturon360.Shared/bin Cinturon360.Shared/obj || true
 
-vols="$(docker volume ls -q --filter name=blazorlogindemo_postgresql || true)"
+vols="$(docker volume ls -q --filter name=cinturon360demo_postgresql || true)"
 if [[ -z "$vols" ]]; then
-  echo "   (no blazorlogindemo_postgresql* volumes)"
+  echo "   (no cinturon360demo_postgresql* volumes)"
 else
   echo "$vols" | xargs -n1 docker volume rm -f
 fi

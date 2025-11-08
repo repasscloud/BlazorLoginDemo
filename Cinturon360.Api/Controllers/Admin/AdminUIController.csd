@@ -1,8 +1,8 @@
-using BlazorLoginDemo.Shared.Data;
+using Cinturon360.Shared.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace BlazorLoginDemo.Api.Controllers.Admin;
+namespace Cinturon360.Api.Controllers.Admin;
 
 [Route("api/v1/admin/ui")]
 [ApiController]

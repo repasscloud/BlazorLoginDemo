@@ -1,11 +1,11 @@
-using BlazorLoginDemo.Shared.Data;
+using Cinturon360.Shared.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
-using BlazorLoginDemo.Api.Auth;
+using Cinturon360.Api.Auth;
 
-namespace BlazorLoginDemo.Api.Controllers;
+namespace Cinturon360.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

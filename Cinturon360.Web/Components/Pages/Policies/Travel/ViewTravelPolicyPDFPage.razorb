@@ -1,11 +1,11 @@
 @page "/policies/travel/view/{TravelPolicyId?}"
-@using BlazorLoginDemo.Shared.Models.Policies
-@using BlazorLoginDemo.Shared.Models.Kernel.Travel
-@using BlazorLoginDemo.Shared.Models.User
+@using Cinturon360.Shared.Models.Policies
+@using Cinturon360.Shared.Models.Kernel.Travel
+@using Cinturon360.Shared.Models.User
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
-@inject BlazorLoginDemo.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
-@inject BlazorLoginDemo.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
+@inject Cinturon360.Shared.Services.Interfaces.User.IAvaUserService AvaUserService
+@inject Cinturon360.Shared.Services.Interfaces.Policy.ITravelPolicyService TravelPolicyService
 @inject NavigationManager Nav
 
 <!-- Optional: inject your actual data service once you’re ready -->
