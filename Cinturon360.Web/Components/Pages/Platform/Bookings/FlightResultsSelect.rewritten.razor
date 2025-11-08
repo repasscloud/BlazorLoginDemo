@@ -157,14 +157,15 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var opt in Filtered)
+                    @foreach (FlightViewOption opt in Filtered)
                     {
                         <tr class="flight-row" @key="opt.Id" @onclick="@(()=>Toggle(opt))">
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
-                                    @foreach (var c in opt.DisplayCarriers)
+                                    @foreach (Carrier c in opt.DisplayCarriers)
                                     {
-                                        <span class="badge bg-light text-dark" title="@c.Name">@c.Code</span>
+                                        @* <span class="badge bg-light text-dark" title="@c.Name">@c.Code</span> *@
+                                        <img class="logo" src="@c.LogoUrl" alt="@c.Name" />
                                     }
                                 </div>
                             </td>
@@ -425,14 +426,14 @@ else
     void Toggle(FlightViewOption o)
     {
         bool willOpen = !o.IsOpen;
-        foreach (var x in (Result?.Options ?? Enumerable.Empty<FlightViewOption>())) x.IsOpen = false;
+        foreach (FlightViewOption x in (Result?.Options ?? Enumerable.Empty<FlightViewOption>())) x.IsOpen = false;
         o.IsOpen = willOpen;
     }
 
     void Select(FlightViewOption o)
     {
         // Toggle selection using string Id
-        var optionId = o.Id;
+        string? optionId = o.Id;
         if (string.IsNullOrWhiteSpace(optionId)) return;
 
         if (Selected.Contains(optionId)) Selected.Remove(optionId);
