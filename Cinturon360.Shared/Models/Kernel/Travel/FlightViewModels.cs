@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus.Flight;
 using NanoidDotNet;
 
@@ -36,6 +37,7 @@ public sealed class FlightViewOption
     public string RefundPolicy { get; set; } = string.Empty;
     public string SeatPolicy { get; set; } = string.Empty;
 
+    [JsonIgnore]
     public bool IsOpen { get; set; }
 
     [Required]
