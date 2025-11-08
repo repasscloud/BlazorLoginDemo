@@ -174,12 +174,8 @@ public class FlightLeg
     public int CabinBagsAllowed { get; set; } = 0;
     public int? CabinBagsWeight { get; set; }
     public string? CabinBagsWeightUnit { get; set; }
-
-    [NotMapped]
-    public TimeSpan Duration => Arrive - Depart;
-
-    [NotMapped]
-    public string DurationText => $"{(int)Duration.TotalHours}h {Duration.Minutes:D2}m";
+    public TimeSpan Duration { get; set; }
+    public string DurationText { get; set; } = string.Empty;
 
     [NotMapped]
     public IEnumerable<string> AmenityLabels

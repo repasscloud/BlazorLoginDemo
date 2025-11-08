@@ -1499,6 +1499,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     var durationText = seg.duration ?? "PT0H0M";
                     var segDuration = XmlConvert.ToTimeSpan(durationText);
 
+                    fLeg.DurationText = $"{(int)segDuration.TotalHours}h {segDuration.Minutes}m";
+                    fLeg.Duration = segDuration;
+
                     fLeg.Carrier = new Carrier(
                         seg.CarrierCode != null ? seg.CarrierCode : "XX",
                         seg.CarrierCode != null ? seg.CarrierCode : "Unknown",  // TODO: lookup name from code
