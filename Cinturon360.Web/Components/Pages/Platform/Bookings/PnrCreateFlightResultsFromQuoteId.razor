@@ -1,10 +1,10 @@
 @page "/platform/pnr/create/flight/results/{TravelQuoteId?}"
 @rendermode InteractiveServer
 
-@using System.Linq
+@using Cinturon360.Shared.Models.Kernel.Travel
 @using Cinturon360.Shared.Models.Static.SysVar
 @using Cinturon360.Shared.Services.Interfaces.Kernel
-@using Cinturon360.Shared.Models.Kernel.Travel
+@using System.Linq
 
 @inject NavigationManager Nav
 @inject IHttpClientFactory HttpClientFactory
@@ -14,15 +14,16 @@
 {
     <div class="loading-overlay" role="status" aria-live="polite" aria-label="Loading">
         <div class="sky">
+            <!-- Clouds (behind the plane) -->
             <img src="/media/clouds-white.svg" class="cloud-img cloud-back c1" alt="" aria-hidden="true" />
             <img src="/media/clouds-white.svg" class="cloud-img cloud-back c2" alt="" aria-hidden="true" />
             <img src="/media/clouds-white.svg" class="cloud-img cloud-back c3" alt="" aria-hidden="true" />
             <img src="/media/clouds-white.svg" class="cloud-img cloud-back c4" alt="" aria-hidden="true" />
 
-            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c1" alt="" aria-hidden="true" />
-            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c2" alt="" aria-hidden="true" />
-            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c3" alt="" aria-hidden="true" />
-            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c4" alt="" aria-hidden="true" />
+            <!-- Plane -->
+            <img src="/media/airplane.svg" class="plane-svg" alt="Airplane loading" />
+
+            <!-- Clouds (in front of the plane) -->
             <img src="/media/clouds-white.svg" class="cloud-img cloud-front c5" alt="" aria-hidden="true" />
             <img src="/media/clouds-white.svg" class="cloud-img cloud-front c6" alt="" aria-hidden="true" />
             <img src="/media/clouds-white.svg" class="cloud-img cloud-front c7" alt="" aria-hidden="true" />
@@ -153,7 +154,8 @@ else
                         <th>Duration</th>
                         <th>Cabins</th>
                         <th class="text-end">Price</th>
-                        <th class="text-end">Select</th>
+                        <!--<th class="text-end">Select</th>-->
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -165,7 +167,7 @@ else
                                     @foreach (Carrier c in opt.DisplayCarriers)
                                     {
                                         @* <span class="badge bg-light text-dark" title="@c.Name">@c.Code</span> *@
-                                        <img class="logo" src="@c.LogoUrl" alt="@c.Name" />
+                                        <img class="air-logo-lg" src="@c.LogoUrl" alt="@c.Name" />
                                     }
                                 </div>
                             </td>
@@ -183,9 +185,9 @@ else
                             <td>
                                 @if (opt.Cabins?.Count > 0)
                                 {
-                                    @foreach (var cabinLabel in opt.Cabins)
+                                    @foreach (string cabinLabel in opt.Cabins)
                                     {
-                                        var emoji = cabinLabel switch { "Economy" => "💺", "Premium Economy" => "🪑", "Business" => "🛫", "First" => "⭐", _ => "" };
+                                        string? emoji = cabinLabel switch { "Economy" => "💺", "Premium Economy" => "🪑", "Business" => "🛫", "First" => "⭐", _ => "" };
                                         <span class="badge bg-secondary-subtle text-secondary-emphasis me-1">
                                             @if (!string.IsNullOrEmpty(emoji)) { <span class="me-1">@emoji</span> }
                                             @cabinLabel
@@ -212,7 +214,7 @@ else
                                         @if (opt.InclusionBadges.Any())
                                         {
                                             <div class="mb-2 d-flex flex-wrap gap-2">
-                                                @foreach (var inc in opt.InclusionBadges)
+                                                @foreach (InclusionBadge inc in opt.InclusionBadges)
                                                 {
                                                     <span class="badge @inc.BadgeClass">
                                                         <i class="@inc.Icon" aria-hidden="true"></i>
@@ -239,23 +241,23 @@ else
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                @for (var i = 0; i < opt.Legs.Count; i++)
+                                                @for (int i = 0; i < opt.Legs.Count; i++)
                                                 {
-                                                    var leg = opt.Legs[i];
+                                                    FlightLeg? leg = opt.Legs[i];
                                                     <tr @key="@($"{opt.Id}-{i}")">
-                                                        <td>@leg.Carrier.Code</td>
-                                                        <td>@leg.FlightNumber</td>
+                                                        <td><img class="air-logo" src="@leg.Carrier.LogoUrl" alt="@leg.Carrier.Name" /></td>
+                                                        <td>@(textContent: $"{leg.Carrier.Code}{leg.FlightNumber:D4}")</td>
                                                         <td>@leg.Origin</td>
                                                         <td>@leg.Destination</td>
-                                                        <td>@leg.Depart.ToLocalTime().ToString("dd MMM HH:mm")</td>
-                                                        <td>@leg.Arrive.ToLocalTime().ToString("dd MMM HH:mm")</td>
+                                                        <td>@leg.Depart.ToLocalTime().ToString(format: "dd MMM HH:mm")</td>
+                                                        <td>@leg.Arrive.ToLocalTime().ToString(format: "dd MMM HH:mm")</td>
                                                         <td>@leg.DurationText</td>
                                                         <td>@leg.CabinClass</td>
                                                         <td>
                                                             @if (leg.AmenityLabels.Any())
                                                             {
                                                                 <div class="d-flex flex-wrap gap-1">
-                                                                    @foreach (var label in leg.AmenityLabels)
+                                                                    @foreach (string label in leg.AmenityLabels)
                                                                     {
                                                                         <span class="badge bg-light text-dark">@label</span>
                                                                     }
@@ -370,7 +372,7 @@ else
     {
         if (!string.IsNullOrEmpty(qText))
         {
-            var s = o.SearchText ?? "";
+            string? s = o.SearchText ?? "";
             if (!s.Contains(qText, StringComparison.OrdinalIgnoreCase)) return false;
         }
         if (!string.IsNullOrEmpty(qCabin) && !(o.Cabins?.Contains(qCabin) ?? false)) return false;
@@ -524,6 +526,8 @@ else
             _error = null;
 
             Result = result;
+            foreach (FlightViewOption o in Result.Options ?? Enumerable.Empty<FlightViewOption>())
+                o.IsOpen = false;
 
             await _log.InformationAsync(
                 evt: "BOOKING_REQ_RESULTS_FETCH_OK",

@@ -1,7 +1,9 @@
 @page "/platform/pnr/create"
+@rendermode InteractiveServer
 @attribute [Authorize(Policy = "Shared:BookingSelect")]
-@using Microsoft.AspNetCore.Authorization
+
 @using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
 
 <div class="container my-4">
     <div class="row g-3">

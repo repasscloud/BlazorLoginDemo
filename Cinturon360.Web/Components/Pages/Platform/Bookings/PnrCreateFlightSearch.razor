@@ -2,19 +2,19 @@
 @rendermode InteractiveServer
 
 @using Cinturon360.Shared.Models.DTOs
+@using Cinturon360.Shared.Models.Search
 @using Cinturon360.Shared.Models.Static.SysVar
 @using Cinturon360.Shared.Models.Static.Travel
+@using Cinturon360.Shared.Services.Helpers
 @using Cinturon360.Shared.Services.Interfaces.Kernel
-@using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
 @using System.Globalization
-@using Microsoft.AspNetCore.Components
-@using Microsoft.AspNetCore.Components.Web
-@using Cinturon360.Shared.Models.Search
+@using System.Text
 @using System.Text.Json
 @using System.Text.Json.Serialization
-@using Cinturon360.Shared.Services.Helpers
-@using System.Text
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
 
 @inject NavigationManager Nav
 @inject IHttpClientFactory HttpClientFactory

@@ -1,16 +1,16 @@
 @page "/platform/pnr/create/{bookingType}"
 @rendermode InteractiveServer
-@using Cinturon360.Shared.Models.Kernel.Travel
-@using Cinturon360.Shared.Services.Interfaces.Platform
-@using Cinturon360.Shared.Models.Kernel.Platform
-@using Microsoft.AspNetCore.Components.Authorization
-@using Cinturon360.Shared.Models.Static.Platform
-@using System.Text.Json;
-@using System.Runtime.InteropServices.Marshalling
-@using Microsoft.AspNetCore.Mvc
-@using System.Net
-
 @attribute [Authorize(Policy = "Shared:BookingSelect")]
+
+@using Cinturon360.Shared.Models.Kernel.Platform
+@using Cinturon360.Shared.Models.Kernel.Travel
+@using Cinturon360.Shared.Models.Static.Platform
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@using System.Net
+@using System.Runtime.InteropServices.Marshalling
+@using System.Text.Json;
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Mvc
 
 @inject IAdminOrgServiceUnified OrgSvc
 @inject IAdminUserServiceUnified UserSvc
