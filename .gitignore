@@ -484,5 +484,6 @@ $RECYCLE.BIN/
 *.swp
 
 
-BlazorLoginDemo.Web/appsettings.json
+Cinturon360.Web/appsettings.json
 notes.txt
+flightresult.json

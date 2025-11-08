@@ -1,0 +1,622 @@
+@page "/platform/organizations/{OrgId}/license/new"
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using System.Reflection
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Cinturon360.Shared.Models.Kernel.Billing
+@using static Cinturon360.Shared.Models.Kernel.Billing.LicenseAgreementUnified
+@using Cinturon360.Shared.Models.Static.Billing
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@using Cinturon360.Shared.Services.Helpers
+
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider Auth
+@inject IAdminOrgServiceUnified OrgSvc
+@inject IAdminUserServiceUnified UserSvc
+
+@if (loading)
+{
+    <div class="alert alert-info mb-3">Loading…</div>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger mb-3">@error</div>
+}
+
+@if (!loading && !string.IsNullOrEmpty(model.OrganizationUnifiedId))
+{
+    <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <!-- Hidden-but-required IDs (also enforced in code) -->
+        <input type="hidden" value="@model.OrganizationUnifiedId" />
+        <input type="hidden" value="@model.CreatedByOrganizationUnifiedId" />
+
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h2>New License Agreement</h2>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary" type="button" @onclick="Cancel" disabled="@saving">Back</button>
+                    <button type="submit" class="btn btn-primary" disabled="@saving">
+                        @if (saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Save
+                    </button>
+                </div>
+            </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <strong>Core</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Start Date</label>
+                        <InputDate TValue="DateOnly" class="form-control" @bind-Value="model.StartDate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Expiry Date</label>
+                        <InputDate TValue="DateOnly" class="form-control" @bind-Value="model.ExpiryDate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Renewal Date</label>
+                        <InputDate TValue="DateOnly?" class="form-control" @bind-Value="model.RenewalDate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Remittance Email</label>
+                        <InputText class="form-control" @bind-Value="model.RemittanceEmail" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Terms</label>
+                        <InputSelect TValue="PaymentTerms" @bind-Value="model.PaymentTerms" class="form-select">
+                            @foreach (var v in EnumValues<PaymentTerms>())
+                            {
+                                <option value="@v">@DisplayName(v)</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Method</label>
+                        <InputSelect TValue="PaymentMethod" class="form-select" @bind-Value="model.PaymentMethod">
+                            @foreach (var v in EnumValues<PaymentMethod>()) { <option value="@v">@v</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Billing Type</label>
+                        <InputSelect TValue="BillingType" class="form-select" @bind-Value="model.BillingType">
+                            @foreach (var v in EnumValues<BillingType>()) { <option value="@v">@v</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Billing Frequency</label>
+                        <InputSelect TValue="BillingFrequency" class="form-select" @bind-Value="model.BillingFrequency">
+                            @foreach (var v in EnumValues<BillingFrequency>()) { <option value="@v">@v</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@(model.AutoRenew ? "Auto Renew" : "Manual Renew")</label>
+                        <div class="form-check form-switch mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="model.AutoRenew" />
+                            <label class="form-check-label" title="@(model.AutoRenew ? "Auto Renew" : "Manual Renew")">
+                                <span aria-hidden="true">@(model.AutoRenew ? " ✅" : " ❌")</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <strong>Access Fee & Thresholds</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Access Fee</label>
+                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.AccessFee" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Access Fee Scope</label>
+                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.AccessFeeScope">
+                            @foreach (var v in EnumValues<BillingPeriodScope>()) { <option value="@v">@v</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Account Threshold</label>
+                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.AccountThreshold" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Threshold Scope</label>
+                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.ThresholdScope">
+                            @foreach (var v in EnumValues<BillingPeriodScope>()) { <option value="@v">@v</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Tax Rate (%)</label>
+                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.TaxRate" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Minimum Monthly Spend</label>
+                        <InputNumber TValue="decimal?" class="form-control" step="0.01" @bind-Value="model.MinimumMonthlySpend" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Prepaid Balance</label>
+                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.PrepaidBalance" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Invoice Grace Period (days)</label>
+                        <InputNumber TValue="int" class="form-control" @bind-Value="model.GracePeriodDays" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <strong>Discounts</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <!-- Discount A (Flat) -->
+                    <div class="col-md-4">
+                        <label class="form-label">Flat Amount</label>
+                        <InputNumber TValue="decimal" class="form-control" @bind-Value="model.DiscountA!.Amount" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Flat Scope</label>
+                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.DiscountA!.Scope">
+                            @foreach (var v in EnumValues<BillingPeriodScope>()) { <option value="@v">@v</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Flat Expires (UTC)</label>
+                        <InputDate TValue="DateTime?" class="form-control" @bind-Value="model.DiscountA!.ExpiresOnUtc" />
+                    </div>
+
+                    <!-- Discount B (Percent) -->
+                    <div class="col-md-4">
+                        <label class="form-label">Percent (0-100)</label>
+                        <InputNumber TValue="decimal" class="form-control" @bind-Value="model.DiscountB!.Percent" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Percent Scope</label>
+                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.DiscountB!.Scope">
+                            @foreach (var v in EnumValues<BillingPeriodScope>()) { <option value="@v">@v</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Percent Expires (UTC)</label>
+                        <InputDate TValue="DateTime?" class="form-control" @bind-Value="model.DiscountB!.ExpiresOnUtc" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <strong>PNR &amp; Service Fees</strong>
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">
+
+                    <!-- PNR (2-up) -->
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">PNR Creation Fee</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.PnrCreationFee" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">PNR Change Fee</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.PnrChangeFee" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flight (3-up) -->
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Flight Markup %</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.FlightMarkupPercent" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Flight Per Item Fee</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.FlightPerItemFee" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Flight Fee Type</label>
+                                <InputSelect TValue="ServiceFeeType" class="form-select" @bind-Value="model.FlightFeeType">
+                                    @foreach (var v in EnumValues<ServiceFeeType>())
+                                    {
+                                        <option value="@v">@DisplayName(v)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hotel -->
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Hotel Markup %</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.HotelMarkupPercent" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Hotel Per Item Fee</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.HotelPerItemFee" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Hotel Fee Type</label>
+                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.HotelFeeType" class="form-select">
+                                    @foreach (var v in EnumValues<ServiceFeeType>())
+                                    {
+                                        <option value="@v">@DisplayName(v)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Car -->
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Car Markup %</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.CarMarkupPercent" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Car Per Item Fee</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.CarPerItemFee" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Car Fee Type</label>
+                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.CarFeeType" class="form-select">
+                                    @foreach (var v in EnumValues<ServiceFeeType>())
+                                    {
+                                        <option value="@v">@DisplayName(v)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rail -->
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Rail Markup %</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.RailMarkupPercent" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Rail Per Item Fee</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.RailPerItemFee" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Rail Fee Type</label>
+                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.RailFeeType" class="form-select">
+                                    @foreach (var v in EnumValues<ServiceFeeType>())
+                                    {
+                                        <option value="@v">@DisplayName(v)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transfer -->
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Transfer Markup %</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.TransferMarkupPercent" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Transfer Per Item Fee</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.TransferPerItemFee" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Transfer Fee Type</label>
+                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.TransferFeeType" class="form-select">
+                                    @foreach (var v in EnumValues<ServiceFeeType>())
+                                    {
+                                        <option value="@v">@DisplayName(v)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Activity -->
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Activity Markup %</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.ActivityMarkupPercent" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Activity Per Item Fee</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.ActivityPerItemFee" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Activity Fee Type</label>
+                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.ActivityFeeType" class="form-select">
+                                    @foreach (var v in EnumValues<ServiceFeeType>())
+                                    {
+                                        <option value="@v">@DisplayName(v)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Travel -->
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">All Travel Markup %</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.TravelMarkupPercent" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">All Travel Per Item Fee</label>
+                                <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.TravelPerItemFee" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">All Travel Fee Type</label>
+                                <InputSelect TValue="ServiceFeeType" @bind-Value="model.TravelFeeType" class="form-select">
+                                    @foreach (var v in EnumValues<ServiceFeeType>())
+                                    {
+                                        <option value="@v">@DisplayName(v)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <strong>Late Fees</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Grace Period (days)</label>
+                        <InputNumber TValue="int" class="form-control" @bind-Value="model.LateFees.GracePeriodDays" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Fixed Amount</label>
+                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.LateFees.FixedAmount" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Percent Of Invoice</label>
+                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.LateFees.PercentOfInvoice" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@(model.LateFees.UseFixedAmount ? "Fixed Amount Used" : "Percent of Invoice Used")</label>
+                        <div class="form-check form-switch mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="model.LateFees.UseFixedAmount" />
+                            <label class="form-check-label" title="@(model.LateFees.UseFixedAmount ? "Fixed Amount Used" : "Percent of Invoice Used")">
+                                <span aria-hidden="true">@(model.LateFees.UseFixedAmount ? " 🔗" : " 💹")</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Late Fee Cap</label>
+                        <InputNumber TValue="decimal" class="form-control" step="0.01" @bind-Value="model.LateFees.MaxLateFeeCap" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Late Fee Terms</label>
+                        <!-- PaymentTerms -->
+                        <InputSelect TValue="PaymentTerms" @bind-Value="model.LateFees.Terms" class="form-select">
+                            @foreach (var v in EnumValues<PaymentTerms>())
+                            {
+                                <option value="@v">@DisplayName(v)</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <strong>Capacity / Limits</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Client Count Limit</label>
+                        <InputNumber TValue="int?" class="form-control" @bind-Value="model.ClientCountLimit" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">User Account Limit</label>
+                        <InputNumber TValue="int?" class="form-control" @bind-Value="model.UserAccountLimit" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2 mb-3">
+            <button class="btn btn-primary" type="submit" disabled="@saving">Save</button>
+            <button class="btn btn-outline-secondary" type="button" @onclick="Cancel" disabled="@saving">Back</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string OrgId { get; set; } = default!;
+
+    private LicenseAgreementUnified model = new LicenseAgreementUnified()
+    {
+        // Required members must be set at initialization; they'll be overwritten
+        // later in OnInitializedAsync/HandleSubmit with the real OrgId values.
+        OrganizationUnifiedId = string.Empty,
+        CreatedByOrganizationUnifiedId = string.Empty,
+
+        LateFees = new LateFeeSettings(),
+        DiscountA = new PeriodScopedFlatDiscount(),
+        DiscountB = new PeriodScopedPercentDiscount()
+    };
+
+    private bool loading = true;
+    private bool saving = false;
+    private string? error;
+    private string? issuerOrgId;
+    private string? issuerOrgName = "—";
+
+    // Helpers
+    private static IEnumerable<TEnum> EnumValues<TEnum>() where TEnum : struct, Enum
+        => Enum.GetValues<TEnum>();
+
+    private static string DisplayName<TEnum>(TEnum value) where TEnum : struct, Enum
+    {
+        MemberInfo[]? mem  = typeof(TEnum).GetMember(value.ToString());
+        DisplayAttribute? attr = mem.FirstOrDefault()?.GetCustomAttribute<DisplayAttribute>();
+        return attr?.GetName() ?? value.ToString();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Route guard: must have a target org
+        if (string.IsNullOrWhiteSpace(OrgId))
+        {
+            await Task.Delay(millisecondsDelay: 1);
+            Nav.NavigateTo(uri: "/error/assign004", forceLoad: true);
+            return;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Current authenticated user
+            AuthenticationState? auth = await Auth.GetAuthenticationStateAsync();
+            ClaimsPrincipal? principal = auth.User;
+            if (principal?.Identity?.IsAuthenticated != true)
+            {
+                Nav.NavigateTo(uri: "/Identity/Account/Login", forceLoad: true);
+                return;
+            }
+
+            string? userId = principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? principal.FindFirstValue(claimType: "sub");
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                Nav.NavigateTo("/error/auth005", forceLoad: true);
+                return;
+            }
+
+            // Load current user aggregate (to get their Organization)
+            IAdminUserServiceUnified.UserAggregate? me = await UserSvc.GetByIdAsync(userId, CancellationToken.None);
+            if (me?.User is null || string.IsNullOrWhiteSpace(me.User.OrganizationId))
+            {
+                // No issuer organization on the current user → hard stop
+                Nav.NavigateTo(uri: "/error/ASSIGN005", forceLoad: true);
+                return;
+            }
+
+            issuerOrgId = me.User.OrganizationId!;
+            issuerOrgName = me.Organization?.Name ?? issuerOrgId;
+
+            // Ensure the target org exists (defensive UX)
+            bool exists = await OrgSvc.ExistsAsync(OrgId, CancellationToken.None);
+            if (!exists)
+            {
+                Nav.NavigateTo($"/org001?message=Copy+this+number+to+provide+when+using+Contact+Support+button%3A+{OrgId}", forceLoad: true);
+                return;
+            }
+
+            // Prefill the model with required FKs + sensible defaults
+            DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+            model = new LicenseAgreementUnified
+            {
+                OrganizationUnifiedId = OrgId,                // licensee — target org
+                CreatedByOrganizationUnifiedId = issuerOrgId, // issuer — current user's org
+
+                StartDate = today,
+                ExpiryDate = today.AddYears(value: 1),
+                RenewalDate = today.AddYears(value: 1).AddDays(value: -30),
+                AutoRenew = false,
+
+                PaymentTerms = PaymentTerms.Net0,
+                PaymentMethod = PaymentMethod.Stripe,
+                BillingType = BillingType.Prepaid,
+                BillingFrequency = BillingFrequency.PayAsYouGo,
+                PaymentStatus = PaymentStatus.Pending,
+
+                CreatedAtUtc = DateTime.UtcNow,
+                LastUpdatedAtUtc = DateTime.UtcNow,
+
+                // Make sure nested objects exist for binding
+                LateFees = new LateFeeSettings(),
+                DiscountA = new PeriodScopedFlatDiscount(),
+                DiscountB = new PeriodScopedPercentDiscount()
+            };
+
+            // Keep your PNR/service fee defaults explicit if you want non-zeros
+            // (they default to 0m in the model, so we can rely on that)
+        }
+        catch (Exception ex)
+        {
+            error = ex.GetBaseException().Message;
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (issuerOrgId is null)
+        {
+            Nav.NavigateTo(uri: "/error/org002", forceLoad: true);
+            return;
+        }
+
+        try
+        {
+            saving = true;
+            error = null;
+
+            // Re-enforce the required links just before save
+            model.OrganizationUnifiedId = OrgId;
+            model.CreatedByOrganizationUnifiedId = issuerOrgId;
+            model.LastUpdatedAtUtc = DateTime.UtcNow;
+
+            // Use Org Upsert to attach/update the 1:1 License on the org itself
+            IAdminOrgServiceUnified.OrgAggregate? agg = await OrgSvc.UpsertLicenseAgreementAsync(OrgId, model, CancellationToken.None);
+
+            // Success → go back to Org page (or license detail/edit if you have one)
+            Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.GetBaseException().Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}", forceLoad: true);
+    }
+}

@@ -73,9 +73,9 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        CSPROJ_WEB: BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
-        CSPROJ_SHARED: BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
-        APP_DLL: BlazorLoginDemo.Web.dll
+        CSPROJ_WEB: Cinturon360.Web/Cinturon360.Web.csproj
+        CSPROJ_SHARED: Cinturon360.Shared/Cinturon360.Shared.csproj
+        APP_DLL: Cinturon360.Web.dll
     image: blazor-app:dev
     container_name: blazor
     restart: unless-stopped
@@ -112,9 +112,9 @@ services:
   #     context: .
   #     dockerfile: Dockerfile.blazor
   #     args:
-  #       CSPROJ_WEB: BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
-  #       CSPROJ_SHARED: BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
-  #       APP_DLL: BlazorLoginDemo.Web.dll
+  #       CSPROJ_WEB: Cinturon360.Web/Cinturon360.Web.csproj
+  #       CSPROJ_SHARED: Cinturon360.Shared/Cinturon360.Shared.csproj
+  #       APP_DLL: Cinturon360.Web.dll
   #   image: blazor-app:dev
   #   container_name: blazor
   #   restart: unless-stopped
@@ -151,9 +151,9 @@ services:
       context: .
       dockerfile: Dockerfile.api
       args:
-        CSPROJ_API: BlazorLoginDemo.Api/BlazorLoginDemo.Api.csproj
-        CSPROJ_SHARED: BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
-        APP_DLL: BlazorLoginDemo.Api.dll
+        CSPROJ_API: Cinturon360.Api/Cinturon360.Api.csproj
+        CSPROJ_SHARED: Cinturon360.Shared/Cinturon360.Shared.csproj
+        APP_DLL: Cinturon360.Api.dll
     image: web-api:dev
     container_name: api
     restart: unless-stopped
@@ -204,8 +204,8 @@ services:
       context: .
       dockerfile: Dockerfile.migrator
       args:
-        CSPROJ_WEB: BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
-        CSPROJ_SHARED: BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+        CSPROJ_WEB: Cinturon360.Web/Cinturon360.Web.csproj
+        CSPROJ_SHARED: Cinturon360.Shared/Cinturon360.Shared.csproj
     container_name: migrator
     depends_on:
       db:

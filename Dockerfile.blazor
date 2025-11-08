@@ -5,22 +5,22 @@
 ########################
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG CONFIG=Release
-ARG CSPROJ_WEB=BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
-ARG CSPROJ_SHARED=BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+ARG CSPROJ_WEB=Cinturon360.Web/Cinturon360.Web.csproj
+ARG CSPROJ_SHARED=Cinturon360.Shared/Cinturon360.Shared.csproj
 
 WORKDIR /src
 
 # restore cache layer
-COPY ${CSPROJ_SHARED} BlazorLoginDemo.Shared/
-COPY ${CSPROJ_WEB}    BlazorLoginDemo.Web/
-RUN dotnet restore BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj -p:RestoreUseStaticGraphEvaluation=true
+COPY ${CSPROJ_SHARED} Cinturon360.Shared/
+COPY ${CSPROJ_WEB}    Cinturon360.Web/
+RUN dotnet restore Cinturon360.Web/Cinturon360.Web.csproj -p:RestoreUseStaticGraphEvaluation=true
 
 # copy sources explicitly
-COPY BlazorLoginDemo.Shared/ BlazorLoginDemo.Shared/
-COPY BlazorLoginDemo.Web/    BlazorLoginDemo.Web/
+COPY Cinturon360.Shared/ Cinturon360.Shared/
+COPY Cinturon360.Web/    Cinturon360.Web/
 
 # publish blazor app
-RUN dotnet publish BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj \
+RUN dotnet publish Cinturon360.Web/Cinturon360.Web.csproj \
     -c ${CONFIG} -o /out/app \
     -p:PublishReadyToRun=true -p:PublishTrimmed=false
 
@@ -38,7 +38,7 @@ RUN mkdir -p /out/dpkeys /out/tmp
 ########################
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble-chiseled-extra AS final
 
-ARG APP_DLL=BlazorLoginDemo.Web.dll
+ARG APP_DLL=Cinturon360.Web.dll
 ARG APP_UID=64198
 ARG APP_GID=64198
 
@@ -66,4 +66,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --retries=10 \
   CMD ["dotnet","/app/healthprobe/HealthProbe.dll","--url","http://127.0.0.1:8080/healthz","--timeout","2s"]
 
-ENTRYPOINT ["dotnet","/app/BlazorLoginDemo.Web.dll"]
+ENTRYPOINT ["dotnet","/app/Cinturon360.Web.dll"]

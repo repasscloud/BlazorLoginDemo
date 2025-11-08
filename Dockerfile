@@ -7,23 +7,23 @@ ARG CSPROJ_SHARED
 WORKDIR /src
 
 # Copy only csproj first for better caching
-COPY ${CSPROJ_WEB} BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
-COPY ${CSPROJ_SHARED} BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+COPY ${CSPROJ_WEB} Cinturon360.Web/Cinturon360.Web.csproj
+COPY ${CSPROJ_SHARED} Cinturon360.Shared/Cinturon360.Shared.csproj
 
 # Restore with cache mounts (NuGet packages + HTTP v3 cache)
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
-    dotnet restore BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+    dotnet restore Cinturon360.Shared/Cinturon360.Shared.csproj
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
-    dotnet restore BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
+    dotnet restore Cinturon360.Web/Cinturon360.Web.csproj
 
 # Copy ONLY the web project sources and publish
-COPY ./BlazorLoginDemo.Shared/ ./BlazorLoginDemo.Shared/
-COPY ./BlazorLoginDemo.Web/ ./BlazorLoginDemo.Web/
+COPY ./Cinturon360.Shared/ ./Cinturon360.Shared/
+COPY ./Cinturon360.Web/ ./Cinturon360.Web/
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
-    dotnet publish BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj -c Release -o /app/publish /p:UseAppHost=false
+    dotnet publish Cinturon360.Web/Cinturon360.Web.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # --- Runtime stage ------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS final
@@ -50,5 +50,5 @@ RUN mkdir -p /home/app/.aspnet/DataProtection-Keys \
 USER app
 EXPOSE 8080
 
-# Run the built DLL provided via APP_DLL (e.g., BlazorLoginDemo.Web.dll)
+# Run the built DLL provided via APP_DLL (e.g., Cinturon360.Web.dll)
 ENTRYPOINT ["sh","-lc","exec dotnet \"$APP_DLL\""]
