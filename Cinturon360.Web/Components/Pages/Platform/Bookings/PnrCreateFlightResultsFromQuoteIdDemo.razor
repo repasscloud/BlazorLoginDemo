@@ -1,0 +1,612 @@
+@page "/demo/pnr/create/flight/results/{TravelQuoteId?}"
+@rendermode InteractiveServer
+
+@using Cinturon360.Shared.Models.Kernel.Travel
+@using Cinturon360.Shared.Models.Static.SysVar
+@using Cinturon360.Shared.Services.Interfaces.Kernel
+@using System.Net.Http.Json
+@using System.Linq
+
+@inject NavigationManager Nav
+@inject IHttpClientFactory HttpClientFactory
+@inject ILoggerService _log
+
+@if (_pageIsLoading == true)
+{
+    <!-- Loading -->
+    @* <div class="container-fluid py-4">
+        <div class="d-flex justify-content-center align-items-center" style="min-height:40vh">
+            <div class="spinner-border" role="status" aria-label="Loading"></div>
+            <span class="ms-2">Loading…</span>
+        </div>
+    </div> *@
+    <div class="loading-overlay" role="status" aria-live="polite" aria-label="Loading">
+        <div class="sky">
+            <!-- Clouds (behind the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c1" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c2" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c3" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c4" alt="" aria-hidden="true" />
+
+            <!-- Plane -->
+            <img src="/media/airplane.svg" class="plane-svg" alt="Airplane loading" />
+
+            <!-- Clouds (in front of the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c5" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c6" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c7" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c8" alt="" aria-hidden="true" />
+
+            <div class="loading-text">LOADING...</div>
+        </div>
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="container-fluid py-4">
+        <div class="alert alert-danger">
+            <div class="fw-semibold mb-1">Error loading flight results</div>
+            <div>@_error</div>
+        </div>
+        <button class="btn btn-outline-primary" @onclick="BackToSearch">
+            <i class="bi bi-arrow-left me-1"></i> Back to search
+        </button>
+    </div>
+}
+else if (!(Result?.Options?.Any() ?? false))
+{
+    <div class="container-fluid py-4">
+        <div class="alert alert-warning">
+            No flight options were returned for this quote.
+        </div>
+        <button class="btn btn-outline-primary" @onclick="BackToSearch">
+            <i class="bi bi-arrow-left me-1"></i> Back to search
+        </button>
+    </div>
+}
+else
+{
+    <div class="container-fluid py-3">
+
+        <!-- Header -->
+        <div class="row align-items-center g-2 mb-3">
+            <div class="col">
+                <h1 class="h4 m-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-airplane-engines"></i> Flight results
+                </h1>
+            </div>
+            <div class="col d-flex justify-content-end align-items-center gap-2 small text-muted">
+                <div>@(Filtered.Count()) of @(Result?.Options?.Count ?? 0)</div>
+                @if (Result?.MoreResultsAvailable == true)
+                {
+                    <span class="badge bg-warning text-dark">More available</span>
+                }
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ResetFilters">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Left sidebar + right results -->
+        <div class="row g-4 min-vh-100 overflow-hidden">
+            <!-- Sidebar (left) -->
+            <aside class="col-12 col-lg-3 col-xl-2">
+                <div class="rounded-4 border bg-white p-3">
+                    <div class="mb-3">
+                        <label class="form-label">Search</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input class="form-control" placeholder="Carrier, flight #, airport…" @bind="qText" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cabin</label>
+                        <select class="form-select form-select-sm" @bind="qCabin">
+                            <option value="">Any</option>
+                            <option value="ECONOMY">Economy</option>
+                            <option>Premium Economy</option>
+                            <option>Business</option>
+                            <option>First</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Stops</label>
+                        <div class="form-check">
+                            <input id="fNonstop" class="form-check-input" type="checkbox" @bind="qNonstopOnly" />
+                            <label for="fNonstop" class="form-check-label">Non-stop only</label>
+                        </div>
+                        <div class="form-check">
+                            <input id="fOneStop" class="form-check-input" type="checkbox" @bind="qAtMostOneStop" />
+                            <label for="fOneStop" class="form-check-label">≤ 1 stop</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Price</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">@((Result?.Options?.FirstOrDefault()?.CurrencySymbol) ?? "$")</span>
+                            <input class="form-control" type="number" placeholder="Min" @bind="qMinPrice" />
+                            <input class="form-control" type="number" placeholder="Max" @bind="qMaxPrice" />
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label">Depart window</label>
+                        <select class="form-select form-select-sm" @bind="qDepartBucket">
+                            <option value="">Any</option>
+                            <option value="morning">Morning 05:00–11:59</option>
+                            <option value="afternoon">Afternoon 12:00–17:59</option>
+                            <option value="evening">Evening 18:00–23:59</option>
+                            <option value="overnight">Overnight 00:00–04:59</option>
+                        </select>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Results (right) -->
+            <section class="col-12 col-lg-9 col-xl-10 d-flex flex-column h-100 overflow-hidden">
+                <div class="results-scroll flex-grow-1">
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th>Carrier</th>
+                                <th>Route</th>
+                                <th class="text-center">Stops</th>
+                                <th>Depart</th>
+                                <th>Arrive</th>
+                                <th>Duration</th>
+                                <th>Cabins</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-end select-col"></th> <!-- Select/Selected btn col -->
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var opt in Filtered)
+                            {
+                                <tr class="flight-row" @key="opt.Id" @onclick="@(()=>Toggle(opt))">
+                                    <!-- Carrier Logo -->
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var c in opt.DisplayCarriers ?? Enumerable.Empty<Carrier>())
+                                            {
+                                                <img class="air-logo-lg" src="@c.LogoUrl" alt="@c.Name" />
+                                            }
+                                        </div>
+                                    </td>
+                                    <!-- Route -->
+                                    <td>
+                                        <div class="fw-semibold">
+                                            @opt.Origin <span class="text-muted">→</span> @opt.Destination
+                                        </div>
+                                    </td>
+                                    <!-- Stops -->
+                                    <td class="text-center">
+                                        @(opt.Stops == 0 ? "Non-stop" : opt.Stops == 1 ? "1 stop" : $"{opt.Stops} stops")
+                                    </td>
+                                    <!-- Depart -->
+                                    <td>@opt.DepartTime.ToLocalTime().ToString("HH:mm")</td>
+                                    <!-- Arrive -->
+                                    <td>@opt.ArriveTime.ToLocalTime().ToString("HH:mm")</td>
+                                    <!-- Duration -->
+                                    <td>@opt.TotalDurationText</td>
+                                    <!-- Cabins -->
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var c in (opt.Cabins ?? Enumerable.Empty<string>()))
+                                            {
+                                                <span class="badge bg-light text-dark">@c</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <!-- Price -->
+                                    <td class="text-end fw-bold">
+                                        @((opt.CurrencySymbol ?? "$") + opt.Price.ToString("N0"))
+                                    </td>
+                                    <!-- Purchase Btn -->
+                                    <td class="text-end">
+                                        <button class="btn btn-primary"> 
+                                        @* @onclick="(e)=>Select(opt)" @onclick:stopPropagation="true"> *@
+                                            <i class="bi bi-bag-plus me-1"></i> Select
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                @if (opt.IsOpen)
+                                {
+                                    <tr class="table-active">
+                                        <td colspan="9" class="p-0">
+                                            <div class="p-3">
+                                                <div class="row g-3">
+                                                    <!-- Legs -->
+                                                    <div class="col-12 col-lg-8">
+                                                        <div class="table-responsive">
+                                                            <table class="table table-sm mb-0">
+                                                                <thead>
+                                                                <tr class="text-muted small">
+                                                                    <th style="width:60px">Carrier</th>
+                                                                    <th>Flight</th>
+                                                                    <th>From</th>
+                                                                    <th>To</th>
+                                                                    <th>Depart</th>
+                                                                    <th>Arrive</th>
+                                                                    <th>Duration</th>
+                                                                    <th>Cabin</th>
+                                                                    <th style="width:200px">Amenities</th>
+                                                                </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                @for (int i = 0; i < (opt.Legs?.Count ?? 0); i++)
+                                                                {
+                                                                    var leg = opt.Legs[i]!;
+                                                                    <tr @key="@($"{opt.Id}-{i}")">
+                                                                        <td>
+                                                                            <div class="d-flex align-items-center gap-2">
+                                                                                <img class="air-logo" src="@leg.Carrier.LogoUrl" alt="@leg.Carrier.Name" />
+                                                                                <!-- <div class="small text-muted">@leg.Carrier.Code</div> -->
+                                                                            </div>
+                                                                        </td>
+                                                                        <td class="small text-muted align-middle">@($"{leg.Carrier.Code}{leg.FlightNumber}")</td>
+                                                                        <td class="small text-muted align-middle">@leg.Origin</td>
+                                                                        <td class="small text-muted align-middle">@leg.Destination</td>
+                                                                        <td class="small text-muted align-middle">
+                                                                            <div>@leg.Depart.ToLocalTime().ToString("dd MMM HH:mm")</div>
+                                                                        </td>
+                                                                        <td class="small text-muted align-middle">
+                                                                            <div>@leg.Arrive.ToLocalTime().ToString("dd MMM HH:mm")</div>
+                                                                        </td>
+                                                                        <td class="small text-muted align-middle">@leg.DurationText</td>
+                                                                        <td class="align-middle">
+                                                                            @{
+                                                                                CabinBadge b = GetCabinBadge(leg.CabinClass);
+                                                                            }
+                                                                            <span class="badge @b.Css"
+                                                                                title="@b.Title"
+                                                                                aria-label="@b.Title">
+                                                                                @if (!string.IsNullOrEmpty(b.Emoji)) { <span class="me-1">@b.Emoji</span> }
+                                                                                <span>@b.Letter</span>
+                                                                            </span>
+                                                                        </td>
+                                                                        <td class="align-middle">
+                                                                            <div class="d-flex flex-wrap gap-1 align-middle">
+                                                                                @foreach (var label in (leg.AmenityLabels ?? Enumerable.Empty<string>()))
+                                                                                {
+                                                                                    <span class="badge bg-light text-dark">@label</span>
+                                                                                }
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+
+                                                                    @if (leg?.Layover is not null)
+                                                                    {
+                                                                        <tr class="table-light">
+                                                                            <td colspan="9" class="text-muted">
+                                                                                Layover @leg.Layover.Airport • @leg.Layover.DurationText
+                                                                            </td>
+                                                                        </tr>
+                                                                    }
+                                                                }
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+
+                                                        <!-- Policies -->
+                                                        <div class="row g-2 small mt-2">
+                                                            @if (!string.IsNullOrWhiteSpace(opt.BaggageText))
+                                                            {
+                                                                <div class="col-12 col-md-3">
+                                                                    <div><span class="text-muted">Baggage:</span> @opt.BaggageText</div>
+                                                                </div>
+                                                            }
+                                                            @if (!string.IsNullOrWhiteSpace(opt.SeatPolicy))
+                                                            {
+                                                                <div class="col-12 col-md-3">
+                                                                    <div><span class="text-muted">Seating:</span> @opt.SeatPolicy</div>
+                                                                </div>
+                                                            }
+                                                            @if (!string.IsNullOrWhiteSpace(opt.ChangePolicy))
+                                                            {
+                                                                <div class="col-12 col-md-3">
+                                                                    <div><span class="text-muted">Changes:</span> @opt.ChangePolicy</div>
+                                                                </div>
+                                                            }
+                                                            @if (!string.IsNullOrWhiteSpace(opt.RefundPolicy))
+                                                            {
+                                                                <div class="col-12 col-md-3">
+                                                                    <div><span class="text-muted">Refunds:</span> @opt.RefundPolicy</div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Right price/actions -->
+                                                    <div class="col-12 col-lg-4">
+                                                        <div class="border rounded p-3 bg-white">
+                                                            <div class="d-flex justify-content-between align-items-baseline">
+                                                                <div class="text-muted small">Total</div>
+                                                                <div class="h5 m-0">@((opt.CurrencySymbol ?? "$") + opt.Price.ToString("N0"))</div>
+                                                            </div>
+
+                                                            <div class="mt-3 d-grid gap-2">
+                                                                <button class="btn btn-primary" @onclick="(e)=>Select(opt)" @onclick:stopPropagation="true">
+                                                                    <i class="bi bi-bag-plus me-1"></i> Choose
+                                                                </button>
+                                                                <button class="btn btn-outline-secondary" @onclick="(e)=>ShowCompare()" @onclick:stopPropagation="true">
+                                                                    Compare JSON
+                                                                </button>
+                                                            </div>
+
+                                                            @if (ShowCompareJson)
+                                                            {
+                                                                <pre class="mt-2 small bg-light p-2 rounded" style="white-space:pre-wrap">@SelectedJson</pre>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    // ===== Route + Query =====
+    [Parameter] public string? TravelQuoteId { get; set; }
+    [SupplyParameterFromQuery] public string? tq { get; set; }
+
+    // ===== Http =====
+    private HttpClient _client = default!;
+
+    // ===== State =====
+    private string? _error;
+    private bool? _pageIsLoading = true;
+    private CancellationTokenSource? _cts;
+
+    // Data
+    private FlightSearchResponse? Result = null;
+
+    // Filters
+    private string? qText = "";
+    private string? qCabin = "";
+    private bool qNonstopOnly = false;
+    private bool qAtMostOneStop = false;
+    private decimal? qMinPrice = null;
+    private decimal? qMaxPrice = null;
+    private string? qDepartBucket = "";
+
+    private HashSet<string> Selected = new();
+    private bool ShowCompareJson = false;
+    private string SelectedJson = string.Empty;
+
+    private readonly record struct CabinBadge(string Emoji, string Letter, string Css, string Title);
+
+    private IEnumerable<FlightViewOption> Filtered =>
+        ApplyFilters(Result?.Options ?? Enumerable.Empty<FlightViewOption>());
+
+            // Rendering
+    private static CabinBadge GetCabinBadge(string? cabin)
+    {
+        if (string.IsNullOrWhiteSpace(cabin))
+            return new CabinBadge(Emoji: "❓", Letter: "U?", Css: "bg-secondary-subtle text-secondary-emphasis", Title: "Unknown");
+
+        switch (cabin.Trim())
+        {
+            case "ECONOMY":
+                return new CabinBadge(Emoji: "🪑", Letter: "E", Css: "bg-success-subtle text-success-emphasis", Title: "Economy");
+            case "PREMIUM_ECONOMY":
+                return new CabinBadge(Emoji: "💺", Letter: "P", Css: "bg-info-subtle text-info-emphasis", Title: "Premium Economy");
+            case "BUSINESS":
+                return new CabinBadge(Emoji: "🛫", Letter: "B", Css: "bg-primary-subtle text-primary-emphasis", Title: "Business");
+            case "FIRST":
+                return new CabinBadge(Emoji: "⭐", Letter: "F", Css: "bg-warning-subtle text-warning-emphasis", Title: "First");
+            default:
+                return new CabinBadge(Emoji: "❓", Letter: "U", Css: "bg-secondary-subtle text-secondary-emphasis", Title: cabin);
+        }
+    }
+
+    void BackToSearch() => Nav.NavigateTo("/platform/quote/search");
+
+    void Toggle(FlightViewOption o)
+    {
+        bool open = !o.IsOpen;
+        foreach (var x in Result?.Options ?? Enumerable.Empty<FlightViewOption>()) x.IsOpen = false;
+        o.IsOpen = open;
+    }
+
+    void Select(FlightViewOption o)
+    {
+        var id = o.Id ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(id)) return;
+
+        if (Selected.Contains(id)) Selected.Remove(id);
+        else Selected.Add(id);
+
+        if (Selected.Count < 2) ShowCompareJson = false;
+    }
+
+    void ShowCompare()
+    {
+        var payload = (Result?.Options ?? Enumerable.Empty<FlightViewOption>())
+            .Where(x => Selected.Contains(x.Id))
+            .Select(x => new {
+                x.Id,
+                Cabin = string.Join("/", x.Cabins ?? new List<string>()),
+                x.Price,
+                x.Currency,
+                x.Stops,
+                x.Origin,
+                x.Destination,
+                Legs = x.Legs.Select(l => new {
+                    l.Carrier.Code,
+                    l.FlightNumber,
+                    l.Origin,
+                    l.Destination,
+                    Depart = l.Depart.ToString("O"),
+                    Arrive = l.Arrive.ToString("O")
+                })
+            });
+
+        SelectedJson = System.Text.Json.JsonSerializer.Serialize(
+            payload,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+        ShowCompareJson = true;
+    }
+
+    void ResetFilters()
+    {
+        qText = "";
+        qCabin = "";
+        qNonstopOnly = false;
+        qAtMostOneStop = false;
+        qMinPrice = null;
+        qMaxPrice = null;
+        qDepartBucket = "";
+    }
+
+    IEnumerable<FlightViewOption> ApplyFilters(IEnumerable<FlightViewOption> src)
+    {
+        IEnumerable<FlightViewOption> q = src;
+
+        if (!string.IsNullOrWhiteSpace(qText))
+        {
+            string t = qText.Trim().ToLowerInvariant();
+            q = q.Where(o =>
+                (o.Origin + o.Destination + string.Join("", o.Cabins ?? Enumerable.Empty<string>()) + (o.BaggageText ?? "")).ToLowerInvariant().Contains(t)
+                || (o.DisplayCarriers?.Any(c => (c.Code + c.Name).ToLowerInvariant().Contains(t)) ?? false)
+                || (o.Legs?.Any(l => (l.Carrier.Code + l.FlightNumber + l.Origin + l.Destination).ToLowerInvariant().Contains(t)) ?? false)
+            );
+        }
+
+        if (!string.IsNullOrWhiteSpace(qCabin))
+            q = q.Where(o => (o.Cabins ?? Enumerable.Empty<string>()).Contains(qCabin!));
+
+        if (qNonstopOnly) q = q.Where(o => o.Stops == 0);
+        if (qAtMostOneStop) q = q.Where(o => o.Stops <= 1);
+
+        if (qMinPrice.HasValue) q = q.Where(o => o.Price >= qMinPrice.Value);
+        if (qMaxPrice.HasValue) q = q.Where(o => o.Price <= qMaxPrice.Value);
+
+        if (!string.IsNullOrWhiteSpace(qDepartBucket))
+            q = q.Where(o => BucketOf(o.DepartTime.ToLocalTime()) == qDepartBucket);
+
+        return q;
+    }
+
+    static string BucketOf(DateTime dt)
+    {
+        int h = dt.Hour;
+        if (h >= 5 && h <= 11) return "morning";
+        if (h >= 12 && h <= 17) return "afternoon";
+        if (h >= 18 && h <= 23) return "evening";
+        return "overnight";
+    }
+
+    protected override void OnInitialized()
+    {
+        _client = HttpClientFactory.CreateClient("AvaApi");
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Choose id from route or ?tq=
+        string? id = !string.IsNullOrWhiteSpace(TravelQuoteId) ? TravelQuoteId : tq;
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            _error = "Missing TravelQuoteId";
+            Nav.NavigateTo("/platform/pnr/create", forceLoad: true);
+            return;
+        }
+
+        _pageIsLoading = true;
+        _error = null;
+
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var ct = _cts.Token;
+
+        // Build URL once. Keep in scope for logging and catch.
+        string url = $"api/v1/travel/quotes/ui/getflightresults/{Uri.EscapeDataString(id)}";
+
+        await _log.InformationAsync(
+            evt: "BOOKING_REQ_RESULTS_FETCH_START",
+            cat: SysLogCatType.Api,
+            act: SysLogActionType.Start,
+            message: "Fetching flight results for quote ID",
+            ent: nameof(FlightViewOption),
+            entId: url,
+            note: "ingress:client");
+
+        try
+        {
+            var result = await _client.GetFromJsonAsync<FlightSearchResponse?>(url, ct);
+
+            if (result == null)
+            {
+                _error = "Flight results data is null";
+                await _log.WarningAsync(
+                    evt: "BOOKING_REQ_RESULTS_EMPTY",
+                    cat: SysLogCatType.Api,
+                    act: SysLogActionType.Create,
+                    message: "Empty payload",
+                    ent: nameof(FlightViewOption),
+                    entId: url,
+                    note: "empty");
+                return;
+            }
+
+            Result = result;
+
+            // Ensure UI-only state is closed by default
+            foreach (var o in Result.Options ?? Enumerable.Empty<FlightViewOption>())
+                o.IsOpen = false;
+        }
+        catch (OperationCanceledException)
+        {
+            // ignore
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"HTTP error: {ex.Message}";
+            await _log.ErrorAsync(
+                evt: "BOOKING_REQ_RESULTS_HTTP",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Create,
+                message: ex.ToString(),
+                ex: ex,
+                ent: nameof(FlightViewOption),
+                entId: url,
+                note: "http");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Unexpected error: {ex.Message}";
+            await _log.ErrorAsync(
+                evt: "BOOKING_REQ_RESULTS_UNEXPECTED",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Create,
+                message: ex.ToString(),
+                ex: ex,
+                ent: nameof(FlightViewOption),
+                entId: url,
+                note: "unexpected");
+        }
+        finally
+        {
+            _pageIsLoading = false;
+            StateHasChanged();
+        }
+    }
+}
