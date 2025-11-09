@@ -146,215 +146,212 @@ else
             </aside>
 
             <!-- Results (right) -->
-            <section class="col-12 col-lg-9 col-xl-10 d-flex flex-column h-100 overflow-hidden">
-                <div class="results-scroll flex-grow-1">
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle mb-0">
-                            <thead>
-                            <tr>
-                                <th>Carrier</th>
-                                <th>Route</th>
-                                <th class="text-center">Stops</th>
-                                <th>Depart</th>
-                                <th>Arrive</th>
-                                <th>Duration</th>
-                                <th>Cabins</th>
-                                <th class="text-end">Price</th>
-                                <th class="text-end select-col"></th> <!-- Select/Selected btn col -->
+            <section class="col-12 col-lg-9 col-xl-10">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th>Carrier</th>
+                            <th>Route</th>
+                            <th class="text-center">Stops</th>
+                            <th>Depart</th>
+                            <th>Arrive</th>
+                            <th>Duration</th>
+                            <th>Cabins</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-end select-col"></th> <!-- Select/Selected btn col -->
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var opt in Filtered)
+                        {
+                            <tr class="flight-row" @key="opt.Id" @onclick="@(()=>Toggle(opt))">
+                                <!-- Carrier Logo -->
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var c in opt.DisplayCarriers ?? Enumerable.Empty<Carrier>())
+                                        {
+                                            <img class="air-logo-lg" src="@c.LogoUrl" alt="@c.Name" />
+                                        }
+                                    </div>
+                                </td>
+                                <!-- Route -->
+                                <td>
+                                    <div class="fw-semibold">
+                                        @opt.Origin <span class="text-muted">→</span> @opt.Destination
+                                    </div>
+                                </td>
+                                <!-- Stops -->
+                                <td class="text-center">
+                                    @(opt.Stops == 0 ? "Non-stop" : opt.Stops == 1 ? "1 stop" : $"{opt.Stops} stops")
+                                </td>
+                                <!-- Depart -->
+                                <td>@opt.DepartTime.ToLocalTime().ToString("HH:mm")</td>
+                                <!-- Arrive -->
+                                <td>@opt.ArriveTime.ToLocalTime().ToString("HH:mm")</td>
+                                <!-- Duration -->
+                                <td>@opt.TotalDurationText</td>
+                                <!-- Cabins -->
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var c in (opt.Cabins ?? Enumerable.Empty<string>()))
+                                        {
+                                            <span class="badge bg-light text-dark">@c</span>
+                                        }
+                                    </div>
+                                </td>
+                                <!-- Price -->
+                                <td class="text-end fw-bold">
+                                    @((opt.CurrencySymbol ?? "$") + opt.Price.ToString("N0"))
+                                </td>
+                                <!-- Purchase Btn -->
+                                <td class="text-end">
+                                    <button class="btn btn-primary"> 
+                                    @* @onclick="(e)=>Select(opt)" @onclick:stopPropagation="true"> *@
+                                        <i class="bi bi-bag-plus me-1"></i> Select
+                                    </button>
+                                </td>
                             </tr>
-                            </thead>
-                            <tbody>
-                            @foreach (var opt in Filtered)
-                            {
-                                <tr class="flight-row" @key="opt.Id" @onclick="@(()=>Toggle(opt))">
-                                    <!-- Carrier Logo -->
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            @foreach (var c in opt.DisplayCarriers ?? Enumerable.Empty<Carrier>())
-                                            {
-                                                <img class="air-logo-lg" src="@c.LogoUrl" alt="@c.Name" />
-                                            }
-                                        </div>
-                                    </td>
-                                    <!-- Route -->
-                                    <td>
-                                        <div class="fw-semibold">
-                                            @opt.Origin <span class="text-muted">→</span> @opt.Destination
-                                        </div>
-                                    </td>
-                                    <!-- Stops -->
-                                    <td class="text-center">
-                                        @(opt.Stops == 0 ? "Non-stop" : opt.Stops == 1 ? "1 stop" : $"{opt.Stops} stops")
-                                    </td>
-                                    <!-- Depart -->
-                                    <td>@opt.DepartTime.ToLocalTime().ToString("HH:mm")</td>
-                                    <!-- Arrive -->
-                                    <td>@opt.ArriveTime.ToLocalTime().ToString("HH:mm")</td>
-                                    <!-- Duration -->
-                                    <td>@opt.TotalDurationText</td>
-                                    <!-- Cabins -->
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            @foreach (var c in (opt.Cabins ?? Enumerable.Empty<string>()))
-                                            {
-                                                <span class="badge bg-light text-dark">@c</span>
-                                            }
-                                        </div>
-                                    </td>
-                                    <!-- Price -->
-                                    <td class="text-end fw-bold">
-                                        @((opt.CurrencySymbol ?? "$") + opt.Price.ToString("N0"))
-                                    </td>
-                                    <!-- Purchase Btn -->
-                                    <td class="text-end">
-                                        <button class="btn btn-primary"> 
-                                        @* @onclick="(e)=>Select(opt)" @onclick:stopPropagation="true"> *@
-                                            <i class="bi bi-bag-plus me-1"></i> Select
-                                        </button>
-                                    </td>
-                                </tr>
 
-                                @if (opt.IsOpen)
-                                {
-                                    <tr class="table-active">
-                                        <td colspan="9" class="p-0">
-                                            <div class="p-3">
-                                                <div class="row g-3">
-                                                    <!-- Legs -->
-                                                    <div class="col-12 col-lg-8">
-                                                        <div class="table-responsive">
-                                                            <table class="table table-sm mb-0">
-                                                                <thead>
-                                                                <tr class="text-muted small">
-                                                                    <th style="width:60px">Carrier</th>
-                                                                    <th>Flight</th>
-                                                                    <th>From</th>
-                                                                    <th>To</th>
-                                                                    <th>Depart</th>
-                                                                    <th>Arrive</th>
-                                                                    <th>Duration</th>
-                                                                    <th>Cabin</th>
-                                                                    <th style="width:200px">Amenities</th>
-                                                                </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                @for (int i = 0; i < (opt.Legs?.Count ?? 0); i++)
-                                                                {
-                                                                    var leg = opt.Legs[i]!;
-                                                                    <tr @key="@($"{opt.Id}-{i}")">
-                                                                        <td>
-                                                                            <div class="d-flex align-items-center gap-2">
-                                                                                <img class="air-logo" src="@leg.Carrier.LogoUrl" alt="@leg.Carrier.Name" />
-                                                                                <!-- <div class="small text-muted">@leg.Carrier.Code</div> -->
-                                                                            </div>
-                                                                        </td>
-                                                                        <td class="small text-muted align-middle">@($"{leg.Carrier.Code}{leg.FlightNumber}")</td>
-                                                                        <td class="small text-muted align-middle">@leg.Origin</td>
-                                                                        <td class="small text-muted align-middle">@leg.Destination</td>
-                                                                        <td class="small text-muted align-middle">
-                                                                            <div>@leg.Depart.ToLocalTime().ToString("dd MMM HH:mm")</div>
-                                                                        </td>
-                                                                        <td class="small text-muted align-middle">
-                                                                            <div>@leg.Arrive.ToLocalTime().ToString("dd MMM HH:mm")</div>
-                                                                        </td>
-                                                                        <td class="small text-muted align-middle">@leg.DurationText</td>
-                                                                        <td class="align-middle">
-                                                                            @{
-                                                                                CabinBadge b = GetCabinBadge(leg.CabinClass);
+                            @if (opt.IsOpen)
+                            {
+                                <tr class="table-active">
+                                    <td colspan="9" class="p-0">
+                                        <div class="p-3">
+                                            <div class="row g-3">
+                                                <!-- Legs -->
+                                                <div class="col-12 col-lg-8">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm mb-0">
+                                                            <thead>
+                                                            <tr class="text-muted small">
+                                                                <th style="width:60px">Carrier</th>
+                                                                <th>Flight</th>
+                                                                <th>From</th>
+                                                                <th>To</th>
+                                                                <th>Depart</th>
+                                                                <th>Arrive</th>
+                                                                <th>Duration</th>
+                                                                <th>Cabin</th>
+                                                                <th style="width:200px">Amenities</th>
+                                                            </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                            @for (int i = 0; i < (opt.Legs?.Count ?? 0); i++)
+                                                            {
+                                                                var leg = opt.Legs[i]!;
+                                                                <tr @key="@($"{opt.Id}-{i}")">
+                                                                    <td>
+                                                                        <div class="d-flex align-items-center gap-2">
+                                                                            <img class="air-logo" src="@leg.Carrier.LogoUrl" alt="@leg.Carrier.Name" />
+                                                                            <!-- <div class="small text-muted">@leg.Carrier.Code</div> -->
+                                                                        </div>
+                                                                    </td>
+                                                                    <td class="small text-muted align-middle">@($"{leg.Carrier.Code}{leg.FlightNumber}")</td>
+                                                                    <td class="small text-muted align-middle">@leg.Origin</td>
+                                                                    <td class="small text-muted align-middle">@leg.Destination</td>
+                                                                    <td class="small text-muted align-middle">
+                                                                        <div>@leg.Depart.ToLocalTime().ToString("dd MMM HH:mm")</div>
+                                                                    </td>
+                                                                    <td class="small text-muted align-middle">
+                                                                        <div>@leg.Arrive.ToLocalTime().ToString("dd MMM HH:mm")</div>
+                                                                    </td>
+                                                                    <td class="small text-muted align-middle">@leg.DurationText</td>
+                                                                    <td class="align-middle">
+                                                                        @{
+                                                                            CabinBadge b = GetCabinBadge(leg.CabinClass);
+                                                                        }
+                                                                        <span class="badge @b.Css"
+                                                                            title="@b.Title"
+                                                                            aria-label="@b.Title">
+                                                                            @if (!string.IsNullOrEmpty(b.Emoji)) { <span class="me-1">@b.Emoji</span> }
+                                                                            <span>@b.Letter</span>
+                                                                        </span>
+                                                                    </td>
+                                                                    <td class="align-middle">
+                                                                        <div class="d-flex flex-wrap gap-1 align-middle">
+                                                                            @foreach (var label in (leg.AmenityLabels ?? Enumerable.Empty<string>()))
+                                                                            {
+                                                                                <span class="badge bg-light text-dark">@label</span>
                                                                             }
-                                                                            <span class="badge @b.Css"
-                                                                                title="@b.Title"
-                                                                                aria-label="@b.Title">
-                                                                                @if (!string.IsNullOrEmpty(b.Emoji)) { <span class="me-1">@b.Emoji</span> }
-                                                                                <span>@b.Letter</span>
-                                                                            </span>
-                                                                        </td>
-                                                                        <td class="align-middle">
-                                                                            <div class="d-flex flex-wrap gap-1 align-middle">
-                                                                                @foreach (var label in (leg.AmenityLabels ?? Enumerable.Empty<string>()))
-                                                                                {
-                                                                                    <span class="badge bg-light text-dark">@label</span>
-                                                                                }
-                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+
+                                                                @if (leg?.Layover is not null)
+                                                                {
+                                                                    <tr class="table-light">
+                                                                        <td colspan="9" class="text-muted">
+                                                                            Layover @leg.Layover.Airport • @leg.Layover.DurationText
                                                                         </td>
                                                                     </tr>
-
-                                                                    @if (leg?.Layover is not null)
-                                                                    {
-                                                                        <tr class="table-light">
-                                                                            <td colspan="9" class="text-muted">
-                                                                                Layover @leg.Layover.Airport • @leg.Layover.DurationText
-                                                                            </td>
-                                                                        </tr>
-                                                                    }
                                                                 }
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-
-                                                        <!-- Policies -->
-                                                        <div class="row g-2 small mt-2">
-                                                            @if (!string.IsNullOrWhiteSpace(opt.BaggageText))
-                                                            {
-                                                                <div class="col-12 col-md-3">
-                                                                    <div><span class="text-muted">Baggage:</span> @opt.BaggageText</div>
-                                                                </div>
                                                             }
-                                                            @if (!string.IsNullOrWhiteSpace(opt.SeatPolicy))
-                                                            {
-                                                                <div class="col-12 col-md-3">
-                                                                    <div><span class="text-muted">Seating:</span> @opt.SeatPolicy</div>
-                                                                </div>
-                                                            }
-                                                            @if (!string.IsNullOrWhiteSpace(opt.ChangePolicy))
-                                                            {
-                                                                <div class="col-12 col-md-3">
-                                                                    <div><span class="text-muted">Changes:</span> @opt.ChangePolicy</div>
-                                                                </div>
-                                                            }
-                                                            @if (!string.IsNullOrWhiteSpace(opt.RefundPolicy))
-                                                            {
-                                                                <div class="col-12 col-md-3">
-                                                                    <div><span class="text-muted">Refunds:</span> @opt.RefundPolicy</div>
-                                                                </div>
-                                                            }
-                                                        </div>
+                                                            </tbody>
+                                                        </table>
                                                     </div>
 
-                                                    <!-- Right price/actions -->
-                                                    <div class="col-12 col-lg-4">
-                                                        <div class="border rounded p-3 bg-white">
-                                                            <div class="d-flex justify-content-between align-items-baseline">
-                                                                <div class="text-muted small">Total</div>
-                                                                <div class="h5 m-0">@((opt.CurrencySymbol ?? "$") + opt.Price.ToString("N0"))</div>
+                                                    <!-- Policies -->
+                                                    <div class="row g-2 small mt-2">
+                                                        @if (!string.IsNullOrWhiteSpace(opt.BaggageText))
+                                                        {
+                                                            <div class="col-12 col-md-3">
+                                                                <div><span class="text-muted">Baggage:</span> @opt.BaggageText</div>
                                                             </div>
-
-                                                            <div class="mt-3 d-grid gap-2">
-                                                                <button class="btn btn-primary" @onclick="(e)=>Select(opt)" @onclick:stopPropagation="true">
-                                                                    <i class="bi bi-bag-plus me-1"></i> Choose
-                                                                </button>
-                                                                <button class="btn btn-outline-secondary" @onclick="(e)=>ShowCompare()" @onclick:stopPropagation="true">
-                                                                    Compare JSON
-                                                                </button>
+                                                        }
+                                                        @if (!string.IsNullOrWhiteSpace(opt.SeatPolicy))
+                                                        {
+                                                            <div class="col-12 col-md-3">
+                                                                <div><span class="text-muted">Seating:</span> @opt.SeatPolicy</div>
                                                             </div>
+                                                        }
+                                                        @if (!string.IsNullOrWhiteSpace(opt.ChangePolicy))
+                                                        {
+                                                            <div class="col-12 col-md-3">
+                                                                <div><span class="text-muted">Changes:</span> @opt.ChangePolicy</div>
+                                                            </div>
+                                                        }
+                                                        @if (!string.IsNullOrWhiteSpace(opt.RefundPolicy))
+                                                        {
+                                                            <div class="col-12 col-md-3">
+                                                                <div><span class="text-muted">Refunds:</span> @opt.RefundPolicy</div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
 
-                                                            @if (ShowCompareJson)
-                                                            {
-                                                                <pre class="mt-2 small bg-light p-2 rounded" style="white-space:pre-wrap">@SelectedJson</pre>
-                                                            }
+                                                <!-- Right price/actions -->
+                                                <div class="col-12 col-lg-4">
+                                                    <div class="border rounded p-3 bg-white">
+                                                        <div class="d-flex justify-content-between align-items-baseline">
+                                                            <div class="text-muted small">Total</div>
+                                                            <div class="h5 m-0">@((opt.CurrencySymbol ?? "$") + opt.Price.ToString("N0"))</div>
                                                         </div>
+
+                                                        <div class="mt-3 d-grid gap-2">
+                                                            <button class="btn btn-primary" @onclick="(e)=>Select(opt)" @onclick:stopPropagation="true">
+                                                                <i class="bi bi-bag-plus me-1"></i> Choose
+                                                            </button>
+                                                            <button class="btn btn-outline-secondary" @onclick="(e)=>ShowCompare()" @onclick:stopPropagation="true">
+                                                                Compare JSON
+                                                            </button>
+                                                        </div>
+
+                                                        @if (ShowCompareJson)
+                                                        {
+                                                            <pre class="mt-2 small bg-light p-2 rounded" style="white-space:pre-wrap">@SelectedJson</pre>
+                                                        }
                                                     </div>
                                                 </div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                }
+                                        </div>
+                                    </td>
+                                </tr>
                             }
-                            </tbody>
-                        </table>
-                    </div>
+                        }
+                        </tbody>
+                    </table>
                 </div>
-                
             </section>
         </div>
     </div>
