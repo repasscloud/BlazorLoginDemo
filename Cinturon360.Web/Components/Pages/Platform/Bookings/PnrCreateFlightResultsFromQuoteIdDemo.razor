@@ -14,12 +14,14 @@
 @if (_pageIsLoading == true)
 {
     <!-- Loading -->
-    @* <div class="container-fluid py-4">
+    @*
+    <div class="container-fluid py-4">
         <div class="d-flex justify-content-center align-items-center" style="min-height:40vh">
             <div class="spinner-border" role="status" aria-label="Loading"></div>
             <span class="ms-2">Loading…</span>
         </div>
-    </div> *@
+    </div>
+    *@
     <div class="loading-overlay" role="status" aria-live="polite" aria-label="Loading">
         <div class="sky">
             <!-- Clouds (behind the plane) -->
@@ -66,7 +68,7 @@ else if (!(Result?.Options?.Any() ?? false))
 }
 else
 {
-    <div class="container-fluid py-3">
+    <div class="container-fluid py-3" style="height:calc(100dvh - 76px);overflow:hidden">
 
         <!-- Header -->
         <div class="row align-items-center g-2 mb-3">
