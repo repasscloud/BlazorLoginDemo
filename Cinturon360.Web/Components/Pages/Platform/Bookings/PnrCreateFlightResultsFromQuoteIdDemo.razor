@@ -146,21 +146,21 @@ else
             </aside>
 
             <!-- Results (right) -->
-            <section class="col-12 col-lg-9 col-xl-10 h-100 overflow-auto">
-                <div class="table-responsive">
+            <section class="col-12 col-lg-9 col-xl-10 d-flex flex-column h-100 overflow-hidden">  @* was: h-100 overflow-auto *@
+                <div class="table-responsive overflow-auto flex-grow-1">  @* add overflow-auto + flex-grow-1 here *@
                     <table class="table table-sm align-middle mb-0">
-                        <thead class="bg-body">
-                        <tr>
-                            <th class="position-sticky top-0 bg-body z-2">Carrier</th>
-                            <th class="position-sticky top-0 bg-body z-2">Route</th>
-                            <th class="text-center position-sticky top-0 bg-body z-2">Stops</th>
-                            <th class="position-sticky top-0 bg-body z-2">Depart</th>
-                            <th class="position-sticky top-0 bg-body z-2">Arrive</th>
-                            <th class="position-sticky top-0 bg-body z-2">Duration</th>
-                            <th class="position-sticky top-0 bg-body z-2">Cabins</th>
-                            <th class="text-end position-sticky top-0 bg-body z-2">Price</th>
-                            <th class="text-end select-col position-sticky top-0 bg-body z-2"></th> <!-- Select/Selected btn col -->
-                        </tr>
+                        <thead class="sticky-top bg-body">  @* sticky now works: header sticks inside wrapper scroll *@
+                            <tr>
+                                <th>Carrier</th>
+                                <th>Route</th>
+                                <th class="text-center">Stops</th>
+                                <th>Depart</th>
+                                <th>Arrive</th>
+                                <th>Duration</th>
+                                <th>Cabins</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-end select-col"></th>
+                            </tr>
                         </thead>
                         <tbody>
                         @foreach (var opt in Filtered)
