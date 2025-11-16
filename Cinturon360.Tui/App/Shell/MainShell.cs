@@ -1,18 +1,22 @@
+using Cinturon360.Tui.App.Infrastructure.Http;
 using Cinturon360.Tui.App.Services.Auth;
 using Cinturon360.Tui.App.Theming;
 using Cinturon360.Tui.App.UI.Dialogs;
+using Cinturon360.Tui.App.Pages.Org;          // <- bring ChildrenOrgPage into scope
 using Terminal.Gui;
+using Cinturon360.Tui.App.Pages.Pnr;
 
 namespace Cinturon360.Tui.App.Shell;
 
 /// <summary>
 /// Top-level Terminal.Gui shell.
 /// </summary>
-public sealed class MainShell
+public sealed class MainShell : IPageNavigator
 {
     private readonly IAuthService _authService;
     private readonly IMessageBoxService _msgBox;
     private readonly IBusyDialogService _busy;
+    private readonly IApiClientFactory _apiClientFactory;
 
     private Toplevel _top = null!;
     private Window _mainWindow = null!;
@@ -26,15 +30,26 @@ public sealed class MainShell
     public MainShell(
         IAuthService authService,
         IMessageBoxService msgBox,
-        IBusyDialogService busy)
+        IBusyDialogService busy,
+        IApiClientFactory apiClientFactory)
     {
         _authService = authService;
         _msgBox = msgBox;
         _busy = busy;
+        _apiClientFactory = apiClientFactory;
 
         // register initial pages
         _pages.Add(("Dashboard", () => new DummyDashboardPage()));
         _pages.Add(("Travel Admin", () => new DummyAdminPage()));
+
+        // Children Org page – explicitly return IPage to match Func<IPage>
+        // _pages.Add(("Children Org", () => (IPage)new ChildrenOrgPage(_apiClientFactory)));
+        _pages.Add(("Children Org", () => (IPage)new ChildrenOrgPage(_apiClientFactory, this)));
+
+        // PNR
+        _pages.Add(("New PNR", () => new NewPnrPage()));
+
+        // add more pages here later
     }
 
     public void Run()
@@ -156,16 +171,56 @@ public sealed class MainShell
         _mainWindow.Add(navFrame, _detailHost);
     }
 
+    // private void ActivatePage(int index)
+    // {
+    //     if (index < 0 || index >= _pages.Count)
+    //         return;
+
+    //     _currentPage?.OnDeactivated();
+    //     _detailHost.RemoveAll();
+
+    //     var (name, factory) = _pages[index];
+    //     var page = factory();
+    //     _currentPage = page;
+
+    //     // ESC on any page returns focus to menu
+    //     page.View.KeyPress += args =>
+    //     {
+    //         if (args.KeyEvent.Key == Key.Esc)
+    //         {
+    //             _menuList.SetFocus();
+    //             args.Handled = true;
+    //         }
+    //     };
+
+    //     page.OnActivated();
+
+    //     _detailHost.Title = name;
+    //     page.View.X = 0;
+    //     page.View.Y = 0;
+    //     page.View.Width = Dim.Fill();
+    //     page.View.Height = Dim.Fill();
+
+    //     _detailHost.Add(page.View);
+    //     page.View.SetFocus();
+    // }
     private void ActivatePage(int index)
     {
         if (index < 0 || index >= _pages.Count)
             return;
 
+        var (name, factory) = _pages[index];
+        var page = factory();
+
+        ShowPage(page, name);
+    }
+
+    // new method
+    public void ShowPage(IPage page, string title)
+    {
         _currentPage?.OnDeactivated();
         _detailHost.RemoveAll();
 
-        var (name, factory) = _pages[index];
-        var page = factory();
         _currentPage = page;
 
         // ESC on any page returns focus to menu
@@ -180,7 +235,7 @@ public sealed class MainShell
 
         page.OnActivated();
 
-        _detailHost.Title = name;
+        _detailHost.Title = title;
         page.View.X = 0;
         page.View.Y = 0;
         page.View.Width = Dim.Fill();
@@ -189,6 +244,7 @@ public sealed class MainShell
         _detailHost.Add(page.View);
         page.View.SetFocus();
     }
+
 
     private void Logout()
     {
@@ -215,7 +271,6 @@ public sealed class MainShell
             ColorScheme = AppTheme.DialogScheme
         };
 
-        // Multi-line help text; tweak as you extend the app
         var helpText = string.Join(Environment.NewLine, new[]
         {
             "Cinturon360.Tui – Help",
@@ -266,7 +321,6 @@ public sealed class MainShell
 
         dialog.Add(textView, closeButton);
 
-        // Allow Esc to close the dialog as well
         dialog.KeyPress += args =>
         {
             if (args.KeyEvent.Key == Key.Esc)

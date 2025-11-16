@@ -4,6 +4,7 @@ using Cinturon360.Tui.App.Shell;
 using Cinturon360.Tui.App.UI.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;   // <<< add this
 
 namespace Cinturon360.Tui.App;
 
@@ -12,6 +13,12 @@ public static class AppBootstrapper
     public static TuiApp Build(string[] args)
     {
         var host = Host.CreateDefaultBuilder(args)
+            // <<< STOP console logging so it doesn't trash the TUI
+            .ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();                 // remove Console, Debug, etc.
+                logging.SetMinimumLevel(LogLevel.Warning); // keep the pipeline, but nothing chatty
+            })
             .ConfigureServices((ctx, services) =>
             {
                 // HTTP factory + named clients

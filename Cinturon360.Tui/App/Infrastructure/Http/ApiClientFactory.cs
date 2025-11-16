@@ -49,7 +49,7 @@ public sealed class ApiClientFactory : IApiClientFactory
 
     private static void ConfigureCinturon(HttpClient client)
     {
-        client.BaseAddress = new Uri("https://api.cinturon360.example/"); // TODO
+        client.BaseAddress = new Uri("http://localhost:8090/"); // TODO
         client.Timeout = TimeSpan.FromSeconds(30);
         client.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json"));
