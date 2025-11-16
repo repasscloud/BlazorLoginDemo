@@ -287,7 +287,7 @@ public sealed class ChildrenOrgPage : PageBase
             Application.RequestStop(dialog);
 
             // Navigate to the edit page for this org
-            var editPage = new EditOrgPage(org.Id);
+            var editPage = new EditOrgPage(_clientFactory, org.Id);
             var title = $"Edit Org: {org.Name}";
             _navigator.ShowPage(editPage, title);
         };
