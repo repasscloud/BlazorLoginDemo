@@ -637,6 +637,9 @@ else
         ValidateDates();
         if (!IsFormValid) return;
 
+        // show loading
+        _pageIsLoading = true;
+
         TravelQuoteFlightUIResultPatchDto patchDto = new TravelQuoteFlightUIResultPatchDto()
         {
             Id = _cfg.TravelQuoteId,
@@ -693,6 +696,9 @@ else
                 ent: nameof(TravelQuoteFlightUIResultPatchDto),
                 entId: _cfg?.TravelQuoteId,
                 note: "non_2xx");
+
+            // show loading
+            _pageIsLoading = false;
 
             return;
         }
