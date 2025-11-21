@@ -1,6 +1,4 @@
 // Cinturon360.Shared/Services/Interfaces/Kernel/ILoggerService.cs
-using System;
-using System.Threading.Tasks;
 using Cinturon360.Shared.Models.Kernel.SysVar;
 using Cinturon360.Shared.Models.Static.SysVar;
 

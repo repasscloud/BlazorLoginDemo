@@ -29,7 +29,7 @@ public interface IAdminOrgServiceUnified
     {
         public required string Id { get; init; }
         public required string Name { get; init; }
-        public Cinturon360.Shared.Models.Static.Platform.OrganizationType Type { get; init; }
+        public OrganizationType Type { get; init; }
         public bool IsActive { get; init; }
 
         public string? ContactPersonFirstName { get; init; }
@@ -65,6 +65,7 @@ public interface IAdminOrgServiceUnified
         string? domainContains = null,
         CancellationToken ct = default);
     Task<IReadOnlyList<OrganizationPickerDto>> GetAllForPickerAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<OrganizationPickerDto>> GetAllChildrenOrgsForPickerAsync(string parentOrgId, CancellationToken ct = default);
 
     // UPDATE
     public sealed record UpdateOrgRequest(

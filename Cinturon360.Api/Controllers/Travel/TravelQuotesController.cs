@@ -19,12 +19,14 @@ public sealed class TravelQuotesController : ControllerBase
 {
     private readonly ITravelQuoteService _travelQuoteService;
     private readonly IAmadeusFlightSearchService _flightSearchService;
+    private readonly IQueuedJobService _queuedJobService;
     private readonly ILoggerService _log;
 
-    public TravelQuotesController(ITravelQuoteService travelQuoteService, IAmadeusFlightSearchService flightSearchService, ILoggerService log)
+    public TravelQuotesController(ITravelQuoteService travelQuoteService, IAmadeusFlightSearchService flightSearchService, IQueuedJobService queuedJobService, ILoggerService log)
     {
         _travelQuoteService = travelQuoteService;
         _flightSearchService = flightSearchService;
+        _queuedJobService = queuedJobService;
         _log = log;
     }
 
@@ -183,7 +185,14 @@ public sealed class TravelQuotesController : ControllerBase
     {
         if (dto is null) return BadRequest("Body required.");
 
-        await _travelQuoteService.IngestTravelQuoteFlightUIResultPatchDto(dto, ct);
+        await _queuedJobService.EnqueueAsync(
+            payload: dto,
+            jobType: "FlightSearch",
+            correlationId: dto.Id,
+            availableAfterUtc: null,
+            cancellationToken: ct);
+
+        //await _travelQuoteService.IngestTravelQuoteFlightUIResultPatchDto(dto, ct);
         return Ok();  // always OK even if no matching quote found
     }
 

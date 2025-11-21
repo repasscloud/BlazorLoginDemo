@@ -10,7 +10,6 @@ using Cinturon360.Shared.Models.Policies;
 using Cinturon360.Shared.Models.Search;
 using Cinturon360.Shared.Models.Static;
 using Cinturon360.Shared.Models.Static.SysVar;
-using Cinturon360.Shared.Models.Static.Travel;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Platform;
@@ -291,6 +290,79 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
         return;
     }
+
+    // public async Task IngestTravelQuoteFlightUIResultPatchDto(
+    //     TravelQuoteFlightUIResultPatchDto dto,
+    //     CancellationToken ct = default)
+    // {
+    //     var now = DateTime.UtcNow;
+    //     var autoNote = $"\n[Auto-Updated {now:o} UTC] Flight Search UI results ingested.";
+
+    //     // Optional: you can drop this "start" log if you want it even faster
+    //     // await _log.InformationAsync(
+    //     _ = _log.InformationAsync(            
+    //         evt: "TRAVEL_QUOTE_UI_PATCH_START",
+    //         cat: SysLogCatType.Data,
+    //         act: SysLogActionType.Start,
+    //         message: "Ingesting TravelQuote flight UI patch",
+    //         ent: nameof(TravelQuote),
+    //         entId: dto.Id,
+    //         note: "ui_patch");
+
+    //     var selectedAirlines = dto.SelectedAirlines is { Length: > 0 } sa
+    //         ? sa
+    //         : Array.Empty<string>();
+
+    //     // Single UPDATE; no entity materialisation, no tracking
+    //     var affected = await _db.TravelQuotes
+    //         .Where(x => x.Id == dto.Id)
+    //         .ExecuteUpdateAsync(updates => updates
+    //             .SetProperty(q => q.TripType, dto.TripType)
+    //             .SetProperty(q => q.OriginIataCode, dto.OriginIataCode)
+    //             .SetProperty(q => q.DestinationIataCode, dto.DestinationIataCode)
+    //             .SetProperty(q => q.DepartureDate, dto.DepartureDate)
+    //             .SetProperty(q => q.ReturnDate, dto.ReturnDate)
+    //             .SetProperty(q => q.DepartEarliestTime, dto.DepartEarliestTime)
+    //             .SetProperty(q => q.DepartLatestTime, dto.DepartLatestTime)
+    //             .SetProperty(q => q.ReturnEarliestTime, dto.ReturnEarliestTime)
+    //             .SetProperty(q => q.ReturnLatestTime, dto.ReturnLatestTime)
+    //             .SetProperty(q => q.CabinClass, dto.CabinClass)
+    //             .SetProperty(q => q.MaxCabinClass, dto.MaxCabinClass)
+    //             .SetProperty(q => q.SelectedAirlines, selectedAirlines)
+    //             .SetProperty(q => q.Alliances, dto.Alliances)
+    //             .SetProperty(q => q.State, QuoteState.SearchInProgress)
+    //             .SetProperty(q => q.UpdatedAtUtc, now)
+    //             .SetProperty(
+    //                 q => q.Note,
+    //                 q => (q.Note ?? "") + autoNote
+    //             ),
+    //             ct);
+
+    //     if (affected == 0)
+    //     {
+    //         var ex = new InvalidOperationException($"TravelQuote '{dto.Id}' not found.");
+    //         await _log.ErrorAsync(
+    //             evt: "TRAVEL_QUOTE_UPDATE_NOT_FOUND",
+    //             cat: SysLogCatType.Data,
+    //             act: SysLogActionType.Update,
+    //             ex: ex,
+    //             message: $"TravelQuote '{dto.Id}' not found.",
+    //             ent: nameof(TravelQuote),
+    //             entId: dto.Id,
+    //             note: "not_found");
+    //         throw ex;
+    //     }
+
+    //     // await _log.InformationAsync(
+    //     _ = _log.InformationAsync(
+    //         evt: "TRAVEL_QUOTE_UPDATED",
+    //         cat: SysLogCatType.Data,
+    //         act: SysLogActionType.Update,
+    //         message: "TravelQuote updated from flight UI patch",
+    //         ent: nameof(TravelQuote),
+    //         entId: dto.Id,
+    //         note: "ui_patch");
+    // }
 
     // ---------------- DELETE ----------------
     public async Task<bool> DeleteAsync(string id, CancellationToken ct = default)

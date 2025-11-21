@@ -172,6 +172,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITravelQuoteService, TravelQuoteService>();
         services.AddScoped<IErrorCodeService, ErrorCodeService>();
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
+        services.AddScoped<IQueuedJobService, QueuedJobService>();
 
         // --- fx services ---
         services.AddScoped<IFxRateStore, EfFxRateStore>();

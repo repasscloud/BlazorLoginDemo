@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using HtmlAgilityPack;
 using Cinturon360.Shared.Models.Static.SysVar;
-using Cinturon360.Shared.Models.Static.Billing;
 using Cinturon360.Shared.Models.DTOs;
 
 namespace Cinturon360.Shared.Services.Platform;
@@ -180,6 +179,40 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
     {
         return await _db.Organizations
             .AsNoTracking()
+            .OrderBy(o => o.Name).ThenBy(o => o.Id)
+            .Select(o => new IAdminOrgServiceUnified.OrganizationPickerDto
+            {
+                Id = o.Id,
+                Name = o.Name,
+                Type = o.Type,
+                IsActive = o.IsActive,
+
+                ContactPersonFirstName = o.ContactPersonFirstName,
+                ContactPersonLastName  = o.ContactPersonLastName,
+                ContactPersonEmail     = o.ContactPersonEmail,
+                ContactPersonPhone     = o.ContactPersonPhone,
+
+                BillingPersonFirstName = o.BillingPersonFirstName,
+                BillingPersonLastName  = o.BillingPersonLastName,
+                BillingPersonEmail     = o.BillingPersonEmail,
+                BillingPersonPhone     = o.BillingPersonPhone,
+
+                AdminPersonFirstName   = o.AdminPersonFirstName,
+                AdminPersonLastName    = o.AdminPersonLastName,
+                AdminPersonPhone       = o.AdminPersonPhone,
+                AdminPersonEmail       = o.AdminPersonEmail,
+
+                TaxId                  = o.TaxId,
+                Country                = o.Country
+            })
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<IAdminOrgServiceUnified.OrganizationPickerDto>> GetAllChildrenOrgsForPickerAsync(string parentOrgId, CancellationToken ct = default)
+    {
+        return await _db.Organizations
+            .AsNoTracking()
+            .Where(o => o.ParentOrganizationId == parentOrgId)
             .OrderBy(o => o.Name).ThenBy(o => o.Id)
             .Select(o => new IAdminOrgServiceUnified.OrganizationPickerDto
             {

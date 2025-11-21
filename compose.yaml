@@ -6,6 +6,9 @@ services:
     restart: unless-stopped
     ports:
       - "5432:5432"
+    # mem_limit: 8192m
+    # mem_reservation: 4096m
+    # cpus: 2.5
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -81,6 +84,9 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    # mem_limit: 3072m
+    # mem_reservation: 1536m
+    # cpus: 1.5
     environment:
       - ASPNETCORE_URLS=${ASPNETCORE_URLS}
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
@@ -159,6 +165,9 @@ services:
     restart: unless-stopped
     ports:
       - "8090:8080"
+    # mem_limit: 3072m
+    # mem_reservation: 1536m
+    # cpus: 1.5
     environment:
       - ASPNETCORE_URLS=${ASPNETCORE_URLS}
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
@@ -247,8 +256,25 @@ services:
       retries: 5
       start_period: 60s
 
+# caddy:
+#   image: caddy:2.7.4-alpine
+#   container_name: caddy
+#   restart: unless-stopped
+#   ports:
+#     - "80:80"
+#     - "443:443"
+#   volumes:
+#     - ./Caddyfile:/etc/caddy/Caddyfile:ro
+#     - caddy_data:/data
+#     - caddy_config:/config
+#   depends_on:
+#     - blazor
+#     - api
+#     - pgweb
 
 volumes:
   postgresql-data:
   pgadmin-data:
   web-dataprotection:
+  # caddy-data:
+  # caddy-config:

@@ -24,6 +24,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     // Core / Logs
     // ---------------------------
+    public DbSet<QueuedJob> QueuedJobs => Set<QueuedJob>();
     public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
     public DbSet<ErrorCodeUnified> ErrorCodes => Set<ErrorCodeUnified>();
     public DbSet<ExchangeRateSnapshot> ExchangeRateSnapshots => Set<ExchangeRateSnapshot>();
@@ -84,6 +85,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         // Core / Logs
         // ===========================
+        builder.Entity<QueuedJob>(e =>
+        {
+           e.ToTable("queued_jobs", "ava");
+           e.HasKey(x => x.Id); 
+        });
+
         builder.Entity<AvaSystemLog>(e =>
         {
             e.ToTable("ava_system_logs", "avasyslog");

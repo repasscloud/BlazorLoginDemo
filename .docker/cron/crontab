@@ -8,3 +8,6 @@ CRON_TZ=UTC
 
 # heartbeat
 */5 * * * * echo "heartbeat $(date -Iseconds)"
+
+# every 30 seconds jobs
+*/30 * * * * * echo "fast-heartbeat $(date -Iseconds)"

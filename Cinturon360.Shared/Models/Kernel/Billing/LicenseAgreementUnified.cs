@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Cinturon360.Shared.Models.Kernel.Platform;
 using Cinturon360.Shared.Models.Static.Billing;
 
@@ -16,10 +17,14 @@ public sealed class LicenseAgreementUnified
     // Who is the agreement FOR and who created/issued it
     [Required]
     public required string OrganizationUnifiedId { get; set; } // the org that is being billed/licensed
+    
+    [JsonIgnore]
     public OrganizationUnified Organization { get; set; } = default!;
 
     [Required]
     public required string CreatedByOrganizationUnifiedId { get; set; } // issuer (e.g., Platform or TMC)
+    
+    [JsonIgnore]
     public OrganizationUnified CreatedByOrganization { get; set; } = default!;
 
     // Core dates

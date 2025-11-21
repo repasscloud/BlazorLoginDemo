@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Cinturon360.Shared.Models.Kernel.Platform;
 
@@ -12,5 +13,7 @@ public sealed class OrganizationDomainUnified
 
     [Required]
     public string OrganizationUnifiedId { get; set; } = default!;
+
+    [JsonIgnore]
     public OrganizationUnified Organization { get; set; } = default!;
 }

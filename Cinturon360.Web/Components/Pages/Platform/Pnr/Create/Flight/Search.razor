@@ -637,9 +637,6 @@ else
         ValidateDates();
         if (!IsFormValid) return;
 
-        // show loading
-        _pageIsLoading = true;
-
         TravelQuoteFlightUIResultPatchDto patchDto = new TravelQuoteFlightUIResultPatchDto()
         {
             Id = _cfg.TravelQuoteId,
@@ -660,6 +657,16 @@ else
 
         string jsonString = JsonSerializer.Serialize(patchDto, JsonOpts);
 
+        string? debugDir = Path.Combine(AppContext.BaseDirectory, "payload-dumps");
+        Directory.CreateDirectory(debugDir);
+
+        string? filePath = Path.Combine(
+            debugDir,
+            $"flight-search-{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}.json");
+
+        // Write to disk
+        await File.WriteAllTextAsync(filePath, jsonString, Encoding.UTF8);
+
         string? url  = "/api/v1/travel/quotes/run-search/flight";
         using HttpRequestMessage? req = new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -675,13 +682,13 @@ else
 
         if (resp.IsSuccessStatusCode)
         {
-            await _log.InformationAsync(
+            @* await _log.InformationAsync(
                 evt: "BOOKING_REQ_SEARCH_SUBMIT_OK",
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 message: $"Submitted flight search request ({(int)resp.StatusCode})",
                 ent: nameof(TravelQuoteFlightUIResultPatchDto),
-                entId: _cfg?.TravelQuoteId);
+                entId: _cfg?.TravelQuoteId); *@
 
             Nav.NavigateTo(uri: $"/platform/pnr/create/flight/results/{_cfg?.TravelQuoteId}", forceLoad: false);
         }
@@ -696,9 +703,6 @@ else
                 ent: nameof(TravelQuoteFlightUIResultPatchDto),
                 entId: _cfg?.TravelQuoteId,
                 note: "non_2xx");
-
-            // show loading
-            _pageIsLoading = false;
 
             return;
         }

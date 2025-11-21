@@ -1,0 +1,18 @@
+{
+    email admin@uzhv.com
+}
+
+uat-app.uzhv.com {
+    encode gzip
+    reverse_proxy blazor:8080
+}
+
+uat-api.uzhv.com {
+    encode gzip
+    reverse_proxy api:5000
+}
+
+uat-pgweb.uzhv.com {
+    encode gzip
+    reverse_proxy pgweb:8081
+}
