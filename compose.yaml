@@ -82,6 +82,8 @@ services:
     image: blazor-app:dev
     container_name: blazor
     restart: unless-stopped
+    tmpfs:
+      - /tmp:rw,size=8m,mode=1777
     ports:
       - "8080:8080"
     # mem_limit: 3072m
@@ -163,6 +165,8 @@ services:
     image: web-api:dev
     container_name: api
     restart: unless-stopped
+    tmpfs:
+      - /tmp:rw,size=8m,mode=1777
     ports:
       - "8090:8080"
     # mem_limit: 3072m
@@ -204,10 +208,10 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
-    # volumes:
-    #   # Persist ASP.NET DataProtection keys (avoid warnings + keep auth cookies valid across restarts)
-    #   - dataprotection:/home/app/.aspnet/DataProtection-Keys
-
+    volumes:
+    # Persist ASP.NET DataProtection keys (avoid warnings + keep auth cookies valid across restarts)
+      - api-dataprotection:/home/app/.aspnet/DataProtection-Keys
+    
   migrator:
     build:
       context: .
@@ -264,7 +268,8 @@ services:
 #     - "80:80"
 #     - "443:443"
 #   volumes:
-#     - ./Caddyfile:/etc/caddy/Caddyfile:ro
+#     - ./.docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+#     - ./.docker/caddy/web-uat:/srv/uat-web:ro   # <- your static site folder (index.html, css, js, etc.)
 #     - caddy_data:/data
 #     - caddy_config:/config
 #   depends_on:
@@ -272,9 +277,11 @@ services:
 #     - api
 #     - pgweb
 
+
 volumes:
   postgresql-data:
   pgadmin-data:
   web-dataprotection:
-  # caddy-data:
-  # caddy-config:
+  api-dataprotection:
+  caddy-data:
+  caddy-config:
