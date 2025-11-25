@@ -10,7 +10,7 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject ILoggerService _log
 
-@if (_pageIsLoading == true)
+@* @if (_pageIsLoading == true)
 {
     <div class="loading-overlay" role="status" aria-live="polite" aria-label="Loading">
         <div class="sky">
@@ -32,8 +32,36 @@
             <div class="loading-text">LOADING...</div>
         </div>
     </div>
+} *@
+@if (_pageIsLoading == true)
+{
+    <div
+        class="loading-overlay"
+        style="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;"
+        role="status" aria-live="polite" aria-label="Loading">
+
+        <div class="sky">
+            <!-- Clouds (behind the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c1" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c2" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c3" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c4" alt="" aria-hidden="true" />
+
+            <!-- Plane -->
+            <img src="/media/airplane.svg" class="plane-svg" alt="Airplane loading" />
+
+            <!-- Clouds (in front of the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c5" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c6" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c7" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c8" alt="" aria-hidden="true" />
+
+            <div class="loading-text">LOADING...</div>
+        </div>
+    </div>
 }
-else if (!string.IsNullOrEmpty(_error))
+
+else if (!string.IsNullOrWhiteSpace(_error))
 {
     <div class="container-fluid py-4 py-md-5">
         <div class="d-flex flex-column align-items-center justify-content-center text-center min-vh-50">

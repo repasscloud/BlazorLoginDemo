@@ -637,6 +637,10 @@ else
         ValidateDates();
         if (!IsFormValid) return;
 
+        _pageIsLoading = true;
+        StateHasChanged();
+        await Task.Yield(); // let the UI paint the loading state
+
         TravelQuoteFlightUIResultPatchDto patchDto = new TravelQuoteFlightUIResultPatchDto()
         {
             Id = _cfg.TravelQuoteId,
@@ -685,6 +689,8 @@ else
                 ent: nameof(TravelQuoteFlightUIResultPatchDto),
                 entId: patchDto.Id,
                 note: "non_2xx");
+
+            _pageIsLoading = false;
 
             return;
         }
