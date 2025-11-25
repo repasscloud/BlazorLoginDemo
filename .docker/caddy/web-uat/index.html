@@ -101,7 +101,24 @@
       border: 1px solid rgba(15,23,42,.05);
       min-height: 260px;
     }
-    .badge-risk {
+    
+    /* Fix: hero section uses white text; reset inside the white dashboard card */
+    .mock-dashboard { color: #0f172a; }
+    .mock-dashboard .text-muted { color: #64748b !important; }
+
+    /* Fix: route chips need stronger contrast than bg-soft */
+    .route-pill {
+      background: rgba(56,189,248,.16);
+      color: #0f172a;
+      border: 1px solid rgba(15,23,42,.10);
+      border-radius: 0.75rem;
+      padding: .25rem .6rem;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .01em;
+      white-space: nowrap;
+    }
+.badge-risk {
       background: rgba(249,115,22,.12);
       color: #9a3412;
       font-weight: 600;
@@ -200,7 +217,7 @@
                 <p class="text-muted mb-2" style="font-size:.7rem;">Latest trips</p>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <div class="d-flex gap-3 align-items-center">
-                    <div class="rounded bg-soft px-2 py-1 fw-semibold" style="font-size:.7rem;">SYD → AKL</div>
+                    <div class="route-pill">SYD → AKL</div>
                     <div>
                       <div style="font-size:.75rem;">Ops, APAC</div>
                       <div class="text-muted" style="font-size:.65rem;">TMC source</div>
@@ -210,7 +227,7 @@
                 </div>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <div class="d-flex gap-3 align-items-center">
-                    <div class="rounded bg-soft px-2 py-1 fw-semibold" style="font-size:.7rem;">MEL → SIN</div>
+                    <div class="route-pill">MEL → SIN</div>
                     <div>
                       <div style="font-size:.75rem;">Sales, ASEAN</div>
                       <div class="text-muted" style="font-size:.65rem;">OTA source</div>
@@ -220,7 +237,7 @@
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
                   <div class="d-flex gap-3 align-items-center">
-                    <div class="rounded bg-soft px-2 py-1 fw-semibold" style="font-size:.7rem;">SYD → PER</div>
+                    <div class="route-pill">SYD → PER</div>
                     <div>
                       <div style="font-size:.75rem;">Govt, ANZ</div>
                       <div class="text-muted" style="font-size:.65rem;">NDC source</div>
@@ -243,7 +260,7 @@
   <div class="container">
     <div class="row align-items-start mb-4">
       <div class="col-lg-8">
-        <h2 class="section-title mb-2 mt-3">Built for everyone around corporate travel.</h2>
+        <h2 class="section-title mb-2 mt-4">Built for everyone around corporate travel.</h2>
         <p class="text-muted-360 mb-0">Corporate, government, education, travel agencies, TMCs, and suppliers can all operate on the same rules engine.</p>
       </div>
     </div>
@@ -297,7 +314,7 @@
   <div class="container">
     <div class="row align-items-center mb-4">
       <div class="col-lg-8">
-        <h2 class="section-title mb-2 mt-3">
+        <h2 class="section-title mb-2 mt-4">
           What <span style="color:#38BDF8;">Cinturon</span><span style="color:#F97316;">360</span> does.
         </h2>
 
@@ -350,7 +367,7 @@
   <div class="container">
     <div class="row mb-4 align-items-center">
       <div class="col-lg-8">
-        <h2 class="section-title mb-2 mt-3">Keep your current travel stack.</h2>
+        <h2 class="section-title mb-2 mt-4">Keep your current travel stack.</h2>
         <p class="text-muted-360 mb-0">Cinturon360 is not a rip-and-replace OBT. It’s a belt around your stack.</p>
       </div>
     </div>
@@ -388,7 +405,7 @@
   <div class="container">
     <div class="row mb-4 align-items-center">
       <div class="col-lg-8">
-        <h2 class="section-title mb-2 mt-3">Governance, approvals and audit.</h2>
+        <h2 class="section-title mb-2 mt-4">Governance, approvals and audit.</h2>
         <p class="text-muted-360 mb-0">For enterprises and agencies that must prove who approved what trip and why it was out of policy.</p>
       </div>
     </div>
@@ -424,7 +441,7 @@
   <div class="container">
     <div class="row mb-4">
       <div class="col-lg-6">
-        <h2 class="section-title mb-2 mt-3">Ready to wrap your travel?</h2>
+        <h2 class="section-title mb-2 mt-4">Ready to wrap your travel?</h2>
         <p class="text-muted-360 mb-0">Tell us how many entities, what your travel stack looks like, and whether you’re a TMC or an end-customer. We’ll map the flows.</p>
       </div>
     </div>
