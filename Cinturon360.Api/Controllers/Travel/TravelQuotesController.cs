@@ -9,6 +9,7 @@ using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
+using System.Text.Json;
 
 namespace Cinturon360.Api.Controllers.Travel;
 
@@ -22,7 +23,11 @@ public sealed class TravelQuotesController : ControllerBase
     private readonly IQueuedJobService _queuedJobService;
     private readonly ILoggerService _log;
 
-    public TravelQuotesController(ITravelQuoteService travelQuoteService, IAmadeusFlightSearchService flightSearchService, IQueuedJobService queuedJobService, ILoggerService log)
+    public TravelQuotesController(
+        ITravelQuoteService travelQuoteService,
+        IAmadeusFlightSearchService flightSearchService,
+        IQueuedJobService queuedJobService,
+        ILoggerService log)
     {
         _travelQuoteService = travelQuoteService;
         _flightSearchService = flightSearchService;
@@ -58,38 +63,197 @@ public sealed class TravelQuotesController : ControllerBase
         return config is null ? NotFound() : Ok(config);
     }
 
+    // [HttpGet("ui/getflightresults/{travelQuoteId}")]
+    // public async Task<ActionResult<List<FlightViewOption>?>> GetFlightSearchResults(string travelQuoteId, CancellationToken ct)
+    // {
+    //     // Retrieve flight search options based on travel quote ID
+    //     var quote = await _travelQuoteService.GetByIdAsync(travelQuoteId, ct);
+    //     if (quote is null)
+    //     {
+    //         // because we moved to a queue based flight search, it might not be in the system (ie - processed) yet, so ask the
+    //         // queue service to process it now, then try again, else fail gracefully
+    //         var dto = await _queuedJobService.RetrieveTravelQuoteFlightUIResultPatchDtoJobAsync(travelQuoteId, ct);
+    //         if (dto is not null)
+    //         {
+    //             // process now
+    //             await _travelQuoteService.IngestTravelQuoteFlightUIResultPatchDto(dto, ct);
+
+    //             // try again
+    //             quote = await _travelQuoteService.GetByIdAsync(travelQuoteId, ct);
+    //             if (quote is not null)
+    //             {
+    //                 // because this is one-way search we pass false for isReturn
+    //                 AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, false, ct);
+
+    //                 var amadeusFlightResultsResponse = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
+
+    //                 if (amadeusFlightResultsResponse == null)
+    //                     return NotFound();
+
+    //                 var uiResults = await _travelQuoteService.GetFlightSearchResultsAsync(travelQuoteId, amadeusFlightResultsResponse, ct);
+
+    //                 return uiResults is null ? NotFound() : Ok(uiResults);
+    //             }
+    //         }
+            
+    //         // we should never reach this path at this point, this is called from a series of steps where the quote existence is already validated
+    //         await _log.ErrorAsync(
+    //             evt: "FLIGHT_SEARCH_OPTIONS_QUOTE_NOT_FOUND",
+    //             cat: SysLogCatType.Data,
+    //             act: SysLogActionType.Read,
+    //             ex: new KeyNotFoundException($"Travel quote with ID '{travelQuoteId}' not found."),
+    //             message: $"Travel quote with ID '{travelQuoteId}' not found when retrieving flight search options.",
+    //             ent: nameof(TravelQuote),
+    //             entId: travelQuoteId);
+
+    //         return NotFound(null);
+    //     }
+
+    //     // because this is one-way search we pass false for isReturn
+    //     AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, false, ct);
+
+    //     var amadeusFlightResultsResponse = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
+
+    //     if (amadeusFlightResultsResponse == null)
+    //         return NotFound();
+
+    //     var uiResults = await _travelQuoteService.GetFlightSearchResultsAsync(travelQuoteId, amadeusFlightResultsResponse, ct);
+
+    //     return uiResults is null ? NotFound() : Ok(uiResults);
+    // }
+
+
+
     [HttpGet("ui/getflightresults/{travelQuoteId}")]
-    public async Task<ActionResult<List<FlightViewOption>?>> GetFlightSearchResults(string travelQuoteId, CancellationToken ct)
+    [ProducesResponseType(typeof(List<FlightViewOption>), StatusCodes.Status200OK)]
+    // [ProducesResponseType(typeof(ProcessingResponse), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
+    public async Task<ActionResult<List<FlightViewOption>?>> GetFlightSearchResults(
+        string travelQuoteId,
+        CancellationToken ct)
     {
-        // Retrieve flight search options based on travel quote ID
-        var quote = await _travelQuoteService.GetByIdAsync(travelQuoteId, ct);
-        if (quote == null)
+        if (string.IsNullOrWhiteSpace(travelQuoteId))
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid travelQuoteId",
+                Detail = "travelQuoteId is required."
+            });
+            
+        var queuedJob = await _queuedJobService.GetJobByCorrelationIdAndNotCompletedAsync(travelQuoteId, ct);
+        if (queuedJob is null)
+            return NotFound(new ProblemDetails
+            {
+                Title = "Travel quote job not found in queue",
+                Detail = $"No queued job found for travelQuoteId '{travelQuoteId}'."
+            });
+        
+        var quoteJson = queuedJob.PayloadJson;
+        if (string.IsNullOrWhiteSpace(quoteJson))
+            return NotFound(new ProblemDetails
+            {
+                Title = "Travel quote job payload is empty",
+                Detail = $"Queued job payload is empty for travelQuoteId '{travelQuoteId}'."
+            });
+
+        TravelQuoteFlightUIResultPatchDto? payload = null;
+
+        try
         {
-            // we should never reach this path at this point, this is called from a series of steps where the quote existence is already validated
+            payload = _queuedJobService.DeserializePayload<TravelQuoteFlightUIResultPatchDto>(queuedJob);
+        }
+        catch (JsonException ex)
+        {
             await _log.ErrorAsync(
-                evt: "FLIGHT_SEARCH_OPTIONS_QUOTE_NOT_FOUND",
+                evt: "QUEUED_JOB_PAYLOAD_DESERIALIZATION_FAILED",
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
-                ex: new KeyNotFoundException($"Travel quote with ID '{travelQuoteId}' not found."),
-                message: $"Travel quote with ID '{travelQuoteId}' not found when retrieving flight search options.",
-                ent: nameof(TravelQuote),
-                entId: travelQuoteId);
+                ex: ex,
+                message: $"Failed to deserialize payload for QueuedJob {queuedJob.Id} ({queuedJob.JobType}).",
+                ent: nameof(queuedJob),
+                entId: queuedJob.Id.ToString());
 
-            return NotFound(null);
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid queued job payload",
+                Detail = "The queued job payload could not be deserialized.",
+                Status = StatusCodes.Status400BadRequest,
+                Instance = HttpContext?.Request?.Path.Value
+            });
         }
 
-        // because this is one-way search we pass false for isReturn
-        AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, false, ct);
+        if (payload is null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid queued job payload",
+                Detail = "The queued job payload could not be deserialized (null).",
+                Status = StatusCodes.Status400BadRequest,
+                Instance = HttpContext?.Request?.Path.Value
+            });
+        }
 
-        var amadeusFlightResultsResponse = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
+        // mark job as processing
+        await _queuedJobService.MarkAsProcessingAsync(queuedJob, ct);
 
-        if (amadeusFlightResultsResponse == null)
-            return NotFound();
+        // process now
+        await _travelQuoteService.IngestTravelQuoteFlightUIResultPatchDto(payload, ct);
 
-        var uiResults = await _travelQuoteService.GetFlightSearchResultsAsync(travelQuoteId, amadeusFlightResultsResponse, ct);
+        // retrieve quote (should exist now)
+        var quote = await _travelQuoteService.GetByIdAsync(travelQuoteId, ct);
+        if (quote is null)
+            return NotFound(new ProblemDetails
+            {
+                Title = "Travel quote not found after ingestion",
+                Detail = $"TravelQuote with id '{travelQuoteId}' not found after ingesting queued job."
+            });
 
-        return uiResults is null ? NotFound() : Ok(uiResults);
+        // Step 2: build criteria from hydrated quote
+        var criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(
+            quote,
+            returnTrip: false,
+            ct);
+
+        // Step 3: call provider
+        var amadeusFlightResultsResponse =
+            await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
+
+        if (amadeusFlightResultsResponse is null)
+        {
+            // Another improvement:
+            // A provider failure/no-response is not really a 404.
+            return StatusCode(StatusCodes.Status502BadGateway, new ProblemDetails
+            {
+                Title = "Flight provider did not return a response",
+                Detail = "Amadeus response was null."
+            });
+        }
+
+        // Step 4: map to UI model
+        var uiResults = await _travelQuoteService.GetFlightSearchResultsAsync(
+            travelQuoteId,
+            amadeusFlightResultsResponse,
+            ct);
+
+        if (uiResults is null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "No flight results available",
+                Detail = $"UI results mapping returned null for '{travelQuoteId}'."
+            });
+        }
+
+        // mark queued job as completed
+        await _queuedJobService.MarkAsSucceededAsync(queuedJob, ct);
+
+        return Ok(uiResults);
     }
+
+
+    
+
 
     [HttpGet("ui/getreturnflightresults/{travelQuoteId}")]
     public async Task<ActionResult<List<FlightViewOption>?>> GetReturnFlightSearchResults(string travelQuoteId, CancellationToken ct)
@@ -178,7 +342,7 @@ public sealed class TravelQuotesController : ControllerBase
         return Ok(new { expiredCount });
     }
 
-    [HttpPost("run-search/flight")]
+    [HttpPost("queue-search/flight")]
     public async Task<ActionResult> RunFlightSearch(
         [FromBody] TravelQuoteFlightUIResultPatchDto dto,
         CancellationToken ct)

@@ -657,17 +657,7 @@ else
 
         string jsonString = JsonSerializer.Serialize(patchDto, JsonOpts);
 
-        string? debugDir = Path.Combine(AppContext.BaseDirectory, "payload-dumps");
-        Directory.CreateDirectory(debugDir);
-
-        string? filePath = Path.Combine(
-            debugDir,
-            $"flight-search-{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}.json");
-
-        // Write to disk
-        await File.WriteAllTextAsync(filePath, jsonString, Encoding.UTF8);
-
-        string? url  = "/api/v1/travel/quotes/run-search/flight";
+        string? url  = "/api/v1/travel/quotes/queue-search/flight";
         using HttpRequestMessage? req = new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = new StringContent(jsonString, Encoding.UTF8, mediaType: "application/json")
@@ -682,15 +672,7 @@ else
 
         if (resp.IsSuccessStatusCode)
         {
-            @* await _log.InformationAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_OK",
-                cat: SysLogCatType.Api,
-                act: SysLogActionType.Create,
-                message: $"Submitted flight search request ({(int)resp.StatusCode})",
-                ent: nameof(TravelQuoteFlightUIResultPatchDto),
-                entId: _cfg?.TravelQuoteId); *@
-
-            Nav.NavigateTo(uri: $"/platform/pnr/create/flight/results/{_cfg?.TravelQuoteId}", forceLoad: false);
+            Nav.NavigateTo(uri: $"/platform/pnr/create/flight/results/{patchDto.Id}", forceLoad: false);
         }
         else
         {
@@ -701,7 +683,7 @@ else
                 act: SysLogActionType.Create,
                 message: $"Error submitting flight search request ({(int)resp.StatusCode} {resp.ReasonPhrase}): {body}",
                 ent: nameof(TravelQuoteFlightUIResultPatchDto),
-                entId: _cfg?.TravelQuoteId,
+                entId: patchDto.Id,
                 note: "non_2xx");
 
             return;

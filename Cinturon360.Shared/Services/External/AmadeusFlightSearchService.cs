@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Cinturon360.Shared.Data;
+using Cinturon360.Shared.Helpers;
 using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus.Flight;
@@ -272,6 +273,12 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         //     Travelers = quote.Travelers,
         //     SearchCriteria = quote.SearchCriteria
         // };
+
+        // TODO: remove this later
+        await DebugWriter.WriteJsonDebugAsync(
+            criteria,
+            filePrefix: "amadeus-flight-offer-search-req",
+            ct: ct);
 
         var token = await _authService.GetTokenInformationAsync();
 

@@ -337,7 +337,7 @@ else
 
 
     // ===== Http Client =====
-    private HttpClient _client = default!;
+    private HttpClient _http = default!;
 
     // ===== Page State =====
     private string? _error;
@@ -472,7 +472,7 @@ else
     // ===== Lifecycle =====
     protected override void OnInitialized()
     {
-        _client = HttpClientFactory.CreateClient(name: "AvaApi");
+        _http = HttpClientFactory.CreateClient(name: "AvaApi");
     }
 
     protected override async Task OnParametersSetAsync()
@@ -482,8 +482,17 @@ else
 
         if (string.IsNullOrWhiteSpace(id))
         {
+            await _log.WarningAsync(
+                evt: "BOOKING_REQ_RESULTS_NO_TQID",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Read,
+                message: "No TravelQuoteId provided in route or query string",
+                ent: nameof(FlightViewOption),
+                entId: id ?? "null",
+                note: "missing_param");
+
             _error = "Missing TravelQuoteId";
-            Nav.NavigateTo("/platform/pnr/create", forceLoad: true);
+            Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);
             return;
         }
 
@@ -502,14 +511,14 @@ else
             evt: "BOOKING_REQ_RESULTS_FETCH_START",
             cat: SysLogCatType.Api,
             act: SysLogActionType.Start,
-            message: "Fetching flight results for quote ID",
+            message: $"Fetching flight results for quoteId: '{id}'",
             ent: nameof(FlightViewOption),
             entId: url,
             note: "ingress:client");
 
         try
         {
-            FlightSearchResponse? result = await _client.GetFromJsonAsync<FlightSearchResponse?>(url, ct);
+            FlightSearchResponse? result = await _http.GetFromJsonAsync<FlightSearchResponse?>(url, ct);
 
             if (result == null)
             {

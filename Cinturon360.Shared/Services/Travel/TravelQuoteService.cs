@@ -271,7 +271,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         q.MaxCabinClass = dto.MaxCabinClass ?? null;
         q.SelectedAirlines = dto.SelectedAirlines.Length > 0 ? dto.SelectedAirlines : Array.Empty<string>();
         q.Alliances = dto.Alliances ?? null;
-        q.State = QuoteState.SearchInProgress;  // mark as having UI data ingested
+        q.State = QuoteState.SearchInProgress;  // mark as having UI data ingested ??
         q.UpdatedAtUtc = DateTime.UtcNow;
 
         q.Note = (q.Note ?? "") +

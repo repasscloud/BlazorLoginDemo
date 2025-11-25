@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Cinturon360.Shared.Data;
+using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.Kernel.SysVar;
+using Cinturon360.Shared.Models.Kernel.Travel;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -74,6 +76,42 @@ public sealed class QueuedJobService : IQueuedJobService
         return await query
             .Take(maxCount)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<QueuedJob?> GetJobByCorrelationIdAsync(
+        string correlationId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(correlationId))
+            return null;
+
+        var job = await _db.QueuedJobs
+            .FirstOrDefaultAsync(j => j.CorrelationId == correlationId, cancellationToken);
+
+        if (job is null)
+            return null;
+
+        return job;
+    }
+
+    public async Task<QueuedJob?> GetJobByCorrelationIdAndNotCompletedAsync(
+        string correlationId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(correlationId))
+            return null;
+
+        var job = await _db.QueuedJobs
+            .FirstOrDefaultAsync(j => j.CorrelationId == correlationId &&
+                                      j.Status != JobStatus.Succeeded &&
+                                      j.Status != JobStatus.Failed &&
+                                      j.Status != JobStatus.Cancelled,
+                                 cancellationToken);
+
+        if (job is null)
+            return null;
+
+        return job;
     }
 
     public TPayload? DeserializePayload<TPayload>(QueuedJob job)

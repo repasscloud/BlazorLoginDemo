@@ -1,4 +1,6 @@
+using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.Kernel.SysVar;
+using Cinturon360.Shared.Models.Kernel.Travel;
 
 namespace Cinturon360.Shared.Services.Interfaces.Kernel;
 
@@ -20,6 +22,14 @@ public interface IQueuedJobService
     Task<IReadOnlyList<QueuedJob>> GetPendingJobsAsync(
         string? jobType = null,
         int maxCount = 100,
+        CancellationToken cancellationToken = default);
+
+    Task<QueuedJob?> GetJobByCorrelationIdAsync(
+        string correlationId,
+        CancellationToken cancellationToken = default);
+
+    Task<QueuedJob?> GetJobByCorrelationIdAndNotCompletedAsync(
+        string correlationId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
