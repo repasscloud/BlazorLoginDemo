@@ -77,6 +77,10 @@ case "$ACTION" in
     echo "🔧 Bumping build number (N) only…"
     N=$((N + 1))
     ;;
+  --build-only)
+    echo "🔧 Bumping build number (N) only…"
+    N=$((N + 1))
+    ;;
   --patch)
     echo "🩹 Bumping patch (Z) and resetting N…"
     Z=$((Z + 1)); N=0
@@ -224,11 +228,22 @@ curl -X 'POST' \
   -F 'File=@.scripts/data/airports.csv;type=text/csv'
 
 # ── 📤 11) Commit & push version bump ──────────────────────────────────────────
-echo
-echo "📤 11) Commit & push version bump to Git"
-git add .
-git commit -m "bump v${NEW_VER}"
-git push
+case "$ACTION" in
+  --build-only)
+    echo
+    echo "📤 11) Commit & push version bump to Git - SKIPPED"
+    git add .
+    git commit -m "bump v${NEW_VER}"
+    git push
+    ;;
+  *)
+    echo
+    echo "📤 11) Commit & push version bump to Git"
+    git add .
+    git commit -m "bump v${NEW_VER}"
+    git push
+    ;;
+esac
 
 # ── 🌱 12) Seed the DB with additional data ──────────────────────────────────
 echo

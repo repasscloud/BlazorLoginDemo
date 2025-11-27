@@ -5,8 +5,8 @@ namespace Cinturon360.Shared.Services.Interfaces.Policy;
 public interface ITravelPolicyService
 {
     // CREATE
-    Task<TravelPolicy> CreateAsync(TravelPolicy policy, CancellationToken ct = default);
-    Task<TravelPolicy> CreateDefaultAsync(TravelPolicy policy, CancellationToken ct = default);
+    Task CreateAsync(TravelPolicy policy, CancellationToken ct = default);
+    Task CreateDefaultAsync(TravelPolicy policy, CancellationToken ct = default);
 
     // READ
     Task<TravelPolicy?> GetByIdAsync(string id, CancellationToken ct = default);
@@ -14,7 +14,7 @@ public interface ITravelPolicyService
     Task<IReadOnlyList<TravelPolicy>> GetForOrganizationAsync(string organizationId, CancellationToken ct = default);
 
     // UPDATE (replace whole object)
-    Task<TravelPolicy> UpdateAsync(TravelPolicy policy, CancellationToken ct = default);
+    Task<bool> UpdateAsync(TravelPolicy policy, CancellationToken ct = default);
 
     // DELETE
     Task<bool> DeleteAsync(string id, CancellationToken ct = default);

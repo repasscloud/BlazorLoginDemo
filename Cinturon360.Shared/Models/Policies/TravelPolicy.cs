@@ -265,8 +265,7 @@ public class TravelPolicy
 
     [JsonIgnore] // Prevent circular reference during serialization.
     [ForeignKey(nameof(OrganizationUnifiedId))]
-    public OrganizationUnified Organization { get; set; } = default!;
-
+    public OrganizationUnified? Organization { get; set; }
 
     // --- Geography allow/deny lists -----------------------------------------
     public int[] RegionIds { get; set; } = Array.Empty<int>();

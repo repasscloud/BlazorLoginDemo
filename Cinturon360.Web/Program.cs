@@ -14,9 +14,10 @@ using Cinturon360.Shared.Services;
 
 using Cinturon360.Shared.Logging;
 using Serilog;
-using Blazorise;
-using Blazorise.Bootstrap5;
-using Blazorise.Icons.FontAwesome;
+using Cinturon360.Web.Services.Api;
+// using Blazorise;
+// using Blazorise.Bootstrap5;
+// using Blazorise.Icons.FontAwesome;
 
 namespace Cinturon360.Web;
 
@@ -30,14 +31,14 @@ public class Program
         var blazoriseProductToken = builder.Configuration["Blazorise:ProductToken"];
 
         // Blazorize
-        builder.Services
-        .AddBlazorise(options =>
-        {
-            options.Immediate = true;
-            options.ProductToken = blazoriseProductToken;
-        })
-        .AddBootstrap5Providers()
-        .AddFontAwesomeIcons();
+        // builder.Services
+        // .AddBlazorise(options =>
+        // {
+        //     options.Immediate = true;
+        //     options.ProductToken = blazoriseProductToken;
+        // })
+        // .AddBootstrap5Providers()
+        // .AddFontAwesomeIcons();
 
         // Serilog first
         SerilogBootstrap.UseSerilogWithPostgres(builder.Configuration, appName: "Ava.Web");
@@ -190,6 +191,10 @@ public class Program
         builder.Services.AddAvaPolicyServices();
         builder.Services.AddTransient<IEmailSender, MailerSendEmailSender>();
         builder.Services.AddTransient<IEmailSender<ApplicationUser>, MailerSendEmailSender>();
+
+        // Web Specific Services
+        builder.Services.AddScoped<IPoliciesApi, PoliciesApi>();
+
 
         builder.Services.Configure<IdentityOptions>(o =>
         {

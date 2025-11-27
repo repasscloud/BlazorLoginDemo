@@ -304,4 +304,15 @@ public class TestDataController : ControllerBase
             now = DateTime.UtcNow
         });
     }
+
+    [HttpGet("platform/org/{orgId}")]
+    public async Task<IActionResult> GetPlatformOrgById([FromRoute] string orgId, CancellationToken ct)
+    {
+        var org = await _adminOrgServiceUnified.GetByIdAsync(orgId, ct);
+        if (org == null)
+        {
+            return NotFound(new { ok = false, error = "Organization not found" });
+        }
+        return Ok(new { ok = true, organization = org });
+    }
 }

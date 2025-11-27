@@ -10,8 +10,10 @@
 @using Cinturon360.Shared.Services.Interfaces.Platform
 @using Cinturon360.Shared.Services.Interfaces.Policy
 @using Cinturon360.Shared.Services.Interfaces.Policies
+@using Cinturon360.Web.Services.Api
 @using Microsoft.AspNetCore.Components.Web
 
+@inject IPoliciesApi PoliciesApi
 @inject IAdminOrgServiceUnified OrgSvc
 @inject ITravelPolicyService PolicySvc
 @inject IContinentService ContinentSvc
@@ -686,7 +688,7 @@ else
             Model.DisabledCountryIds = ToIds(SelectedDisabledCountryIds);
 
             // Persist update
-            Model = await PolicySvc.UpdateAsync(Model);
+            await PolicySvc.UpdateAsync(Model);
 
             // Return to list for the org
             Nav.NavigateTo($"/platform/travelpolicy/list/{Model.OrganizationUnifiedId}");

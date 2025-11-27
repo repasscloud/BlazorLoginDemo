@@ -7,18 +7,22 @@
 @using Cinturon360.Shared.Models.Kernel.Platform
 @using Cinturon360.Shared.Models.Policies
 @using Cinturon360.Shared.Models.Static
+@using Cinturon360.Shared.Services.Interfaces.Kernel
 @using Cinturon360.Shared.Services.Interfaces.Platform
 @using Cinturon360.Shared.Services.Interfaces.Policy
 @using Cinturon360.Shared.Services.Interfaces.Policies
+@using Cinturon360.Web.Services.Api
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Mvc
 
+@inject IPoliciesApi PoliciesApi
 @inject IAdminOrgServiceUnified OrgSvc
 @inject ITravelPolicyService PolicySvc
 @inject IContinentService ContinentSvc
 @inject IRegionService RegionSvc
 @inject ICountryService CountrySvc
 @inject NavigationManager Nav
-@inject ILogger<NewTravelPolicy> Log
+@inject ILoggerService Log
 
 <PageTitle>New Travel Policy</PageTitle>
 
@@ -570,8 +574,9 @@ else
 
     private bool Loaded;
     private string? Error;
+    private ProblemDetails? ApiProblem;
     private string OrgName = "";
-    private TravelPolicy? Model;
+    private TravelPolicy? TravelPolicyModel;
     private TravelPolicyVm Vm = new TravelPolicyVm();
     private EditContext? EditCtx;
 
@@ -644,17 +649,26 @@ else
         {
             // Load org
             IAdminOrgServiceUnified.OrgAggregate? agg = await OrgSvc.GetByIdAsync(OrgId);
-            OrgName = agg?.Org?.Name ?? throw new InvalidOperationException(message: $"Organization '{OrgId}' missing name.");
 
+            // get org name
+            OrgName = agg?.Org?.Name ?? throw new InvalidOperationException(message: $"Organization '{OrgId}' missing name.");  //TODO: better error handling
+
+            // does org have default travel policy already - if not, this will be the default (by name)
+            string policyName = $"{OrgName} Travel Policy";
+            bool hasDefaultPolicy = agg?.Org.TravelPolicies.Any() == true;
+            if (!hasDefaultPolicy)
+                policyName = policyName + " (Default)";
+
+            // load all regions data
             AllRegions = await RegionSvc.GetAllAsync();
             AllContinents = await ContinentSvc.GetAllAsync();
             AllCountries = await CountrySvc.GetAllAsync();
 
             // NEW policy: do not create anything on init. Do not seed selections.
-            Model = new TravelPolicy
+            TravelPolicyModel = new TravelPolicy
             {
                 OrganizationUnifiedId = OrgId,
-                PolicyName = $"{OrgName} Travel Policy",
+                PolicyName = policyName,
                 DefaultCurrencyCode = "AUD",
 
                 // empty geo arrays
@@ -665,7 +679,7 @@ else
             };
 
             // Build VM from the empty model
-            Vm = TravelPolicyVm.FromModel(Model);
+            Vm = TravelPolicyVm.FromModel(TravelPolicyModel);
 
             // Keep selection lists empty for a brand-new policy
             SelectedContinentIds = Array.Empty<string>();
@@ -697,17 +711,29 @@ else
         catch (Exception ex)
         {
             Error = ex.GetBaseException().Message;
-            Log.LogError(ex, message: "Init failed");
+            await Log.ErrorAsync(
+                evt: "TravelPolicyNew_Init_Failed",
+                cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
+                act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Create,
+                ex: ex,
+                message: $"Failed to initialize new travel policy for Org '{OrgId}'",
+                org: OrgId,
+                note: Error
+            );
         }
     }
 
     private async Task SaveAsync()
     {
-        if (Model is null) return;
+        if (TravelPolicyModel is null)
+        {
+            Error = "Internal error: TravelPolicyModel is null.";
+            return;
+        }
         try
         {
             // Map VM -> entity
-            Vm.Apply(Model);
+            Vm.Apply(TravelPolicyModel);
 
             // Parse array selections -> int sets
             HashSet<int>? continentIds = SelectedContinentIds.Select(int.Parse).ToHashSet();
@@ -717,21 +743,39 @@ else
 
             // Write selections into int[] fields on the model
             static int[] ToArray(HashSet<int> s) => s.OrderBy(x => x).ToArray();
-            Model.ContinentIds = ToArray(continentIds);
-            Model.RegionIds = ToArray(regionIds);
-            Model.CountryIds = ToArray(countryIds);
-            Model.DisabledCountryIds = ToArray(disabledIds);
+            TravelPolicyModel.ContinentIds = ToArray(continentIds);
+            TravelPolicyModel.RegionIds = ToArray(regionIds);
+            TravelPolicyModel.CountryIds = ToArray(countryIds);
+            TravelPolicyModel.DisabledCountryIds = ToArray(disabledIds);
+
+            await Cinturon360.Shared.Helpers.DebugWriter.WriteJsonDebugAsync<TravelPolicy>(TravelPolicyModel, filePrefix: "NewTravelPolicy_BeforeCreate", debugDir: @"/app/wwwroot/debug");
 
             // Persist core policy (service normalizes arrays)
-            Model = await PolicySvc.CreateAsync(Model);
+            var (created, problem) = await PoliciesApi.CreateTravelPolicyAsync(TravelPolicyModel);
+            
+            ApiProblem = problem;
+            
+            if (created is not null)
+            {
+                Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrgId}");
+            }
+            
+            @* await PolicySvc.CreateAsync(TravelPolicyModel, ct: CancellationToken.None); *@
 
             // Navigate as needed
-            Nav.NavigateTo(uri: $"/platform/travelpolicy/list/{OrgId}");
+            
         }
         catch (Exception ex)
         {
             Error = ex.GetBaseException().Message;
-            Log.LogError(ex, message: "Save failed");
+            await Log.ErrorAsync(
+                evt: "TravelPolicyNew_Save_Failed",
+                cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
+                act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Create,
+                ex: ex,
+                message: $"Failed to save new travel policy for Org '{OrgId}'",
+                org: OrgId,
+                note: Error);
         }
     }
 
@@ -948,7 +992,7 @@ else
     }
 
     // ===== Travel Policy Name Helper
-        private static string EnsureUniqueName(string baseName, IEnumerable<string> names)
+    private static string EnsureUniqueName(string baseName, IEnumerable<string> names)
     {
         HashSet<string>? set = new HashSet<string>(names, StringComparer.Ordinal);
         if (!set.Contains(baseName)) return baseName;

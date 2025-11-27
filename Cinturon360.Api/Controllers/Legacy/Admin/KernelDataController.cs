@@ -8,12 +8,13 @@ using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
 using Cinturon360.Shared.Services.External;
+using Cinturon360.Shared.Security;
 
 namespace Cinturon360.Api.Controllers.Admin;
 
 [Route("api/v1/admin/kerneldata")]
 [ApiController]
-// [ServiceFilter(typeof(RequireApiKeyFilter))] // <- uncomment to add header -based key for security (call Vicky Pollard)
+[ServiceFilter(typeof(RequireApiKeyFilter))] // <- uncomment to add header -based key for security (call Vicky Pollard)
 public sealed class KernelDataController : ControllerBase
 {
     private readonly IAirportInfoService _airportInfoService;

@@ -21,7 +21,7 @@ public sealed class TravelPolicyService : ITravelPolicyService
     // -----------------------------
     // CREATE
     // -----------------------------
-    public async Task<TravelPolicy> CreateAsync(TravelPolicy policy, CancellationToken ct = default)
+    public async Task CreateAsync(TravelPolicy policy, CancellationToken ct = default)
     {
         if (policy is null) throw new ArgumentNullException(nameof(policy));
         if (string.IsNullOrWhiteSpace(policy.OrganizationUnifiedId))
@@ -37,8 +37,24 @@ public sealed class TravelPolicyService : ITravelPolicyService
         NormalizePolicyLists(policy);
         NormalizeGeoIds(policy);
 
-        var orgExists = await _db.Organizations.AsNoTracking().AnyAsync(o => o.Id == policy.OrganizationUnifiedId, ct);
-        if (!orgExists) throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found.");
+        static DateTime? EnsureUtc(DateTime? d) =>
+            d is null ? null :
+            d.Value.Kind == DateTimeKind.Utc ? d :
+            DateTime.SpecifyKind(d.Value, DateTimeKind.Utc);
+
+        policy.EffectiveFromUtc = EnsureUtc(policy.EffectiveFromUtc);
+        policy.ExpiresOnUtc     = EnsureUtc(policy.ExpiresOnUtc);
+
+        var now = DateTime.UtcNow;
+        policy.CreatedAtUtc = now;
+        policy.LastUpdatedUtc = now;
+
+        // Load org ONCE (tracked) so we can also update DefaultTravelPolicyId if needed
+        var org = await _db.Organizations
+            .FirstOrDefaultAsync(o => o.Id == policy.OrganizationUnifiedId, ct);
+
+        if (org is null)
+            throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found.");
 
         await _logger.InformationAsync(
             evt: "TRAVEL_POLICY_CREATE",
@@ -48,28 +64,12 @@ public sealed class TravelPolicyService : ITravelPolicyService
             ent: nameof(TravelPolicy),
             entId: policy.Id);
 
-        static DateTime? EnsureUtc(DateTime? d) =>
-            d is null ? null :
-            d.Value.Kind == DateTimeKind.Utc ? d :
-            DateTime.SpecifyKind(d.Value, DateTimeKind.Utc);
-
-        policy.EffectiveFromUtc = EnsureUtc(policy.EffectiveFromUtc);
-        policy.ExpiresOnUtc     = EnsureUtc(policy.ExpiresOnUtc);
-
-        policy.CreatedAtUtc = DateTime.UtcNow;
-        policy.LastUpdatedUtc = DateTime.UtcNow;
-
         await _db.TravelPolicies.AddAsync(policy, ct);
-
-        var org = await _db.Organizations.FirstOrDefaultAsync(
-            o => o.Id == policy.OrganizationUnifiedId, ct);
-        if (org is null)
-            throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found on add.");
 
         if (string.IsNullOrWhiteSpace(org.DefaultTravelPolicyId))
         {
             org.DefaultTravelPolicyId = policy.Id;
-            org.LastUpdatedUtc = DateTime.UtcNow;
+            org.LastUpdatedUtc = now;
 
             await _logger.InformationAsync(
                 evt: "TRAVEL_POLICY_SET_DEFAULT_ON_CREATE",
@@ -78,19 +78,12 @@ public sealed class TravelPolicyService : ITravelPolicyService
                 message: $"Organization '{org.Id}' default Travel Policy set to '{policy.Id}' on creation.",
                 ent: nameof(TravelPolicy),
                 entId: policy.Id);
-
-            await _db.SaveChangesAsync(ct);
-        }
-        else
-        {
-            _db.Entry(org).State = EntityState.Detached; // "let go"
         }
 
         await _db.SaveChangesAsync(ct);
-        return policy;
     }
 
-    public async Task<TravelPolicy> CreateDefaultAsync(TravelPolicy policy, CancellationToken ct = default)
+    public async Task CreateDefaultAsync(TravelPolicy policy, CancellationToken ct = default)
         => await CreateAsync(policy, ct);
 
     // -----------------------------
@@ -118,7 +111,7 @@ public sealed class TravelPolicyService : ITravelPolicyService
     // -----------------------------
     // UPDATE (replace whole object)
     // -----------------------------
-    public async Task<TravelPolicy> UpdateAsync(TravelPolicy policy, CancellationToken ct = default)
+    public async Task<bool> UpdateAsync(TravelPolicy policy, CancellationToken ct = default)
     {
         if (policy is null) throw new ArgumentNullException(nameof(policy));
         if (string.IsNullOrWhiteSpace(policy.Id))
@@ -149,7 +142,7 @@ public sealed class TravelPolicyService : ITravelPolicyService
         _db.Entry(policy).State = EntityState.Modified;
 
         await _db.SaveChangesAsync(ct);
-        return policy;
+        return true;
     }
 
     // -----------------------------

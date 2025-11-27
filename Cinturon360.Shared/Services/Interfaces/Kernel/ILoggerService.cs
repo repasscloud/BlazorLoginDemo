@@ -43,8 +43,8 @@ namespace Cinturon360.Shared.Services.Interfaces.Kernel
             Exception ex, string? message = null,
             string? ent = null, string? entId = null,
             string? rid = null, string? tid = null, string? uid = null, string? org = null,
-                               int? durMs = null, string? http = null, int? stat = null, string? path = null,
-                               string? note = null, SysLogOutcome? overrideOutcome = null);
+            int? durMs = null, string? http = null, int? stat = null, string? path = null,
+            string? note = null, SysLogOutcome? overrideOutcome = null);
 
         // Lowest-level escape hatch if you need to set Level and Outcome explicitly
         Task LogAsync(SysLogLevel level, string evt, SysLogCatType cat, SysLogActionType act,
