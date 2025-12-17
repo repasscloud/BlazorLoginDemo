@@ -1,5 +1,9 @@
 using System.Diagnostics;
+using System.Security.Claims;
 using Cinturon360.Shared.Models.Policies;
+using Cinturon360.Shared.Models.Kernel.SysVar;
+using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Policy;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,9 +17,9 @@ public sealed class PoliciesController : ControllerBase
     private const string CorrelationHeader = "X-Correlation-Id";
 
     private readonly ITravelPolicyService _travelPolicies;
-    private readonly ILogger<PoliciesController> _log;
+    private readonly ILoggerService _log;
 
-    public PoliciesController(ITravelPolicyService travelPolicies, ILogger<PoliciesController> log)
+    public PoliciesController(ITravelPolicyService travelPolicies, ILoggerService log)
     {
         _travelPolicies = travelPolicies;
         _log = log;
@@ -37,6 +41,7 @@ public sealed class PoliciesController : ControllerBase
     {
         StampCorrelationId();
 
+        var sw = Stopwatch.StartNew();
         try
         {
             if (string.IsNullOrWhiteSpace(organizationId))
@@ -46,31 +51,25 @@ public sealed class PoliciesController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            _log.LogWarning(ex, "Bad request in ListTravelPolicies");
+            await _log.WarningAsync(
+                evt: "TRAVEL_POLICY_LIST_BAD_REQUEST",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                message: "Bad request in ListTravelPolicies",
+                ex: ex,
+                ent: nameof(TravelPolicy),
+                rid: GetCorrelationId(),
+                tid: GetTraceId(),
+                uid: GetUserId(),
+                org: organizationId,
+                durMs: (int)sw.ElapsedMilliseconds,
+                http: Request.Method,
+                stat: StatusCodes.Status400BadRequest,
+                path: HttpContext?.Request?.Path.Value,
+                note: "errorCode=bad_request");
+
             return ProblemEx(StatusCodes.Status400BadRequest, "bad_request", ex.Message);
         }
-    }
-
-    /// <summary>
-    /// Get a travel policy by id.
-    /// </summary>
-    [HttpGet("travel/{policyId}")]
-    [ProducesResponseType(typeof(TravelPolicy), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TravelPolicy>> GetTravelPolicyById(
-        [FromRoute] string policyId,
-        CancellationToken ct)
-    {
-        StampCorrelationId();
-
-        if (string.IsNullOrWhiteSpace(policyId))
-            return ProblemEx(StatusCodes.Status400BadRequest, "validation_failed", "policyId is required.");
-
-        var policy = await _travelPolicies.GetByIdAsync(policyId, ct);
-        if (policy is null)
-            return ProblemEx(StatusCodes.Status404NotFound, "travel_policy_not_found", $"Travel policy '{policyId}' not found.");
-
-        return Ok(policy);
     }
 
     /// <summary>
@@ -92,19 +91,36 @@ public sealed class PoliciesController : ControllerBase
         if (policy is null)
             return ProblemEx(StatusCodes.Status400BadRequest, "validation_failed", "Body is required.");
 
+        var sw = Stopwatch.StartNew();
+
         try
         {
-            // Optional: support idempotency keys later (store and replay by key).
-            // var idem = Request.Headers["Idempotency-Key"].ToString();
-
             await _travelPolicies.CreateAsync(policy, ct);
 
             // Re-read to return the persisted/normalized version.
             var created = await _travelPolicies.GetByIdAsync(policy.Id, ct);
             if (created is null)
             {
-                // Should be rare; treat as server error.
-                return ProblemEx(StatusCodes.Status500InternalServerError, "create_failed", "Policy was created but could not be retrieved.");
+                await _log.ErrorAsync(
+                    evt: "TRAVEL_POLICY_CREATE_RETRIEVE_FAILED",
+                    cat: SysLogCatType.Data,
+                    act: SysLogActionType.Create,
+                    ex: new InvalidOperationException("Policy was created but could not be retrieved."),
+                    message: "CreateTravelPolicy created a record but could not retrieve it",
+                    ent: nameof(TravelPolicy),
+                    entId: policy.Id,
+                    rid: GetCorrelationId(),
+                    tid: GetTraceId(),
+                    uid: GetUserId(),
+                    org: policy.OrganizationUnifiedId,
+                    durMs: (int)sw.ElapsedMilliseconds,
+                    http: Request.Method,
+                    stat: StatusCodes.Status500InternalServerError,
+                    path: HttpContext?.Request?.Path.Value,
+                    note: "errorCode=create_failed");
+
+                return ProblemEx(StatusCodes.Status500InternalServerError, "create_failed",
+                    "Policy was created but could not be retrieved.");
             }
 
             return CreatedAtAction(
@@ -114,14 +130,48 @@ public sealed class PoliciesController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            _log.LogWarning(ex, "Validation failure in CreateTravelPolicy");
+            await _log.WarningAsync(
+                evt: "TRAVEL_POLICY_CREATE_VALIDATION_FAILED",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Create,
+                message: "Validation failure in CreateTravelPolicy",
+                ex: ex,
+                ent: nameof(TravelPolicy),
+                entId: policy.Id,
+                rid: GetCorrelationId(),
+                tid: GetTraceId(),
+                uid: GetUserId(),
+                org: policy.OrganizationUnifiedId,
+                durMs: (int)sw.ElapsedMilliseconds,
+                http: Request.Method,
+                stat: StatusCodes.Status400BadRequest,
+                path: HttpContext?.Request?.Path.Value,
+                note: "errorCode=validation_failed");
+
             return ProblemEx(StatusCodes.Status400BadRequest, "validation_failed", ex.Message);
         }
         catch (InvalidOperationException ex)
         {
             // Your service throws InvalidOperationException when organization or policy doesn't exist.
             // Map to 404 for "not found".
-            _log.LogWarning(ex, "Not found / invalid operation in CreateTravelPolicy");
+            await _log.WarningAsync(
+                evt: "TRAVEL_POLICY_CREATE_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Create,
+                message: "Not found / invalid operation in CreateTravelPolicy",
+                ex: ex,
+                ent: nameof(TravelPolicy),
+                entId: policy.Id,
+                rid: GetCorrelationId(),
+                tid: GetTraceId(),
+                uid: GetUserId(),
+                org: policy.OrganizationUnifiedId,
+                durMs: (int)sw.ElapsedMilliseconds,
+                http: Request.Method,
+                stat: StatusCodes.Status404NotFound,
+                path: HttpContext?.Request?.Path.Value,
+                note: "errorCode=organization_not_found");
+
             return ProblemEx(StatusCodes.Status404NotFound, "organization_not_found", ex.Message);
         }
     }
@@ -154,6 +204,8 @@ public sealed class PoliciesController : ControllerBase
         if (!await _travelPolicies.ExistsAsync(policyId, ct))
             return ProblemEx(StatusCodes.Status404NotFound, "travel_policy_not_found", $"Travel policy '{policyId}' not found.");
 
+        var sw = Stopwatch.StartNew();
+
         try
         {
             await _travelPolicies.UpdateAsync(policy, ct);
@@ -166,25 +218,75 @@ public sealed class PoliciesController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            _log.LogWarning(ex, "Validation failure in UpdateTravelPolicy");
+            await _log.WarningAsync(
+                evt: "TRAVEL_POLICY_UPDATE_VALIDATION_FAILED",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                message: "Validation failure in UpdateTravelPolicy",
+                ex: ex,
+                ent: nameof(TravelPolicy),
+                entId: policyId,
+                rid: GetCorrelationId(),
+                tid: GetTraceId(),
+                uid: GetUserId(),
+                org: policy.OrganizationUnifiedId,
+                durMs: (int)sw.ElapsedMilliseconds,
+                http: Request.Method,
+                stat: StatusCodes.Status400BadRequest,
+                path: HttpContext?.Request?.Path.Value,
+                note: "errorCode=validation_failed");
+
             return ProblemEx(StatusCodes.Status400BadRequest, "validation_failed", ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            _log.LogWarning(ex, "Not found / invalid operation in UpdateTravelPolicy");
+            await _log.WarningAsync(
+                evt: "TRAVEL_POLICY_UPDATE_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Update,
+                message: "Not found / invalid operation in UpdateTravelPolicy",
+                ex: ex,
+                ent: nameof(TravelPolicy),
+                entId: policyId,
+                rid: GetCorrelationId(),
+                tid: GetTraceId(),
+                uid: GetUserId(),
+                org: policy.OrganizationUnifiedId,
+                durMs: (int)sw.ElapsedMilliseconds,
+                http: Request.Method,
+                stat: StatusCodes.Status404NotFound,
+                path: HttpContext?.Request?.Path.Value,
+                note: "errorCode=organization_not_found");
+
             return ProblemEx(StatusCodes.Status404NotFound, "organization_not_found", ex.Message);
         }
     }
 
-    /// <summary>
-    /// Delete a travel policy.
-    /// </summary>
+    // ------------------------------------------------------------------------
+    // Remaining endpoints unchanged (no ILogger<T> usage below)
+    // ------------------------------------------------------------------------
+
+    [HttpGet("travel/{policyId}")]
+    [ProducesResponseType(typeof(TravelPolicy), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TravelPolicy>> GetTravelPolicyById([FromRoute] string policyId, CancellationToken ct)
+    {
+        StampCorrelationId();
+
+        if (string.IsNullOrWhiteSpace(policyId))
+            return ProblemEx(StatusCodes.Status400BadRequest, "validation_failed", "policyId is required.");
+
+        var policy = await _travelPolicies.GetByIdAsync(policyId, ct);
+        if (policy is null)
+            return ProblemEx(StatusCodes.Status404NotFound, "travel_policy_not_found", $"Travel policy '{policyId}' not found.");
+
+        return Ok(policy);
+    }
+
     [HttpDelete("travel/{policyId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteTravelPolicy(
-        [FromRoute] string policyId,
-        CancellationToken ct)
+    public async Task<IActionResult> DeleteTravelPolicy([FromRoute] string policyId, CancellationToken ct)
     {
         StampCorrelationId();
 
@@ -195,20 +297,13 @@ public sealed class PoliciesController : ControllerBase
         if (!ok)
             return ProblemEx(StatusCodes.Status404NotFound, "travel_policy_not_found", $"Travel policy '{policyId}' not found.");
 
-        // Note: your current service delete does not clear/update an org's DefaultTravelPolicyId.
-        // That fix belongs in the service layer (or DB constraint logic), not here.
         return NoContent();
     }
 
-    /// <summary>
-    /// Set a travel policy as the default for its organization.
-    /// </summary>
     [HttpPost("travel/{policyId}:set-default")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> SetDefaultTravelPolicy(
-        [FromRoute] string policyId,
-        CancellationToken ct)
+    public async Task<IActionResult> SetDefaultTravelPolicy([FromRoute] string policyId, CancellationToken ct)
     {
         StampCorrelationId();
 
@@ -222,16 +317,10 @@ public sealed class PoliciesController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Resolve the effective allowed countries for a travel policy
-    /// (regions/continents/countries minus disabled -> countries).
-    /// </summary>
     [HttpGet("travel/{policyId}/allowed-countries")]
     [ProducesResponseType(typeof(IReadOnlyList<Country>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IReadOnlyList<Country>>> ResolveAllowedCountries(
-        [FromRoute] string policyId,
-        CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<Country>>> ResolveAllowedCountries([FromRoute] string policyId, CancellationToken ct)
     {
         StampCorrelationId();
 
@@ -245,7 +334,6 @@ public sealed class PoliciesController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            // Service throws when TravelPolicy not found.
             return ProblemEx(StatusCodes.Status404NotFound, "travel_policy_not_found", ex.Message);
         }
     }
@@ -258,12 +346,10 @@ public sealed class PoliciesController : ControllerBase
     {
         var corr = GetCorrelationId();
 
-        // Always echo correlation id back for tracing.
         if (!Response.Headers.ContainsKey(CorrelationHeader))
             Response.Headers[CorrelationHeader] = corr;
 
-        // Optional extras that are useful in enterprises.
-        Response.Headers["X-Trace-Id"] = GetTraceId();
+        Response.Headers["X-Trace-Id"] = GetTraceId().ToString();
         Response.Headers["Cache-Control"] = "no-store";
     }
 
@@ -273,8 +359,14 @@ public sealed class PoliciesController : ControllerBase
         return string.IsNullOrWhiteSpace(incoming) ? HttpContext.TraceIdentifier : incoming;
     }
 
-    private static string GetTraceId()
-        => Activity.Current?.Id ?? string.Empty;
+    private static Guid GetTraceId()
+        => Guid.NewGuid();
+        //=> Activity.Current?.Id ?? string.Empty;
+
+    private string? GetUserId()
+        => User?.FindFirstValue(ClaimTypes.NameIdentifier)
+           ?? User?.FindFirstValue("sub")
+           ?? User?.FindFirstValue("uid");
 
     private ObjectResult ProblemEx(int status, string errorCode, string title, string? detail = null)
     {

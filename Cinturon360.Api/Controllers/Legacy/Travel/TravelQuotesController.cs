@@ -10,6 +10,7 @@ using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace Cinturon360.Api.Controllers.Travel;
 
@@ -18,6 +19,7 @@ namespace Cinturon360.Api.Controllers.Travel;
 [ApiController]
 public sealed class TravelQuotesController : ControllerBase
 {
+    private const string CorrelationHeader = "X-Correlation-Id";
     private readonly ITravelQuoteService _travelQuoteService;
     private readonly IAmadeusFlightSearchService _flightSearchService;
     private readonly IQueuedJobService _queuedJobService;
@@ -59,7 +61,7 @@ public sealed class TravelQuotesController : ControllerBase
     [HttpGet("ui/flightsearchpageconfig/{travelQuoteId}")]
     public async Task<ActionResult<FlightSearchPageConfig>> GetFlightSearchPageConfig(string travelQuoteId, CancellationToken ct)
     {
-        var config = await _travelQuoteService.GenerateFlightSearchUIOptionsAsync(travelQuoteId, ct);
+        var config = await _travelQuoteService.GenerateFlightSearchUIOptionsAsync(travelQuoteId, "x", ct);
         return config is null ? NotFound() : Ok(config);
     }
 
@@ -364,4 +366,28 @@ public sealed class TravelQuotesController : ControllerBase
     public sealed record UpdateCreatedByRequest([property: Required] string NewUserId);
     public sealed record UpdateStateRequest([property: Required] QuoteState State);
     // remove: public sealed record CreateFromDtoRequest([property: Required] TravelQuoteDto Dto);
+
+        // ------------------------------------------------------------------------
+    // Correlation helpers
+    // ------------------------------------------------------------------------
+
+    private void StampCorrelationId()
+    {
+        var rid = GetCorrelationId();
+
+        if (!Response.Headers.ContainsKey(CorrelationHeader))
+            Response.Headers[CorrelationHeader] = rid;
+
+        Response.Headers["X-Trace-Id"] = GetTraceId();
+        Response.Headers["Cache-Control"] = "no-store";
+    }
+
+    private string GetCorrelationId()
+    {
+        var incoming = Request.Headers[CorrelationHeader].ToString();
+        return string.IsNullOrWhiteSpace(incoming) ? HttpContext.TraceIdentifier : incoming;
+    }
+
+    private static string GetTraceId()
+        => Activity.Current?.Id ?? string.Empty;
 }

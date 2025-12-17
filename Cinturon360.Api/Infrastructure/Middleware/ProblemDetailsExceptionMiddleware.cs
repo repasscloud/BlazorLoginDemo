@@ -42,7 +42,7 @@ public sealed class ProblemDetailsExceptionMiddleware : IMiddleware
                 act: SysLogActionType.Read,
                 ex: ex,
                 message: title,
-                rid: rid, tid: tid, uid: uid, org: org,
+                rid: rid, tid: Guid.Parse(tid), uid: uid, org: org,
                 http: context.Request.Method,
                 stat: status,
                 path: context.Request.Path.Value ?? "/",

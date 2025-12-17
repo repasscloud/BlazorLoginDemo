@@ -263,64 +263,118 @@ public sealed class TravelPolicyService : ITravelPolicyService
     // -----------------------------
     // RESOLUTION (countries only)
     // -----------------------------
-    public async Task<IReadOnlyList<Country>> ResolveAllowedCountriesAsync(string policyId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Country>> ResolveAllowedCountriesAsync(
+        string policyId,
+        CancellationToken ct = default)
     {
-        // Load policy
-        var tp = await _db.TravelPolicies.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == policyId, ct)
-            ?? throw new InvalidOperationException($"TravelPolicy '{policyId}' not found");
+        var tp = await GetPolicyOrThrowAsync(policyId, ct);
 
-        // 1) Start with explicit country IDs from policy
-        var bag = new List<int>(tp.CountryIds);
+        // Use a set up-front so duplicates never exist (Country+Continent+Region overlap is fine)
+        var allowed = new HashSet<int>(tp.CountryIds ?? Array.Empty<int>());
 
-        // 2) Add countries for explicit continents
-        if (tp.ContinentIds.Length > 0)
+        // Countries directly enabled by ContinentIds
+        if (tp.ContinentIds is { Length: > 0 })
         {
-            var contIds = tp.ContinentIds; // capture to local for translation
-            var contCountryIds = await _db.Countries.AsNoTracking()
-                .Where(c => c.ContinentId.HasValue && contIds.Contains(c.ContinentId.Value))
+            var contIds = tp.ContinentIds;
+
+            var ids = await _db.Countries.AsNoTracking()
+                .Where(c => c.ContinentId != null && contIds.Contains(c.ContinentId.Value))
                 .Select(c => c.Id)
                 .ToListAsync(ct);
-            bag.AddRange(contCountryIds);
+
+            foreach (var id in ids) allowed.Add(id);
         }
 
-        // 3) Add countries for regions → continents → countries
-        if (tp.RegionIds.Length > 0)
+        // Countries enabled by RegionIds (Region -> Continent -> Country)
+        if (tp.RegionIds is { Length: > 0 })
         {
             var regionIds = tp.RegionIds;
-            var regionContinentIds = await _db.Continents.AsNoTracking()
-                .Where(x => x.RegionId.HasValue && regionIds.Contains(x.RegionId.Value))
-                .Select(x => x.Id)
-                .ToListAsync(ct);
 
-            if (regionContinentIds.Count > 0)
-            {
-                var regContIds = regionContinentIds;
-                var regCountryIds = await _db.Countries.AsNoTracking()
-                    .Where(c => c.ContinentId.HasValue && regContIds.Contains(c.ContinentId.Value))
-                    .Select(c => c.Id)
-                    .ToListAsync(ct);
-                bag.AddRange(regCountryIds);
-            }
+            // Join Countries -> Continents so you don't depend on a separate "continentIds then countries" hop
+            var ids = await (
+                from country in _db.Countries.AsNoTracking()
+                join continent in _db.Continents.AsNoTracking()
+                    on country.ContinentId equals continent.Id
+                where continent.RegionId != null && regionIds.Contains(continent.RegionId.Value)
+                select country.Id
+            ).ToListAsync(ct);
+
+            foreach (var id in ids) allowed.Add(id);
         }
 
-        // 4) Remove disabled, then dedupe
-        if (tp.DisabledCountryIds.Length > 0)
+        // Remove disabled countries
+        if (tp.DisabledCountryIds is { Length: > 0 })
         {
-            var disabled = tp.DisabledCountryIds;
-            bag.RemoveAll(id => disabled.Contains(id));
+            foreach (var id in tp.DisabledCountryIds) allowed.Remove(id);
         }
-        var distinctIds = bag.Distinct().ToArray();
 
-        if (distinctIds.Length == 0)
+        if (allowed.Count == 0)
             return Array.Empty<Country>();
 
-        // 5) Return countries sorted by name
+        var allowedIds = allowed.ToArray();
+
         return await _db.Countries.AsNoTracking()
-            .Where(c => distinctIds.Contains(c.Id))
+            .Where(c => allowedIds.Contains(c.Id))
             .OrderBy(c => c.Name)
             .ToListAsync(ct);
     }
+
+    // public async Task<IReadOnlyList<Country>> ResolveAllowedCountriesAsync(string policyId, CancellationToken ct = default)
+    // {
+    //     // Load policy
+    //     var tp = await GetPolicyOrThrowAsync(policyId, ct);
+
+    //     // 1) Start with explicit country IDs from policy
+    //     var bag = new List<int>(tp.CountryIds);
+
+    //     // 2) Add countries for explicit continents
+    //     if (tp.ContinentIds.Length > 0)
+    //     {
+    //         var contIds = tp.ContinentIds; // capture to local for translation
+    //         var contCountryIds = await _db.Countries.AsNoTracking()
+    //             .Where(c => c.ContinentId.HasValue && contIds.Contains(c.ContinentId.Value))
+    //             .Select(c => c.Id)
+    //             .ToListAsync(ct);
+    //         bag.AddRange(contCountryIds);
+    //     }
+
+    //     // 3) Add countries for regions → continents → countries
+    //     if (tp.RegionIds.Length > 0)
+    //     {
+    //         var regionIds = tp.RegionIds;
+    //         var regionContinentIds = await _db.Continents.AsNoTracking()
+    //             .Where(x => x.RegionId.HasValue && regionIds.Contains(x.RegionId.Value))
+    //             .Select(x => x.Id)
+    //             .ToListAsync(ct);
+
+    //         if (regionContinentIds.Count > 0)
+    //         {
+    //             var regContIds = regionContinentIds;
+    //             var regCountryIds = await _db.Countries.AsNoTracking()
+    //                 .Where(c => c.ContinentId.HasValue && regContIds.Contains(c.ContinentId.Value))
+    //                 .Select(c => c.Id)
+    //                 .ToListAsync(ct);
+    //             bag.AddRange(regCountryIds);
+    //         }
+    //     }
+
+    //     // 4) Remove disabled, then dedupe
+    //     if (tp.DisabledCountryIds.Length > 0)
+    //     {
+    //         var disabled = tp.DisabledCountryIds;
+    //         bag.RemoveAll(id => disabled.Contains(id));
+    //     }
+    //     var distinctIds = bag.Distinct().ToArray();
+
+    //     if (distinctIds.Length == 0)
+    //         return Array.Empty<Country>();
+
+    //     // 5) Return countries sorted by name
+    //     return await _db.Countries.AsNoTracking()
+    //         .Where(c => distinctIds.Contains(c.Id))
+    //         .OrderBy(c => c.Name)
+    //         .ToListAsync(ct);
+    // }
 
     // -----------------------------
     // Helpers
@@ -376,5 +430,25 @@ public sealed class TravelPolicyService : ITravelPolicyService
         policy.ContinentIds = Clean(policy.ContinentIds);
         policy.CountryIds = Clean(policy.CountryIds);
         policy.DisabledCountryIds = Clean(policy.DisabledCountryIds);
+    }
+
+    private async Task<TravelPolicy> GetPolicyOrThrowAsync(string policyId, CancellationToken ct)
+    {
+        try
+        {
+            var policy = await _db.TravelPolicies
+                .AsNoTracking()
+                .SingleOrDefaultAsync(p => p.Id == policyId, ct);
+
+            return policy ?? throw new KeyNotFoundException($"TravelPolicy '{policyId}' not found");
+        }
+        catch (InvalidOperationException ex)
+        {
+            // SingleOrDefaultAsync throws InvalidOperationException if > 1 row matches.
+            // With a proper UNIQUE constraint this should never happen, so make it loud.
+            throw new InvalidOperationException(
+                $"Data integrity error: TravelPolicy '{policyId}' is not unique (multiple rows found).",
+                ex);
+        }
     }
 }

@@ -21,7 +21,8 @@ public static class RequestContext
            ?? ctx.TraceIdentifier;
 
     public static string GetTraceId()
-        => Activity.Current?.Id ?? string.Empty;
+        => Guid.NewGuid().ToString();
+        //=> Activity.Current?.Id ?? string.Empty;
 
     public static string? GetClient(HttpContext ctx)
         => ctx.Items.TryGetValue(ItemClient, out var v) ? v?.ToString() : null;

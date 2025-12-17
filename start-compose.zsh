@@ -221,11 +221,13 @@ echo "✅ API is healthy (container: $apiContainerName, port: $api_host_port)"
 # ── 🌱 10) Seed the DB with airport data ──────────────────────────────────
 echo
 echo "🌱 10) Seed the DB with airport data"
-curl -X 'POST' \
+curl -v -X POST \
   'http://localhost:8090/api/v1/admin/kerneldata/airport-info/bulk-upsert-from-csv?batchSize=1000' \
   -H 'accept: text/plain' \
   -H 'Content-Type: multipart/form-data' \
-  -F 'File=@.scripts/data/airports.csv;type=text/csv'
+  -H 'X-Ava-ApiKey: Shq6_nO2alwM4rzXJaPeVVIxdDPoTP7bbjBqGjajoWysImi-3UiMZua8WdMv2cmY' \
+  -F 'File=@.scripts/data/airports.csv;type=text/csv' \
+  2>&1 | sed -n '1,120p'
 
 # ── 📤 11) Commit & push version bump ──────────────────────────────────────────
 case "$ACTION" in

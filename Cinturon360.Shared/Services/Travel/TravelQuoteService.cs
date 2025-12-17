@@ -67,8 +67,13 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         return await LoadAggregateTrackedAsync(model.Id, ct); // return fresh tracked copy
     }
 
-    public async Task<(bool Ok, string? Error, string? TravelQuoteId)> CreateFromDtoAsync(TravelQuoteDto dto, CancellationToken ct = default)
+    public async Task<(bool Ok, string? Error, string? TravelQuoteId)> CreateFromDtoAsync(
+        TravelQuoteDto dto,
+        CancellationToken ct = default)
     {
+        // RID should be stamped by the controller; fall back so logs don’t lose correlation.
+        var rid = string.IsNullOrWhiteSpace(dto.Rid) ? Guid.NewGuid().ToString("N") : dto.Rid;
+
         await _log.InformationAsync(
             evt: "TRAVEL_QUOTE_TRANSLATE_START",
             cat: SysLogCatType.Workflow,
@@ -77,7 +82,8 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             ent: "TravelQuoteDto",
             entId: dto.OrganizationId,
             uid: dto.CreatedByUserId,
-            org: dto.OrganizationId);
+            org: dto.OrganizationId,
+            rid: rid);
 
         try
         {
@@ -94,6 +100,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     entId: dto.OrganizationId,
                     uid: dto.CreatedByUserId,
                     org: dto.OrganizationId,
+                    rid: rid,
                     note: "no_travellers_or_policy");
 
                 await _log.InformationAsync(
@@ -104,13 +111,28 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     ent: "TravelQuoteDto",
                     entId: dto.OrganizationId,
                     uid: dto.CreatedByUserId,
-                    org: dto.OrganizationId);
+                    org: dto.OrganizationId,
+                    rid: rid);
 
-                return (false, "No valid travellers with Travel Policy assigned to generate a quote. Assign users a Travel Policy or assign the organization a Default Travel Policy to generate a quote.", null);
+                return (false,
+                    "No valid travellers with Travel Policy assigned to generate a quote. Assign users a Travel Policy or assign the organization a Default Travel Policy to generate a quote.",
+                    null);
             }
 
             _db.TravelQuotes.Add(quote);
             await _db.SaveChangesAsync(ct);
+
+            await _log.InformationAsync(
+                evt: "TRAVEL_QUOTE_CREATE_FROM_DTO_OK",
+                cat: SysLogCatType.Workflow,
+                act: SysLogActionType.Create,
+                message: "CreateFromDtoAsync succeeded",
+                ent: "TravelQuote",
+                entId: quote.Id,
+                uid: dto.CreatedByUserId,
+                org: dto.OrganizationId,
+                rid: rid);
+
             return (true, null, quote.Id);
         }
         catch (Exception ex)
@@ -124,7 +146,8 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 ent: "TravelQuoteDto",
                 entId: dto.OrganizationId,
                 uid: dto.CreatedByUserId,
-                org: dto.OrganizationId);
+                org: dto.OrganizationId,
+                rid: rid);
 
             return (false, ex.GetBaseException().Message, null);
         }
@@ -437,7 +460,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
     // ---------------- UI HELPERS ----------------
     // this can only be called via the API layer where the process is able to consume resources
-    public async Task<FlightSearchPageConfig> GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default)
+    public async Task<FlightSearchPageConfig> GenerateFlightSearchUIOptionsAsync(string travelQuoteId, string rid, CancellationToken ct = default)
     {
         var quote = await GetByIdAsync(travelQuoteId, ct)
             ?? throw new InvalidOperationException($"TravelQuote '{travelQuoteId}' not found.");
@@ -447,6 +470,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             cat: SysLogCatType.App,
             act: SysLogActionType.Start,
             message: $"Generating flight search UI options for TravelQuote '{travelQuoteId}'",
+            rid: rid,
             ent: nameof(TravelQuote),
             entId: travelQuoteId);
 
@@ -457,6 +481,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             cat: SysLogCatType.App,
             act: SysLogActionType.Step,
             message: $"orgName set to '{orgName}'",
+            rid: rid,
             ent: nameof(TravelQuote),
             entId: travelQuoteId);
 
@@ -471,6 +496,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     cat: SysLogCatType.App,
                     act: SysLogActionType.Step,
                     message: $"TravelPolicy type is '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
+                    rid: rid,
                     ent: nameof(TravelQuote),
                     entId: travelQuoteId);
                 travelPolicy = await _db.TravelPolicies
@@ -484,6 +510,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     cat: SysLogCatType.App,
                     act: SysLogActionType.Step,
                     message: $"TravelPolicy type is '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
+                    rid: rid,
                     ent: nameof(TravelQuote),
                     entId: travelQuoteId);
                 var eph = await _db.EphemeralTravelPolicies
@@ -498,6 +525,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                         cat: SysLogCatType.Workflow,
                         act: SysLogActionType.Step,
                         message: $"Converted EphemeralTravelPolicy '{eph.Id}' from TravelPolicy for TravelQuote '{travelQuoteId}'",
+                        rid: rid,
                         ent: nameof(TravelQuote),
                         entId: travelQuoteId);
                 }
@@ -509,6 +537,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     cat: SysLogCatType.Workflow,
                     act: SysLogActionType.Validate,
                     message: $"Unknown TravelPolicy type '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
+                    rid: rid,
                     ent: nameof(TravelQuote),
                     entId: travelQuoteId,
                     note: "unknown_policy_type");
@@ -521,6 +550,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             cat: SysLogCatType.App,
             act: SysLogActionType.Step,
             message: $"TravelPolicy name '{policyName}' for TravelQuote '{travelQuoteId}'",
+            rid: rid,
             ent: nameof(TravelQuote),
             entId: travelQuoteId);
 
@@ -530,6 +560,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             cat: SysLogCatType.App,
             act: SysLogActionType.Step,
             message: $"TravelPolicy adult count '{adults}' for TravelQuote '{travelQuoteId}'",
+            rid: rid,
             ent: nameof(TravelQuote),
             entId: travelQuoteId);
 
@@ -568,6 +599,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 cat: SysLogCatType.Workflow,
                 act: SysLogActionType.Validate,
                 message: $"No allowed countries found for TravelPolicy '{travelPolicy?.Id}' associated with TravelQuote '{travelQuoteId}'",
+                rid: rid,
                 ent: nameof(TravelQuote),
                 entId: travelQuoteId,
                 note: "no_allowed_countries");
@@ -579,6 +611,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Step,
                 message: $"Found {allowedCountries.Count} allowed countries for TravelPolicy '{travelPolicy?.Id}' associated with TravelQuote '{travelQuoteId}'",
+                rid: rid,
                 ent: nameof(TravelQuote),
                 entId: travelQuoteId);
         }
@@ -601,6 +634,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Step,
                 message: $"Allowed ISO3166 Alpha-2 country codes for TravelPolicy '{travelPolicy?.Id}' associated with TravelQuote '{travelQuoteId}': {string.Join(", ", allowedIso3166_Alpha2)}",
+                rid: rid,
                 ent: nameof(TravelQuote),
                 entId: travelQuoteId);
         }
@@ -681,6 +715,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             cat: SysLogCatType.App,
             act: SysLogActionType.Read,
             message: $"Generated flight search UI options for TravelQuote '{travelQuoteId}'",
+            rid: rid,
             ent: nameof(TravelQuote),
             entId: travelQuoteId);
 
@@ -737,6 +772,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 entId: dto.OrganizationId,
                 uid: dto.CreatedByUserId,
                 org: dto.OrganizationId,
+                rid: dto.Rid,
                 note: "invalid_quote_type");
 
             throw ex;
@@ -799,6 +835,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             message: $"Quote DTO translation: {dto.TravellerUserIds?.Count() ?? 0} travellers, {distinctPolicyIds.Count} distinct non-null policies, {excludedUserIds.Count} users excluded due to missing policy.",
             ent: "TravelQuoteDto",
             entId: dto.OrganizationId,
+            rid: dto.Rid,
             note: "missing_policies",
             // keep the counts for searchability in free text AND structured sinks
             overrideOutcome: null);
@@ -812,6 +849,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 message: $"Excluded traveller due to missing policy. userId={e}",
                 ent: "TravelQuoteDto",
                 entId: dto.OrganizationId,
+                rid: dto.Rid,
                 note: "excluded_missing_policy");
         }
 
@@ -825,6 +863,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 act: SysLogActionType.Step,
                 message: $"Quote '{q.Id}' has travellers with multiple distinct policies: {string.Join(", ", distinctPolicyIds)}",
                 ent: nameof(TravelQuote),
+                rid: dto.Rid,
                 entId: q.Id);
 
             await _log.InformationAsync(
@@ -834,6 +873,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 message: "An ephemeral travel policy will be created to unify policies for the quote lifecycle.",
                 ent: "EphemeralTravelPolicy",
                 entId: q.Id, // or the new policy id once known
+                rid: dto.Rid,
                 note: "unify_policies");
         }
 
@@ -854,6 +894,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     message: $"Travel policy '{pid}' referenced by travellers not found in DB.",
                     ent: "TravelPolicy",
                     entId: pid,
+                    rid: dto.Rid,
                     note: "policy_missing");
                 continue;
             }
@@ -888,6 +929,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                         message: $"Travel policy '{pid}' not yet effective. EffectiveFromUtc={eff:o}",
                         ent: "TravelPolicy",
                         entId: pid,
+                        rid: dto.Rid,
                         note: "policy_not_effective");
                 }
 
@@ -900,6 +942,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                         message: $"Travel policy '{pid}' expired. ExpiresOnUtc={exp:o}",
                         ent: "TravelPolicy",
                         entId: pid,
+                        rid: dto.Rid,
                         note: "policy_expired");
                 }
             }
@@ -914,6 +957,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 message: "No travellers with valid/effective travel policies found for quote.",
                 ent: nameof(TravelQuote),
                 entId: q.Id,
+                rid: dto.Rid,
                 note: "no_effective_policies");
         }
 
@@ -971,6 +1015,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 message: $"Created EphemeralTravelPolicy for quote '{q.Id}' with Id '{eTravelPolicy.Id}'",
                 ent: "EphemeralTravelPolicy",
                 entId: eTravelPolicy.Id,
+                rid: dto.Rid,
                 org: q.OrganizationId);
 
             switch (eTravelPolicy.CabinClassCoverage)
@@ -1348,7 +1393,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
     /// <returns></returns>
     public async Task<FlightSearchResponse> GetFlightSearchResultsAsync(string travelQuoteId, AmadeusFlightOfferSearchResult results, CancellationToken ct = default)
     {
-        // establish Amadeus results data
+        // establish Amadeus results data object
         List<FlightOffer> resultsData;
 
         // validate results
@@ -1366,7 +1411,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 QuoteId = travelQuoteId,
                 StatusCode = HttpStatusCode.NoContent,
                 Message = $"No flight search results data found for TravelQuote '{travelQuoteId}'",
-                // Options not set → stays []
+                // .Options not set → stays []
                 MoreResultsAvailable = false
             };
         }
@@ -1511,6 +1556,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             string currencyCode = quote?.Currency ?? "AUD";
             string currencySymbol = "$";
 
+            // bookable seats
+            // set directly in the flightViewOption below
+
             // set currency symbol
             switch (currencyCode.ToUpperInvariant())
             {
@@ -1553,10 +1601,15 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             // create legs of the flight
             List<FlightLeg> legs = new List<FlightLeg>();
 
+            // fix duration, previous record was doing calculations - incorrectly - per segment (#82)
+            TimeSpan totalTravelDuration = (flightOffer?.Itineraries ?? Enumerable.Empty<Itinerary>())
+                .Select(i => XmlConvert.ToTimeSpan(i.Duration ?? "PT0M"))
+                .Aggregate(TimeSpan.Zero, (acc, cur) => acc + cur);
+
             foreach (var itinerary in flightOffer?.Itineraries ?? Enumerable.Empty<Itinerary>())
             {
                 var segs = itinerary.Segments?.ToList() ?? new List<Segment>();
-
+                
                 for (int i = 0; i < segs.Count; i++)
                 {
                     var seg = segs[i];
@@ -1598,6 +1651,23 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                             ? n
                             : seg.Aircraft?.Code ?? "UNKNOWN";
 
+                    // add stopovers if any
+                    if (seg.Stops is not null && seg.Stops.Count > 0)
+                    {
+                        fLeg.Stopovers = new List<FlightStopover>();
+                        foreach (var stop in seg.Stops)
+                        {
+                            var stopover = new FlightStopover
+                            {
+                                IataCode = stop.IATACode!,
+                                Duration = XmlConvert.ToTimeSpan(stop.Duration!),
+                                ArrivalAt = DateTime.Parse(stop.ArrivalAt!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                                DepartureAt = DateTime.Parse(stop.DepartureAt!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)
+                            };
+                            fLeg.Stopovers.Add(stopover);
+                        }
+                    }
+
                     fLeg.SeatLayout = string.Empty;  //TODO: Find out how the seat layouts can be identified PER aircraft PER airline later
 
                     // map the cabin class for the leg of the flight
@@ -1613,7 +1683,6 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                         _cabins.Add(_cabin);
 
                     fLeg.CabinClass = _cabin;
-
 
                     // checked bags
                     fLeg.CheckedBagsAllowed = flightOffer?.TravelerPricings?
@@ -1649,7 +1718,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
 
                     // map amenities for the leg of the flight
-                    List<Amenity> Amenities = new List<Amenity>();
+                    List<Amenity> FlAmenities = new List<Amenity>();
 
                     // get current amenities (if any) for segment
                     var _amenities =
@@ -1663,144 +1732,325 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     {
                         foreach (var a in _amenities)
                         {
-                            Amenity _amenity = new Amenity();
+                            var _amenity = new Amenity();
 
                             switch (a.AmenityType)
                             {
+                                // ---------------------------
+                                // BAGGAGE
+                                // ---------------------------
                                 case "BAGGAGE":
                                     _amenity.Type = AmenityType.BAGGAGE;
+
                                     _amenity.Name = a.Description switch
                                     {
-                                        "PRE PAID BAGGAGE" => "Pre-paid Baggage",
-                                        "1PC MAX 23KG 158LCM EACH" => "1PC 23KG 158LCM",
-                                        "1PC MAX 15LB 7KG 115LCM" => "1PC 7KG 115LCM",
-                                        _ => a.Description!
+                                        "CABIN BAG 1 PIECE 7 KG" => "Cabin bag (1pc, 7kg)",
+                                        "CABIN BAG 7KG X 1" => "Cabin bag (1pc, 7kg)",
+                                        "CARRY ON HAND BAGGAGE" => "Cabin bag (1pc, 7kg)",
+
+                                        "CHECKED BAG" => "Checked bag",
+                                        "CHECKED BAG 1 PC 23 KG EACH" => "Checked bag (1pc, 23kg)",
+                                        "40KG BAGGAGE ALLOWANCE" => "Baggage allowance (1pc, 40kg)",
+                                        "50KG BAGGAGE ALLOWANCE" => "Baggage allowance (1pc, 50kg)",
+                                        "1PC MAX 15LB 7KG 115LCM" => "Baggage allowance (1pc, 7kg, 115LCM)",
+
+                                        "PRE PAID BAGGAGE" => "Pre-paid baggage",
+
+                                        _ => a.Description ?? string.Empty
                                     };
+
                                     _amenity.SvgPath = a.Description switch
                                     {
-                                        "PRE PAID BAGGAGE" => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-luggage\" viewBox=\"0 0 16 16\">\n  <path d=\"M2.5 1a.5.5 0 0 0-.5.5V5h-.5A1.5 1.5 0 0 0 0 6.5v7a1.5 1.5 0 0 0 1 1.415v.335a.75.75 0 0 0 1.5 0V15H4v-1H1.5a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V7h1v-.5A1.5 1.5 0 0 0 6.5 5H6V1.5a.5.5 0 0 0-.5-.5zM5 5H3V2h2z\"/>\n  <path d=\"M3 7.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0zM11 6a1.5 1.5 0 0 1 1.5 1.5V8h2A1.5 1.5 0 0 1 16 9.5v5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 14.5v-5A1.5 1.5 0 0 1 6.5 8h2v-.5A1.5 1.5 0 0 1 10 6zM9.5 7.5V8h2v-.5A.5.5 0 0 0 11 7h-1a.5.5 0 0 0-.5.5M6 9.5v5a.5.5 0 0 0 .5.5H7V9h-.5a.5.5 0 0 0-.5.5m7 5.5V9H8v6zm1.5 0a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5H14v6z\"/>\n</svg>",
-                                        "1PC MAX 23KG 158LCM EACH" => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-luggage\" viewBox=\"0 0 16 16\">\n  <path d=\"M2.5 1a.5.5 0 0 0-.5.5V5h-.5A1.5 1.5 0 0 0 0 6.5v7a1.5 1.5 0 0 0 1 1.415v.335a.75.75 0 0 0 1.5 0V15H4v-1H1.5a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V7h1v-.5A1.5 1.5 0 0 0 6.5 5H6V1.5a.5.5 0 0 0-.5-.5zM5 5H3V2h2z\"/>\n  <path d=\"M3 7.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0zM11 6a1.5 1.5 0 0 1 1.5 1.5V8h2A1.5 1.5 0 0 1 16 9.5v5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 14.5v-5A1.5 1.5 0 0 1 6.5 8h2v-.5A1.5 1.5 0 0 1 10 6zM9.5 7.5V8h2v-.5A.5.5 0 0 0 11 7h-1a.5.5 0 0 0-.5.5M6 9.5v5a.5.5 0 0 0 .5.5H7V9h-.5a.5.5 0 0 0-.5.5m7 5.5V9H8v6zm1.5 0a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5H14v6z\"/>\n</svg>",
-                                        "1PC MAX 15LB 7KG 115LCM" => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-luggage\" viewBox=\"0 0 16 16\">\n  <path d=\"M2.5 1a.5.5 0 0 0-.5.5V5h-.5A1.5 1.5 0 0 0 0 6.5v7a1.5 1.5 0 0 0 1 1.415v.335a.75.75 0 0 0 1.5 0V15H4v-1H1.5a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V7h1v-.5A1.5 1.5 0 0 0 6.5 5H6V1.5a.5.5 0 0 0-.5-.5zM5 5H3V2h2z\"/>\n  <path d=\"M3 7.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0zM11 6a1.5 1.5 0 0 1 1.5 1.5V8h2A1.5 1.5 0 0 1 16 9.5v5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 14.5v-5A1.5 1.5 0 0 1 6.5 8h2v-.5A1.5 1.5 0 0 1 10 6zM9.5 7.5V8h2v-.5A.5.5 0 0 0 11 7h-1a.5.5 0 0 0-.5.5M6 9.5v5a.5.5 0 0 0 .5.5H7V9h-.5a.5.5 0 0 0-.5.5m7 5.5V9H8v6zm1.5 0a.5.5 0 0 0 .5-.5v-5a.5.5 0 0 0-.5-.5H14v6z\"/>\n</svg>",
-                                        _ => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 512\"><path fill=\"currentColor\" d=\"M48 160C48 98.1 98.1 48 160 48S272 98.1 272 160c0 48.2-30.5 89.4-73.3 105.1-29.4 10.8-62.7 37.9-62.7 78.9l0 16c0 13.3 10.7 24 24 24s24-10.7 24-24l0-16c0-12.1 11-26.3 31.3-33.8 61.1-22.5 104.7-81.2 104.7-150.2 0-88.4-71.6-160-160-160S0 71.6 0 160l0 8c0 13.3 10.7 24 24 24s24-10.7 24-24l0-8zM160 512c17.7 0 32-14.3 32-32s-14.3-32-32-32-32 14.3-32 32 14.3 32 32 32z\"/></svg>"
+                                        "CABIN BAG 1 PIECE 7 KG" => "",
+                                        "CABIN BAG 7KG X 1" => "",
+                                        "CARRY ON HAND BAGGAGE" => "",
+                                        "CHECKED BAG" => "",
+                                        "CHECKED BAG 1 PC 23 KG EACH" => "",
+                                        "40KG BAGGAGE ALLOWANCE" => "",
+                                        "50KG BAGGAGE ALLOWANCE" => "",
+                                        "1PC MAX 15LB 7KG 115LCM" => "",
+                                        "PRE PAID BAGGAGE" => "",
+                                        _ => ""
                                     };
+
                                     _amenity.IconClass = a.Description switch
                                     {
+                                        "CABIN BAG 1 PIECE 7 KG" => "<i class=\"bi bi-backpack\"></i>",
+                                        "CABIN BAG 7KG X 1" => "<i class=\"bi bi-backpack\"></i>",
+                                        "CARRY ON HAND BAGGAGE" => "<i class=\"bi bi-backpack\"></i>",
+                                        "CHECKED BAG" => "<i class=\"bi bi-luggage\"></i>",
+                                        "CHECKED BAG 1 PC 23 KG EACH" => "<i class=\"bi bi-luggage\"></i>",
+                                        "40KG BAGGAGE ALLOWANCE" => "<i class=\"bi bi-luggage\"></i>",
+                                        "50KG BAGGAGE ALLOWANCE" => "<i class=\"bi bi-luggage\"></i>",
+                                        "1PC MAX 15LB 7KG 115LCM" => "<i class=\"bi bi-luggage\"></i>",
                                         "PRE PAID BAGGAGE" => "<i class=\"bi bi-luggage\"></i>",
-                                        "1PC MAX 23KG 158LCM EACH" => "<i class=\"bi bi-luggage\"></i>",
-                                        _ => ""
+                                        _ => "<i class=\"bi bi-backpack\"></i>"
                                     };
+
                                     _amenity.IsChargeable = a.IsChargeable;
                                     _amenity.IsActive = true;
-                                    Amenities.Add(_amenity);
+                                    FlAmenities.Add(_amenity);
                                     break;
 
-                                case "BRANDED_FARES":
-                                    _amenity.Type = AmenityType.BRANDED_FARES;
-                                    _amenity.Name = a.Description switch
-                                    {
-                                        "STATUS CREDIT ACCRUAL" => "Status Credit Accrual",
-                                        "STANDARD SEATING" => "Standard Seating",
-                                        "POINTS ACCRUAL" => "Points Accrual",
-                                        "REFUNDABLE TICKET" => "Refundable Ticket",
-                                        "MILEAGE ACCRUAL" => "Mileage Accrual",
-                                        "CHANGEABLE TICKET" => "Changeable Ticket",
-                                        _ => a.Description!
-                                    };
-                                    _amenity.SvgPath = a.Description switch
-                                    {
-                                        "STATUS CREDIT ACCRUAL" => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-stars\" viewBox=\"0 0 16 16\">  <path d=\"M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.73 1.73 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.73 1.73 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.73 1.73 0 0 0 3.407 2.31zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z\"/></svg>",
-                                        "STANDARD SEATING" => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\"><path fill=\"currentColor\" d=\"M256 48c8.8 0 16 7.2 16 16l0 192-160 0 0-192c0-8.8 7.2-16 16-16l128 0zM64 64l0 192-16 0c-26.5 0-48 21.5-48 48l0 48c0 20.9 13.4 38.7 32 45.3L32 488c0 13.3 10.7 24 24 24s24-10.7 24-24l0-88 224 0 0 88c0 13.3 10.7 24 24 24s24-10.7 24-24l0-90.7c18.6-6.6 32-24.4 32-45.3l0-48c0-26.5-21.5-48-48-48l-16 0 0-192c0-35.3-28.7-64-64-64L128 0C92.7 0 64 28.7 64 64zM328 352l-280 0 0-48 288 0 0 48-8 0z\"/></svg>",
-                                        "POINTS ACCRUAL" => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-award\" viewBox=\"0 0 16 16\">  <path d=\"M9.669.864 8 0 6.331.864l-1.858.282-.842 1.68-1.337 1.32L2.6 6l-.306 1.854 1.337 1.32.842 1.68 1.858.282L8 12l1.669-.864 1.858-.282.842-1.68 1.337-1.32L13.4 6l.306-1.854-1.337-1.32-.842-1.68zm1.196 1.193.684 1.365 1.086 1.072L12.387 6l.248 1.506-1.086 1.072-.684 1.365-1.51.229L8 10.874l-1.355-.702-1.51-.229-.684-1.365-1.086-1.072L3.614 6l-.25-1.506 1.087-1.072.684-1.365 1.51-.229L8 1.126l1.356.702z\"/>  <path d=\"M4 11.794V16l4-1 4 1v-4.206l-2.018.306L8 13.126 6.018 12.1z\"/></svg>",
-                                        "REFUNDABLE TICKET" => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-ticket-detailed\" viewBox=\"0 0 16 16\">  <path d=\"M4 5.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0 5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5M5 7a1 1 0 0 0 0 2h6a1 1 0 1 0 0-2z\"/>  <path d=\"M0 4.5A1.5 1.5 0 0 1 1.5 3h13A1.5 1.5 0 0 1 16 4.5V6a.5.5 0 0 1-.5.5 1.5 1.5 0 0 0 0 3 .5.5 0 0 1 .5.5v1.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 11.5V10a.5.5 0 0 1 .5-.5 1.5 1.5 0 1 0 0-3A.5.5 0 0 1 0 6zM1.5 4a.5.5 0 0 0-.5.5v1.05a2.5 2.5 0 0 1 0 4.9v1.05a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-1.05a2.5 2.5 0 0 1 0-4.9V4.5a.5.5 0 0 0-.5-.5z\"/></svg>",
-                                        "MILEAGE ACCRUAL" => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-award\" viewBox=\"0 0 16 16\">  <path d=\"M9.669.864 8 0 6.331.864l-1.858.282-.842 1.68-1.337 1.32L2.6 6l-.306 1.854 1.337 1.32.842 1.68 1.858.282L8 12l1.669-.864 1.858-.282.842-1.68 1.337-1.32L13.4 6l.306-1.854-1.337-1.32-.842-1.68zm1.196 1.193.684 1.365 1.086 1.072L12.387 6l.248 1.506-1.086 1.072-.684 1.365-1.51.229L8 10.874l-1.355-.702-1.51-.229-.684-1.365-1.086-1.072L3.614 6l-.25-1.506 1.087-1.072.684-1.365 1.51-.229L8 1.126l1.356.702z\"/>  <path d=\"M4 11.794V16l4-1 4 1v-4.206l-2.018.306L8 13.126 6.018 12.1z\"/></svg>",
-                                        "CHANGEABLE TICKET" => "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-ticket-detailed\" viewBox=\"0 0 16 16\">  <path d=\"M4 5.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0 5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5M5 7a1 1 0 0 0 0 2h6a1 1 0 1 0 0-2z\"/>  <path d=\"M0 4.5A1.5 1.5 0 0 1 1.5 3h13A1.5 1.5 0 0 1 16 4.5V6a.5.5 0 0 1-.5.5 1.5 1.5 0 0 0 0 3 .5.5 0 0 1 .5.5v1.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 11.5V10a.5.5 0 0 1 .5-.5 1.5 1.5 0 1 0 0-3A.5.5 0 0 1 0 6zM1.5 4a.5.5 0 0 0-.5.5v1.05a2.5 2.5 0 0 1 0 4.9v1.05a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-1.05a2.5 2.5 0 0 1 0-4.9V4.5a.5.5 0 0 0-.5-.5z\"/></svg>",
-                                        _ => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 512\"><path fill=\"currentColor\" d=\"M48 160C48 98.1 98.1 48 160 48S272 98.1 272 160c0 48.2-30.5 89.4-73.3 105.1-29.4 10.8-62.7 37.9-62.7 78.9l0 16c0 13.3 10.7 24 24 24s24-10.7 24-24l0-16c0-12.1 11-26.3 31.3-33.8 61.1-22.5 104.7-81.2 104.7-150.2 0-88.4-71.6-160-160-160S0 71.6 0 160l0 8c0 13.3 10.7 24 24 24s24-10.7 24-24l0-8zM160 512c17.7 0 32-14.3 32-32s-14.3-32-32-32-32 14.3-32 32 14.3 32 32 32z\"/></svg>"
-                                    };
-                                    _amenity.IconClass = a.Description switch
-                                    {
-                                        "STATUS CREDIT ACCRUAL" => "",
-                                        "STANDARD SEATING" => "",
-                                        "POINTS ACCRUAL" => "",
-                                        "REFUNDABLE TICKET" => "",
-                                        "MILEAGE ACCRUAL" => "",
-                                        _ => ""
-                                    };
-                                    _amenity.IsChargeable = a.IsChargeable;
-                                    _amenity.IsActive = true;
-                                    Amenities.Add(_amenity);
-                                    break;
-
-                                case "MEAL":
-                                    _amenity.Type = AmenityType.MEAL;
-                                    _amenity.Name = a.Description switch
-                                    {
-                                        "COMPLIMENTARY BEVERAGES" => "Complimentary Beverages",
-                                        "MEAL OR SNACK" => "Meal or Snack",
-                                        "SPECIAL MEAL" => "Special Meal",
-                                        _ => a.Description!
-                                    };
-                                    _amenity.SvgPath = _amenity.Name switch
-                                    {
-                                        "Complimentary Beverages" => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 576 512\"><path fill=\"currentColor\" d=\"M112 80l288 0 0 208c0 26.5-21.5 48-48 48l-192 0c-26.5 0-48-21.5-48-48l0-208zM448 224l0-144 8 0c39.8 0 72 32.2 72 72s-32.2 72-72 72l-8 0zm0 64l0-16 8 0c66.3 0 120-53.7 120-120S522.3 32 456 32L96 32C78.3 32 64 46.3 64 64l0 224c0 53 43 96 96 96l192 0c53 0 96-43 96-96zM56 464c-13.3 0-24 10.7-24 24s10.7 24 24 24l400 0c13.3 0 24-10.7 24-24s-10.7-24-24-24L56 464z\"/></svg>",
-                                        "Meal or Snack" => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 576 512\"><path fill=\"currentColor\" d=\"M264.6-16C239.2-16 217 1.1 210.5 25.6L191.7 96 64 96c-13.3 0-24 10.7-24 24s10.7 24 24 24L92.2 468.2C94.3 493 115.1 512 140 512l71.1 0c-2-8.1-3.1-16.6-3.1-25.3l0-22.7-68 0-27.8-320 223.6 0-3.9 45.4c14.7-5.2 31.1-9.1 49.2-11.4l3-34c13.3 0 24-10.7 24-24s-10.7-24-24-24l-142.6 0 15.5-58.1c.9-3.5 4.1-5.9 7.7-5.9L296 32c13.3 0 24-10.7 24-24s-10.7-24-24-24l-31.4 0zM304 338.5c0-8.1 1.3-10.9 1.6-11.3 9.9-17.3 38.4-55.3 110.4-55.4 72 .1 100.5 38.1 110.4 55.4 .3 .4 1.6 3.2 1.6 11.3l0 29.3 48 0 0-29.3c0-12.3-1.8-24.6-7.9-35.2-15.8-27.5-58-79.4-152.1-79.5-94.1 .1-136.3 52-152.1 79.5-6.1 10.7-7.9 22.9-7.9 35.2l0 29.3 48 0 0-29.3zM256 486.7c0 31.6 25.6 57.1 57.1 57.1l205.7 0c31.6 0 57.1-25.6 57.1-57.1l0-6.9-48 0 0 6.9c0 5-4.1 9.1-9.1 9.1l-205.7 0c-5 0-9.1-4.1-9.1-9.1l0-6.9-48 0 0 6.9zm24-86.9c-13.3 0-24 10.7-24 24s10.7 24 24 24l272 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-272 0zM432 304a16 16 0 1 0 -32 0 16 16 0 1 0 32 0zm-80 48a16 16 0 1 0 0-32 16 16 0 1 0 0 32zm144-16a16 16 0 1 0 -32 0 16 16 0 1 0 32 0z\"/></svg>",
-                                        "Special Meal" => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\"><path fill=\"currentColor\" d=\"M96 78L13.1 93.6c-7.6 1.4-13.1 8-13.1 15.7 0 9.8 8.8 17.3 18.5 15.8l77.5-12.1 0 28-80.3 2.5C7 143.8 0 151 0 159.7 0 168.7 7.3 176 16.2 176l79.8 0 0 48-48 0c-26.5 0-48 21.5-48 48 0 90.8 54.1 169 131.7 204.2 8.1 21 28.4 35.8 52.3 35.8l144 0c23.8 0 44.2-14.9 52.3-35.8 77.7-35.2 131.7-113.4 131.7-204.2 0-26.5-21.5-48-48-48l-224 0 0-184c0-13.3-10.7-24-24-24s-24 10.7-24 24l0 184-48 0 0-168c0-13.3-10.7-24-24-24S96 42.7 96 56l0 22zm192 57l0 41 200.4 0c13 0 23.6-10.6 23.6-23.6 0-13.3-11-24-24.4-23.6L288 135zm0-93l0 41 204.3-31.9c11.3-1.8 19.7-11.5 19.7-23 0-14.6-13.3-25.6-27.6-22.9L288 42zM151.5 432.5C90.4 404.8 48 343.3 48 272l416 0c0 71.3-42.4 132.8-103.5 160.5-11.5 5.2-20.4 14.7-25 26.4-1.2 3.1-4.2 5.1-7.5 5.1l-144 0c-3.3 0-6.3-2-7.5-5.1-4.5-11.7-13.5-21.2-25-26.4z\"/></svg>",
-                                        _ => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 512\"><path fill=\"currentColor\" d=\"M48 160C48 98.1 98.1 48 160 48S272 98.1 272 160c0 48.2-30.5 89.4-73.3 105.1-29.4 10.8-62.7 37.9-62.7 78.9l0 16c0 13.3 10.7 24 24 24s24-10.7 24-24l0-16c0-12.1 11-26.3 31.3-33.8 61.1-22.5 104.7-81.2 104.7-150.2 0-88.4-71.6-160-160-160S0 71.6 0 160l0 8c0 13.3 10.7 24 24 24s24-10.7 24-24l0-8zM160 512c17.7 0 32-14.3 32-32s-14.3-32-32-32-32 14.3-32 32 14.3 32 32 32z\"/></svg>"
-                                    };
-                                    _amenity.IconClass = _amenity.Name switch
-                                    {
-                                        "Complimentary Beverages" => "",
-                                        "Meal or Snack" => "",
-                                        "Special Meal" => "",
-                                        _ => ""
-                                    };
-                                    _amenity.IsChargeable = a.IsChargeable;
-                                    _amenity.IsActive = true;
-                                    Amenities.Add(_amenity);
-                                    break;
-
-                                case "TRAVEL_SERVICES":
-                                    _amenity.Type = AmenityType.TRAVEL_SERVICES;
-                                    _amenity.Name = a.Description switch
-                                    {
-                                        "DOMESTIC NAME CHANGE FEE" => "Domestic Name Change Fee",
-                                        _ => a.Description!
-                                    };
-                                    _amenity.SvgPath = a.Description switch
-                                    {
-                                        "DOMESTIC NAME CHANGE FEE" => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 640 512\"><path fill=\"currentColor\" d=\"M240.1 48l-112 0c-8.8 0-16 7.2-16 16l0 384c0 8.8 7.2 16 16 16l155.8 0-9.6 48-146.2 0c-35.3 0-64-28.7-64-64l0-384c0-35.3 28.7-64 64-64L261.6 0c17 0 33.3 6.7 45.3 18.7L429.3 141.3c12 12 18.7 28.3 18.7 45.3l0 81.5-48 48 0-108-88 0c-39.8 0-72-32.2-72-72l0-88zM380.2 160l-92.1-92.1 0 68.1c0 13.3 10.7 24 24 24l68.1 0zM332.3 466.9c2.5-12.4 8.6-23.8 17.5-32.7l118.9-118.9 80 80-118.9 118.9c-8.9 8.9-20.3 15-32.7 17.5l-59.6 11.9c-.9 .2-1.9 .3-2.9 .3-8 0-14.6-6.5-14.6-14.6 0-1 .1-1.9 .3-2.9l11.9-59.6zm267.8-123l-28.8 28.8-80-80 28.8-28.8c22.1-22.1 57.9-22.1 80 0s22.1 57.9 0 80z\"/></svg>",
-                                        _ => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 512\"><path fill=\"currentColor\" d=\"M48 160C48 98.1 98.1 48 160 48S272 98.1 272 160c0 48.2-30.5 89.4-73.3 105.1-29.4 10.8-62.7 37.9-62.7 78.9l0 16c0 13.3 10.7 24 24 24s24-10.7 24-24l0-16c0-12.1 11-26.3 31.3-33.8 61.1-22.5 104.7-81.2 104.7-150.2 0-88.4-71.6-160-160-160S0 71.6 0 160l0 8c0 13.3 10.7 24 24 24s24-10.7 24-24l0-8zM160 512c17.7 0 32-14.3 32-32s-14.3-32-32-32-32 14.3-32 32 14.3 32 32 32z\"/></svg>"
-                                    };
-                                    _amenity.IconClass = a.Description switch
-                                    {
-                                        "DOMESTIC NAME CHANGE FEE" => "",
-                                        _ => ""
-                                    };
-                                    _amenity.IsChargeable = a.IsChargeable;
-                                    _amenity.IsActive = true;
-                                    Amenities.Add(_amenity);
-                                    break;
-
+                                // ---------------------------
+                                // PRE-RESERVED SEAT
+                                // ---------------------------
                                 case "PRE_RESERVED_SEAT":
                                     _amenity.Type = AmenityType.PRE_RESERVED_SEAT;
+
                                     _amenity.Name = a.Description switch
                                     {
-                                        "SEAT ASSIGNMENT" => "Seat Assignment",
-                                        _ => a.Description!
+                                        "BASIC SEAT" => "Basic seat",
+                                        "STANDARD SEATING" => "Standard seating",
+                                        "PREMIUM SEAT" => "Premium seat",
+                                        "SEAT ASSIGNMENT" => "Seat assignment",
+                                        "PRE SEAT ASSIGNMENT" => "Pre seat assignment",
+                                        "PRE RESERVED SEAT ASSIGNMENT" => "Pre-reserved seat assignment",
+                                        "SEAT SELECTION FORWARD ZONE" => "Seat selection (forward zone)",
+                                        "SEAT SELECTION STANDARD ZONE" => "Seat selection (standard zone)",
+                                        _ => a.Description ?? string.Empty
                                     };
+
                                     _amenity.SvgPath = a.Description switch
                                     {
-                                        "SEAT ASSIGNMENT" => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 640 512\"><path fill=\"currentColor\" d=\"M240.1 48l-112 0c-8.8 0-16 7.2-16 16l0 384c0 8.8 7.2 16 16 16l155.8 0-9.6 48-146.2 0c-35.3 0-64-28.7-64-64l0-384c0-35.3 28.7-64 64-64L261.6 0c17 0 33.3 6.7 45.3 18.7L429.3 141.3c12 12 18.7 28.3 18.7 45.3l0 81.5-48 48 0-108-88 0c-39.8 0-72-32.2-72-72l0-88zM380.2 160l-92.1-92.1 0 68.1c0 13.3 10.7 24 24 24l68.1 0zM332.3 466.9c2.5-12.4 8.6-23.8 17.5-32.7l118.9-118.9 80 80-118.9 118.9c-8.9 8.9-20.3 15-32.7 17.5l-59.6 11.9c-.9 .2-1.9 .3-2.9 .3-8 0-14.6-6.5-14.6-14.6 0-1 .1-1.9 .3-2.9l11.9-59.6zm267.8-123l-28.8 28.8-80-80 28.8-28.8c22.1-22.1 57.9-22.1 80 0s22.1 57.9 0 80z\"/></svg>",
-                                        _ => "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 512\"><path fill=\"currentColor\" d=\"M48 160C48 98.1 98.1 48 160 48S272 98.1 272 160c0 48.2-30.5 89.4-73.3 105.1-29.4 10.8-62.7 37.9-62.7 78.9l0 16c0 13.3 10.7 24 24 24s24-10.7 24-24l0-16c0-12.1 11-26.3 31.3-33.8 61.1-22.5 104.7-81.2 104.7-150.2 0-88.4-71.6-160-160-160S0 71.6 0 160l0 8c0 13.3 10.7 24 24 24s24-10.7 24-24l0-8zM160 512c17.7 0 32-14.3 32-32s-14.3-32-32-32-32 14.3-32 32 14.3 32 32 32z\"/></svg>"
-
-                                    };
-                                    _amenity.IconClass = a.Description switch
-                                    {
+                                        "BASIC SEAT" => "",
+                                        "STANDARD SEATING" => "",
+                                        "PREMIUM SEAT" => "",
                                         "SEAT ASSIGNMENT" => "",
+                                        "PRE SEAT ASSIGNMENT" => "",
+                                        "PRE RESERVED SEAT ASSIGNMENT" => "",
+                                        "SEAT SELECTION FORWARD ZONE" => "",
+                                        "SEAT SELECTION STANDARD ZONE" => "",
                                         _ => ""
                                     };
+
+                                    _amenity.IconClass = a.Description switch
+                                    {
+                                        "BASIC SEAT" => "<i class=\"bi bi-person\"></i>",
+                                        "STANDARD SEATING" => "<i class=\"bi bi-person-check\"></i>",
+                                        "PREMIUM SEAT" => "<i class=\"bi bi-person-up\"></i>",
+                                        "SEAT ASSIGNMENT" => "<i class=\"bi bi-ui-checks\"></i>",
+                                        "PRE SEAT ASSIGNMENT" => "<i class=\"bi bi-ui-checks\"></i>",
+                                        "PRE RESERVED SEAT ASSIGNMENT" => "<i class=\"bi bi-ui-checks\"></i>",
+                                        "SEAT SELECTION FORWARD ZONE" => "<i class=\"bi bi-arrow-up-right\"></i>",
+                                        "SEAT SELECTION STANDARD ZONE" => "<i class=\"bi bi-grid\"></i>",
+                                        _ => "<i class=\"bi bi-person\"></i>"
+                                    };
+
                                     _amenity.IsChargeable = a.IsChargeable;
                                     _amenity.IsActive = true;
-                                    Amenities.Add(_amenity);
+                                    FlAmenities.Add(_amenity);
+                                    break;
+
+                                // ---------------------------
+                                // MEAL
+                                // ---------------------------
+                                case "MEAL":
+                                    _amenity.Type = AmenityType.MEAL;
+
+                                    _amenity.Name = a.Description switch
+                                    {
+                                        "MEAL" => "Meal",
+                                        "SNACK" => "Snack",
+                                        "BEVERAGE" => "Beverage",
+                                        "COMPLIMENTARY BEVERAGES" => "Complimentary beverages",
+                                        "MEAL BEVERAGE" => "Meal + beverage",
+                                        "MEAL OR SNACK" => "Meal or snack",
+                                        "MEAL VOUCHER" => "Meal voucher",
+                                        _ => a.Description ?? string.Empty
+                                    };
+
+                                    _amenity.SvgPath = a.Description switch
+                                    {
+                                        "MEAL" => "",
+                                        "SNACK" => "",
+                                        "BEVERAGE" => "",
+                                        "COMPLIMENTARY BEVERAGES" => "",
+                                        "MEAL BEVERAGE" => "",
+                                        "MEAL OR SNACK" => "",
+                                        "MEAL VOUCHER" => "",
+                                        _ => ""
+                                    };
+
+                                    _amenity.IconClass = a.Description switch
+                                    {
+                                        "MEAL" => "<i class=\"bi bi-fork-knife\"></i>",
+                                        "SNACK" => "<i class=\"bi bi-cookie\"></i>",
+                                        "BEVERAGE" => "<i class=\"bi bi-cup-straw\"></i>",
+                                        "COMPLIMENTARY BEVERAGES" => "<i class=\"bi bi-cup-straw\"></i>",
+                                        "MEAL BEVERAGE" => "<i class=\"bi bi-cup-hot\"></i>",
+                                        "MEAL OR SNACK" => "<i class=\"bi bi-fork-knife\"></i>",
+                                        "MEAL VOUCHER" => "<i class=\"bi bi-ticket-perforated\"></i>",
+                                        _ => "<i class=\"bi bi-cup-hot\"></i>"
+                                    };
+
+                                    _amenity.IsChargeable = a.IsChargeable;
+                                    _amenity.IsActive = true;
+                                    FlAmenities.Add(_amenity);
+                                    break;
+
+                                // ---------------------------
+                                // LOUNGE
+                                // ---------------------------
+                                case "LOUNGE":
+                                    _amenity.Type = AmenityType.LOUNGE;
+
+                                    _amenity.Name = a.Description switch
+                                    {
+                                        "3 HOURS LOUNGE ACCESS" => "Lounge access (3 hours)",
+                                        _ => a.Description ?? string.Empty
+                                    };
+
+                                    _amenity.SvgPath = a.Description switch
+                                    {
+                                        "3 HOURS LOUNGE ACCESS" => "",
+                                        _ => ""
+                                    };
+
+                                    _amenity.IconClass = a.Description switch
+                                    {
+                                        "3 HOURS LOUNGE ACCESS" => "<i class=\"bi bi-door-open\"></i>",
+                                        _ => "<i class=\"bi bi-door-open\"></i>"
+                                    };
+
+                                    _amenity.IsChargeable = a.IsChargeable;
+                                    _amenity.IsActive = true;
+                                    FlAmenities.Add(_amenity);
+                                    break;
+
+                                // ---------------------------
+                                // UPGRADES
+                                // ---------------------------
+                                case "UPGRADES":
+                                    _amenity.Type = AmenityType.UPGRADES;
+
+                                    _amenity.Name = a.Description switch
+                                    {
+                                        "UPGRADE ELIGIBILITY" => "Upgrade eligibility",
+                                        "UPGRADE WITH MILES PWM" => "Upgrade with miles (PWM)",
+                                        _ => a.Description ?? string.Empty
+                                    };
+
+                                    _amenity.SvgPath = a.Description switch
+                                    {
+                                        "UPGRADE ELIGIBILITY" => "",
+                                        "UPGRADE WITH MILES PWM" => "",
+                                        _ => ""
+                                    };
+
+                                    _amenity.IconClass = a.Description switch
+                                    {
+                                        "UPGRADE ELIGIBILITY" => "<i class=\"bi bi-arrow-up-circle\"></i>",
+                                        "UPGRADE WITH MILES PWM" => "<i class=\"bi bi-arrow-up-circle\"></i>",
+                                        _ => "<i class=\"bi bi-arrow-up-circle\"></i>"
+                                    };
+
+                                    _amenity.IsChargeable = a.IsChargeable;
+                                    _amenity.IsActive = true;
+                                    FlAmenities.Add(_amenity);
+                                    break;
+
+                                // ---------------------------
+                                // BRANDED_FARES (misc policy-ish + loyalty-ish strings you listed)
+                                // ---------------------------
+                                case "BRANDED_FARES":
+                                    _amenity.Type = AmenityType.BRANDED_FARES;
+
+                                    _amenity.Name = a.Description switch
+                                    {
+                                        // Loyalty-ish
+                                        "100 PERCENT KF MILES EARNED" => "Earn 100% KF miles",
+                                        "125 PERCENT KF MILES EARNED" => "Earn 125% KF miles",
+                                        "30 PERCENT MILES EARNED" => "Earn 30% miles",
+                                        "70 PERCENT MILES EARNED" => "Earn 70% miles",
+                                        "50 PCT QMILES ACCUMULATION" => "Earn 50% Qmiles",
+                                        "MILEAGE ACCRUAL" => "Mileage accrual",
+
+                                        // Changes
+                                        "BOOKING CHANGE" => "Booking changes",
+                                        "CHANGEABLE TICKET" => "Changeable ticket",
+                                        "CHANGE BEFORE DEPARTURE" => "Change before departure",
+                                        "CHANGE AFTER DEPARTURE" => "Change after departure",
+                                        "CHANGE FEE" => "Change fee applies",
+
+                                        // Refunds / penalties
+                                        "CANCELLATION" => "Cancellation policy",
+                                        "REFUNDABLE TICKET" => "Refundable ticket",
+                                        "REFUND BEFORE DEPARTURE" => "Refund before departure",
+                                        "NO SHOW" => "No-show policy",
+
+                                        // Passenger type
+                                        "CHILD DISCOUNT" => "Child discount",
+                                        "INFANT DISCOUNT" => "Infant discount",
+
+                                        // Connectivity / power
+                                        "INFLIGHT WIFI" => "In-flight Wi-Fi",
+                                        "USB POWER" => "USB power",
+
+                                        _ => a.Description ?? string.Empty
+                                    };
+
+                                    _amenity.SvgPath = a.Description switch
+                                    {
+                                        "100 PERCENT KF MILES EARNED" => "",
+                                        "125 PERCENT KF MILES EARNED" => "",
+                                        "30 PERCENT MILES EARNED" => "",
+                                        "70 PERCENT MILES EARNED" => "",
+                                        "50 PCT QMILES ACCUMULATION" => "",
+                                        "MILEAGE ACCRUAL" => "",
+                                        "BOOKING CHANGE" => "",
+                                        "CHANGEABLE TICKET" => "",
+                                        "CHANGE BEFORE DEPARTURE" => "",
+                                        "CHANGE AFTER DEPARTURE" => "",
+                                        "CHANGE FEE" => "",
+                                        "CANCELLATION" => "",
+                                        "REFUNDABLE TICKET" => "",
+                                        "REFUND BEFORE DEPARTURE" => "",
+                                        "NO SHOW" => "",
+                                        "CHILD DISCOUNT" => "",
+                                        "INFANT DISCOUNT" => "",
+                                        "INFLIGHT WIFI" => "",
+                                        "USB POWER" => "",
+                                        _ => ""
+                                    };
+
+                                    _amenity.IconClass = a.Description switch
+                                    {
+                                        // loyalty
+                                        "100 PERCENT KF MILES EARNED" => "<i class=\"bi bi-award\"></i>",
+                                        "125 PERCENT KF MILES EARNED" => "<i class=\"bi bi-award\"></i>",
+                                        "30 PERCENT MILES EARNED" => "<i class=\"bi bi-award\"></i>",
+                                        "70 PERCENT MILES EARNED" => "<i class=\"bi bi-award\"></i>",
+                                        "50 PCT QMILES ACCUMULATION" => "<i class=\"bi bi-award\"></i>",
+                                        "MILEAGE ACCRUAL" => "<i class=\"bi bi-award\"></i>",
+
+                                        // changes
+                                        "BOOKING CHANGE" => "<i class=\"bi bi-arrow-repeat\"></i>",
+                                        "CHANGEABLE TICKET" => "<i class=\"bi bi-arrow-repeat\"></i>",
+                                        "CHANGE BEFORE DEPARTURE" => "<i class=\"bi bi-calendar-event\"></i>",
+                                        "CHANGE AFTER DEPARTURE" => "<i class=\"bi bi-calendar-event\"></i>",
+                                        "CHANGE FEE" => "<i class=\"bi bi-cash-coin\"></i>",
+
+                                        // refunds / penalties
+                                        "CANCELLATION" => "<i class=\"bi bi-x-circle\"></i>",
+                                        "REFUNDABLE TICKET" => "<i class=\"bi bi-arrow-counterclockwise\"></i>",
+                                        "REFUND BEFORE DEPARTURE" => "<i class=\"bi bi-arrow-counterclockwise\"></i>",
+                                        "NO SHOW" => "<i class=\"bi bi-exclamation-triangle\"></i>",
+
+                                        // pax type
+                                        "CHILD DISCOUNT" => "<i class=\"bi bi-people\"></i>",
+                                        "INFANT DISCOUNT" => "<i class=\"bi bi-people\"></i>",
+
+                                        // connectivity / power
+                                        "INFLIGHT WIFI" => "<i class=\"bi bi-wifi\"></i>",
+                                        "USB POWER" => "<i class=\"bi bi-usb-plug\"></i>",
+
+                                        _ => "<i class=\"bi bi-info-circle\"></i>"
+                                    };
+
+                                    _amenity.IsChargeable = a.IsChargeable;
+                                    _amenity.IsActive = true;
+                                    FlAmenities.Add(_amenity);
                                     break;
 
                                 default:
@@ -1815,7 +2065,6 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     }
                     else
                     {
-                        // no amenities found for segment
                         await _log.WarningAsync(
                             evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_OFFER_AMENITY_MISSING",
                             cat: SysLogCatType.App,
@@ -1824,7 +2073,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     }
 
                     // add the amenities to the flight leg
-                    fLeg.Amenities = Amenities;
+                    fLeg.Amenities = FlAmenities;
 
                     fLeg.Layover = i < segs.Count - 1
                         ? new Layover
@@ -1842,11 +2091,53 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 }
             }
 
-            ///// THIS ONE IS CORRECT ONLY /////
+            // ---------------------------
+            // BAGGAGE TEXT (all items)
+            // ---------------------------
+
+            static string ToBaggageShortText(string name) => name switch
+            {
+                "Checked bag" => "1×23kg",
+                "Checked bag (1pc, 23kg)" => "1×23kg",
+                "Baggage allowance (1pc, 40kg)" => "1×40kg",
+                "Baggage allowance (1pc, 50kg)" => "1×50kg",
+                "Baggage allowance (1pc, 7kg, 115LCM)" => "1×7kg",
+                "Cabin bag (1pc, 7kg)" => "Cabin 1×7kg",
+                "Pre-paid baggage" => "Pre-paid",
+                _ => name
+            };
+
+            string[] baggageTexts = legs
+                .SelectMany(l => l.Amenities ?? Enumerable.Empty<Amenity>())
+                .Where(a => a.Type == AmenityType.BAGGAGE)
+                .Select(a => a.Name)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Select(ToBaggageShortText)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+
+            ///// THIS WAS CORRECT ONLY :-( ///// 
             FlightViewOption flightViewOption = new FlightViewOption
             {
+                InstantTicketingRequired = flightOffer?.InstantTicketingRequired ?? false,
+                NonHomogeneous = flightOffer?.nonHomogeneous ?? false,
+                OneWay = flightOffer?.OneWay ?? false,
+                LastTicketingDate = DateOnly.TryParseExact(
+                    flightOffer?.LastTicketingDate,
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var d)
+                        ? d
+                        : DateOnly.MinValue,
+
+                BookableSeats = flightOffer?.NumberOfBookableSeats ?? 0,
+
                 Origin = quote?.OriginIataCode!,
                 Destination = quote?.DestinationIataCode!,
+
+                TotalDurationText = $"{(int)totalTravelDuration.TotalHours}h {totalTravelDuration.Minutes:D2}m",  // (#82)
 
                 DepartTime = DateTime.Parse(flightOffer?.Itineraries?.First().Segments?.First().Departure!.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
                 ArriveTime = DateTime.Parse(flightOffer?.Itineraries?.First().Segments?.Last().Arrival!.At!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
@@ -1865,7 +2156,15 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
                 Legs = legs,
 
-                BaggageText = "1×23kg",
+                BaggageTexts = legs
+                    .SelectMany(l => l.Amenities ?? Enumerable.Empty<Amenity>())
+                    .Where(a => a.Type == AmenityType.BAGGAGE)
+                    .Select(a => a.Name)
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Select(ToBaggageShortText)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                
                 ChangePolicy = "No",
                 RefundPolicy = "No",
                 SeatPolicy = "Auto-assign",
@@ -1884,7 +2183,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_OFFER",
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Read,
-                message: $"Flight offer found for TravelQuote '{travelQuoteId}': OfferId='{flightOffer.Id}', Price='{flightOffer.Price.Total} {flightOffer.Price.Currency}'",
+                message: $"Flight offer found for TravelQuote '{travelQuoteId}': OfferId='{flightOffer?.Id}', Price='{flightOffer?.Price?.Total} {flightOffer?.Price?.Currency}'",
                 ent: nameof(TravelQuote),
                 entId: travelQuoteId);
         }

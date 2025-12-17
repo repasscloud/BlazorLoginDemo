@@ -1,14 +1,18 @@
-@page "/platform/pnr/create/flight/results/{TravelQuoteId?}"
+@page "/platform/bookings/drafts/{TravelQuoteId?}/flights/results/{LegCount:int?}"
 @rendermode InteractiveServer
 
+@using Cinturon360.Shared.Models.DTOs
 @using Cinturon360.Shared.Models.Kernel.Travel
 @using Cinturon360.Shared.Models.Static.SysVar
 @using Cinturon360.Shared.Services.Interfaces.Kernel
 @using System.Linq
+@using System.Text.Json
 
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject IHttpClientFactory HttpClientFactory
 @inject ILoggerService _log
+
 
 @* @if (_pageIsLoading == true)
 {
@@ -101,8 +105,7 @@ else
         <div class="row align-items-center g-2 mb-3">
             <div class="col">
                 <h1 class="h4 m-0 d-flex align-items-center gap-2">
-                    <i class="bi bi-airplane-engines" aria-hidden="true"></i>
-                    Flight results
+                    Flight Results
                 </h1>
             </div>
             <div class="col d-flex justify-content-end align-items-center gap-2">
@@ -358,19 +361,29 @@ else
 
 @code {
     // ===== Parameters =====
+    private const string CorrelationHeader = "X-Correlation-Id";
     [Parameter] public string? TravelQuoteId { get; set; }
-
+    [Parameter] public int? LegCount { get; set; }
+    
     // Also allow query-string usage if preferred later.
+    [SupplyParameterFromQuery(Name = "Tid")] public Guid? Tid { get; set; }
+    [SupplyParameterFromQuery(Name = "legcount")] public int? LegCountQuery { get; set; }
+
+    private int EffectiveLegCount =>
+        (LegCount ?? LegCountQuery ?? 0) < 0 ? 0 : (LegCount ?? LegCountQuery ?? 0);
+
     [SupplyParameterFromQuery] public string? tq { get; set; }
-
-
-    // ===== Http Client =====
-    private HttpClient _http = default!;
+    private string? myUserId;
+    private string? myOrgId;
+    private string? rid;
 
     // ===== Page State =====
     private string? _error;
     bool? _pageIsLoading = true;
+
+    // ===== Http Client =====
     private CancellationTokenSource? _cts;
+    static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
 
     // ===== Data =====
     FlightSearchResponse? Result = null;
@@ -494,13 +507,22 @@ else
         ShowCompareJson = true;
     }
 
-    void BackToSearch() => Nav.NavigateTo("/platform/pnr/create");
+    void BackToSearch() => Nav.NavigateTo(uri: "/platform/bookings/new");
 
 
     // ===== Lifecycle =====
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _http = HttpClientFactory.CreateClient(name: "AvaApi");
+        _pageIsLoading = true;
+
+        AuthenticationState? authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        System.Security.Claims.ClaimsPrincipal? user = authState.User;
+
+        myOrgId = user.FindFirst("OrganizationId")?.Value
+            ?? user.FindFirst("organizationId")?.Value
+            ?? user.FindFirst("org")?.Value;
+
+        myUserId = user.GetUserId();
     }
 
     protected override async Task OnParametersSetAsync()
@@ -524,7 +546,8 @@ else
             return;
         }
 
-        _pageIsLoading = true;
+        rid ??= Guid.NewGuid().ToString(format: "N");
+
         _error = null;
 
         _cts?.Cancel();
@@ -533,8 +556,8 @@ else
         CancellationToken ct = _cts.Token;
 
         // Build URL
-        string? url  = $"api/v1/travel/quotes/ui/getflightresults/{Uri.EscapeDataString(id ?? string.Empty)}";
-
+        string? url = $"v1/bookings/drafts/{Uri.EscapeDataString(id ?? string.Empty)}/flight-quotes/{EffectiveLegCount}";
+        
         await _log.InformationAsync(
             evt: "BOOKING_REQ_RESULTS_FETCH_START",
             cat: SysLogCatType.Api,
@@ -546,9 +569,23 @@ else
 
         try
         {
-            FlightSearchResponse? result = await _http.GetFromJsonAsync<FlightSearchResponse?>(url, ct);
+            HttpClient client = HttpClientFactory.CreateClient(name: "AvaApi");
 
-            if (result == null)
+            LogTraceDto logTraceDto = new LogTraceDto
+            {
+                Tid = Tid ?? Guid.Empty,
+                Uid = myUserId,
+                Org = myOrgId
+            };
+
+        
+            using HttpRequestMessage? req = BuildRequest(HttpMethod.Post, url, logTraceDto, JsonOpts, rid);
+            using HttpResponseMessage response = await client.SendAsync(req, ct);
+
+            FlightSearchResponse? result =
+                await response.Content.ReadFromJsonAsync<FlightSearchResponse>(JsonOpts, ct);
+
+            if (result is null)
             {
                 _error = "Flight results data is null";
                 await _log.WarningAsync(
@@ -561,7 +598,7 @@ else
                 Nav.NavigateTo(uri: "/platform/pnr/create", forceLoad: true);  //TODO: better error handling (page? -> error page with message?)
                 return;
             }
-            
+
             _error = null;
 
             Result = result;
@@ -608,6 +645,20 @@ else
         }
         catch (Exception ex)
         {
+            if (ex.Message == "JSON deserialization for type 'Cinturon360.Shared.Models.Kernel.Travel.FlightSearchResponse' was missing required properties including: 'QuoteId'.")
+            {
+                _error = "QuoteId is expired or invalid. Create new ";
+                await _log.WarningAsync(
+                    evt: "BOOKING_REQ_RESULTS_NO_RESULTS",
+                    cat: SysLogCatType.Api,
+                    act: SysLogActionType.Read,
+                    message: _error,
+                    tid: Tid,
+                    ent: nameof(FlightViewOption),
+                    entId: url,
+                    note: "no_results");
+                return;
+            }
             _error = $"Unexpected error: {ex.Message}";
             await _log.ErrorAsync(
                 evt: "BOOKING_REQ_RESULTS_UNEXPECTED",
@@ -625,4 +676,23 @@ else
             StateHasChanged();
         }
     }
+
+    // http helper that sends JSON with the RID header
+    private static HttpRequestMessage BuildRequest<T>(
+        HttpMethod method,
+        string requestUri,
+        T? payload,
+        JsonSerializerOptions jsonOpts,
+        string rid)
+    {
+        HttpRequestMessage? req = new HttpRequestMessage(method, requestUri);
+        req.Headers.TryAddWithoutValidation(CorrelationHeader, rid);
+
+        if (payload is not null)
+            req.Content = JsonContent.Create(payload, options: jsonOpts);
+
+        return req;
+    }
+
+
 }

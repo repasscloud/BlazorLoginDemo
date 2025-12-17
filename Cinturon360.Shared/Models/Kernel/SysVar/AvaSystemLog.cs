@@ -31,8 +31,8 @@ namespace Cinturon360.Shared.Models.Kernel.SysVar
         // Correlation / tenancy
         [Required, MaxLength(64)]
         public string Rid { get; set; } = string.Empty;             // request/correlation id
+        public Guid? Tid { get; set; }             // transaction id (UUID v4)
 
-        [MaxLength(64)]  public string? Tid { get; set; }           // tenant
         [MaxLength(128)] public string? Uid { get; set; }           // user
         [MaxLength(64)]  public string? Org { get; set; }           // org
 
@@ -50,10 +50,10 @@ namespace Cinturon360.Shared.Models.Kernel.SysVar
         [NotMapped]
         public string Header =>
             $"EVT={Evt} CAT={Cat} ACT={Act} OUT={Out} " +
-            $"{(Ent is { Length: >0 } ? $"ENT={Ent} " : "")}" +
-            $"{(EntId is { Length: >0 } ? $"EntId={EntId} " : "")}" +
+            $"{(Ent is { Length: > 0 } ? $"ENT={Ent} " : "")}" +
+            $"{(EntId is { Length: > 0 } ? $"EntId={EntId} " : "")}" +
             $"RID={Rid}" +
-            $"{(string.IsNullOrWhiteSpace(Tid) ? "" : $" TID={Tid}")}" +
+            $"{(Tid is { } tid ? $" TID={tid}" : "")}" +
             $"{(string.IsNullOrWhiteSpace(Uid) ? "" : $" UID={Uid}")}" +
             $"{(string.IsNullOrWhiteSpace(Org) ? "" : $" ORG={Org}")}" +
             $"{(DurMs is null ? "" : $" DUR={DurMs}MS")}" +

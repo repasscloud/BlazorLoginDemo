@@ -1,0 +1,133 @@
+@* DummyLoading.razor *@
+@page "/demo/loading/{OrgId?}"
+@rendermode InteractiveServer
+@implements IDisposable
+
+@inject HttpClient Http
+
+@if (_isLoading)
+{
+    @* Your existing loading overlay *@
+    <div class="loading-overlay" role="status" aria-live="polite" aria-label="Loading">
+        <div class="sky">
+            <!-- Clouds (behind the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c1" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c2" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c3" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-back c4" alt="" aria-hidden="true" />
+
+            <!-- Plane -->
+            <img src="/media/airplane.svg" class="plane-svg" alt="Airplane loading" />
+
+            <!-- Clouds (in front of the plane) -->
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c5" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c6" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c7" alt="" aria-hidden="true" />
+            <img src="/media/clouds-white.svg" class="cloud-img cloud-front c8" alt="" aria-hidden="true" />
+
+            <div class="loading-text">LOADING...</div>
+            <div class="loading-subtext">@_status</div>
+        </div>
+    </div>
+}
+
+<div class="page">
+    <h3>Dummy Loading Page</h3>
+    <p><b>OrgId param:</b> @OrgId</p>
+    <p><b>Status:</b> @_status</p>
+
+    <p>
+        This content is always in the DOM; the overlay sits on top while <code>_isLoading</code> is true.
+        Once background work finishes, the overlay hides.
+    </p>
+</div>
+
+@code {
+    // Route parameter. Change the URL to /demo/loading/abc and it will re-set parameters.
+    [Parameter] public string? OrgId { get; set; }
+
+    private bool _isLoading = true;
+    private string _status = "Waiting for first render…";
+    private string? _lastOrgId;
+
+    private CancellationTokenSource _cts = new CancellationTokenSource();
+
+    protected override void OnInitialized()
+    {
+        // Runs once per component instance.
+        // Good for setting default state, wiring services, allocating CTS, etc.
+        _isLoading = true;
+        _status = "OnInitialized: component created (no UI painted yet).";
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        // Runs on first render AND every time parameters change (e.g., navigating to same page with different OrgId).
+        // Good for reacting to parameters (like OrgId), validating them, setting state.
+        _status = $"OnParametersSetAsync: parameters are set. OrgId={OrgId ?? "(null)"}";
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Key idea:
+        // If you do long awaits in OnInitializedAsync/OnParametersSetAsync, the first render can be delayed.
+        // OnAfterRenderAsync(firstRender=true) runs AFTER the UI has actually painted at least once.
+        if (!firstRender)
+            return;
+
+        // Start background work AFTER the overlay has been rendered.
+        // Fire-and-forget pattern, but we handle exceptions inside the method.
+        _ = RunStartupWorkAsync(_cts.Token);
+
+        await Task.CompletedTask;
+    }
+
+    private async Task RunStartupWorkAsync(CancellationToken ct)
+    {
+        try
+        {
+            // Example: if you want to re-run when OrgId changes, track it.
+            _lastOrgId = OrgId;
+
+            await InvokeAsync(() =>
+            {
+                _isLoading = true;
+                _status = "Background: starting API checks (simulated)…";
+                StateHasChanged();
+            });
+
+            // --- Simulated background work ---
+            // Replace Task.Delay with real async I/O:
+            // var resp = await Http.GetAsync("/api/health", ct);
+            // resp.EnsureSuccessStatusCode();
+            await Task.Delay(1500, ct);
+
+            await InvokeAsync(() =>
+            {
+                _status = "Background: done. Overlay will hide.";
+                _isLoading = false;
+                StateHasChanged();
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // Navigated away / disposed; ignore
+        }
+        catch (Exception ex)
+        {
+            await InvokeAsync(() =>
+            {
+                _status = $"Background: failed: {ex.Message}";
+                _isLoading = false; // decide if you want to keep overlay up on error
+                StateHasChanged();
+            });
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+}

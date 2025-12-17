@@ -20,7 +20,7 @@ namespace Cinturon360.Shared.Services.Kernel
 
         public Task VerboseAsync(string evt, SysLogCatType cat, SysLogActionType act,
             string? message = null, string? ent = null, string? entId = null,
-            string? rid = null, string? tid = null, string? uid = null, string? org = null,
+            string? rid = null, Guid? tid = null, string? uid = null, string? org = null,
             int? durMs = null, string? http = null, int? stat = null, string? path = null,
             string? note = null, SysLogOutcome? overrideOutcome = null)
             => LogCoreAsync(SysLogLevel.Verbose, overrideOutcome ?? SysLogOutcome.OK,
@@ -29,7 +29,7 @@ namespace Cinturon360.Shared.Services.Kernel
 
         public Task DebugAsync(string evt, SysLogCatType cat, SysLogActionType act,
             string? message = null, string? ent = null, string? entId = null,
-            string? rid = null, string? tid = null, string? uid = null, string? org = null,
+            string? rid = null, Guid? tid = null, string? uid = null, string? org = null,
             int? durMs = null, string? http = null, int? stat = null, string? path = null,
             string? note = null, SysLogOutcome? overrideOutcome = null)
             => LogCoreAsync(SysLogLevel.Debug, overrideOutcome ?? SysLogOutcome.OK,
@@ -38,7 +38,7 @@ namespace Cinturon360.Shared.Services.Kernel
 
         public Task InformationAsync(string evt, SysLogCatType cat, SysLogActionType act,
             string? message = null, string? ent = null, string? entId = null,
-            string? rid = null, string? tid = null, string? uid = null, string? org = null,
+            string? rid = null, Guid? tid = null, string? uid = null, string? org = null,
             int? durMs = null, string? http = null, int? stat = null, string? path = null,
             string? note = null, SysLogOutcome? overrideOutcome = null)
             => LogCoreAsync(SysLogLevel.Information, overrideOutcome ?? SysLogOutcome.OK,
@@ -48,7 +48,7 @@ namespace Cinturon360.Shared.Services.Kernel
         public Task WarningAsync(string evt, SysLogCatType cat, SysLogActionType act,
             string? message = null, Exception? ex = null,
             string? ent = null, string? entId = null,
-            string? rid = null, string? tid = null, string? uid = null, string? org = null,
+            string? rid = null, Guid? tid = null, string? uid = null, string? org = null,
             int? durMs = null, string? http = null, int? stat = null, string? path = null,
             string? note = null, SysLogOutcome? overrideOutcome = null)
             => LogCoreAsync(SysLogLevel.Warning, overrideOutcome ?? SysLogOutcome.WARN,
@@ -58,7 +58,7 @@ namespace Cinturon360.Shared.Services.Kernel
         public Task ErrorAsync(string evt, SysLogCatType cat, SysLogActionType act,
             Exception ex, string? message = null,
             string? ent = null, string? entId = null,
-            string? rid = null, string? tid = null, string? uid = null, string? org = null,
+            string? rid = null, Guid? tid = null, string? uid = null, string? org = null,
             int? durMs = null, string? http = null, int? stat = null, string? path = null,
             string? note = null, SysLogOutcome? overrideOutcome = null)
             => LogCoreAsync(SysLogLevel.Error, overrideOutcome ?? SysLogOutcome.ERR,
@@ -68,7 +68,7 @@ namespace Cinturon360.Shared.Services.Kernel
         public Task FatalAsync(string evt, SysLogCatType cat, SysLogActionType act,
             Exception ex, string? message = null,
             string? ent = null, string? entId = null,
-            string? rid = null, string? tid = null, string? uid = null, string? org = null,
+            string? rid = null, Guid? tid = null, string? uid = null, string? org = null,
             int? durMs = null, string? http = null, int? stat = null, string? path = null,
             string? note = null, SysLogOutcome? overrideOutcome = null)
             => LogCoreAsync(SysLogLevel.Fatal, overrideOutcome ?? SysLogOutcome.FAIL,
@@ -78,7 +78,7 @@ namespace Cinturon360.Shared.Services.Kernel
         public Task LogAsync(SysLogLevel level, string evt, SysLogCatType cat, SysLogActionType act,
             SysLogOutcome outcome, string? message = null, Exception? ex = null,
             string? ent = null, string? entId = null, string? rid = null,
-            string? tid = null, string? uid = null, string? org = null,
+            Guid? tid = null, string? uid = null, string? org = null,
             int? durMs = null, string? http = null, int? stat = null, string? path = null,
             string? note = null)
             => LogCoreAsync(level, outcome, evt, cat, act, message, ex, ent, entId, rid,
@@ -89,7 +89,7 @@ namespace Cinturon360.Shared.Services.Kernel
             string evt, SysLogCatType cat, SysLogActionType act,
             string? message, Exception? ex,
             string? ent, string? entId, string? rid,
-            string? tid, string? uid, string? org,
+            Guid? tid, string? uid, string? org,
             int? durMs, string? http, int? stat, string? path, string? note)
         {
             if (level < _minLevel) return;

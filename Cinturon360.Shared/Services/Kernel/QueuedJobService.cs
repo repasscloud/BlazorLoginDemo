@@ -94,6 +94,7 @@ public sealed class QueuedJobService : IQueuedJobService
         return job;
     }
 
+    // used explicitly for checking jobs that are available to be processed for travel booking only
     public async Task<QueuedJob?> GetJobByCorrelationIdAndNotCompletedAsync(
         string correlationId,
         CancellationToken cancellationToken = default)
@@ -102,15 +103,21 @@ public sealed class QueuedJobService : IQueuedJobService
             return null;
 
         var job = await _db.QueuedJobs
-            .FirstOrDefaultAsync(j => j.CorrelationId == correlationId &&
-                                      j.Status != JobStatus.Succeeded &&
-                                      j.Status != JobStatus.Failed &&
-                                      j.Status != JobStatus.Cancelled,
-                                 cancellationToken);
+            .FirstOrDefaultAsync(
+                j => j.CorrelationId == correlationId &&
+                    !TravelBookingExcludedStatuses.Contains(j.Status),
+                cancellationToken);
 
         if (job is null)
             return null;
 
+        job.Status = JobStatus.Retrieved;
+        job.StartedUtc = DateTime.UtcNow;
+        job.AttemptCount += 1; // NOT: job.AttemptCount = job.AttemptCount++;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        _db.Entry(job).State = EntityState.Detached;
         return job;
     }
 
@@ -160,4 +167,61 @@ public sealed class QueuedJobService : IQueuedJobService
 
         await _db.SaveChangesAsync(cancellationToken);
     }
+
+    private static readonly JobStatus[] TravelBookingExcludedStatuses =
+    {
+        JobStatus.Blocked,
+        JobStatus.Paused,
+        JobStatus.Dequeued,
+        JobStatus.Leased,
+        JobStatus.Heartbeating,
+
+        JobStatus.Processing,
+        JobStatus.Validating,
+        JobStatus.Enriching,
+        JobStatus.Executing,
+        JobStatus.Persisting,
+        JobStatus.Publishing,
+        JobStatus.Finalizing,
+
+        JobStatus.WaitingExternal,
+        JobStatus.WaitingRateLimit,
+        JobStatus.WaitingRetryBackoff,
+        JobStatus.WaitingManual,
+
+        JobStatus.Succeeded,
+        JobStatus.SucceededWithWarnings,
+        JobStatus.Completed,
+
+        JobStatus.Failed,
+        JobStatus.FailedValidation,
+        JobStatus.FailedExternal,
+        JobStatus.FailedTimeout,
+        JobStatus.FailedConflict,
+        JobStatus.FailedSecurity,
+
+        JobStatus.Retrying,
+        JobStatus.DeadLettered,
+        JobStatus.Quarantined,
+
+        JobStatus.CancelRequested,
+        JobStatus.Cancelling,
+        JobStatus.Cancelled,
+        JobStatus.Superseded,
+
+        JobStatus.Expired,
+        JobStatus.Abandoned,
+        JobStatus.Stale,
+
+        JobStatus.Reserved90,
+        JobStatus.Reserved91,
+        JobStatus.Reserved92,
+        JobStatus.Reserved93,
+        JobStatus.Reserved94,
+        JobStatus.Reserved95,
+        JobStatus.Reserved96,
+        JobStatus.Reserved97,
+        JobStatus.Reserved98,
+        JobStatus.Reserved99
+    };
 }

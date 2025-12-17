@@ -146,6 +146,10 @@ public sealed class TravelQuoteDto
     public string TmcAssignedId { get; set; } = null!;
     public string OrganizationId { get; set; } = null!;
     public List<string> TravellerUserIds { get; set; } = new();
+    public Guid Tid { get; set; } // transaction id
+    public string? Uid { get; set; } // user id
+    public string? Org { get; set; } // organization id
+    public string? Rid { get; set; } // requestor-defined ID
 }
 
 public enum TravelQuotePolicyType

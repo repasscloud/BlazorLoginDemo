@@ -7,7 +7,10 @@ namespace Cinturon360.Api.Controllers.Queue;
 [ApiController]
 public class QueueController : ControllerBase
 {
+    private const string CorrelationHeader = "X-Correlation-Id";
+
     private readonly IQueuedJobService _queuedJobService;
+    
     public QueueController(IQueuedJobService queuedJobService)
     {
         _queuedJobService = queuedJobService;

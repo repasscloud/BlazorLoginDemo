@@ -315,4 +315,28 @@ public class TestDataController : ControllerBase
         }
         return Ok(new { ok = true, organization = org });
     }
+
+    [HttpGet("travelpolicy/by-id/{policyId}")]
+    public async Task<IActionResult> GetTravelPolicyById([FromRoute] string policyId, CancellationToken ct)
+    {
+        var policy = await _db.TravelPolicies
+            .Where(p => p.Id == policyId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+        return policy == null
+            ? NotFound(new { ok = false, error = "Travel policy not found" })
+            : Ok(new { ok = true, travelPolicy = policy });
+    }
+
+    [HttpGet("travelquote/by-id/{quoteId}")]
+    public async Task<IActionResult> GetTravelQuoteById([FromRoute] string quoteId, CancellationToken ct)
+    {
+        var quote = await _db.TravelQuotes
+            .Where(q => q.Id == quoteId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+        return quote == null
+            ? NotFound(new { ok = false, error = "Travel quote not found" })
+            : Ok(new { ok = true, travelQuote = quote });
+    }
 }

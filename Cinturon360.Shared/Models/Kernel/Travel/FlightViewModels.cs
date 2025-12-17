@@ -11,6 +11,11 @@ public sealed class FlightViewOption
     [Key]
     public string Id { get; set; } = Nanoid.Generate();
 
+    public bool InstantTicketingRequired { get; set; } = true;
+    public bool NonHomogeneous { get; set; } = false;  // true is multi-booking potential (an issue)
+    public bool OneWay { get; set; } = false;
+    public DateOnly LastTicketingDate { get; set; } = DateOnly.MinValue;
+
     public string Origin { get; set; } = string.Empty;
     public string Destination { get; set; } = string.Empty;
 
@@ -20,6 +25,8 @@ public sealed class FlightViewOption
     public decimal Price { get; set; } = 0m;
     public string Currency { get; set; } = "AUD";
     public string CurrencySymbol { get; set; } = "$";
+
+    public int BookableSeats { get; set; } = 0;
 
     public List<string> Cabins { get; set; } = new();
 
@@ -32,7 +39,8 @@ public sealed class FlightViewOption
     [Column(TypeName = "jsonb")]
     public List<FlightLeg> Legs { get; set; } = new();
 
-    public string BaggageText { get; set; } = string.Empty;
+    public string[] BaggageTexts { get; set; } = [];
+    public string BaggageText => BaggageTexts.Length == 0 ? "" : string.Join(" • ", BaggageTexts);
     public string ChangePolicy { get; set; } = string.Empty;
     public string RefundPolicy { get; set; } = string.Empty;
     public string SeatPolicy { get; set; } = string.Empty;
@@ -54,26 +62,27 @@ public sealed class FlightViewOption
     public List<Carrier> DisplayCarriers =>
         Legs.Select(l => l.Carrier).Distinct(new CarrierCodeComparer()).ToList();
 
-    [NotMapped]
-    public string TotalDurationText
-    {
-        get
-        {
-            TimeSpan totalDuration = TimeSpan.Zero;
-            foreach (var leg in Legs)
-            {
-                TimeSpan legTotalDuration = TimeSpan.Zero;
-                if (leg.Layover != null)
-                {
-                    // include layover time
-                    var layoverSpan = TimeSpan.FromMinutes(leg.Layover.Minutes);
-                    legTotalDuration += layoverSpan;
-                }
-                totalDuration += leg.Duration;
-            }
-            return $"{(int)totalDuration.TotalHours}h {totalDuration.Minutes:D2}m";
-        }
-    }
+    public string TotalDurationText { get; set; } = string.Empty;
+    // [NotMapped]
+    // public string TotalDurationText
+    // {
+    //     get
+    //     {
+    //         TimeSpan totalDuration = TimeSpan.Zero;
+    //         foreach (var leg in Legs)
+    //         {
+    //             TimeSpan legTotalDuration = TimeSpan.Zero;
+    //             if (leg.Layover != null)
+    //             {
+    //                 // include layover time
+    //                 var layoverSpan = TimeSpan.FromMinutes(leg.Layover.Minutes);
+    //                 legTotalDuration += layoverSpan;
+    //             }
+    //             totalDuration += leg.Duration;
+    //         }
+    //         return $"{(int)totalDuration.TotalHours}h {totalDuration.Minutes:D2}m";
+    //     }
+    // }
 
     [NotMapped]
     public IEnumerable<InclusionBadge> InclusionBadges
@@ -188,6 +197,12 @@ public class FlightLeg
     public string? CabinBagsWeightUnit { get; set; }
     public TimeSpan Duration { get; set; }
     public string DurationText { get; set; } = string.Empty;
+    public List<FlightStopover>? Stopovers { get; set; } = new();
+    public string? FareBasisCode { get; set; }
+    public string? BrandedFare { get; set; }
+    public string? BrandedFareLabel { get; set; }
+    public string? Class { get; set; }
+
 
     [NotMapped]
     public IEnumerable<string> AmenityLabels
@@ -204,6 +219,14 @@ public class FlightLeg
             return list;
         }
     }
+}
+
+public sealed class FlightStopover
+{
+    public string IataCode { get; set; } = string.Empty;
+    public TimeSpan Duration { get; set; }
+    public DateTime ArrivalAt { get; set; }
+    public DateTime DepartureAt { get; set; }
 }
 
 // persists as owned on FlightViewOption
@@ -224,11 +247,15 @@ public sealed class Amenity
 public enum AmenityType
 {
     UNKNOWN,
+
     BAGGAGE,
-    BRANDED_FARES,
-    MEAL,
-    TRAVEL_SERVICES,
     PRE_RESERVED_SEAT,
+    MEAL,
+    BRANDED_FARES,
+    ENTERTAINMENT,
+    TRAVEL_SERVICES,
+    LOUNGE,
+    UPGRADES
 }
 
 // VIEW-ONLY. keep as class.

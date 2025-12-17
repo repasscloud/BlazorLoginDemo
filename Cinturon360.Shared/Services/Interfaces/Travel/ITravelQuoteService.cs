@@ -41,6 +41,6 @@ public interface ITravelQuoteService
     Task<AmadeusFlightOfferSearch> BuildAmadeusFlightOfferSearchFromQuote(TravelQuote quote, bool returnTrip, CancellationToken ct = default);
 
     // UI HELPERS
-    Task<FlightSearchPageConfig> GenerateFlightSearchUIOptionsAsync(string travelQuoteId, CancellationToken ct = default);
+    Task<FlightSearchPageConfig> GenerateFlightSearchUIOptionsAsync(string travelQuoteId, string rid, CancellationToken ct = default);
     Task<FlightSearchResponse> GetFlightSearchResultsAsync(string travelQuoteId, AmadeusFlightOfferSearchResult results, CancellationToken ct = default);
 }

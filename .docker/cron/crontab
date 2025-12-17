@@ -1,7 +1,7 @@
 CRON_TZ=UTC
 
 # hourly
-0 * * * * curl -fsS --max-time 10 --retry 2 --retry-connrefused -H 'accept: */*' http://api:8080/api/v1/travel/quotes/cron/expire-pending-quotes
+0 * * * * curl -fsS --max-time 10 --retry 2 --retry-connrefused -H 'accept: */*' http://api:8080/v1/cron/expire/hourly
 
 # 2am on Sunday ingest airlines data
 0 2 * * 7 curl -fsS --max-time 10 --retry 2 --retry-connrefused -H 'accept: */*' http://api:8080/api/v1/admin/ingress/airlines-data
@@ -10,4 +10,4 @@ CRON_TZ=UTC
 */5 * * * * echo "heartbeat $(date -Iseconds)"
 
 # every 30 seconds jobs
-*/30 * * * * * echo "fast-heartbeat $(date -Iseconds)"
+#*/30 * * * * * echo "fast-heartbeat $(date -Iseconds)"

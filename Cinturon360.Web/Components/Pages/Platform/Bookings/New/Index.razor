@@ -1,4 +1,4 @@
-@page "/platform/pnr/create"
+@page "/platform/bookings/new"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Shared:BookingSelect")]
 
@@ -95,20 +95,23 @@
 @code {
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     private ClaimsPrincipal? _user;
+    private Guid Tid;
 
     protected override async Task OnInitializedAsync()
     {
         AuthenticationState? authState = await AuthStateTask;
         _user = authState.User;
+
+        Tid = Guid.NewGuid();  // start the Transaction ID here, this is an index page
     }
 
-    private string GetUrl(string type)
+    private string GetUrl(string bookingType)
     {
         if (_user == null) return "#";
 
         if (_user.IsInRole(role: "Sudo"))
         {
-            return $"/platform/pnr/create/{type}";
+            return $"/platform/bookings/context/{bookingType}?tid={Uri.EscapeDataString(Tid.ToString())}";
         }
 
         if (_user.IsInRole(role: "Platform.SuperAdmin") ||
@@ -120,13 +123,14 @@
             _user.IsInRole(role: "Tmc.BookingsManager") ||
             _user.IsInRole(role: "Tmc.TravelAgent"))
         {
-            return $"/booking/tmc/{type}";
+            return $"/tmc/bookings/context/{bookingType}?tid={Uri.EscapeDataString(Tid.ToString())}";
+            
         }
 
         if (_user.IsInRole(role: "Client.Admin") ||
             _user.IsInRole(role: "Client.Requestor"))
         {
-            return $"/booking/client/{type}";
+            return $"/bookings/context/{bookingType}?tid={Uri.EscapeDataString(Tid.ToString())}";
         }
 
         return "#";

@@ -22,4 +22,7 @@ public sealed class TravelQuoteFlightUIResultPatchDto
     public CabinClass? MaxCabinClass { get; set; }
     public string[] SelectedAirlines { get; set; } = Array.Empty<string>();
     public List<AirlineAlliance>? Alliances { get; set; }
+    public Guid Tid { get; set; } // transaction id
+    public string? Uid { get; set; } // user id
+    public string? Org { get; set; } // organization id
 }

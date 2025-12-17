@@ -45,7 +45,7 @@ public sealed class ApiRequestLoggingMiddleware : IMiddleware
                 await _log.InformationAsync(
                     evt, cat, act,
                     message: $"{method} {path}",
-                    rid: rid, tid: tid, uid: uid, org: org,
+                    rid: rid, tid: Guid.Parse(tid), uid: uid, org: org,
                     durMs: (int)sw.ElapsedMilliseconds,
                     http: method, stat: status, path: path,
                     note: note,
@@ -57,7 +57,7 @@ public sealed class ApiRequestLoggingMiddleware : IMiddleware
                     evt, cat, act,
                     message: $"{method} {path}",
                     ex: null,
-                    rid: rid, tid: tid, uid: uid, org: org,
+                    rid: rid, tid: Guid.Parse(tid), uid: uid, org: org,
                     durMs: (int)sw.ElapsedMilliseconds,
                     http: method, stat: status, path: path,
                     note: note,
@@ -75,7 +75,7 @@ public sealed class ApiRequestLoggingMiddleware : IMiddleware
                     outcome: SysLogOutcome.ERR,
                     message: $"{method} {path}",
                     ex: null,
-                    rid: rid, tid: tid, uid: uid, org: org,
+                    rid: rid, tid: Guid.Parse(tid), uid: uid, org: org,
                     durMs: (int)sw.ElapsedMilliseconds,
                     http: method, stat: status, path: path,
                     note: note);

@@ -167,11 +167,11 @@ else
                         <tbody>
                         @foreach (var opt in Filtered)
                         {
-                            <tr class="flight-row" @key="opt.Id" @onclick="@(()=>Toggle(opt))">
+                            <tr class="flight-row" @key="opt?.Id" @onclick="@(()=>Toggle(opt))">
                                 <!-- Carrier Logo -->
                                 <td>
                                     <div class="d-flex flex-wrap gap-1">
-                                        @foreach (var c in opt.DisplayCarriers ?? Enumerable.Empty<Carrier>())
+                                        @foreach (var c in opt?.DisplayCarriers ?? Enumerable.Empty<Carrier>())
                                         {
                                             <img class="air-logo-lg" src="@c.LogoUrl" alt="@c.Name" />
                                         }
@@ -180,23 +180,23 @@ else
                                 <!-- Route -->
                                 <td>
                                     <div class="fw-semibold">
-                                        @opt.Origin <span class="text-muted">→</span> @opt.Destination
+                                        @opt?.Origin <span class="text-muted">→</span> @opt?.Destination
                                     </div>
                                 </td>
                                 <!-- Stops -->
                                 <td class="text-center">
-                                    @(opt.Stops == 0 ? "Non-stop" : opt.Stops == 1 ? "1 stop" : $"{opt.Stops} stops")
+                                    @(opt?.Stops == 0 ? "Non-stop" : opt?.Stops == 1 ? "1 stop" : $"{opt?.Stops} stops")
                                 </td>
                                 <!-- Depart -->
-                                <td>@opt.DepartTime.ToLocalTime().ToString("HH:mm")</td>
+                                <td>@opt?.DepartTime.ToLocalTime().ToString("HH:mm")</td>
                                 <!-- Arrive -->
-                                <td>@opt.ArriveTime.ToLocalTime().ToString("HH:mm")</td>
+                                <td>@opt?.ArriveTime.ToLocalTime().ToString("HH:mm")</td>
                                 <!-- Duration -->
-                                <td>@opt.TotalDurationText</td>
+                                <td>@opt?.TotalDurationText</td>
                                 <!-- Cabins -->
                                 <td>
                                     <div class="d-flex flex-wrap gap-1">
-                                        @foreach (var c in (opt.Cabins ?? Enumerable.Empty<string>()))
+                                        @foreach (var c in (opt?.Cabins ?? Enumerable.Empty<string>()))
                                         {
                                             <span class="badge bg-light text-dark">@c</span>
                                         }
@@ -204,7 +204,7 @@ else
                                 </td>
                                 <!-- Price -->
                                 <td class="text-end fw-bold">
-                                    @((opt.CurrencySymbol ?? "$") + opt.Price.ToString("N0"))
+                                    @((opt?.CurrencySymbol ?? "$") + opt?.Price.ToString("N0"))
                                 </td>
                                 <!-- Purchase Btn -->
                                 <td class="text-end">
@@ -215,7 +215,7 @@ else
                                 </td>
                             </tr>
 
-                            @if (opt.IsOpen)
+                            @if (opt?.IsOpen == true)
                             {
                                 <tr class="table-active">
                                     <td colspan="9" class="p-0">
@@ -239,10 +239,10 @@ else
                                                             </tr>
                                                             </thead>
                                                             <tbody>
-                                                            @for (int i = 0; i < (opt.Legs?.Count ?? 0); i++)
+                                                            @for (int i = 0; i < (opt?.Legs?.Count ?? 0); i++)
                                                             {
-                                                                var leg = opt.Legs[i]!;
-                                                                <tr @key="@($"{opt.Id}-{i}")">
+                                                                var leg = opt?.Legs[i]!;
+                                                                <tr @key="@($"{opt?.Id}-{i}")">
                                                                     <td>
                                                                         <div class="d-flex align-items-center gap-2">
                                                                             <img class="air-logo" src="@leg.Carrier.LogoUrl" alt="@leg.Carrier.Name" />
@@ -295,28 +295,28 @@ else
 
                                                     <!-- Policies -->
                                                     <div class="row g-2 small mt-2">
-                                                        @if (!string.IsNullOrWhiteSpace(opt.BaggageText))
+                                                        @if (!string.IsNullOrWhiteSpace(opt?.BaggageText))
                                                         {
                                                             <div class="col-12 col-md-3">
-                                                                <div><span class="text-muted">Baggage:</span> @opt.BaggageText</div>
+                                                                <div><span class="text-muted">Baggage:</span> @opt?.BaggageText</div>
                                                             </div>
                                                         }
-                                                        @if (!string.IsNullOrWhiteSpace(opt.SeatPolicy))
+                                                        @if (!string.IsNullOrWhiteSpace(opt?.SeatPolicy))
                                                         {
                                                             <div class="col-12 col-md-3">
-                                                                <div><span class="text-muted">Seating:</span> @opt.SeatPolicy</div>
+                                                                <div><span class="text-muted">Seating:</span> @opt?.SeatPolicy</div>
                                                             </div>
                                                         }
-                                                        @if (!string.IsNullOrWhiteSpace(opt.ChangePolicy))
+                                                        @if (!string.IsNullOrWhiteSpace(opt?.ChangePolicy))
                                                         {
                                                             <div class="col-12 col-md-3">
-                                                                <div><span class="text-muted">Changes:</span> @opt.ChangePolicy</div>
+                                                                <div><span class="text-muted">Changes:</span> @opt?.ChangePolicy</div>
                                                             </div>
                                                         }
-                                                        @if (!string.IsNullOrWhiteSpace(opt.RefundPolicy))
+                                                        @if (!string.IsNullOrWhiteSpace(opt?.RefundPolicy))
                                                         {
                                                             <div class="col-12 col-md-3">
-                                                                <div><span class="text-muted">Refunds:</span> @opt.RefundPolicy</div>
+                                                                <div><span class="text-muted">Refunds:</span> @opt?.RefundPolicy</div>
                                                             </div>
                                                         }
                                                     </div>
@@ -327,11 +327,11 @@ else
                                                     <div class="border rounded p-3 bg-white">
                                                         <div class="d-flex justify-content-between align-items-baseline">
                                                             <div class="text-muted small">Total</div>
-                                                            <div class="h5 m-0">@((opt.CurrencySymbol ?? "$") + opt.Price.ToString("N0"))</div>
+                                                            <div class="h5 m-0">@((opt?.CurrencySymbol ?? "$") + opt?.Price.ToString("N0"))</div>
                                                         </div>
 
                                                         <div class="mt-3 d-grid gap-2">
-                                                            <button class="btn btn-primary" @onclick="(e)=>Select(opt)" @onclick:stopPropagation="true">
+                                                            <button class="btn btn-primary" @onclick="(e)=>Select(opt!)" @onclick:stopPropagation="true">
                                                                 <i class="bi bi-bag-plus me-1"></i> Choose
                                                             </button>
                                                             <button class="btn btn-outline-secondary" @onclick="(e)=>ShowCompare()" @onclick:stopPropagation="true">

@@ -1,7 +1,11 @@
-@page "/platform/pnr/create/{bookingType}"
+@page "/platform/bookings/context/{bookingType}"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Shared:BookingSelect")]
 
+@using System.Security.Claims
+@using Cinturon360.Shared.Services.Interfaces.Kernel
+@using Cinturon360.Web.Components.Pages.Platform.Orgs.Policies
+@using Microsoft.AspNetCore.Authorization
 @using Cinturon360.Shared.Models.Kernel.Platform
 @using Cinturon360.Shared.Models.Kernel.Travel
 @using Cinturon360.Shared.Models.Static.Platform
@@ -12,11 +16,13 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Mvc
 
+@inject AuthenticationStateProvider AuthStateProvider
 @inject IAdminOrgServiceUnified OrgSvc
 @inject IAdminUserServiceUnified UserSvc
-@inject NavigationManager Nav
-@inject AuthenticationStateProvider AuthStateProvider
 @inject IHttpClientFactory HttpClientFactory
+@inject ILoggerService LoggerSvc
+@inject NavigationManager Nav
+
 
 @if (Unauthorized)
 {
@@ -145,51 +151,15 @@ else
 
 @code {
     [Parameter] public string? bookingType { get; set; }
-
-    private static readonly HashSet<string> AllowedBookingTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "flight", "accomodation", "taxi", "train", "hirecar", "bus", "simcard", "activity", "mixed"
-    };
-
-    public string BookingTypeNormalized { get; private set; } = string.Empty;
-    protected override void OnParametersSet()
-    {
-        if (string.IsNullOrWhiteSpace(bookingType) || !AllowedBookingTypes.Contains(bookingType))
-        {
-            Nav.NavigateTo(uri: "/booking/select", forceLoad: true);
-            return;
-        }
-
-        BookingTypeNormalized = bookingType!.ToLowerInvariant();
-    }
-
-    bool Unauthorized;
-    bool IsSudo;
-    bool IsPlatformUser;
-
-    List<IAdminOrgServiceUnified.OrganizationPickerDto> Vendors = new List<IAdminOrgServiceUnified.OrganizationPickerDto>();
-    List<IAdminOrgServiceUnified.OrganizationPickerDto> Tmcs = new List<IAdminOrgServiceUnified.OrganizationPickerDto>();
-    List<IAdminOrgServiceUnified.OrganizationPickerDto> Clients = new List<IAdminOrgServiceUnified.OrganizationPickerDto>();
-    List<IAdminUserServiceUnified.UserAggregate> Users = new List<IAdminUserServiceUnified.UserAggregate>();
-
-    string? SelectedVendorId;
-    string? SelectedTmcId;
-    string? SelectedClientId;
-    string? myUserId;
-
-    bool VendorLocked;
-    bool TmcLocked;
-    bool ClientLocked;
-
-    string? ErrorMessage;
-    @* private sealed record ErrorDto { public string? Error { get; init; } } *@
-
-    HashSet<string> SelectedUserIds = new HashSet<string>();
+    [SupplyParameterFromQuery(Name = "Tid")] public Guid? Tid { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+    private string? orgId;
+    private string rid = Guid.NewGuid().ToString(format: "N");
 
     protected override async Task OnInitializedAsync()
     {
         AuthenticationState? authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        System.Security.Claims.ClaimsPrincipal? user = authState.User;
+        ClaimsPrincipal? user = authState.User;
 
         if (!(user.IsInRole("Sudo") ||
               user.IsInRole("Platform.SuperAdmin") ||
@@ -205,9 +175,9 @@ else
             return;
         }
 
-        var orgId = user.FindFirst("OrganizationId")?.Value
-                    ?? user.FindFirst("organizationId")?.Value
-                    ?? user.FindFirst("org")?.Value;
+        orgId = user.FindFirst("OrganizationId")?.Value
+            ?? user.FindFirst("organizationId")?.Value
+            ?? user.FindFirst("org")?.Value;
 
         IsSudo = user.IsInRole("Sudo");
         IsPlatformUser = user.IsInRole("Platform.SuperAdmin") ||
@@ -249,6 +219,45 @@ else
         // assign the currently using user user's id
         myUserId = user.GetUserId();
     }
+
+    private static readonly HashSet<string> AllowedBookingTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "flight", "accomodation", "taxi", "train", "hirecar", "bus", "simcard", "activity", "mixed"
+    };
+
+    public string BookingTypeNormalized { get; private set; } = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(bookingType) || !AllowedBookingTypes.Contains(bookingType))
+        {
+            Nav.NavigateTo(uri: "/booking/select", forceLoad: true);
+            return;
+        }
+
+        BookingTypeNormalized = bookingType!.ToLowerInvariant();
+    }
+
+    bool Unauthorized;
+    bool IsSudo;
+    bool IsPlatformUser;
+
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Vendors = new List<IAdminOrgServiceUnified.OrganizationPickerDto>();
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Tmcs = new List<IAdminOrgServiceUnified.OrganizationPickerDto>();
+    List<IAdminOrgServiceUnified.OrganizationPickerDto> Clients = new List<IAdminOrgServiceUnified.OrganizationPickerDto>();
+    List<IAdminUserServiceUnified.UserAggregate> Users = new List<IAdminUserServiceUnified.UserAggregate>();
+
+    string? SelectedVendorId;
+    string? SelectedTmcId;
+    string? SelectedClientId;
+    string? myUserId;
+
+    bool VendorLocked;
+    bool TmcLocked;
+    bool ClientLocked;
+    string? ErrorMessage;
+
+    HashSet<string> SelectedUserIds = new HashSet<string>();
 
     async Task ConfirmVendor()
     {
@@ -307,40 +316,85 @@ else
     }
 
     static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
-    public sealed record ErrorEnvelope(string? Error);
-    public sealed record IdEnvelope(string? Id);
+    public sealed record ErrorEnvelope(string? Error, string? Rid);
+    public sealed record IdEnvelope(string? Id, string? Rid);
 
     async Task CreateQuoteAsync()
     {
         if (string.IsNullOrEmpty(SelectedClientId) || SelectedUserIds.Count == 0)
             return;
 
-        HttpClient? client = HttpClientFactory.CreateClient(name: "AvaApi");
+        System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
 
-        TravelQuoteDto payload = new TravelQuoteDto
+        HttpClient client = HttpClientFactory.CreateClient(name: "AvaApi");
+
+        TravelQuoteDto? payload = new TravelQuoteDto
         {
             QuoteType = BookingTypeNormalized,
             CreatedByUserId = myUserId!,
             TmcAssignedId = SelectedTmcId!,
             OrganizationId = SelectedClientId!,
-            TravellerUserIds = SelectedUserIds.ToList()
+            TravellerUserIds = SelectedUserIds.ToList(),
+            Tid = Tid ?? Guid.Empty,
+            Uid = myUserId,
+            Org = orgId
         };
 
-        using HttpResponseMessage? response = await client.PostAsJsonAsync(requestUri: "api/v1/travel/quotes/from-dto", payload, JsonOpts);
+        using HttpRequestMessage? req = new HttpRequestMessage(HttpMethod.Post, requestUri: "v1/bookings/draft/new")
+        {
+            Content = JsonContent.Create(payload, options: JsonOpts)
+        };
+
+        // Send correlation id to API
+        req.Headers.TryAddWithoutValidation(name: "X-Correlation-Id", this.rid);
+
+        // IMPORTANT: send the request you just built (not PostAsJsonAsync on a separate call)
+        using HttpResponseMessage? response = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
 
         // catch your controller's: return BadRequest(new { error });
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
-            // prefer ErrorEnvelope { Error } if you already have that type
             try
             {
                 ErrorEnvelope? err = await response.Content.ReadFromJsonAsync<ErrorEnvelope>(JsonOpts);
                 ErrorMessage = string.IsNullOrWhiteSpace(err?.Error) ? "Bad request." : err!.Error;
+                await LoggerSvc.WarningAsync(
+                    evt: "",
+                    cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Workflow,
+                    act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Exec,
+                    message: "v1/bookings/draft/new",
+                    ent: "Platform/Bookings/New/DraftContext",
+                    rid: this.rid,
+                    tid: Tid,
+                    uid: myUserId,
+                    org: orgId,
+                    durMs: (int)sw.Elapsed.TotalMilliseconds,
+                    http: "POST",
+                    stat: ((int)response.StatusCode),
+                    note: ErrorMessage,
+                    overrideOutcome: Cinturon360.Shared.Models.Kernel.SysVar.SysLogOutcome.ERR
+                );
             }
             catch
             {
-                string? raw = await response.Content.ReadAsStringAsync();
+                string raw = await response.Content.ReadAsStringAsync();
                 ErrorMessage = string.IsNullOrWhiteSpace(raw) ? "Bad request." : raw;
+                await LoggerSvc.WarningAsync(
+                    evt: "",
+                    cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Workflow,
+                    act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Exec,
+                    message: "v1/bookings/draft/new",
+                    ent: "Platform/Bookings/New/DraftContext",
+                    rid: this.rid,
+                    tid: Tid,
+                    uid: myUserId,
+                    org: orgId,
+                    durMs: (int)sw.Elapsed.TotalMilliseconds,
+                    http: "POST",
+                    stat: ((int)response.StatusCode),
+                    note: ErrorMessage,
+                    overrideOutcome: Cinturon360.Shared.Models.Kernel.SysVar.SysLogOutcome.ERR
+                );
             }
             return;
         }
@@ -348,9 +402,25 @@ else
         // any other non-success → set a terse message and stop
         if (!response.IsSuccessStatusCode)
         {
-            string? raw = await response.Content.ReadAsStringAsync();
+            string raw = await response.Content.ReadAsStringAsync();
             ErrorMessage = $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}"
                         + (string.IsNullOrWhiteSpace(raw) ? "" : $": {raw}");
+            await LoggerSvc.WarningAsync(
+                evt: "",
+                cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Workflow,
+                act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Exec,
+                message: "v1/bookings/draft/new",
+                ent: "Platform/Bookings/New/DraftContext",
+                rid: this.rid,
+                tid: Tid,
+                uid: myUserId,
+                org: orgId,
+                durMs: (int)sw.Elapsed.TotalMilliseconds,
+                http: "POST",
+                stat: ((int)response.StatusCode),
+                note: ErrorMessage,
+                overrideOutcome: Cinturon360.Shared.Models.Kernel.SysVar.SysLogOutcome.ERR
+            );
             return;
         }
 
@@ -358,10 +428,31 @@ else
         if (string.IsNullOrWhiteSpace(ok?.Id))
         {
             ErrorMessage = "Missing ID.";
+            await LoggerSvc.WarningAsync(
+                evt: "",
+                cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Workflow,
+                act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Exec,
+                message: "v1/bookings/draft/new",
+                ent: "Platform/Bookings/New/DraftContext",
+                rid: this.rid,
+                tid: Tid,
+                uid: myUserId,
+                org: orgId,
+                durMs: (int)sw.Elapsed.TotalMilliseconds,
+                http: "POST",
+                stat: ((int)response.StatusCode),
+                note: ErrorMessage,
+                overrideOutcome: Cinturon360.Shared.Models.Kernel.SysVar.SysLogOutcome.ERR
+            );
             return;
         }
 
-        string? createdId = ok!.Id!;
-        Nav.NavigateTo(uri: $"/platform/pnr/create/flight/search/{createdId}", forceLoad: true);
+        string? travelQuoteId = ok.Id!;
+
+        string? url =
+            $"/platform/bookings/drafts/{Uri.EscapeDataString(travelQuoteId)}/flights/search"
+            + (Tid is null ? Guid.Empty.ToString() : $"?tid={Uri.EscapeDataString(Tid.ToString()!)}");
+
+        Nav.NavigateTo(url, forceLoad: true);
     }
 }
