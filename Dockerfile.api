@@ -43,9 +43,12 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build /app/publish/ ./
 
-# Ensure DataProtection keys directory exists and is writable
-RUN mkdir -p /home/app/.aspnet/DataProtection-Keys \
- && chown -R app:app /home/app /app
+# Ensure ASP.NET DataProtection keys and shared temp directories exist,
+# are owned by the non-root app user, and have restrictive permissions
+RUN mkdir -p /home/app/.aspnet/DataProtection-Keys /sharedtmp \
+ && chown -R app:app /home/app /sharedtmp \
+ && chmod 700 /home/app/.aspnet/DataProtection-Keys \
+ && chmod 770 /sharedtmp
 
 USER app
 EXPOSE 5050
