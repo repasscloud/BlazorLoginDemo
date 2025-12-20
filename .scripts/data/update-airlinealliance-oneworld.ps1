@@ -3,7 +3,10 @@
 
 $BaseUri     = 'http://localhost:8090'
 $Alliance    = '1'                     # JSON literal
-$Headers     = @{ Accept = '*/*' }
+$Headers     = @{
+  Accept = '*/*'
+  'X-Ava-ApiKey' = 'Shq6_nO2alwM4rzXJaPeVVIxdDPoTP7bbjBqGjajoWysImi-3UiMZua8WdMv2cmY'
+}
 $ContentType = 'application/json'
 
 $Airlines = @(
