@@ -1,42 +1,19 @@
-# syntax=docker/dockerfile:1.19.0
+# ---------- build stage ----------
+FROM floryn90/hugo:0.152.2-ext-ubuntu-onbuild AS builder
 
-FROM node:20-bookworm-slim
+# ONBUILD actions automatically do:
+# - COPY . /src
+# - WORKDIR /src
+# - RUN hugo
+#
+# Output ends up in: /target
 
-ARG HUGO_VERSION=0.146.0
-ARG TARGETARCH
-ARG TARGETVARIANT
+# ---------- runtime stage ----------
+FROM nginx:1.27-alpine
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    git \
-    golang \
-    tar \
-  && rm -rf /var/lib/apt/lists/*
+# Copy the generated static site
+COPY --from=builder /target /usr/share/nginx/html
 
-# Install Hugo Extended (needed for SCSS pipeline)
-RUN set -eux; \
-  echo "HUGO_VERSION=${HUGO_VERSION}"; \
-  echo "TARGETARCH=${TARGETARCH:-<unset>}"; \
-  echo "TARGETVARIANT=${TARGETVARIANT:-<unset>}"; \
-  case "${TARGETARCH:?}" in \
-    amd64) HUGO_ARCH="Linux-64bit" ;; \
-    arm64) HUGO_ARCH="linux-arm64" ;; \
-    arm) \
-      case "${TARGETVARIANT:-}" in \
-        v7|v6|"") HUGO_ARCH="linux-arm" ;; \
-        *) echo "Unsupported TARGETVARIANT: ${TARGETVARIANT}" >&2; exit 1 ;; \
-      esac ;; \
-    *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
-  esac; \
-  URL="https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_${HUGO_ARCH}.tar.gz"; \
-  echo "HUGO_ARCH=${HUGO_ARCH}"; \
-  echo "Downloading: ${URL}"; \
-  curl -v -fSL -o /tmp/hugo.tar.gz "${URL}"; \
-  tar -xzf /tmp/hugo.tar.gz -C /tmp; \
-  install -m 0755 /tmp/hugo /usr/local/bin/hugo; \
-  hugo version; \
-  rm -rf /tmp/hugo /tmp/hugo.tar.gz
+EXPOSE 80
 
-WORKDIR /site
-EXPOSE 1313
+CMD ["nginx", "-g", "daemon off;"]

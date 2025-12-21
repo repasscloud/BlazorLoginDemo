@@ -2,6 +2,14 @@
 
 # --- Build stage --------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+LABEL org.opencontainers.image.title="cinturon360-blazor"
+LABEL org.opencontainers.image.description="Dedicated Blazor container"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.created="2025-10-24"
+LABEL org.opencontainers.image.authors="Cinturon360 Platform Team"
+LABEL org.opencontainers.image.source="https://github.com/repasscloud/cinturon360"
+LABEL org.opencontainers.image.documentation="https://docs.cinturon360.com/docs/blazor/dockerfile"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 ARG CSPROJ_WEB
 ARG CSPROJ_SHARED
 WORKDIR /src
