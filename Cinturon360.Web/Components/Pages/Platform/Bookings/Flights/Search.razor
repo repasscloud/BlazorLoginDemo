@@ -814,200 +814,201 @@
 
     // ===== Commands =====
     private async Task SubmitSearch()
-{
-    ValidateDates();
-    if (!IsFormValid) return;
-    if (_isSearching) return;
-
-    _isSearching = true;
-
-    // Ensure RID exists for correlation on this action too
-    rid = string.IsNullOrWhiteSpace(rid) ? Guid.NewGuid().ToString("N") : rid;
-
-    // Force the UI to paint "Searching..." before we start doing real work
-    await InvokeAsync(StateHasChanged);
-    await Task.Yield();
-
-    var sw = Stopwatch.StartNew();
-    var navigated = false;
-
-    var patchDto = new TravelQuoteFlightUIResultPatchDto()
     {
-        Id = _cfg.TravelQuoteId,
-        TripType = Vm.Trip,
-        OriginIataCode = Vm.Origin,
-        DestinationIataCode = Vm.Destination,
-        DepartureDate = DateHelper.ToYmd(Vm.DepartDate),
-        ReturnDate = DateHelper.ToYmd(Vm.ReturnDate),
-        DepartEarliestTime = Vm.DepartEarliest,
-        DepartLatestTime = Vm.DepartLatest,
-        ReturnEarliestTime = Vm.ReturnEarliest,
-        ReturnLatestTime = Vm.ReturnLatest,
-        CabinClass = Vm.Cabin,
-        MaxCabinClass = _cfg.MaxCabin,
-        SelectedAirlines = Vm.Airlines.ToArray(),
-        Alliances = Vm.Alliances,
-        Tid = Tid ?? Guid.Empty,
-        Uid = myUserId,
-        Org = myOrgId
-    };
+        ValidateDates();
+        if (!IsFormValid) return;
+        if (_isSearching) return;
 
-    string url = $"v1/bookings/drafts/{patchDto.Id}/flight-searches";
+        _isSearching = true;
 
-    // Cancel prior submit if any (use a dedicated CTS for submit so you don't cancel other page work)
-    _submitCts?.Cancel();
-    _submitCts?.Dispose();
-    _submitCts = new CancellationTokenSource();
-    CancellationToken ct = _submitCts.Token;
+        // Ensure RID exists for correlation on this action too
+        rid = string.IsNullOrWhiteSpace(rid) ? Guid.NewGuid().ToString("N") : rid;
 
-    HttpClient client = HttpClientFactory.CreateClient(name: "AvaApi");
+        // Force the UI to paint "Searching..." before we start doing real work
+        await InvokeAsync(StateHasChanged);
+        await Task.Yield();
 
-    // fire and ignore the response, we will navigate away on success
-    _ = _log.InformationAsync(
-        evt: "BOOKING_REQ_SEARCH_SUBMIT_START",
-        cat: SysLogCatType.Api,
-        act: SysLogActionType.Create,
-        message: "Submitting flight search request",
-        ent: nameof(TravelQuoteFlightUIResultPatchDto),
-        entId: patchDto.Id,
-        rid: rid,
-        uid: myUserId,
-        org: myOrgId,
-        tid: Tid ?? Guid.Empty,
-        http: "POST",
-        path: url,
-        note: "ingress:client");
+        var sw = Stopwatch.StartNew();
+        var navigated = false;
 
-    try
-    {
-        // BuildRequest uses JsonContent + adds X-Correlation-Id header. Yes, this is POST.
-        using HttpRequestMessage req = BuildRequest(HttpMethod.Post, url, patchDto, JsonOpts, rid);
-        using HttpResponseMessage resp = await client.SendAsync(req, ct);
-
-        if (resp.IsSuccessStatusCode)
+        var patchDto = new TravelQuoteFlightUIResultPatchDto()
         {
-            var durMsOk = (int)sw.ElapsedMilliseconds;
+            Id = _cfg.TravelQuoteId,
+            TripType = Vm.Trip,
+            OriginIataCode = Vm.Origin,
+            DestinationIataCode = Vm.Destination,
+            DepartureDate = DateHelper.ToYmd(Vm.DepartDate),
+            ReturnDate = DateHelper.ToYmd(Vm.ReturnDate),
+            DepartEarliestTime = Vm.DepartEarliest,
+            DepartLatestTime = Vm.DepartLatest,
+            ReturnEarliestTime = Vm.ReturnEarliest,
+            ReturnLatestTime = Vm.ReturnLatest,
+            CabinClass = Vm.Cabin,
+            MaxCabinClass = _cfg.MaxCabin,
+            SelectedAirlines = Vm.Airlines.ToArray(),
+            Alliances = Vm.Alliances,
+            Tid = Tid ?? Guid.Empty,
+            Uid = myUserId,
+            Org = myOrgId
+        };
 
-            _ = _log.InformationAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_OK",
+        string url = $"v1/bookings/drafts/{patchDto.Id}/flight-searches";
+
+        // Cancel prior submit if any (use a dedicated CTS for submit so you don't cancel other page work)
+        _submitCts?.Cancel();
+        _submitCts?.Dispose();
+        _submitCts = new CancellationTokenSource();
+        CancellationToken ct = _submitCts.Token;
+
+        HttpClient client = HttpClientFactory.CreateClient(name: "AvaApi");
+
+        // fire and ignore the response, we will navigate away on success
+        _ = _log.InformationAsync(
+            evt: "BOOKING_REQ_SEARCH_SUBMIT_START",
+            cat: SysLogCatType.Api,
+            act: SysLogActionType.Create,
+            message: "Submitting flight search request",
+            ent: nameof(TravelQuoteFlightUIResultPatchDto),
+            entId: patchDto.Id,
+            rid: rid,
+            uid: myUserId,
+            org: myOrgId,
+            tid: Tid ?? Guid.Empty,
+            http: "POST",
+            path: url,
+            note: "ingress:client");
+
+        try
+        {
+            // BuildRequest uses JsonContent + adds X-Correlation-Id header. Yes, this is POST.
+            Cinturon360.Web.Helpers.JsonFileWriter.WriteToJsonFile(patchDto, $"FlightSearch_SubmitSearch_{patchDto.Id}.json");
+            using HttpRequestMessage req = BuildRequest(HttpMethod.Post, url, patchDto, JsonOpts, rid);
+            using HttpResponseMessage resp = await client.SendAsync(req, ct);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                var durMsOk = (int)sw.ElapsedMilliseconds;
+
+                _ = _log.InformationAsync(
+                    evt: "BOOKING_REQ_SEARCH_SUBMIT_OK",
+                    cat: SysLogCatType.Api,
+                    act: SysLogActionType.End,
+                    message: "Flight search request queued",
+                    ent: nameof(TravelQuoteFlightUIResultPatchDto),
+                    entId: patchDto.Id,
+                    rid: rid,
+                    uid: myUserId,
+                    org: myOrgId,
+                    tid: Tid ?? Guid.Empty,
+                    durMs: durMsOk,
+                    http: "POST",
+                    stat: (int)resp.StatusCode,
+                    path: url);
+
+                navigated = true;
+
+                // IMPORTANT: do NOT set _isSearching=false when navigating; let the next page take over.
+                await InvokeAsync(() =>
+                {
+                    var tidStr = (Tid ?? Guid.Empty).ToString("D");
+                    var uri =
+                        $"/platform/bookings/drafts/{Uri.EscapeDataString(patchDto.Id)}/flights/results/0" +
+                        $"?tid={Uri.EscapeDataString(tidStr)}";
+
+                    Nav.NavigateTo(uri: uri, forceLoad: false);
+                });
+
+                return;
+            }
+
+            string? body = await resp.Content.ReadAsStringAsync(ct);
+
+            await _log.WarningAsync(
+                evt: "BOOKING_REQ_SEARCH_SUBMIT_NON2XX",
                 cat: SysLogCatType.Api,
-                act: SysLogActionType.End,
-                message: "Flight search request queued",
+                act: SysLogActionType.Create,
+                message: $"Non-success submitting flight search request ({(int)resp.StatusCode} {resp.ReasonPhrase})",
                 ent: nameof(TravelQuoteFlightUIResultPatchDto),
                 entId: patchDto.Id,
                 rid: rid,
                 uid: myUserId,
                 org: myOrgId,
                 tid: Tid ?? Guid.Empty,
-                durMs: durMsOk,
+                durMs: (int)sw.ElapsedMilliseconds,
                 http: "POST",
                 stat: (int)resp.StatusCode,
-                path: url);
-
-            navigated = true;
-
-            // IMPORTANT: do NOT set _isSearching=false when navigating; let the next page take over.
-            await InvokeAsync(() =>
-            {
-                var tidStr = (Tid ?? Guid.Empty).ToString("D");
-                var uri =
-                    $"/platform/bookings/drafts/{Uri.EscapeDataString(patchDto.Id)}/flights/results/0" +
-                    $"?tid={Uri.EscapeDataString(tidStr)}";
-
-                Nav.NavigateTo(uri: uri, forceLoad: false);
-            });
-
-            return;
+                path: url,
+                note: string.IsNullOrWhiteSpace(body) ? "non_2xx" : $"non_2xx; body={body}");
         }
-
-        string? body = await resp.Content.ReadAsStringAsync(ct);
-
-        await _log.WarningAsync(
-            evt: "BOOKING_REQ_SEARCH_SUBMIT_NON2XX",
-            cat: SysLogCatType.Api,
-            act: SysLogActionType.Create,
-            message: $"Non-success submitting flight search request ({(int)resp.StatusCode} {resp.ReasonPhrase})",
-            ent: nameof(TravelQuoteFlightUIResultPatchDto),
-            entId: patchDto.Id,
-            rid: rid,
-            uid: myUserId,
-            org: myOrgId,
-            tid: Tid ?? Guid.Empty,
-            durMs: (int)sw.ElapsedMilliseconds,
-            http: "POST",
-            stat: (int)resp.StatusCode,
-            path: url,
-            note: string.IsNullOrWhiteSpace(body) ? "non_2xx" : $"non_2xx; body={body}");
-    }
-    catch (TaskCanceledException)
-    {
-        // Submit cancelled (user action/navigation). Don't treat as error.
-        await _log.VerboseAsync(
-            evt: "BOOKING_REQ_SEARCH_SUBMIT_CANCEL",
-            cat: SysLogCatType.Api,
-            act: SysLogActionType.Create,
-            message: "Flight search submit cancelled",
-            ent: nameof(TravelQuoteFlightUIResultPatchDto),
-            entId: patchDto.Id,
-            rid: rid,
-            uid: myUserId,
-            org: myOrgId,
-            tid: Tid ?? Guid.Empty,
-            durMs: (int)sw.ElapsedMilliseconds,
-            http: "POST",
-            path: url,
-            note: "task_canceled");
-    }
-    catch (HttpRequestException ex)
-    {
-        await _log.ErrorAsync(
-            evt: "BOOKING_REQ_SEARCH_SUBMIT_HTTP_ERR",
-            cat: SysLogCatType.Api,
-            act: SysLogActionType.Create,
-            ex: ex,
-            message: "HTTP error submitting flight search request",
-            ent: nameof(TravelQuoteFlightUIResultPatchDto),
-            entId: patchDto.Id,
-            rid: rid,
-            uid: myUserId,
-            org: myOrgId,
-            tid: Tid ?? Guid.Empty,
-            durMs: (int)sw.ElapsedMilliseconds,
-            http: "POST",
-            path: url,
-            note: "http_error");
-    }
-    catch (Exception ex)
-    {
-        await _log.FatalAsync(
-            evt: "BOOKING_REQ_SEARCH_SUBMIT_UNHANDLED",
-            cat: SysLogCatType.Api,
-            act: SysLogActionType.Create,
-            ex: ex,
-            message: "Unhandled error submitting flight search request",
-            ent: nameof(TravelQuoteFlightUIResultPatchDto),
-            entId: patchDto.Id,
-            rid: rid,
-            uid: myUserId,
-            org: myOrgId,
-            tid: Tid ?? Guid.Empty,
-            durMs: (int)sw.ElapsedMilliseconds,
-            http: "POST",
-            path: url,
-            note: "unhandled");
-    }
-    finally
-    {
-        sw.Stop();
-
-        // Only turn the spinner off if we're staying on THIS page.
-        if (!navigated)
+        catch (TaskCanceledException)
         {
-            _isSearching = false;
-            await InvokeAsync(StateHasChanged);
+            // Submit cancelled (user action/navigation). Don't treat as error.
+            await _log.VerboseAsync(
+                evt: "BOOKING_REQ_SEARCH_SUBMIT_CANCEL",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Create,
+                message: "Flight search submit cancelled",
+                ent: nameof(TravelQuoteFlightUIResultPatchDto),
+                entId: patchDto.Id,
+                rid: rid,
+                uid: myUserId,
+                org: myOrgId,
+                tid: Tid ?? Guid.Empty,
+                durMs: (int)sw.ElapsedMilliseconds,
+                http: "POST",
+                path: url,
+                note: "task_canceled");
+        }
+        catch (HttpRequestException ex)
+        {
+            await _log.ErrorAsync(
+                evt: "BOOKING_REQ_SEARCH_SUBMIT_HTTP_ERR",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Create,
+                ex: ex,
+                message: "HTTP error submitting flight search request",
+                ent: nameof(TravelQuoteFlightUIResultPatchDto),
+                entId: patchDto.Id,
+                rid: rid,
+                uid: myUserId,
+                org: myOrgId,
+                tid: Tid ?? Guid.Empty,
+                durMs: (int)sw.ElapsedMilliseconds,
+                http: "POST",
+                path: url,
+                note: "http_error");
+        }
+        catch (Exception ex)
+        {
+            await _log.FatalAsync(
+                evt: "BOOKING_REQ_SEARCH_SUBMIT_UNHANDLED",
+                cat: SysLogCatType.Api,
+                act: SysLogActionType.Create,
+                ex: ex,
+                message: "Unhandled error submitting flight search request",
+                ent: nameof(TravelQuoteFlightUIResultPatchDto),
+                entId: patchDto.Id,
+                rid: rid,
+                uid: myUserId,
+                org: myOrgId,
+                tid: Tid ?? Guid.Empty,
+                durMs: (int)sw.ElapsedMilliseconds,
+                http: "POST",
+                path: url,
+                note: "unhandled");
+        }
+        finally
+        {
+            sw.Stop();
+
+            // Only turn the spinner off if we're staying on THIS page.
+            if (!navigated)
+            {
+                _isSearching = false;
+                await InvokeAsync(StateHasChanged);
+            }
         }
     }
-}
 
     private async Task SubmitSearch2()
     {

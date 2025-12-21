@@ -275,10 +275,10 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         // };
 
         // TODO: remove this later
-        await DebugWriter.WriteJsonDebugAsync(
-            criteria,
-            filePrefix: "amadeus-flight-offer-search-req",
-            ct: ct);
+        // await DebugWriter.WriteJsonDebugAsync(
+        //     criteria,
+        //     filePrefix: "amadeus-flight-offer-search-req",
+        //     ct: ct);
 
         var token = await _authService.GetTokenInformationAsync();
 
