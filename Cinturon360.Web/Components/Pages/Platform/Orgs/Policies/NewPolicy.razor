@@ -40,17 +40,27 @@ else
         <DataAnnotationsValidator />
         <ValidationSummary />
 
-        <!-- Top action bar only -->
-        <div class="d-flex justify-content-end gap-2 mb-3">
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-save me-1"></i>Save
-            </button>
-            <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">Cancel</button>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="mb-0">New Travel Policy</h2>
+
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary"
+                        type="button"
+                        @onclick="Cancel">
+                    Cancel
+                </button>
+
+                <button type="submit"
+                        class="btn btn-primary">
+                    Save
+                </button>
+            </div>
         </div>
+
+        <!-- Top action bar only -->
 
         <div class="card shadow-sm mb-3">
             <div class="card-header">
-                <h5 class="mb-0">New Travel Policy</h5>
                 <small class="text-muted">@OrgName</small>
             </div>
             <div class="card-body">
