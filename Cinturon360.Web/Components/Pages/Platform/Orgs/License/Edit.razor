@@ -681,7 +681,8 @@ else if (model is not null)
 
     private void Cancel()
     {
-        Nav.NavigateTo($"/licenses/view/{LicenseId}", forceLoad: true);
+        Nav.NavigateTo(uri: $"platform/organizations/{model.OrganizationUnifiedId}", forceLoad: true);
+        return;
     }
 
     // time formatting code

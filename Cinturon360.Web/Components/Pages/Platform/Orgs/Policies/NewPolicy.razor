@@ -794,7 +794,7 @@ else
         }
     }
 
-    private void Cancel() => Nav.NavigateTo(uri: $"/platform/organizations/view/{OrgId}");
+    private void Cancel() => Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}/edit", forceLoad: true);
 
     // ---------------- VM ----------------
     private sealed class TravelPolicyVm
