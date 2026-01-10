@@ -1,4 +1,4 @@
-@page "/platform/organizations/{Id}"
+@page "/platform/organizations/{OrgId}"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 
@@ -9,12 +9,417 @@
 @using Cinturon360.Shared.Auth
 @inject IAdminOrgServiceUnified OrgService
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>Org QuickView</PageTitle>
 
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Org QuickView</h2>
+
+    <div class="btn-group">
+        <button class="btn btn-outline-secondary"
+                type="button"
+                @onclick="BackToList">
+            Cancel
+        </button>
+
+        <button class="btn btn-primary"
+                type="button"
+                @onclick="EditOrg">
+            Edit
+        </button>
+    </div>
+</div>
+
+
+@if (_loading)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border text-primary"></div>
+    </div>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_org?.Org is not null)  @* guard both _org and _org.Org *@
+{
+    OrganizationUnified? org = _org.Org;
+
+    <!-- Identity -->
+    <div class="card mb-3">
+    <div class="card-header">Identity</div>
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Id</label>
+                <div class="input-group">
+                    <InputText class="form-control bg-light" @bind-Value="@org.Id" readonly />
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(org.Id)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Name</label>
+                <InputText class="form-control bg-light" @bind-Value="@org.Name" readonly />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Type</label>
+                <InputSelect class="form-select bg-light" @bind-Value="@org.Type" disabled>
+                    @foreach (var t in Enum.GetValues<OrganizationType>())
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-md-1">
+                <label class="form-label">@(@org.IsActive ? "Active" : "Inactive")</label>
+                <div class="form-check form-switch mt-2">
+                    <InputCheckbox class="form-check-input" @bind-Value="@org.IsActive" disabled/>
+                    <label class="form-check-label" title="@(@org.IsActive ? "Active" : "Inactive")">
+                        <span aria-hidden="true">@(@org.IsActive ? " ✅" : " ❌")</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Parent Organization Id</label>
+                <div class="input-group">
+                    <InputText class="form-control bg-light" @bind-Value="@org.ParentOrganizationId" placeholder="Select a parent organization…" readonly />
+                    <button type="button" class="btn btn-outline-secondary" title="Pick Parent Organization" @onclick="() => CopyToClipboardAsync(org.ParentOrganizationId)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Parent</label>
+                <input class="form-control bg-light" value="@(_parentOrg?.Org.Name ?? "(none)")" readonly />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Type</label>
+                <input class="form-control bg-light" value="@(_parentOrg?.Org.Type)" readonly />
+            </div>
+
+            <div class="col-md-1">
+                <label class="form-label">@(_parentOrg?.Org.IsActive == true ? "Active" : "Inactive")</label>
+                <div class="form-check form-switch mt-2">
+                    <input type="checkbox" class="form-check-input" checked="@(_parentOrg?.Org.IsActive == true)" disabled />
+                    <label class="form-check-label">
+                        <span aria-hidden="true">@(_parentOrg?.Org.IsActive == true ? " ✅" : " ❌")</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- License Agreement -->
+    @if (org.LicenseAgreement is not null)
+    {
+        <div class="card mb-3">
+            <div class="card-header">License Agreement</div>
+            <div class="card-body row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Agreement Id</label>
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@org.LicenseAgreement.Organization?.LicenseAgreementId"
+                            readonly />
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">State Date</label>
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@org.LicenseAgreement.StartDate.ToString(format: "yyyy-MM-dd")"
+                            readonly />
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Expiry Date</label>
+                    @{
+                        DateTime expiry = org.LicenseAgreement.ExpiryDate.ToDateTime(TimeOnly.MinValue);
+                        double daysLeft = (expiry - DateTime.UtcNow.Date).TotalDays;
+                        string badgeClass = daysLeft > 90 ? "text-bg-secondary" :
+                                            daysLeft > 60 ? "text-bg-success" :
+                                            daysLeft > 30 ? "text-bg-warning" :
+                                            daysLeft > 0  ? "text-bg-danger" :
+                                                            "text-bg-dark";
+                    }
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@org.LicenseAgreement.ExpiryDate.ToString(format: "yyyy-MM-dd")"
+                            readonly />
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Renewal Date</label>
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@(org.LicenseAgreement.RenewalDate.HasValue 
+                                        ? org.LicenseAgreement.RenewalDate.Value.ToString("yyyy-MM-dd") 
+                                        : "—")"
+                            readonly />
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <label class="form-label">Remittance Email</label>
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@org.LicenseAgreement.RemittanceEmail"
+                            readonly />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Payment Status</label>
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@org.LicenseAgreement.PaymentStatus"
+                            readonly />
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Client Count Used</label>
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@(org.LicenseAgreement.ClientCountLimit?.ToString() ?? "Unlimited")"
+                            readonly />
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Client Count Limit</label>
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@(org.LicenseAgreement.ClientCountLimit?.ToString() ?? "Unlimited")"
+                            readonly />
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">User Account Used</label>
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@(org.LicenseAgreement.UserAccountLimit?.ToString() ?? "Unlimited")"
+                            readonly />
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">User Account Limit</label>
+                    <div class="input-group">
+                        <input type="text"
+                            class="form-control bg-light"
+                            value="@(org.LicenseAgreement.UserAccountLimit?.ToString() ?? "Unlimited")"
+                            readonly />
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">🌍 Created At (UTC)</label>
+                    @{
+                        string? createdAtUtcText = FormatUtc(org.LicenseAgreement.CreatedAtUtc);
+                    }
+                    <div class="input-group">
+                        <input class="form-control bg-light" value="@org.LicenseAgreement.CreatedAtUtc" readonly />
+                        <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(org.LicenseAgreement.CreatedAtUtc.ToString())">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">🕒 Created At (Local)</label>
+                    <div class="input-group">
+                        <input class="form-control bg-light" value="@FormatLocalBrowser(org.LicenseAgreement.CreatedAtUtc)" readonly />
+                        <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(FormatLocalBrowser(org.LicenseAgreement.CreatedAtUtc))">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">🌍 Last Updated (UTC)</label>
+                    @{
+                        string? lastUpdatedUtcText = FormatUtc(org.LicenseAgreement.LastUpdatedAtUtc);
+                    }
+                    <div class="input-group">
+                        <input class="form-control bg-light" value="@org.LicenseAgreement.LastUpdatedAtUtc" readonly />
+                        <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(lastUpdatedUtcText)">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">🕒 Last Updated (Local)</label>
+                    @{
+                        string? formattedLastUpdated = FormatLocalBrowser(org.LicenseAgreement.LastUpdatedAtUtc);
+                    }
+                    <div class="input-group">
+                        <input class="form-control bg-light" value="@FormatLocalBrowser(org.LicenseAgreement.LastUpdatedAtUtc)" readonly />
+                        <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(formattedLastUpdated)">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Domains -->
+    <div class="card mb-3">
+        <div class="card-header">Tenant Domains</div>
+        <div class="card-body">
+            @if (_org.Domains.Count == 0)
+            {
+                <div class="text-muted">No domains.</div>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (OrganizationDomainUnified d in _org.Domains)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>@d.Domain</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+    
+    <!-- Contacts -->
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>General / Commercial Contact</span>
+                    @{
+                        string? generalContactText =
+                            $"{_org.Org.ContactPersonFirstName} {_org.Org.ContactPersonLastName} | " +
+                            $"{_org.Org.ContactPersonJobTitle} | {_org.Org.ContactPersonEmail} | {_org.Org.ContactPersonPhone}";
+                    }
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => CopyToClipboardAsync(generalContactText)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control bg-light" @bind-Value="_org.Org.ContactPersonFirstName" readonly /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control bg-light" @bind-Value="_org.Org.ContactPersonLastName" readonly /></div>
+                    <div class="col-md-4">
+                        <label class="form-label">CC</label>
+                        <InputSelect class="form-select bg-light" @bind-Value="_org.Org.ContactPersonCountryCode" disabled>
+                            @foreach (string i in _iddOptions)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control bg-light" @bind-Value="_org.Org.ContactPersonPhone" readonly /></div>
+                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control bg-light" @bind-Value="_org.Org.ContactPersonEmail" readonly /></div>
+                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control bg-light" @bind-Value="_org.Org.ContactPersonJobTitle" readonly /></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>Billing Contact</span>
+                    @{
+                        string? billingContactText =
+                            $"{_org.Org.BillingPersonFirstName} {_org.Org.BillingPersonLastName} | " +
+                            $"{_org.Org.BillingPersonJobTitle} | {_org.Org.BillingPersonEmail} | {_org.Org.BillingPersonPhone}";
+                    }
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => CopyToClipboardAsync(billingContactText)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control bg-light" @bind-Value="_org.Org.BillingPersonFirstName" readonly /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control bg-light" @bind-Value="_org.Org.BillingPersonLastName" readonly /></div>
+                    <div class="col-md-4">
+                        <label class="form-label">CC</label>
+                        <InputSelect class="form-select bg-light" @bind-Value="_org.Org.BillingPersonCountryCode" disabled>
+                            @foreach (string i in _iddOptions)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control bg-light" @bind-Value="_org.Org.BillingPersonPhone" readonly /></div>
+                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control bg-light" @bind-Value="_org.Org.BillingPersonEmail" readonly /></div>
+                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control bg-light" @bind-Value="_org.Org.BillingPersonJobTitle" readonly /></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>Admin / Technical Contact</span>
+                    @{
+                        string? adminContactText =
+                            $"{_org.Org.AdminPersonFirstName} {_org.Org.AdminPersonLastName} | " +
+                            $"{_org.Org.AdminPersonJobTitle} | {_org.Org.AdminPersonEmail} | {_org.Org.AdminPersonPhone}";
+                    }
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => CopyToClipboardAsync(adminContactText)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control bg-light" @bind-Value="_org.Org.AdminPersonFirstName" readonly /></div>
+                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control bg-light" @bind-Value="_org.Org.AdminPersonLastName" readonly /></div>
+                    <div class="col-md-4">
+                        <label class="form-label">CC</label>
+                        <InputSelect class="form-select bg-light" @bind-Value="_org.Org.AdminPersonCountryCode" disabled>
+                            @foreach (string i in _iddOptions)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control bg-light" @bind-Value="_org.Org.AdminPersonPhone" readonly /></div>
+                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control bg-light" @bind-Value="_org.Org.AdminPersonEmail" readonly /></div>
+                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control bg-light" @bind-Value="_org.Org.AdminPersonJobTitle" readonly /></div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 <div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-xl-8 col-lg-9">
+        <div class="col-xl-12">
 
             @if (_loading)
             {
@@ -28,7 +433,7 @@
             }
             else if (_org?.Org is not null)  @* guard both _org and _org.Org *@
             {
-                var org = _org.Org;
+                OrganizationUnified? org = _org.Org;
 
                 <div class="card shadow-sm mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -71,7 +476,7 @@
                                 else
                                 {
                                     <ul class="mb-0">
-                                        @foreach (var d in _org.Domains)
+                                        @foreach (OrganizationDomainUnified d in _org.Domains)
                                         {
                                             <li>@d.Domain</li>
                                         }
@@ -174,9 +579,10 @@
 
 
 @code {
-    [Parameter] public string Id { get; set; } = string.Empty;
+    [Parameter] public string OrgId { get; set; } = string.Empty;
 
     private IAdminOrgServiceUnified.OrgAggregate? _org;
+    private IAdminOrgServiceUnified.OrgAggregate? _parentOrg;
     private bool _loading = true;
     private string? _error;
 
@@ -184,8 +590,19 @@
     {
         try
         {
-            _org = await OrgService.GetByIdAsync(Id);
-            if (_org == null) _error = "Organization not found.";
+            _org = await OrgService.GetByIdAsync(OrgId);
+            if (_org == null)
+            {
+                _error = "Organization not found.";
+            }
+            else
+            {
+                // Load parent org info if applicable
+                if (!string.IsNullOrWhiteSpace(_org.Org.ParentOrganizationId))
+                {
+                    _parentOrg = await OrgService.GetByIdAsync(_org.Org.ParentOrganizationId);
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -195,6 +612,30 @@
         {
             _loading = false;
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            _tzId = await JS.InvokeAsync<string>(identifier: "blazorGetTz"); // e.g., "Australia/Sydney"
+            _browserTz = TimeZoneInfo.FindSystemTimeZoneById(_tzId);
+
+            // IMPORTANT: rooted path (leading slash)
+            _clipboard = await JS.InvokeAsync<IJSObjectReference>(identifier: "import", "/js/clipboard.js");
+
+            // Optional sanity check (remove if you want)
+            string? ping = await _clipboard.InvokeAsync<string>(identifier: "ping");
+        }
+        catch
+        {
+            // If you want AU as default instead of server-local/UTC:
+            _tzId = "Australia/Sydney";
+            _browserTz = TimeZoneInfo.FindSystemTimeZoneById(_tzId);
+        }
+        StateHasChanged();
     }
 
     private void BackToList() => Nav.NavigateTo("/platform/organizations");
@@ -234,5 +675,40 @@
                 Nav.NavigateTo($"/platform/licenses/{_org.LicenseAgreement.Organization.LicenseAgreementId}/license/edit");
                 return;
         }
+    }
+
+    private readonly List<string> _iddOptions = new List<string>
+    {
+        string.Empty,
+        "+61",
+        "+64",
+        "+65",
+        "+44",
+        "+1"
+    };
+
+    private IJSObjectReference? _clipboard;
+    private async Task CopyToClipboardAsync(string? value)
+    {
+        // Lazy-load if user clicks before first render finished
+        _clipboard ??= await JS.InvokeAsync<IJSObjectReference>("import", "/js/clipboard.js");
+
+        bool ok = await _clipboard.InvokeAsync<bool>("copyText", value ?? string.Empty);
+    }
+
+        private static string FormatUtc(DateTime utc)
+    {
+        DateTime fixedUtc = utc.Kind == DateTimeKind.Utc ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+        return fixedUtc.ToString(format: "yyyy-MM-dd HH:mm:ss.fff");
+    }
+
+    private TimeZoneInfo? _browserTz;
+    private string? _tzId;
+    private string FormatLocalBrowser(DateTime utc)
+    {
+        if (_browserTz is null) return "…";
+        DateTime fixedUtc = utc.Kind == DateTimeKind.Utc ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+        DateTime local = TimeZoneInfo.ConvertTimeFromUtc(fixedUtc, _browserTz);
+        return local.ToString(format: "yyyy-MM-dd HH:mm:ss.fff");
     }
 }

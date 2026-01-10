@@ -517,7 +517,7 @@
                         <i class="bi bi-clipboard"></i>
                     </button>
                 </div>
-            </div>    
+            </div>
         </div>
     </div>
 </EditForm>
@@ -940,7 +940,7 @@
         // Lazy-load if user clicks before first render finished
         _clipboard ??= await JS.InvokeAsync<IJSObjectReference>("import", "/js/clipboard.js");
 
-        var ok = await _clipboard.InvokeAsync<bool>("copyText", value ?? string.Empty);
+        bool ok = await _clipboard.InvokeAsync<bool>("copyText", value ?? string.Empty);
     }
 
     private async Task LoadParentOrgInfo(string? pOrgId)
