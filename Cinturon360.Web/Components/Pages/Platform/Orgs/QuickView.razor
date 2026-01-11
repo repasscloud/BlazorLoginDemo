@@ -120,7 +120,10 @@ else if (_org?.Org is not null)  @* guard both _org and _org.Org *@
     @if (org.LicenseAgreement is not null)
     {
         <div class="card mb-3">
-            <div class="card-header">License Agreement</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>License Agreement</span>
+            <button class="btn btn-outline-secondary me-2" @onclick="ViewEditLicense"><i class="bi bi-file-text"></i> Edit License</button>
+            </div>
             <div class="card-body row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Agreement Id</label>
@@ -405,179 +408,6 @@ else if (_org?.Org is not null)  @* guard both _org and _org.Org *@
     </div>
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-xl-12">
-
-            @if (_loading)
-            {
-                <div class="text-center my-5">
-                    <div class="spinner-border text-primary"></div>
-                </div>
-            }
-            else if (_error is not null)
-            {
-                <div class="alert alert-danger">@_error</div>
-            }
-            else if (_org?.Org is not null)  @* guard both _org and _org.Org *@
-            {
-                OrganizationUnified? org = _org.Org;
-
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">@org.Name</h4>
-                        <div>
-                            @if (org.LicenseAgreement is null)
-                            {
-                                <button class="btn btn-warning me-2" @onclick="CreateLicense"><i class="bi bi-file-earmark-plus"></i> Add License</button>
-                            }
-                            <div class="btn-group">
-                                <button class="btn btn-outline-secondary" @onclick="BackToList">Back</button>
-                                <button class="btn btn-primary" @onclick="EditOrg">Edit</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card-body">
-                        <dl class="row mb-0">
-                            <dt class="col-sm-3">ID</dt>
-                            <dd class="col-sm-9">@org.Id</dd>
-
-                            <dt class="col-sm-3">Type</dt>
-                            <dd class="col-sm-9">@org.Type</dd>
-
-                            <dt class="col-sm-3">Active</dt>
-                            <dd class="col-sm-9">@(org.IsActive ? "Yes" : "No")</dd>
-
-                            @if (!string.IsNullOrWhiteSpace(org.ParentOrganizationId))
-                            {
-                                <dt class="col-sm-3">Parent Org ID</dt>
-                                <dd class="col-sm-9">@org.ParentOrganizationId</dd>
-                            }
-
-                            <dt class="col-sm-3">Domains</dt>
-                            <dd class="col-sm-9">
-                                @if (_org.Domains.Count == 0)
-                                {
-                                    <span class="text-muted">None</span>
-                                }
-                                else
-                                {
-                                    <ul class="mb-0">
-                                        @foreach (OrganizationDomainUnified d in _org.Domains)
-                                        {
-                                            <li>@d.Domain</li>
-                                        }
-                                    </ul>
-                                }    
-                            </dd>
-                        </dl>
-                    </div>
-                </div>
-
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header"><strong>Contact Info</strong></div>
-                    <div class="card-body">
-                        <dl class="row mb-0">
-                            <dt class="col-sm-3">General Contact</dt>
-                            <dd class="col-sm-9">
-                                @((MarkupString)FormatContact(org.ContactPersonFirstName, org.ContactPersonLastName, org.ContactPersonEmail, org.ContactPersonPhone))
-                            </dd>
-
-                            <dt class="col-sm-3">Billing Contact</dt>
-                            <dd class="col-sm-9">
-                                @((MarkupString)FormatContact(org.BillingPersonFirstName, org.BillingPersonLastName, org.BillingPersonEmail, org.BillingPersonPhone))
-                            </dd>
-
-                            <dt class="col-sm-3">Admin Contact</dt>
-                            <dd class="col-sm-9">
-                                @((MarkupString)FormatContact(org.AdminPersonFirstName, org.AdminPersonLastName, org.AdminPersonEmail, org.AdminPersonPhone))
-                            </dd>
-                        </dl>
-                    </div>
-                </div>
-
-                @if (org.LicenseAgreement is not null)
-                {
-                    <div class="card shadow-sm">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <strong>License Agreement</strong> <button class="btn btn-outline-secondary me-2" @onclick="ViewEditLicense"><i class="bi bi-file-text"></i> Vew License</button>
-                        </div>
-                        <div class="card-body">
-                            <dl class="row mb-0">
-                                <dt class="col-sm-4">License Agreement ID</dt>
-                                <dd class="col-sm-8">@org.LicenseAgreement.Organization?.LicenseAgreementId</dd>
-
-                                <dt class="col-sm-4">Start Date</dt>
-                                <dd class="col-sm-8">@org.LicenseAgreement.StartDate.ToString("yyyy-MM-dd")</dd>
-
-                                <dt class="col-sm-4">Expiry Date</dt>
-                                @{
-                                    var expiry = org.LicenseAgreement.ExpiryDate.ToDateTime(TimeOnly.MinValue);
-                                    var daysLeft = (expiry - DateTime.UtcNow.Date).TotalDays;
-                                    string badgeClass = daysLeft > 90 ? "text-bg-secondary" :
-                                                        daysLeft > 60 ? "text-bg-success" :
-                                                        daysLeft > 30 ? "text-bg-warning" :
-                                                        daysLeft > 0  ? "text-bg-danger" :
-                                                                        "text-bg-dark";
-                                }
-                                <dd class="col-sm-8">
-                                    @org.LicenseAgreement.ExpiryDate.ToString("yyyy-MM-dd")
-                                    <span class="badge @badgeClass ms-2">
-                                        @(daysLeft <= 0 ? "Expired" : $"{Math.Ceiling(daysLeft)} days left")
-                                    </span>
-                                </dd>
-
-                                <dt class="col-sm-4">Renewal Date</dt>
-                                <dd class="col-sm-8">
-                                    @(org.LicenseAgreement.RenewalDate.HasValue 
-                                        ? org.LicenseAgreement.RenewalDate.Value.ToString("yyyy-MM-dd") 
-                                        : "—")
-                                </dd>
-
-                                <dt class="col-sm-4">Remittance Email</dt>
-                                <dd class="col-sm-8">
-                                    @(string.IsNullOrWhiteSpace(org.LicenseAgreement.RemittanceEmail)
-                                        ? (MarkupString)"<span class='text-muted'>None</span>"
-                                        : (MarkupString)org.LicenseAgreement.RemittanceEmail)
-                                </dd>
-
-                                <dt class="col-sm-4">Client Count Limit</dt>
-                                <dd class="col-sm-8">@(org.LicenseAgreement.ClientCountLimit?.ToString() ?? "Unlimited")</dd>
-
-                                <dt class="col-sm-4">User Account Limit</dt>
-                                <dd class="col-sm-8">@(org.LicenseAgreement.UserAccountLimit?.ToString() ?? "Unlimited")</dd>
-
-                                <dt class="col-sm-4">Payment Status</dt>
-                                <dd class="col-sm-8">@((Cinturon360.Shared.Models.Static.Billing.PaymentStatus)org.LicenseAgreement.PaymentStatus)</dd>
-
-                                <dt class="col-sm-4">Created At (UTC)</dt>
-                                <dd class="col-sm-8">@org.LicenseAgreement.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</dd>
-
-                                <dt class="col-sm-4">Last Updated (UTC)</dt>
-                                <dd class="col-sm-8">@org.LicenseAgreement.LastUpdatedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</dd>
-                            </dl>
-                        </div>
-                    </div>
-                }
-            }
-        </div>
-    </div>
-</div>
-
-
 @code {
     [Parameter] public string OrgId { get; set; } = string.Empty;
 
@@ -691,9 +521,9 @@ else if (_org?.Org is not null)  @* guard both _org and _org.Org *@
     private async Task CopyToClipboardAsync(string? value)
     {
         // Lazy-load if user clicks before first render finished
-        _clipboard ??= await JS.InvokeAsync<IJSObjectReference>("import", "/js/clipboard.js");
+        _clipboard ??= await JS.InvokeAsync<IJSObjectReference>(identifier: "import", args: "/js/clipboard.js");
 
-        bool ok = await _clipboard.InvokeAsync<bool>("copyText", value ?? string.Empty);
+        bool ok = await _clipboard.InvokeAsync<bool>(identifier: "copyText", value ?? string.Empty);
     }
 
         private static string FormatUtc(DateTime utc)
