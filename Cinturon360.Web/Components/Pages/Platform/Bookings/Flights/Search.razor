@@ -385,26 +385,8 @@
                         <span><i class="bi bi-check2-circle me-1"></i>Ready to search.</span>
                     }
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-secondary" @onclick="ResetAll" title="Reset">
-                        <i class="bi bi-arrow-counterclockwise"></i> Reset
-                    </button>
 
-                    <button class="btn btn-primary"
-                            @onclick="SubmitSearch"
-                            disabled="@(!IsFormValid || _isSearching)">
-                        @if (_isSearching)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                            <span>Searching...</span>
-                        }
-                        else
-                        {
-                            <i class="bi bi-search"></i> <span>Search</span>
-                        }
-                    </button>
-
-                </div>
+                <!-- buttons removed Cinturon360/issues/86 -->
             </div>
         </div>
 
