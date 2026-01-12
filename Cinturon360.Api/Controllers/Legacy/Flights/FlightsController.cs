@@ -3,14 +3,11 @@ using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
-using Cinturon360.Shared.Security;
 using Cinturon360.Shared.Models.Static.SysVar;
-using Cinturon360.Shared.Models.Demo;
 using Cinturon360.Shared.Services.Interfaces.Travel;
 using Cinturon360.Shared.Models.Kernel.Travel;
-using NanoidDotNet;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
-using Cinturon360.Shared.Models.Search;
+using Cinturon360.Shared.Services.Interfaces.Platform;
 
 namespace Cinturon360.Api.Controllers.Flights;
 
@@ -22,6 +19,7 @@ public class FlightsController : ControllerBase
     private readonly IAmadeusAuthService _authService;
     private readonly IAmadeusFlightSearchService _flightSearchService;
     private readonly ITravelQuoteService _travelQuoteService;
+    private readonly IAdminOrgServiceUnified _adminOrgService;
     private readonly ILoggerService _log;
 
     public FlightsController(
@@ -29,12 +27,14 @@ public class FlightsController : ControllerBase
         IAmadeusAuthService authService,
         IAmadeusFlightSearchService flightSearchService,
         ITravelQuoteService travelQuoteService,
+        IAdminOrgServiceUnified adminOrgService,
         ILoggerService loggerService)
     {
         _db = db;
         _authService = authService;
         _flightSearchService = flightSearchService;
         _travelQuoteService = travelQuoteService;
+        _adminOrgService = adminOrgService;
         _log = loggerService;
     }
 
@@ -119,9 +119,25 @@ public class FlightsController : ControllerBase
             return NotFound();
         }
 
+        var tmcInfo = await _adminOrgService.GetGoverningTmcInfoAsync(quote.OrganizationId, ct);
+        if (tmcInfo == null)
+        {
+            await _log.ErrorAsync(
+                evt: "FLIGHT_SEARCH_OPTIONS_TMC_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                ex: new KeyNotFoundException($"TMC not found for organization ID '{quote.OrganizationId}'."),
+                message: $"TMC not found for organization ID '{quote.OrganizationId}' when retrieving flight search options.",
+                ent: nameof(TravelQuote),
+                entId: travelQuoteId);
+            return NotFound("TMC not found for the organization associated with the travel quote.");
+        }
+
+        string tmcId = tmcInfo.TmcId;
+
         AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, false, ct);
 
-        var response = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
+        var response = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria, tmcId, ct);
         return Ok(response);
     }
 }

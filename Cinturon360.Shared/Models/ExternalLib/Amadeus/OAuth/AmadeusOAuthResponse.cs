@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Cinturon360.Shared.Models.ExternalLib.Amadeus;
 
-public class AmadeusOAuthResponse
+public sealed class AmadeusOAuthResponse
 {
     [JsonPropertyName("type")]
     public string Type { get; set; } = null!;

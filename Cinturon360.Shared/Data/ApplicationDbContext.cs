@@ -40,6 +40,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // ---------------------------
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AmadeusOAuthToken> AmadeusOAuthTokens => Set<AmadeusOAuthToken>();
+    public DbSet<AmadeusAccount> AmadeusAccounts => Set<AmadeusAccount>();
+
 
     // ---------------------------
     // Billing / Policies (Unified)
@@ -230,12 +232,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        builder.Entity<AmadeusOAuthToken>(t =>
-        {
-            t.ToTable("amadeus_oauth_tokens", "amadeus");
-            t.HasKey(x => x.Id);
-        });
-
         // ===========================
         // Organization (Unified)
         // ===========================
@@ -274,6 +270,56 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(d => d.OrganizationUnifiedId)
                 .OnDelete(DeleteBehavior.Cascade);
         }); // :contentReference[oaicite:12]{index=12}
+
+
+        // ===========================
+        // Auth / Tokens
+        // ===========================
+
+        builder.Entity<AmadeusAccount>(e =>
+        {
+            e.ToTable("amadeus_accounts", "amadeus");
+            e.HasKey(x => x.TmcId);
+            e.HasIndex(x => x.TmcId).IsUnique();
+
+            e.Property(x => x.TmcId)
+                .HasMaxLength(64)
+                .IsRequired();
+
+            e.Property(x => x.ClientId)
+                .HasMaxLength(128)
+                .IsRequired();
+
+            e.Property(x => x.ClientSecret)
+                .HasMaxLength(256)
+                .IsRequired();
+        });
+
+        builder.Entity<AmadeusOAuthToken>(t =>
+        {
+            t.ToTable("amadeus_oauth_tokens", "amadeus");
+
+            t.HasKey(x => x.Id);
+
+            t.Property(x => x.TmcId)
+                .HasMaxLength(64)
+                .IsRequired();
+
+            t.Property(x => x.TokenType)
+                .HasMaxLength(32)
+                .IsRequired();
+
+            t.Property(x => x.AccessToken)
+                .IsRequired();
+
+            // 🔐 Tenant-scoped lookup (performance + safety)
+            t.HasIndex(x => new { x.TmcId, x.CreatedAt });
+
+            // 🔒 Prevent accidental cross-tenant token reuse
+            t.HasIndex(x => new { x.TmcId, x.AccessToken })
+                .IsUnique();
+        });
+
 
         // ===========================
         // LicenseAgreementUnified (+ owned subtypes)

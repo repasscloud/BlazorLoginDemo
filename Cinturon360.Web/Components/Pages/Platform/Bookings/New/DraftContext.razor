@@ -15,6 +15,7 @@
 @using System.Text.Json;
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Mvc
+@using System.Globalization
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAdminOrgServiceUnified OrgSvc
@@ -36,29 +37,51 @@ else
     }
     @if (IsSudo)
     {
-        <div class="alert alert-info">
-            You are logged in as <strong>Sudo</strong>. You can select any Vendor, TMC, Client and User.
+        <div class="alert alert-warning d-flex align-items-start gap-2">
+            <i class="bi bi-shield-lock-fill fs-4"></i>
+            <div>
+                <strong>SUDO MODE ACTIVE</strong><br />
+                You are logged in as a <strong>restricted Sudo account</strong>.
+                This account can impersonate any <strong>Vendor</strong>, <strong>TMC</strong>, <strong>Client</strong>, or <strong>User</strong>.
+            </div>
         </div>
     }
     else if (IsPlatformUser)
     {
-        <div class="alert alert-info">
-            You are logged in as a <strong>Platform User</strong>. The Vendor is pre-selected. You can select any TMC, Client and User under this Vendor.
+        <div class="alert alert-info d-flex align-items-start gap-2">
+            <i class="bi bi-diagram-3-fill fs-4"></i>
+            <div>
+                <strong>PLATFORM USER CONTEXT</strong><br />
+                You are logged in as a <strong>Platform User</strong>.
+                The <strong>Vendor</strong> is fixed.
+                You may select any <strong>TMC</strong>, <strong>Client</strong>, or <strong>User</strong> within this Vendor.
+            </div>
         </div>
     }
     else
     {
-        <div class="alert alert-info">
-            You are logged in as a <strong>TMC User</strong>. The TMC is pre-selected. You can select any Client and User under this TMC.
+        <div class="alert alert-info d-flex align-items-start gap-2">
+            <i class="bi bi-building-fill fs-4"></i>
+            <div>
+                <strong>TMC USER CONTEXT</strong><br />
+                You are logged in as a <strong>TMC User</strong>.
+                The <strong>TMC</strong> is fixed.
+                You may select any <strong>Client</strong> or <strong>User</strong> within this TMC.
+            </div>
         </div>
     }
+
 
     <div class="container py-4">
         <div class="row justify-content-center">
             <div class="col-xl-8 col-lg-9">
 
-                <div class="alert alert-info">
-                    Booking Type: <strong>@BookingTypeNormalized</strong>
+                <div class="alert alert-info d-flex align-items-center gap-2 py-2">
+                    <i class="bi @GetBookingTypeIcon(BookingTypeNormalized) fs-5"></i>
+                    <span>
+                        <strong>Booking Type:</strong>
+                        @FormatBookingType(BookingTypeNormalized)
+                    </span>
                 </div>
 
                 @if (IsSudo)
@@ -220,10 +243,12 @@ else
         myUserId = user.GetUserId();
     }
 
-    private static readonly HashSet<string> AllowedBookingTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "flight", "accomodation", "taxi", "train", "hirecar", "bus", "simcard", "activity", "mixed"
-    };
+    private static readonly HashSet<string> AllowedBookingTypes =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "flight", "accomodation", "taxi", "train",
+            "hirecar", "bus", "simcard", "activity", "mixed"
+        };
 
     public string BookingTypeNormalized { get; private set; } = string.Empty;
 
@@ -231,12 +256,36 @@ else
     {
         if (string.IsNullOrWhiteSpace(bookingType) || !AllowedBookingTypes.Contains(bookingType))
         {
-            Nav.NavigateTo(uri: "/booking/select", forceLoad: true);
+            Nav.NavigateTo("/booking/select", forceLoad: true);
             return;
         }
 
         BookingTypeNormalized = bookingType!.ToLowerInvariant();
     }
+
+    private static string FormatBookingType(string type) => type switch
+    {
+        "hirecar"      => "Hire Car",
+        "simcard"      => "SIM Card",
+        "accomodation" => "Accommodation",
+        "mixed"        => "Mixed Booking",
+        _              => CultureInfo.InvariantCulture.TextInfo
+                            .ToTitleCase(type)
+    };
+
+    private static string GetBookingTypeIcon(string type) => type switch
+    {
+        "flight"        => "bi-airplane-fill",
+        "accomodation" => "bi-building-fill",
+        "taxi"          => "bi-taxi-front-fill",
+        "train"         => "bi-train-front-fill",
+        "hirecar"       => "bi-car-front-fill",
+        "bus"           => "bi-bus-front-fill",
+        "simcard"       => "bi-sim-fill",
+        "activity"      => "bi-calendar-event-fill",
+        "mixed"         => "bi-layers-fill",
+        _               => "bi-tag-fill"
+    };
 
     bool Unauthorized;
     bool IsSudo;

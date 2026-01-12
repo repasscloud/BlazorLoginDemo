@@ -11,6 +11,7 @@ using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using System.Text.Json;
 using System.Diagnostics;
+using Cinturon360.Shared.Services.Interfaces.Platform;
 
 namespace Cinturon360.Api.Controllers.Travel;
 
@@ -23,17 +24,20 @@ public sealed class TravelQuotesController : ControllerBase
     private readonly ITravelQuoteService _travelQuoteService;
     private readonly IAmadeusFlightSearchService _flightSearchService;
     private readonly IQueuedJobService _queuedJobService;
+    private readonly IAdminOrgServiceUnified _adminOrgService;
     private readonly ILoggerService _log;
 
     public TravelQuotesController(
         ITravelQuoteService travelQuoteService,
         IAmadeusFlightSearchService flightSearchService,
         IQueuedJobService queuedJobService,
+        IAdminOrgServiceUnified adminOrgService,
         ILoggerService log)
     {
         _travelQuoteService = travelQuoteService;
         _flightSearchService = flightSearchService;
         _queuedJobService = queuedJobService;
+        _adminOrgService = adminOrgService;
         _log = log;
     }
 
@@ -217,9 +221,26 @@ public sealed class TravelQuotesController : ControllerBase
             returnTrip: false,
             ct);
 
+        // Set 2.1: get TMC ID
+        var tmcInfo = await _adminOrgService.GetGoverningTmcInfoAsync(quote.OrganizationId, ct);
+        if (tmcInfo == null)
+        {
+            await _log.ErrorAsync(
+                evt: "FLIGHT_SEARCH_OPTIONS_TMC_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                ex: new KeyNotFoundException($"TMC not found for organization ID '{quote.OrganizationId}'."),
+                message: $"TMC not found for organization ID '{quote.OrganizationId}' when retrieving flight search options.",
+                ent: nameof(TravelQuote),
+                entId: quote.Id);
+            return NotFound("TMC not found for the organization associated with the travel quote.");
+        }
+
+        string tmcId = tmcInfo.TmcId;
+
         // Step 3: call provider
         var amadeusFlightResultsResponse =
-            await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
+            await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria, tmcId, ct);
 
         if (amadeusFlightResultsResponse is null)
         {
@@ -277,10 +298,27 @@ public sealed class TravelQuotesController : ControllerBase
             return NotFound(null);
         }
 
+        // get Tmc ID
+        var tmcInfo = await _adminOrgService.GetGoverningTmcInfoAsync(quote.OrganizationId, ct);
+        if (tmcInfo == null)
+        {
+            await _log.ErrorAsync(
+                evt: "FLIGHT_SEARCH_OPTIONS_TMC_NOT_FOUND",
+                cat: SysLogCatType.Data,
+                act: SysLogActionType.Read,
+                ex: new KeyNotFoundException($"TMC not found for organization ID '{quote.OrganizationId}'."),
+                message: $"TMC not found for organization ID '{quote.OrganizationId}' when retrieving flight search options.",
+                ent: nameof(TravelQuote),
+                entId: quote.Id);
+            return NotFound("TMC not found for the organization associated with the travel quote.");
+        }
+
+        string tmcId = tmcInfo.TmcId;
+
         // because this is return search we pass true for isReturn
         AmadeusFlightOfferSearch criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(quote, true, ct);
 
-        var response = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria);
+        var response = await _flightSearchService.GetFlightOffersFromAmadeusFlightOfferSearch(criteria, tmcId, ct);
 
         var results = await _travelQuoteService.GetFlightSearchResultsAsync(travelQuoteId, response, ct);
 

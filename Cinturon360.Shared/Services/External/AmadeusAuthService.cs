@@ -1,96 +1,96 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Cinturon360.Shared.Data;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using Cinturon360.Shared.Services.Interfaces.External;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace Cinturon360.Shared.Services.External;
 
-public class AmadeusAuthService : IAmadeusAuthService
+public sealed class AmadeusAuthService : IAmadeusAuthService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ApplicationDbContext _context;
-    private readonly AmadeusOAuthClientSettings _settings;
+    private readonly IAmadeusAccountStore _accountStore;
     private readonly JsonSerializerOptions _jsonOptions;
 
     public AmadeusAuthService(
         IHttpClientFactory httpClientFactory,
         ApplicationDbContext context,
-        IOptions<AmadeusOAuthClientSettings> options,
+        IAmadeusAccountStore accountStore,
         JsonSerializerOptions jsonOptions)
     {
         _httpClientFactory = httpClientFactory;
         _context = context;
-        _settings = options.Value;
+        _accountStore = accountStore;
         _jsonOptions = jsonOptions;
     }
 
-    public async Task<AmadeusOAuthToken> GetTokenAsync()
+    public async Task<AmadeusOAuthToken> GetTokenAsync(string tmcId)
     {
-        var clientId = _settings.ClientId;
-        if (clientId is null)
-        {
-            throw new Exception("");
-        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(tmcId);
 
-        var clientSecret = _settings.ClientSecret;
-        if (clientSecret is null)
-        {
-            throw new Exception("");
-        }
-        var url = _settings.Url.ApiEndpoint ?? "https://test.api.amadeus.com/v1/security/oauth2/token";
+        var account = await _accountStore.GetByTmcIdAsync(tmcId);
+
+        var oauthContract =
+            AmadeusOAuthClientContractFactory.FromAccount(account);
+
+        var tokenEndpoint =
+            $"{oauthContract.Url.ApiEndpoint}/v1/security/oauth2/token";
 
         var requestData = new Dictionary<string, string>
         {
-            { "grant_type", "client_credentials" },
-            { "client_id", clientId },
-            { "client_secret", clientSecret }
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = oauthContract.ClientId,
+            ["client_secret"] = oauthContract.ClientSecret
         };
 
-        var requestContent = new FormUrlEncodedContent(requestData);
+        using var requestContent = new FormUrlEncodedContent(requestData);
+        using var httpClient = _httpClientFactory.CreateClient();
 
-        var httpClient = _httpClientFactory.CreateClient();
-        var response = await httpClient.PostAsync(url, requestContent);
+        var response = await httpClient.PostAsync(tokenEndpoint, requestContent);
 
         if (!response.IsSuccessStatusCode)
         {
-            throw new Exception($"Failed to retrieve token. Status Code: {response.StatusCode}");
+            throw new InvalidOperationException(
+                $"Amadeus OAuth failed for TMC {tmcId}. StatusCode={response.StatusCode}");
         }
 
         var responseContent = await response.Content.ReadAsStringAsync();
-        var authServiceReponse = JsonSerializer.Deserialize<AmadeusOAuthResponse>(responseContent, _jsonOptions);
 
-        if (authServiceReponse is not null)
+        var authResponse =
+            JsonSerializer.Deserialize<AmadeusOAuthResponse>(responseContent, _jsonOptions)
+            ?? throw new InvalidOperationException("Failed to deserialize Amadeus OAuth response.");
+
+        var token = new AmadeusOAuthToken
         {
-            AmadeusOAuthToken oAuthToken = new AmadeusOAuthToken
-            {
-                TokenType = authServiceReponse.TokenType,
-                AccessToken = authServiceReponse.AccessToken,
-                ExpiresIn = authServiceReponse.ExpiresIn,
-                CreatedAt = DateTime.UtcNow
-            };
-            
-            _context.AmadeusOAuthTokens.Add(oAuthToken);
-            await _context.SaveChangesAsync();
+            TmcId = tmcId,
+            TokenType = authResponse.TokenType,
+            AccessToken = authResponse.AccessToken,
+            ExpiresIn = authResponse.ExpiresIn,
+            CreatedAt = DateTime.UtcNow
+        };
 
-            return oAuthToken;
-        }
+        _context.AmadeusOAuthTokens.Add(token);
+        await _context.SaveChangesAsync();
 
-        return new AmadeusOAuthToken();
+        return token;
     }
 
-    public async Task<string> GetTokenInformationAsync()
+    public async Task<string> GetAccessTokenAsync(string tmcId)
     {
-        var latestToken = await _context.AmadeusOAuthTokens
+        ArgumentException.ThrowIfNullOrWhiteSpace(tmcId);
+
+        var existingToken = await _context.AmadeusOAuthTokens
+            .Where(t => t.TmcId == tmcId)
             .OrderByDescending(t => t.CreatedAt)
             .FirstOrDefaultAsync();
 
-        if (latestToken is not null && latestToken.ExpiryTime > DateTime.UtcNow)
+        if (existingToken is not null && existingToken.ExpiryTime > DateTime.UtcNow)
         {
-            return latestToken.AccessToken; // Return the valid token
+            return existingToken.AccessToken;
         }
 
-        return (await GetTokenAsync()).AccessToken; // Get a new token if the last one is expired
+        var newToken = await GetTokenAsync(tmcId);
+        return newToken.AccessToken;
     }
 }

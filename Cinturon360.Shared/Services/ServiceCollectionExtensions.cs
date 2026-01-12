@@ -88,14 +88,14 @@ public static class ServiceCollectionExtensions
         IConfiguration config)
     {
         // --- options ---
-        services.AddOptions<AmadeusOAuthClientSettings>()
-            .Bind(config.GetSection("Amadeus"))
-            .ValidateDataAnnotations()
-            .Validate(s =>
-                !string.IsNullOrWhiteSpace(s.ClientId) &&
-                !string.IsNullOrWhiteSpace(s.ClientSecret),
-                "Amadeus:ClientId and Amadeus:ClientSecret must be configured.")
-            .ValidateOnStart();
+        // services.AddOptions<AmadeusOAuthClientSettings>()
+        //     .Bind(config.GetSection("Amadeus"))
+        //     .ValidateDataAnnotations()
+        //     .Validate(s =>
+        //         !string.IsNullOrWhiteSpace(s.ClientId) &&
+        //         !string.IsNullOrWhiteSpace(s.ClientSecret),
+        //         "Amadeus:ClientId and Amadeus:ClientSecret must be configured.")
+        //     .ValidateOnStart();
 
         services.AddOptions<InboundApiKeyOptions>()
             .Bind(config.GetSection("InboundApiKeyAuth"))

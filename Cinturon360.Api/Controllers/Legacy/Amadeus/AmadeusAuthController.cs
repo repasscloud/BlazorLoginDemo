@@ -15,9 +15,9 @@ public class AmadeusAuthController : ControllerBase
     }
 
     [HttpPost("get-token")]
-    public async Task<IActionResult> GetToken()
+    public async Task<IActionResult> GetToken([FromBody] string tmcId)
     {
-        var token = await _authService.GetTokenInformationAsync();
+        var token = await _authService.GetAccessTokenAsync(tmcId);
         return Ok(token);
     }
 }

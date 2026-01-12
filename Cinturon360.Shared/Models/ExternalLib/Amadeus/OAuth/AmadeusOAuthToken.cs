@@ -6,10 +6,23 @@ public class AmadeusOAuthToken
 {
     [Key]
     public long Id { get; set; }
+
+    // Tenant scope (matches TMC Id type exactly)
+    [Required]
+    [MaxLength(64)]
+    public string TmcId { get; set; } = null!;
+
+    [Required]
+    [MaxLength(32)]
     public string TokenType { get; set; } = null!;
+
+    [Required]
     public string AccessToken { get; set; } = null!;
-    public int ExpiresIn { get; set; }  // Stores 1799 seconds
+
+    // Typically 1799 seconds
+    public int ExpiresIn { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public DateTime ExpiryTime => CreatedAt.AddSeconds(ExpiresIn); // Token expiry timestamp
+    public DateTime ExpiryTime => CreatedAt.AddSeconds(ExpiresIn);
 }

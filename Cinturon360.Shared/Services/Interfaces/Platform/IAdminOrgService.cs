@@ -13,7 +13,6 @@ public interface IAdminOrgServiceUnified
     // convenience aggregate
     public sealed record OrgAggregate(OrganizationUnified Org, IReadOnlyList<OrganizationDomainUnified> Domains, LicenseAgreementUnified? LicenseAgreement);
 
-
     // CREATE
     public sealed record CreateOrgRequest(
         string Name,
@@ -24,6 +23,13 @@ public interface IAdminOrgServiceUnified
     );
 
     public sealed record CreateOrgResult(bool Ok, string? Error, string? OrganizationId);
+
+    public sealed record ClientGoverningTmcInfo(
+        string TmcId,
+        string TmcName,
+        string ClientId,
+        string ClientName
+    );
 
     public sealed class OrganizationPickerDto
     {
@@ -66,6 +72,8 @@ public interface IAdminOrgServiceUnified
         CancellationToken ct = default);
     Task<IReadOnlyList<OrganizationPickerDto>> GetAllForPickerAsync(CancellationToken ct = default);
     Task<IReadOnlyList<OrganizationPickerDto>> GetAllChildrenOrgsForPickerAsync(string parentOrgId, CancellationToken ct = default);
+
+    Task<ClientGoverningTmcInfo> GetGoverningTmcInfoAsync(string clientOrgId, CancellationToken ct = default);
 
     // UPDATE
     public sealed record UpdateOrgRequest(

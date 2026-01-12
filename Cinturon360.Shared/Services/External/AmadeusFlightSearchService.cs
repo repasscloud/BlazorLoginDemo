@@ -10,6 +10,7 @@ using Cinturon360.Shared.Models.ExternalLib.Kernel.Flight;
 using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
+using Cinturon360.Shared.Services.Interfaces.Platform;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NanoidDotNet;
@@ -20,7 +21,8 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ApplicationDbContext _db;
-    private readonly AmadeusOAuthClientSettings _settings;
+    private readonly IAdminOrgServiceUnified _adminOrgService;
+    private readonly IAmadeusAccountStore _accountStore;
     private readonly IAmadeusAuthService _authService;
     private readonly ILoggerService _loggerService;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -28,14 +30,16 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
     public AmadeusFlightSearchService(
         IHttpClientFactory httpClientFactory,
         ApplicationDbContext db,
-        IOptions<AmadeusOAuthClientSettings> options,
+        IAdminOrgServiceUnified adminOrgService,
+        IAmadeusAccountStore accountStore,
         IAmadeusAuthService authService,
         ILoggerService loggerService,
         JsonSerializerOptions jsonOptions)
     {
         _httpClientFactory = httpClientFactory;
         _db = db;
-        _settings = options.Value;
+        _adminOrgService = adminOrgService;
+        _accountStore = accountStore;
         _authService = authService;
         _loggerService = loggerService;
         _jsonOptions = jsonOptions;
@@ -51,6 +55,17 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             ent: nameof(FlightOfferSearchRequestDto),
             entId: dto.Id,
             note: "ingress:start");
+
+        // 0) Get TMC ID from DTO
+        IAdminOrgServiceUnified.ClientGoverningTmcInfo? tmcInfo = await _adminOrgService.GetGoverningTmcInfoAsync(dto.ClientId, ct)
+            ?? throw new ArgumentNullException("TmcId is required in FlightOfferSearchRequestDto.");
+        
+        if (tmcInfo is null || string.IsNullOrEmpty(tmcInfo.TmcId))
+        {
+            throw new ArgumentNullException("TmcId is required in FlightOfferSearchRequestDto.");
+        }
+
+        string tmcId = tmcInfo.TmcId;
 
         // 1) Load Travel Policy (optional)
         TravelPolicyBookingContextDto? policyCtx = null;
@@ -185,7 +200,12 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         };
 
         // 8) Auth
-        var token = await _authService.GetTokenInformationAsync();
+        var account = await _accountStore.GetByTmcIdAsync(tmcId);
+
+        var token = await _authService.GetAccessTokenAsync(tmcId);
+
+        var flightOfferUrl = $"{account.Url.ApiEndpoint}/v2/shopping/flight-offers";
+
         if (string.IsNullOrEmpty(token))
         {
             await _loggerService.ErrorAsync(
@@ -201,9 +221,6 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         // 9) HTTP post
         var httpClient = _httpClientFactory.CreateClient();
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        string flightOfferUrl = _settings.Url.FlightOffer
-            ?? throw new ArgumentNullException("Amadeus:Url:FlightOffer is missing in configuration.");
 
         var response = await httpClient.PostAsJsonAsync(flightOfferUrl, flightOfferSearch, _jsonOptions, ct);
 
@@ -226,7 +243,9 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             };
 
             await _db.FlightOfferSearchResultRecords.AddAsync(record, ct);
+
             await _db.SaveChangesAsync(ct);
+
             await _loggerService.InformationAsync(
                 evt: "AMADEUS_FLIGHT_REQ_SUCCESS",
                 cat: SysLogCatType.Integration,
@@ -254,7 +273,10 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         }
     }
     
-    public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersFromAmadeusFlightOfferSearch(AmadeusFlightOfferSearch criteria, CancellationToken ct = default)
+    public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersFromAmadeusFlightOfferSearch(
+        AmadeusFlightOfferSearch criteria,
+        string tmcId,
+        CancellationToken ct = default)
     {
         // await _loggerService.InformationAsync(
         //     evt: "FLIGHT_OFFERS_REQ_START",
@@ -264,6 +286,11 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         //     ent: nameof(TravelQuote),
         //     entId: quote.Id,
         //     note: "ingress:start");
+
+        if (string.IsNullOrWhiteSpace(tmcId))
+        {
+            throw new ArgumentNullException(nameof(tmcId), "TmcId is required for Amadeus flight search.");
+        }
 
         // the travel quote has everything we need to call Amadeus api directly
         // var flightOfferSearch = new AmadeusFlightOfferSearch
@@ -280,19 +307,42 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         //     filePrefix: "amadeus-flight-offer-search-req",
         //     ct: ct);
 
-        var token = await _authService.GetTokenInformationAsync();
+        // 1) Load Amadeus account for this TMC
+        var account = await _accountStore.GetByTmcIdAsync(tmcId);
 
+        // 2) Auth (tenant-scoped)
+        var token = await _authService.GetAccessTokenAsync(tmcId);
+
+        if (string.IsNullOrEmpty(token))
+        {
+            await _loggerService.ErrorAsync(
+                evt: "AMADEUS_OAUTH_TOKEN_FAIL",
+                cat: SysLogCatType.Integration,
+                act: SysLogActionType.Exec,
+                ex: new InvalidOperationException("Unable to retrieve valid OAuth token."),
+                message: "Unable to retrieve valid OAuth token.",
+                ent: "AmadeusOAuth");
+            throw new InvalidOperationException("Unable to retrieve valid OAuth token.");
+        }
+
+        // 3) HTTP post
         var httpClient = _httpClientFactory.CreateClient();
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
 
-        string flightOfferUrl = _settings.Url.FlightOffer
-            ?? throw new ArgumentNullException("Amadeus:Url:FlightOffer is missing in configuration.");
+        var flightOfferUrl = $"{account.Url.ApiEndpoint}/v2/shopping/flight-offers";
 
-        var response = await httpClient.PostAsJsonAsync(flightOfferUrl, criteria, _jsonOptions, ct);
+        var response = await httpClient.PostAsJsonAsync(
+            flightOfferUrl,
+            criteria,
+            _jsonOptions,
+            ct);
 
         if (response.IsSuccessStatusCode)
         {
-            var result = await response.Content.ReadFromJsonAsync<AmadeusFlightOfferSearchResult>(cancellationToken: ct);
+            var result = await response.Content
+                .ReadFromJsonAsync<AmadeusFlightOfferSearchResult>(cancellationToken: ct);
+
             if (result is null)
                 throw new InvalidOperationException("Deserialization returned null.");
 
@@ -324,16 +374,20 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         else
         {
             string errorBody = await response.Content.ReadAsStringAsync(ct);
+
             await _loggerService.ErrorAsync(
                 evt: "AMADEUS_API_ERROR",
                 cat: SysLogCatType.Integration,
                 act: SysLogActionType.Exec,
-                ex: new HttpRequestException($"Amadeus error {response.StatusCode}: {errorBody}"),
+                ex: new HttpRequestException(
+                    $"Amadeus error {response.StatusCode}: {errorBody}"),
                 message: "Amadeus API call failed",
                 ent: "Amadeus",
                 stat: (int)response.StatusCode,
                 note: "provider:Amadeus");
-            throw new InvalidOperationException($"Error '{response.StatusCode}' Response: {errorBody}");
+
+            throw new InvalidOperationException(
+                $"Error '{response.StatusCode}' Response: {errorBody}");
         }
     }
 }

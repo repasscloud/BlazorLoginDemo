@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using HtmlAgilityPack;
 using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Models.DTOs;
+using static Cinturon360.Shared.Services.Interfaces.Platform.IAdminOrgServiceUnified;
 
 namespace Cinturon360.Shared.Services.Platform;
 
@@ -240,6 +241,32 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
                 Country                = o.Country
             })
             .ToListAsync(ct);
+    }
+
+    public async Task<ClientGoverningTmcInfo> GetGoverningTmcInfoAsync(string clientOrgId, CancellationToken ct = default)
+    {
+        var clientOrg = await _db.Organizations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == clientOrgId, ct)
+            ?? throw new InvalidOperationException($"Client organization '{clientOrgId}' not found.");
+
+        if (string.IsNullOrWhiteSpace(clientOrg.ParentOrganizationId))
+            throw new InvalidOperationException($"Client organization '{clientOrgId}' does not have a governing TMC.");
+
+        if (clientOrg.Type != OrganizationType.Client)
+            throw new InvalidOperationException($"Organization '{clientOrgId}' is not a Client organization.");
+
+        var tmcOrg = await _db.Organizations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == clientOrg.ParentOrganizationId, ct)
+            ?? throw new InvalidOperationException($"Governing TMC organization '{clientOrg.ParentOrganizationId}' not found.");
+
+        return new ClientGoverningTmcInfo(
+            TmcId: tmcOrg.Id,
+            TmcName: tmcOrg.Name,
+            ClientId: clientOrg.Id,
+            ClientName: clientOrg.Name
+        );
     }
 
     // -------------- UPDATE --------------

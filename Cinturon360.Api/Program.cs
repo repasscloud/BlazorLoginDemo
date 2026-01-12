@@ -34,8 +34,8 @@ public class Program
         // --------------------------
         builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
         var jwt = builder.Configuration.GetSection("Jwt");
-        builder.Services.Configure<AmadeusOAuthClientSettings>(
-            builder.Configuration.GetSection("Amadeus"));
+        // builder.Services.Configure<AmadeusOAuthClientSettings>(
+        //     builder.Configuration.GetSection("Amadeus"));
 
         // --------------------------
         // Data (DbContext)
