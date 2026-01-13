@@ -279,8 +279,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<AmadeusAccount>(e =>
         {
             e.ToTable("amadeus_accounts", "amadeus");
+
             e.HasKey(x => x.TmcId);
-            e.HasIndex(x => x.TmcId).IsUnique();
 
             e.Property(x => x.TmcId)
                 .HasMaxLength(64)
@@ -293,6 +293,29 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.ClientSecret)
                 .HasMaxLength(256)
                 .IsRequired();
+
+            e.Property(x => x.OfficeId)
+                .HasMaxLength(32)
+                .IsRequired();
+
+            e.Property(x => x.CountryCode)
+                .HasMaxLength(2)
+                .IsRequired();
+
+            e.Property(x => x.DefaultCurrency)
+                .HasMaxLength(3)
+                .IsRequired();
+
+            // ✅ THIS IS THE FIX
+            e.OwnsOne(x => x.Url, url =>
+            {
+                url.Property(p => p.ApiEndpoint)
+                    .HasMaxLength(256)
+                    .IsRequired();
+
+                url.Property(p => p.FlightOffer)
+                    .HasMaxLength(256);
+            });
         });
 
         builder.Entity<AmadeusOAuthToken>(t =>
