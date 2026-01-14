@@ -1,0 +1,150 @@
+baseURL: http://localhost:1313/
+title: Cinturon360.Docs
+
+# cSpell:ignore goldmark github hugo readingtime docsy subdir lastmod pygments linenos catmullrom norsk gu
+
+# -------------------------------------------------------------------
+# Language settings
+# -------------------------------------------------------------------
+contentDir: content/en
+defaultContentLanguage: en
+defaultContentLanguageInSubdir: false
+enableMissingTranslationPlaceholders: true
+
+enableRobotsTXT: true
+
+# IMPORTANT:
+# Disable Git metadata for Docker-based development
+enableGitInfo: false
+
+# -------------------------------------------------------------------
+# Taxonomies
+# -------------------------------------------------------------------
+taxonomies:
+  tag: tags
+  category: categories
+
+# -------------------------------------------------------------------
+# Syntax highlighting
+# -------------------------------------------------------------------
+pygmentsCodeFences: true
+pygmentsUseClasses: false
+pygmentsUseClassic: false
+pygmentsStyle: tango
+
+# -------------------------------------------------------------------
+# Permalinks
+# -------------------------------------------------------------------
+permalinks:
+  blog: /:section/:year/:month/:day/:slug/
+
+# -------------------------------------------------------------------
+# Image processing
+# -------------------------------------------------------------------
+imaging:
+  resampleFilter: CatmullRom
+  quality: 75
+  anchor: smart
+
+# -------------------------------------------------------------------
+# Languages
+# -------------------------------------------------------------------
+languages:
+  en:
+    languageName: English
+    title: Cinturon360.Docs
+    params:
+      description: Cinturon360 documentation
+
+# -------------------------------------------------------------------
+# Markdown / rendering
+# -------------------------------------------------------------------
+markup:
+  goldmark:
+    parser:
+      attribute:
+        block: true
+    renderer:
+      unsafe: true
+  highlight:
+    style: tango
+
+# -------------------------------------------------------------------
+# Outputs
+# -------------------------------------------------------------------
+outputs:
+  section: [HTML, print, RSS]
+
+# -------------------------------------------------------------------
+# Site Params (Docsy)
+# -------------------------------------------------------------------
+params:
+  taxonomy:
+    taxonomyCloud: [tags, categories]
+    taxonomyCloudTitle: [Tag Cloud, Categories]
+    taxonomyPageHeader: [tags, categories]
+
+  privacy_policy: https://policies.google.com/privacy
+
+  version_menu: Releases
+  archived_version: false
+  version: 0.0
+  url_latest_version: https://example.com
+
+  # Repo links (safe even when Git info is disabled)
+  github_repo: https://github.com/repasscloud/cinturon360
+  github_project_repo: https://github.com/repasscloud/cinturon360
+  github_branch: main
+
+  offlineSearch: false
+  prism_syntax_highlighting: false
+
+  copyright:
+    authors:
+      Cinturon360 | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
+    from_year: 2018
+
+  ui:
+    breadcrumb_disable: false
+    navbar_logo: true
+    navbar_translucent_over_cover_disable: false
+    sidebar_menu_compact: false
+    sidebar_search_disable: false
+    showLightDarkModeMenu: true
+
+    feedback:
+      enable: true
+      'yes': >-
+        Glad to hear it! Please <a
+        href="https://github.com/repasscloud/cinturon360/issues/new">tell us how we
+        can improve</a>.
+      'no': >-
+        Sorry to hear that. Please <a
+        href="https://github.com/repasscloud/cinturon360/issues/new">tell us how we
+        can improve</a>.
+
+    readingtime:
+      enable: false
+
+  links:
+    user:
+      - name: User mailing list
+        url: https://example.org/mail
+        icon: fa fa-envelope
+        desc: Discussion and help from your fellow users
+    developer:
+      - name: GitHub
+        url: https://github.com/repasscloud/cinturon360
+        icon: fab fa-github
+        desc: Development happens here
+
+# -------------------------------------------------------------------
+# Hugo modules
+# -------------------------------------------------------------------
+module:
+  hugoVersion:
+    extended: true
+    min: 0.146.0
+  imports:
+    - path: github.com/google/docsy
+      disable: false
