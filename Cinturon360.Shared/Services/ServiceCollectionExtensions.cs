@@ -106,16 +106,16 @@ public static class ServiceCollectionExtensions
                 "InboundAPiKeyAuth must specify HeaderName and at least one non-empty key.")
             .ValidateOnStart();
 
-            // ExchangeRate API options
-            services.AddOptions<ExchangeRateApiOptions>()
-                .Bind(config.GetSection("ExchangeRateApi"))
-                .Validate(o =>
-                    !string.IsNullOrWhiteSpace(o.BaseUrl) &&
-                    !string.IsNullOrWhiteSpace(o.ApiKey) &&
-                    !string.IsNullOrWhiteSpace(o.DefaultBaseCode) &&
-                    o.DefaultBaseCode.Length == 3,
-                    "ExchangeRateApi: BaseUrl, ApiKey, and 3-letter DefaultBaseCode are required.")
-                .ValidateOnStart();
+        // ExchangeRate API options
+        services.AddOptions<ExchangeRateApiOptions>()
+            .Bind(config.GetSection("ExchangeRateApi"))
+            .Validate(o =>
+                !string.IsNullOrWhiteSpace(o.BaseUrl) &&
+                !string.IsNullOrWhiteSpace(o.ApiKey) &&
+                !string.IsNullOrWhiteSpace(o.DefaultBaseCode) &&
+                o.DefaultBaseCode.Length == 3,
+                "ExchangeRateApi: BaseUrl, ApiKey, and 3-letter DefaultBaseCode are required.")
+            .ValidateOnStart();
 
         // --- infra ---
         services.AddHttpClient();
@@ -158,10 +158,16 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IAirlineService, AirlineService>();
 
+        // Amadeus Core Services
+        services.AddScoped<IAmadeusAccountService, AmadeusAccountService>();
+        services.AddScoped<IAmadeusAccountStore, AmadeusAccountStore>();
+        services.AddScoped<IAmadeusAuthService, AmadeusAuthService>();
+        services.AddScoped<IAmadeusConnectionTestService, AmadeusConnectionTestService>();
+        services.AddScoped<IAmadeusFlightSearchService, AmadeusFlightSearchService>();
+
         // --- shared services ---
         services.AddScoped<ILoggerService, LoggerService>();
-        services.AddScoped<IAmadeusAuthService, AmadeusAuthService>();
-        services.AddScoped<IAmadeusFlightSearchService, AmadeusFlightSearchService>();
+
         services.AddScoped<IAirportInfoService, AirportInfoService>();
         services.AddScoped<RequireApiKeyFilter>();
 
