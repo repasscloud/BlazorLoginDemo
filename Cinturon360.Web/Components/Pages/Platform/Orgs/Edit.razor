@@ -2,33 +2,31 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 
+@using Cinturon360.Shared.Auth
+@using Cinturon360.Shared.Models.Kernel.Billing
+@using Cinturon360.Shared.Models.Kernel.Platform
+@using Cinturon360.Shared.Models.Static.Platform
+@using Cinturon360.Shared.Services.Interfaces.Kernel
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@using Cinturon360.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection;
-@using Cinturon360.Shared.Services.Interfaces.Kernel
-@using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims;
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
-@using Cinturon360.Shared.Auth
-@using Microsoft.AspNetCore.Components.Forms
-@using Cinturon360.Web.Components.Shared
-@using Cinturon360.Shared.Services.Interfaces.Platform
-@using Cinturon360.Shared.Models.Kernel.Platform
-@using Cinturon360.Shared.Models.Kernel.Billing
-@using Cinturon360.Shared.Models.Static.Platform
-@using Microsoft.VisualBasic
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAdminOrgServiceUnified OrgSvc
 @inject IAdminLicenseAgreementServiceUnified LicenseService
 @inject NavigationManager Nav
 @inject ILoggerService _log
-
 @inject IJSRuntime JS
 
 <EditForm Model="_vm.Organization" OnValidSubmit="@(async () => await SaveAsync(true))">
     <DataAnnotationsValidator />
-    <ValidationSummary />
+    <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
 
     @if (!string.IsNullOrWhiteSpace(_error))
     {
@@ -918,7 +916,7 @@
             evt: "UI_PAGE_OPEN",
             cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
             act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.View,
-            message: "Org Edit Page accessed",
+            message: "Org Edit page accessed",
             uid: userId,
             org: orgId,
             path: pageRoute
@@ -932,7 +930,7 @@
             evt: "UI_EDIT_MODE_ENABLED",
             cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
             act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Click,
-            message: $"Org Edit Section clicked: {sectionName}",
+            message: $"Org Edit section clicked: {sectionName}",
             uid: userId,
             org: orgId,
             path: pageRoute
@@ -1037,7 +1035,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        AuthenticationState? state = await AuthStateProvider.GetAuthenticationStateAsync();
         _user = state.User;
 
         _userId = _user?.FindFirstValue(ClaimTypes.NameIdentifier);
