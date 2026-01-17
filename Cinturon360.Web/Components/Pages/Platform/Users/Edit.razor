@@ -1,16 +1,23 @@
 @page "/platform/users/{id}"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 
+@using Cinturon360.Shared.Auth
 @using Cinturon360.Shared.Data
-@using Cinturon360.Shared.Models.Static
 @using Cinturon360.Shared.Models.Kernel.Platform
+@using Cinturon360.Shared.Models.Static
 @using Cinturon360.Shared.Models.Static.Platform
+@using Cinturon360.Shared.Services.Interfaces.Kernel
 @using Cinturon360.Shared.Services.Interfaces.Platform
 @using Cinturon360.Web.Components.Shared
+@using System.Security.Claims
 
+@inject AuthenticationStateProvider AuthStateProvider
 @inject IAdminUserServiceUnified UserSvc
 @inject IAdminOrgServiceUnified OrgSvc
 @inject NavigationManager Nav
+@inject ILoggerService _log
+
 
 @{ ApplicationUser? U = _vm.User!; }
 
@@ -61,31 +68,57 @@ else
 
     <EditForm id="user-edit-form" Model="_vm.User" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator />
-        <ValidationSummary />
+        <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
 
         <div class="row g-3">
             <!-- Account / Status -->
             <div class="col-12">
                 <div class="card mb-3">
-                    <div class="card-header">Account</div>
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Identity</span>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleAccountReadOnly">
+                            @if (_isAccountReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
                     <div class="card-body row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Email/Login</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.Email" />
+                            <InputText
+                                class="@($"form-control {(_isAccountReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.Email"
+                                readonly="@_isAccountReadOnly">
+                            </InputText>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">User Category</label>
-                            <select class="form-select" @bind="_vm.User.UserCategory">
-                                @foreach (var cat in Enum.GetValues<UserCategoryType>())
+                            <InputSelect
+                                class="@($"form-select {(_isAccountReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.UserCategory"
+                                disabled="@_isAccountReadOnly">
+                                @foreach (UserCategoryType cat in Enum.GetValues<UserCategoryType>())
                                 {
                                     <option value="@cat">@cat</option>
                                 }
-                            </select>
+                            </InputSelect>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label">@(_vm.User.IsActive ? "Active" : "Inactive")</label>
                             <div class="form-check form-switch mt-2">
-                                <InputCheckbox class="form-check-input" @bind-Value="_vm.User.IsActive" />
+                                <InputCheckbox
+                                    class="form-check-input"
+                                    @bind-Value="_vm.User.IsActive"
+                                    disabled="@_isAccountReadOnly" />
                                 <label class="form-check-label" title="@(_vm.User.IsActive ? "Active" : "Inactive")">
                                     <span aria-hidden="true">@(_vm.User.IsActive ? " ✅" : " ❌")</span>
                                 </label>
@@ -98,13 +131,32 @@ else
             <!-- Organization -->
             <div class="col-12">
                 <div class="card mb-3">
-                    <div class="card-header">Organization</div>
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Organization</span>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleOrganizationReadOnly">
+                            @if (_isOrganizationReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
                     <div class="card-body row g-3">
                         <div class="col-md-3">
                             <label class="form-label">Organization</label>
-                            <InputSelect class="form-select" @bind-Value="_vm.User.OrganizationId">
+                            <InputSelect
+                                class="@($"form-select {(_isOrganizationReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.OrganizationId"
+                                disabled="@_isOrganizationReadOnly">
                                 <option value="">— No org —</option>
-                                @foreach (var o in _vm.Orgs)
+                                @foreach (IAdminOrgServiceUnified.OrganizationPickerDto o in _vm.Orgs)
                                 {
                                     <option value="@o.Id">@o.Name</option>
                                 }
@@ -112,27 +164,39 @@ else
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Department</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.Department" />
+                            <InputText
+                                class="@($"form-control {(_isOrganizationReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.Department"
+                                readonly="@_isOrganizationReadOnly">
+                            </InputText>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Cost Centre</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.CostCentre" />
+                            <InputText
+                                class="@($"form-control {(_isOrganizationReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.CostCentre"
+                                readonly="@_isOrganizationReadOnly">
+                            </InputText>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Manager</label>
                             <div class="input-group">
-                                <input class="form-control" readonly
-                                    value="@(_vm.User?.ManagerId is null ? "(none)" : (_managerDisplay ?? _vm.User.ManagerId))" />
-                                <button type="button" class="btn btn-outline-secondary" @onclick="OpenManagerPickerAsync">
-                                <span class="bi bi-person-add" aria-hidden="true"></span><span class="ms-1">Assign</span>
+                                <InputText
+                                    class="@($"form-control {(_isOrganizationReadOnly ? "bg-light" : "")}")"
+                                    Value="@ManagerDisplay"
+                                    ValueExpression="@(() => ManagerDisplay)"
+                                    readonly />
+
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-secondary"
+                                    disabled="@_isOrganizationReadOnly"
+                                    @onclick="OpenManagerPickerAsync">
+                                    <i class="bi bi-person-add" aria-hidden="true"></i>
+                                    <span class="ms-1">Assign</span>
                                 </button>
                             </div>
                         </div>
-                        @* <div class="col-md-4">
-                            <label class="form-label">Manager</label>
-                            <InputText class="form-control" @bind-Value="_vm.User.ManagerId" />
-                            <div class="form-text">Optional. Self-referential org chart.</div>
-                        </div> *@
                     </div>
                 </div>
             </div>
@@ -140,33 +204,67 @@ else
             <!-- Names / Profile -->
             <div class="col-12">
                 <div class="card mb-3">
-                    <div class="card-header">Profile</div>
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Profile</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleProfileReadOnly">
+                            @if (_isProfileReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
                     <div class="card-body row g-3">
                         <div class="col-md-4">
                             <label class="form-label">First Name</label>
-                            <InputText class="form-control" @bind-Value="U.FirstName" />
+                            <InputText
+                                class="@($"form-control {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.FirstName"
+                                readonly="@_isProfileReadOnly">
+                            </InputText>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Middle Name</label>
-                            <InputText class="form-control" @bind-Value="U.MiddleName" />
+                            <InputText
+                                class="@($"form-control {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.MiddleName"
+                                readonly="@_isProfileReadOnly">
+                            </InputText>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Last Name</label>
-                            <InputText class="form-control" @bind-Value="U.LastName" />
+                            <InputText
+                                class="@($"form-control {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.LastName"
+                                readonly="@_isProfileReadOnly">
+                            </InputText>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Display Name</label>
-                            <InputText class="form-control" @bind-Value="U.DisplayName" />
+                            <InputText
+                                class="@($"form-control {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.DisplayName"
+                                readonly="@_isProfileReadOnly">
+                            </InputText>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Preferred Culture</label>
-                            <InputSelect id="defaultCurrency" class="form-select" @bind-Value="U.PreferredCulture">
+                            <InputSelect
+                                id="preferredCultureSelect"
+                                class="@($"form-select {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.PreferredCulture"
+                                disabled="@_isProfileReadOnly">
                                 @foreach (var c in CulturesType.Bcp47)
                                 {
                                     <option value="@c.Tag">@c.Label</option>
                                 }
                             </InputSelect>
-                            @* <div class="form-text">e.g. en-AU</div> *@
                         </div>
                     </div>
                 </div>
@@ -521,22 +619,6 @@ else
                     </div>
                 </div>
             </div>
-
-            @* <!-- Save / Danger zone (optional) -->
-            <div class="col-12 mb-3">
-                <div class="d-flex justify-content-end gap-2">
-                    <a class="btn btn-outline-secondary" href="/platform/users">
-                        <i class="bi bi-arrow-left me-1"></i> Cancel
-                    </a>
-                    <button class="btn btn-primary" type="submit" disabled="@_vm.IsSaving">
-                        @if (_vm.IsSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        }
-                        Save
-                    </button>
-                </div>
-            </div> *@
         </div>
     </EditForm>
 }
@@ -550,6 +632,11 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        AuthenticationState? state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _user = state.User;
+
+        _userId = _user?.FindFirstValue(ClaimTypes.NameIdentifier);
+
         _vm.IsLoading = true;
         _vm.LoadError = null;
 
@@ -829,7 +916,7 @@ private async Task SaveAsync()
         }
 
         // Assign new manager
-        var picked = res.User!;
+        UserPickerModal.SimpleUser? picked = res.User!;
         await UserSvc.UpdateAsync(new IAdminUserServiceUnified.UpdateUserRequest(
             UserId: user.Id,
             FirstName: null,
@@ -849,7 +936,127 @@ private async Task SaveAsync()
 
     private void OnOrgPicked(OrganizationUnified? picked)
     {
-        _vm.User.OrganizationId = picked?.Id; // ✅ set FK the service persists
+        _vm.User.OrganizationId = picked?.Id;  // ✅ set FK the service persists
         _vm.User.Organization = null;          // ✅ avoid nav confusion on attach
     }
+
+    // -----------------
+    // Logging
+    // -----------------
+    private async Task LogUserEditPageOpenAsync(string userId, string userIdParam)
+    {
+        string? pageRoute = $"/platform/users/{userIdParam}";
+        await _log.InformationAsync(
+            evt: "UI_PAGE_OPEN",
+            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
+            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.View,
+            message: "User Edit page accessed",
+            uid: userId,
+            entId: userIdParam,
+            path: pageRoute
+        );
+    }
+
+    private async Task LogUserEditSectionClickedAsync(string userId, string userIdParam, string sectionName)
+    {
+        string? pageRoute = $"/platform/users/{userIdParam}";
+        await _log.InformationAsync(
+            evt: "UI_EDIT_MODE_ENABLED",
+            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
+            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Click,
+            message: $"User Edit section clicked: {sectionName}",
+            uid: userId,
+            entId: userIdParam,
+            path: pageRoute
+        );
+    }
+
+    private async Task SaveUserEditLogAsync(string userId, string userIdParam)
+    {
+        string? pageRoute = $"/platform/users/{userIdParam}";
+        await _log.InformationAsync(
+            evt: "UI_USER_EDIT_SAVED",
+            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
+            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Submit,
+            message: "User Edit changes saved",
+            uid: userId,
+            entId: userIdParam,
+            path: pageRoute
+        );
+    }
+
+    // -----------------
+    // Authenticated user
+    // -----------------
+    private ClaimsPrincipal? _user;
+    private string? _userId;
+
+    // -----------------
+    // Enable Edit Flags
+    // -----------------
+    private bool _isAccountReadOnly = true;
+    private bool _isOrganizationReadOnly = true;
+    private bool _isProfileReadOnly = true;
+    private bool _isPIITravelDocumentsReadOnly = true;
+    private bool _isFlightPreferencesReadOnly = true;
+    private bool _isFinancialLimitsReadOnly = true;
+    private bool _isBookingWindowsReadOnly = true;
+    private bool _isPolicyLinksReadOnly = true;
+    private bool _isPolicyTogglesReadOnly = true;
+    private bool _isRolesReadOnly = true;
+
+    // Generic toggle method
+    private static void Toggle(ref bool value) => value = !value;
+
+    // Specific toggle methods
+    private async Task ToggleAccountReadOnly()
+    {
+        Toggle(ref _isAccountReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "Account");
+    }
+    private async Task ToggleOrganizationReadOnly()
+    {
+        Toggle(ref _isOrganizationReadOnly);
+    }
+    private async Task ToggleProfileReadOnly()
+    {
+        Toggle(ref _isProfileReadOnly);
+    }
+    private async Task TogglePIITravelDocumentsReadOnly()
+    {
+        Toggle(ref _isPIITravelDocumentsReadOnly);
+    }
+    private async Task ToggleFlightPreferencesReadOnly()
+    {
+        Toggle(ref _isFlightPreferencesReadOnly);
+    }
+    private async Task ToggleFinancialLimitsReadOnly()
+    {
+        Toggle(ref _isFinancialLimitsReadOnly);
+    }
+    private async Task ToggleBookingWindowsReadOnly()
+    {
+        Toggle(ref _isBookingWindowsReadOnly);
+    }
+    private async Task TogglePolicyLinksReadOnly()
+    {
+        Toggle(ref _isPolicyLinksReadOnly);
+    }
+    private async Task TogglePolicyTogglesReadOnly()
+    {
+        Toggle(ref _isPolicyTogglesReadOnly);
+    }
+    private async Task ToggleRolesReadOnly()
+    {
+        Toggle(ref _isRolesReadOnly);
+    }
+
+
+    // -----------------
+    // Helpers
+    // -----------------
+    private string ManagerDisplay =>
+        _vm.User?.ManagerId is null
+            ? "(none)"
+            : (_managerDisplay ?? _vm.User.ManagerId);
 }
