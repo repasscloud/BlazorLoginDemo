@@ -19,13 +19,33 @@
 
 <Cinturon360.Web.Components.Shared.OrgPickerDialog @ref="orgPicker" />
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <h2 class="mb-0">New Discount</h2>
-</div>
-
 <EditForm Model="_vm" OnValidSubmit="HandleCreateAsync">
     <DataAnnotationsValidator />
     <ValidationSummary />
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">New Discount</h2>
+        <div class="btn-group">
+            <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @onclick="OnCancel"
+                disabled="@_busy">
+                Cancel
+            </button>
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+                disabled="@_busy">
+                @if (_busy)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                Create
+            </button>
+        </div>
+    </div>
 
     <div class="card mb-3">
         <div class="card-body">
@@ -130,12 +150,7 @@
                     <InputTextArea class="form-control" rows="2" @bind-Value="_vm.Notes" />
                 </div>
             </div>
-            <div class="d-flex gap-2 mt-4">
-                <button class="btn btn-primary" type="submit" disabled="@_busy">
-                    @(_busy ? "Creating..." : "Create")
-                </button>
-                <button class="btn btn-outline-secondary" type="button" @onclick="OnCancel">Cancel</button>
-            </div>
+            
             @if (!string.IsNullOrWhiteSpace(_error))
             {
                 <div class="alert alert-danger mt-3 mb-0">@_error</div>
