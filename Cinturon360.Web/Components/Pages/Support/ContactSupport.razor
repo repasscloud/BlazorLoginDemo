@@ -252,12 +252,12 @@
     private TicketVm _vm = new();
 
     // Keep files in memory for now; wire to your API when ready
-    private List<IBrowserFile> _files = new();
+    private List<IBrowserFile> _files = new List<IBrowserFile>();
 
     protected override async Task OnInitializedAsync()
     {
-        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = auth.User;
+        AuthenticationState? auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        ClaimsPrincipal? user = auth.User;
 
         _isAuthenticated = user.Identity?.IsAuthenticated == true;
         _isAuthChecked = true;
