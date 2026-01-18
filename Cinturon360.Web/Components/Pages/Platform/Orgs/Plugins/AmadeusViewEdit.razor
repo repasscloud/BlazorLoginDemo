@@ -1,0 +1,215 @@
+@page "/platform/organizations/plugins/amadeus/{OrgId}/edit"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
+
+@using Cinturon360.Shared.Auth
+@using Cinturon360.Shared.Models.Kernel.UI.Amadeus
+@using System.Security.Claims
+@using Cinturon360.Shared.Services.Interfaces.External
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAmadeusAccountService AmadeusSvc
+@inject NavigationManager Nav
+
+
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Edit Amadeus Account</h2>
+    <div class="btn-group">
+        <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">Cancel</button>
+        <button type="submit" class="btn btn-primary" form="user-edit-form" disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            }
+            else if (_hasAmadeusAccount)
+            {
+                <span>Save Changes</span>
+            }
+            else
+            {
+                <span>Create Account</span>
+            }
+        </button>
+    </div>
+</div>
+
+<EditForm Model="_vm" OnValidSubmit="@(async () => await SaveAsync(true))">
+    <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
+    <DataAnnotationsValidator />
+
+    <!-- TMC Info Card -->
+    <div class="card mb-3">
+        <div class="card-header">TMC Info</div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Id</label>
+                <InputText class="form-control bg-light" @bind-Value="@_vm.TmcId" readonly />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Name</label>
+                <InputText class="form-control bg-light" @bind-Value="@_vm.DisplayName" readonly />
+            </div>
+        </div>
+    </div>
+
+    <!-- Amadeus Client Credentials Card -->
+    <div class="card mb-3">
+        <div class="card-header">Amadeus Client Credentials</div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Client ID</label>
+                <InputText class="form-control" @bind-Value="@_vm.ClientId" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Client Secret</label>
+                <InputText class="form-control" @bind-Value="@_vm.ClientSecret" type="password" />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Api Endpoint</label>
+                <InputText class="form-control" @bind-Value="@_vm.ApiEndpoint" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Office Info Card -->
+    <div class="card mb-3">
+        <div class="card-header">Office Info</div>
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Office ID</label>
+                <InputText class="form-control" @bind-Value="@_vm.OfficeId" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Country Code</label>
+                <InputText class="form-control" @bind-Value="@_vm.CountryCode" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Default Currency</label>
+                <InputText class="form-control" @bind-Value="@_vm.DefaultCurrency" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticketing Card -->
+    <div class="card mb-3">
+        <div class="card-header">Ticketing</div>
+        <div class="card-body row g-3">
+            <div class="col-md-5">
+                <label class="form-label">Ticketing Prefix</label>
+                <InputText class="form-control" @bind-Value="@_vm.TicketPrefix" />
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Default Plating Carrier</label>
+                <InputText class="form-control" @bind-Value="@_vm.DefaultPlatingCarrier" />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">@(@_vm.TicketingEnabled ? "Enabled" : "Disabled")</label>
+                <div class="form-check form-switch mt-2">
+                    <InputCheckbox class="form-check-input" @bind-Value="@_vm.TicketingEnabled" disabled/>
+                    <label class="form-check-label" title="@(@_vm.TicketingEnabled ? "Enabled" : "Disabled")">
+                        <span aria-hidden="true">@(@_vm.TicketingEnabled ? " ✅" : " ❌")</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</EditForm>
+
+@code {
+    [Parameter] public string OrgId { get; set; } = string.Empty;
+
+    private AmadeusAccountEditModel _vm = new AmadeusAccountEditModel();
+    private bool _isSaving;
+    private string? _error;
+
+    private bool _hasAmadeusAccount => _vm.ClientSecret != string.Empty;  // check if _vm has Amadeus account info
+
+
+    // -----------------
+    // Authentication
+    // -----------------
+    private ClaimsPrincipal? _user;
+    private string? _userId;
+    private bool _isAuthChecked;
+    private bool _isAuthenticated;
+
+    private void GoBack() => Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}");
+    private async Task SaveAsync(bool navigateOnSuccess = true)
+    {
+        _error = null;
+        _isSaving = true;
+
+        try
+        {
+            @* // 1) Persist scalars (name, parent, addresses, tax, country, etc.)
+            bool ok = await OrgSvc.UpdateOrgAsync(_vm.Organization);
+            if (!ok)
+            {
+                _error = "Update did not apply: 0 rows affected (record may be unchanged or missing).";
+                return; // stay on page, show error
+            }
+
+            // 2) Persist domains via unified replace
+            List<string>? normalizedDomains = _vm.Domains
+                .Select(d => (d ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            IAdminOrgServiceUnified.OrgAggregate? updated = await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
+                OrgId: _vm.Organization.Id,
+                Name: null,
+                Type: null,
+                ParentOrganizationId: null,
+                IsActive: null,
+                DomainsReplace: normalizedDomains
+            ));
+
+            // 3) Rehydrate + recompute signature AFTER successful save
+            _vm.Organization = updated.Org;
+            _vm.Domains = (updated.Domains ?? Array.Empty<OrganizationDomainUnified>())
+                .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            await LoadParentOrgInfo(_vm.Organization.ParentOrganizationId);
+            await LoadChildrenAsync(_vm.Organization.Id);
+
+            _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
+
+            if (navigateOnSuccess)
+            {
+                await SaveOrgEditLogAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID");
+                Nav.NavigateTo("/platform/organizations");
+            } *@
+        }
+        catch (Exception ex)
+        {
+            string? msg = ex.GetBaseException().Message;
+            @* if (!string.IsNullOrWhiteSpace(_vm.NewDomain) &&
+                msg.Contains("already", StringComparison.OrdinalIgnoreCase))
+            {
+                _vm.DomainMessage = BuildDomainConflictMessage(msg, _vm.NewDomain);
+            } *@
+            _error = msg;
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState? state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _user = state.User;
+        _userId = _user?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        // load _vm
+    }
+}
