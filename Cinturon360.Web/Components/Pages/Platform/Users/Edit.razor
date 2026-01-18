@@ -552,6 +552,14 @@ else
                     </div>
                     <div class="card-body row g-3">
                         <div class="col-md-6">
+                            <label class="form-label">Travel Policy Name</label>
+                            <InputText
+                                class="@($"form-control {(_isPolicyLinksReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.TravelPolicyName"
+                                readonly="@_isPolicyLinksReadOnly" />
+                        </div>
+                        
+                        <div class="col-md-6">
                             <label class="form-label">Travel Policy Id</label>
                             <InputText
                                 class="@($"form-control {(_isPolicyLinksReadOnly ? "bg-light" : "")}")"
@@ -560,10 +568,10 @@ else
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Travel Policy Name</label>
+                            <label class="form-label">Expense Policy Name</label>
                             <InputText
                                 class="@($"form-control {(_isPolicyLinksReadOnly ? "bg-light" : "")}")"
-                                @bind-Value="U.TravelPolicyName"
+                                @bind-Value="U.ExpensePolicyName"
                                 readonly="@_isPolicyLinksReadOnly" />
                         </div>
 
@@ -572,14 +580,6 @@ else
                             <InputText
                                 class="@($"form-control {(_isPolicyLinksReadOnly ? "bg-light" : "")}")"
                                 @bind-Value="U.ExpensePolicyId"
-                                readonly="@_isPolicyLinksReadOnly" />
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Expense Policy Name</label>
-                            <InputText
-                                class="@($"form-control {(_isPolicyLinksReadOnly ? "bg-light" : "")}")"
-                                @bind-Value="U.ExpensePolicyName"
                                 readonly="@_isPolicyLinksReadOnly" />
                         </div>
                     </div>
@@ -916,7 +916,10 @@ else
         finally
         {
             _vm.IsLoading = false;
+            StateHasChanged();
         }
+
+        await LogUserEditPageOpenAsync(_userId ?? "UNKNOWN_USER_ID", id ?? "UNKNOWN_EDITED_USER_ID");
     }
 
 private async Task SaveAsync()
@@ -1226,38 +1229,47 @@ private async Task SaveAsync()
     private async Task ToggleOrganizationReadOnly()
     {
         Toggle(ref _isOrganizationReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "Organization");
     }
     private async Task ToggleProfileReadOnly()
     {
         Toggle(ref _isProfileReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "Profile");
     }
     private async Task TogglePIITravelDocumentsReadOnly()
     {
         Toggle(ref _isPIITravelDocumentsReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "PIITravelDocuments");
     }
     private async Task ToggleFlightPreferencesReadOnly()
     {
         Toggle(ref _isFlightPreferencesReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "FlightPreferences");
     }
     private async Task ToggleFinancialLimitsReadOnly()
     {
         Toggle(ref _isFinancialLimitsReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "FinancialLimits");
     }
     private async Task ToggleBookingWindowsReadOnly()
     {
         Toggle(ref _isBookingWindowsReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "BookingWindows");
     }
     private async Task TogglePolicyLinksReadOnly()
     {
         Toggle(ref _isPolicyLinksReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "PolicyLinks");
     }
     private async Task TogglePolicyTogglesReadOnly()
     {
         Toggle(ref _isPolicyTogglesReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "PolicyToggles");
     }
     private async Task ToggleRolesReadOnly()
     {
         Toggle(ref _isRolesReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "Roles");
     }
 
 
