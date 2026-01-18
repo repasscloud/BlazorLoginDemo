@@ -58,6 +58,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
         services.AddScoped<IErrorCodeService, ErrorCodeService>();
         services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IAmadeusAccountService, AmadeusAccountService>();
         return services;
     }
     
