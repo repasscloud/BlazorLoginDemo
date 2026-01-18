@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
+@using Blazorise
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
@@ -32,142 +33,133 @@
     }
     else
     {
-        <div class="container py-4">
-            <div class="row justify-content-center">
-                <div class="col-lg-9">
-                    <div class="card">
-                        <div class="card-header">Contact Support</div>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="mb-0">Contact Support</h2>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary" @onclick="Back">Cancel</button>
+                <button type="submit" class="btn btn-primary" form="user-edit-form" disabled="@_isSubmitting">
+                    @if (_isSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    Submit Ticket
+                </button>
+            </div>
+        </div>
 
-                        <div class="card-body">
-                            <EditForm Model="_vm" OnValidSubmit="SubmitAsync">
-                                <DataAnnotationsValidator />
-                                <ValidationSummary />
+        <EditForm Model="_vm" OnValidSubmit="SubmitAsync">
+            <DataAnnotationsValidator />
+            <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
 
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label" for="userId">User ID</label>
-                                        <InputText id="userId" class="form-control bg-light" @bind-Value="_vm.UserId" readonly />
-                                        <div class="form-text">Auto-detected from your session if available.</div>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label" for="orgId">Organization ID</label>
-                                        <InputText id="orgId" class="form-control bg-light" @bind-Value="_vm.OrgId" readonly />
-                                        <div class="form-text">Optional. Include if relevant to your request.</div>
-                                    </div>
-
-                                    <div class="col-12">
-                                        <label class="form-label" for="subject">Subject</label>
-                                        <InputText id="subject" class="form-control" @bind-Value="_vm.Subject" />
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label class="form-label" for="categoryGroup">Category Group</label>
-                                        <InputSelect id="categoryGroup"
-                                                    class="form-select"
-                                                    @bind-Value="_selectedCategoryGroup"
-                                                    @onchange="OnCategoryGroupChanged">
-                                            <option value="@DefaultGroupKey">— Select Category Group —</option>
-                                            @foreach (var g in _categoryGroups)
-                                            {
-                                                <option value="@g.Key">@g.Label</option>
-                                            }
-                                        </InputSelect>
-                                    </div>
-
-                                    <!-- SubCategory -->
-                                    <div class="col-md-4">
-                                        <label class="form-label" for="subcategory">Sub-Category</label>
-                                        <InputSelect id="subcategory" class="form-select" @bind-Value="_vm.Category">
-                                            <option value="@NoSubcatValue">— Select Sub-Category —</option>
-                                            @foreach (var item in SubcategoriesForSelected)
-                                            {
-                                                <option value="@item.Value">@item.Label</option>
-                                            }
-                                        </InputSelect>
-                                        <div class="form-text">
-                                            Sub-category is applied only if it belongs to the chosen group.
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label class="form-label" for="priority">Priority</label>
-                                        <InputSelect id="priority" class="form-select" @bind-Value="_vm.Priority">
-                                            @foreach (var p in _priorities)
-                                            {
-                                                <option value="@p.Value">@p.Label</option>
-                                            }
-                                        </InputSelect>
-                                    </div>
-
-                                    <div class="col-12">
-                                        <label class="form-label" for="description">Description</label>
-                                        <InputTextArea id="description" class="form-control" rows="6" @bind-Value="_vm.Description" />
-                                    </div>
-
-                                    <div class="col-12">
-                                        <div class="form-check">
-                                            <InputCheckbox id="diag" class="form-check-input" @bind-Value="_vm.IncludeDiagnostics" />
-                                            <label class="form-check-label" for="diag">Include diagnostics</label>
-                                        </div>
-                                        <div class="form-text">
-                                            Attaches non-sensitive client info such as browser, route, and timestamps.
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label" for="callbackEmail">Callback Email</label>
-                                        <InputText id="callbackEmail" class="form-control" @bind-Value="_vm.CallbackEmail" />
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label" for="pageUrl">Related URL</label>
-                                        <InputText id="pageUrl" class="form-control" @bind-Value="_vm.PageUrl" />
-                                        <div class="form-text">
-                                            Filled from <code>relatedurl</code> or <code>pageUrl</code> query string.
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12">
-                                        <label class="form-label">Attachments (screenshots, logs)</label>
-                                        <InputFile OnChange="OnFilesSelected" multiple />
-                                        @if (_files.Count > 0)
-                                        {
-                                            <ul class="list-group list-group-flush mt-2">
-                                                @foreach (var f in _files)
-                                                {
-                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                        <span class="text-truncate" style="max-width: 70%;">
-                                                            @f.Name (@(FormatSize(f.Size)))
-                                                        </span>
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFile(f)">Remove</button>
-                                                    </li>
-                                                }
-                                            </ul>
-                                        }
-                                    </div>
-                                </div>
-
-                                <div class="mt-4 d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary" disabled="_isSubmitting">
-                                        @if (_isSubmitting)
-                                        {
-                                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                        }
-                                        Submit Ticket
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary" @onclick="Back">Cancel</button>
-                                </div>
-                            </EditForm>
+            <div class="row g-3">
+                <div class="card mb-3">
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="userId">User ID</label>
+                            <InputText id="userId" class="form-control bg-light" @bind-Value="_vm.UserId" readonly />
+                            @* <div class="form-text">Auto-detected from your session if available.</div> *@
                         </div>
 
-                        <div class="card-footer text-muted small">
-                            Query keys are case-insensitive. <code>+</code> treated as space. SubCategory applied only if it belongs to the chosen Category Group.
+                        <div class="col-md-6">
+                            <label class="form-label" for="orgId">Organization ID</label>
+                            <InputText id="orgId" class="form-control bg-light" @bind-Value="_vm.OrgId" readonly />
+                            @* <div class="form-text">Optional. Include if relevant to your request.</div> *@
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label" for="subject">Subject</label>
+                            <InputText id="subject" class="form-control" @bind-Value="_vm.Subject" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label" for="categoryGroup">Category Group</label>
+                            <InputSelect id="categoryGroup"
+                                        class="form-select"
+                                        @bind-Value="_selectedCategoryGroup"
+                                        @onchange="OnCategoryGroupChanged">
+                                <option value="@DefaultGroupKey">— Select Category Group —</option>
+                                @foreach (var g in _categoryGroups)
+                                {
+                                    <option value="@g.Key">@g.Label</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <!-- SubCategory -->
+                        <div class="col-md-4">
+                            <label class="form-label" for="subcategory">Sub-Category</label>
+                            <InputSelect id="subcategory" class="form-select" @bind-Value="_vm.Category">
+                                <option value="@NoSubcatValue">— Select Sub-Category —</option>
+                                @foreach (var item in SubcategoriesForSelected)
+                                {
+                                    <option value="@item.Value">@item.Label</option>
+                                }
+                            </InputSelect>
+                            @* <div class="form-text">
+                                Sub-category is applied only if it belongs to the chosen group.
+                            </div> *@
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label" for="priority">Priority</label>
+                            <InputSelect id="priority" class="form-select" @bind-Value="_vm.Priority">
+                                @foreach (var p in _priorities)
+                                {
+                                    <option value="@p.Value">@p.Label</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label" for="description">Description</label>
+                            <InputTextArea id="description" class="form-control" rows="6" @bind-Value="_vm.Description" />
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check">
+                                <InputCheckbox id="diag" class="form-check-input" @bind-Value="_vm.IncludeDiagnostics" />
+                                <label class="form-check-label" for="diag">Include diagnostics</label>
+                            </div>
+                            <div class="form-text">
+                                Attaches non-sensitive client info such as browser, route, and timestamps.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label  bg-light" for="callbackEmail">Callback Email</label>
+                            <InputText id="callbackEmail" class="form-control" @bind-Value="_vm.CallbackEmail" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="pageUrl">Related URL</label>
+                            <InputText id="pageUrl" class="form-control" @bind-Value="_vm.PageUrl" />
+                            <div class="form-text">
+                                Optional <code>relatedurl</code> or <code>pageUrl</code> query string.
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Attachments (screenshots, logs)</label>
+                            <InputFile OnChange="OnFilesSelected" multiple />
+                            @if (_files.Count > 0)
+                            {
+                                <ul class="list-group list-group-flush mt-2">
+                                    @foreach (var f in _files)
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <span class="text-truncate" style="max-width: 70%;">
+                                                @f.Name (@(FormatSize(f.Size)))
+                                            </span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFile(f)">Remove</button>
+                                        </li>
+                                    }
+                                </ul>
+                            }
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </EditForm>
     }
 </CascadingAuthenticationState>
 
@@ -417,7 +409,7 @@
     class TicketVm
     {
         public string? Subject { get; set; }
-        public string Category { get; set; } = "bug";        // holds subcategory value
+        public string Category { get; set; } = "bug";  // holds subcategory value
         public string Priority { get; set; } = "normal";
         public string? Description { get; set; }
 
