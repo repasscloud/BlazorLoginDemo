@@ -6,8 +6,6 @@ tags: [taxonomy, enums]
 weight: 30
 ---
 
-_Last updated: 24 January 2026_
-
 ## What taxonomy is
 
 Taxonomy fields (`CAT`, `ACT`, `OUT`, `Level`) are used for:

@@ -6,8 +6,6 @@ tags: [security, privacy]
 weight: 120
 ---
 
-_Last updated: 24 January 2026_
-
 ## Do not log secrets
 
 Never log:

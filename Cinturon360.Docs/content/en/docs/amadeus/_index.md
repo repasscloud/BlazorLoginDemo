@@ -6,8 +6,6 @@ tags: [test, docs]
 weight: 2
 ---
 
-_Last updated: 24 January 2026_
-
 ## Amenity Type
 
 | AmenityType | What it refers to in Amadeus flight offers | Typical examples / notes |
@@ -20,7 +18,6 @@ _Last updated: 24 January 2026_
 | `TRAVEL_SERVICES` | Non-core “journey services” attached to the flight experience (beyond seat/meal/bags). | Priority boarding, fast track, priority check-in, meet-and-assist style services (exact mapping depends on airline/provider). |
 | `LOUNGE` | Lounge access inclusion or purchasable lounge access associated with the fare/segment. | Airline lounge invitation included with premium fares, paid lounge pass eligibility. |
 | `UPGRADES` | Cabin/class upgrade-related options or entitlements connected to the offer. | Paid upgrade offers, bid/upgrade eligibility, instant upgrade availability (varies heavily by airline/content). |
-
 
 ## Amenity Descriptions
 

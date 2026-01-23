@@ -6,8 +6,6 @@ tags: [financials, payments]
 weight: 70
 ---
 
-_Last updated: 24 January 2026_
-
 ## Field
 
 - **Grace Period**: number of days after due date before enforcement applies.

@@ -5,8 +5,6 @@ description: Persistent and shared storage in Compose
 weight: 50
 ---
 
-_Last updated: 24 January 2026_
-
 This page documents all **named volumes** used by the Compose stack.
 
 Values and contents are **not** shown. This documentation describes **intent, lifecycle, ownership, and safety** only.

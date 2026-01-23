@@ -6,8 +6,6 @@ tags: [logging, integrations]
 weight: 70
 ---
 
-_Last updated: 24 January 2026_
-
 ## Integration call logging
 
 Integration logs cover calls to external providers (GDS, payments, messaging, etc.).

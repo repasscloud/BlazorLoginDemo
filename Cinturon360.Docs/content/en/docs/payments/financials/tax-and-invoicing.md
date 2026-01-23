@@ -6,8 +6,6 @@ tags: [financials, payments]
 weight: 40
 ---
 
-_Last updated: 24 January 2026_
-
 ## Tax rate field
 
 - **Tax Rate**: the tax rate applied to invoices issued to the paying party.

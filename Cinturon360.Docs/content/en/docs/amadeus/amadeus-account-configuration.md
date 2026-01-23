@@ -6,8 +6,6 @@ tags: [amadeus, plugins]
 weight: 2
 ---
 
-_Last updated: 24 January 2026_
-
 This page describes the commercial and configuration details required to connect a Travel Management Company (TMC) to the Amadeus API.
 
 The values documented here are captured via the Amadeus configuration UI during onboarding or account setup.  

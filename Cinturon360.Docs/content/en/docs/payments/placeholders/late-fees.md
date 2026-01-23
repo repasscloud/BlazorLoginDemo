@@ -6,8 +6,6 @@ tags: [late-fees]
 weight: 30
 ---
 
-_Last updated: 24 January 2026_
-
 ## Placeholder
 
 This page is reserved for late fee rules and enforcement.

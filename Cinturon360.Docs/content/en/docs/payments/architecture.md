@@ -6,8 +6,6 @@ tags: [architecture, billing, multi-tenant]
 weight: 20
 ---
 
-_Last updated: 24 January 2026_
-
 ## Summary
 
 Cinturon360 supports multiple payment models to accommodate TMC and Client contractual arrangements. The platform must support:

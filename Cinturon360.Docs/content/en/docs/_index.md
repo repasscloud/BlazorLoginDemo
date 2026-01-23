@@ -4,8 +4,6 @@ linkTitle: Docs
 menu: { main: { weight: 20 } }
 ---
 
-_Last updated: 24 January 2026_
-
 {{% pageinfo %}} This is a placeholder page that shows you how to use this
 template site. {{% /pageinfo %}}
 

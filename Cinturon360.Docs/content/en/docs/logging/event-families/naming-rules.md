@@ -6,8 +6,6 @@ tags: [events, naming]
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## EVT naming rules
 
 ### Required properties

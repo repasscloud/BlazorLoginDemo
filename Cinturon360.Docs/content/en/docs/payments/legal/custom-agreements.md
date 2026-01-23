@@ -6,8 +6,6 @@ tags: [legal, custom, placeholders]
 weight: 30
 ---
 
-_Last updated: 24 January 2026_
-
 ## Summary
 
 Vendors and TMCs may elect to use their own Client-facing agreements instead of the platform default.

@@ -6,8 +6,6 @@ tags: [troubleshooting, support]
 weight: 30
 ---
 
-_Last updated: 24 January 2026_
-
 ## Common issues
 
 ### Stripe model enabled but Client not billable

@@ -4,8 +4,6 @@ description: Canonical entry point for starting the Compose environment
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## Purpose
 
 `start-compose.zsh` is the **single supported entry point** for starting the local Compose environment.
@@ -329,7 +327,6 @@ case "$ACTION" in
   *)
       ;;
 esac
-
 
 # ── 🐳 0) Stop all docker containers ──────────────────────────────────────────
 echo

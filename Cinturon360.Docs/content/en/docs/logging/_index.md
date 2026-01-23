@@ -6,8 +6,6 @@ tags: [observability, audit, operations]
 weight: 5
 ---
 
-_Last updated: 24 January 2026_
-
 ## What this section is
 
 This documentation defines the **single logging contract** used across the platform. It exists so that:

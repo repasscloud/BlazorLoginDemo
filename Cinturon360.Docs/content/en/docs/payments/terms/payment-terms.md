@@ -6,8 +6,6 @@ tags: [terms]
 weight: 20
 ---
 
-_Last updated: 24 January 2026_
-
 ## Supported terms
 
 - Net 0 Days

@@ -6,8 +6,6 @@ tags: [api, http]
 weight: 60
 ---
 
-_Last updated: 24 January 2026_
-
 ## API request lifecycle
 
 API logs represent the lifecycle of HTTP requests and their outcomes.

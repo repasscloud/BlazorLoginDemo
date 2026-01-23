@@ -6,8 +6,6 @@ tags: [discounts]
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## Placeholder
 
 This page is reserved for detailed discount rules.

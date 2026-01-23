@@ -6,8 +6,6 @@ tags: [billing, payment-models]
 weight: 50
 ---
 
-_Last updated: 24 January 2026_
-
 ## Summary
 
 Bank Transfer (NZ) is generally a postpaid model, aligned with invoice issuance and payment terms.

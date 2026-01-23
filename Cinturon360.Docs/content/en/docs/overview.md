@@ -4,8 +4,6 @@ description: Here's where your user finds out if your project is for them.
 weight: 1
 ---
 
-_Last updated: 24 January 2026_
-
 {{% pageinfo %}}
 
 This is a placeholder page that shows you how to use this template site.

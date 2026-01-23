@@ -6,8 +6,6 @@ tags: [ui, events]
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## Event
 
 `EVT=UI_EDIT_MODE_ENABLED`

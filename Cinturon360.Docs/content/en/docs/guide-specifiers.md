@@ -5,8 +5,6 @@ date: 2017-01-05
 weight: 4
 ---
 
-_Last updated: 24 January 2026_
-
 `"N"` is teh **Guid format specifier** meaning:
 
 - 32 digits

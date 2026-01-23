@@ -6,8 +6,6 @@ tags: [payment-flows]
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## Scope
 
 These pages document what happens after onboarding:

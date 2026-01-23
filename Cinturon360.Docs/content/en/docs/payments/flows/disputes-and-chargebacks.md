@@ -6,8 +6,6 @@ tags: [payment-flows]
 weight: 50
 ---
 
-_Last updated: 24 January 2026_
-
 ## Dispute types
 
 - Client disputes amount or legitimacy of a charge

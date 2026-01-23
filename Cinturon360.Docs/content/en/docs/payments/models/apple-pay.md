@@ -6,8 +6,6 @@ tags: [billing, payment-models]
 weight: 70
 ---
 
-_Last updated: 24 January 2026_
-
 ## Summary
 
 Apple Pay is offered as a payment method when the underlying processor supports it and the TMC enables it.

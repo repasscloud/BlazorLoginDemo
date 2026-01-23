@@ -6,8 +6,6 @@ tags: [onboarding, setup]
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## Onboarding stages
 
 Payment onboarding is a staged process:

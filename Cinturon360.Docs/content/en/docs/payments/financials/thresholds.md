@@ -6,8 +6,6 @@ tags: [financials, payments]
 weight: 30
 ---
 
-_Last updated: 24 January 2026_
-
 ## Fields
 
 - **Account Threshold**: the maximum spend allowed before auto-approval is disabled.

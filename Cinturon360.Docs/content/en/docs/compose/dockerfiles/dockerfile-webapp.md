@@ -4,8 +4,6 @@ description: Build definition for the Cinturon360 web application container
 weight: 20
 ---
 
-_Last updated: 24 January 2026_
-
 ## Naming note
 
 This Dockerfile is currently named simply `Dockerfile`.
@@ -20,7 +18,6 @@ Dockerfile.webapp
 and to standardise terminology on **webapp** going forward.
 
 This documentation already uses the **webapp** name to avoid further churn.
-
 
 ## Purpose
 

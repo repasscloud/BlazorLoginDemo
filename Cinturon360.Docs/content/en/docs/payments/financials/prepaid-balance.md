@@ -6,8 +6,6 @@ tags: [financials, payments]
 weight: 60
 ---
 
-_Last updated: 24 January 2026_
-
 ## Field
 
 - **Prepaid Balance**: amount available for consumption by charges.

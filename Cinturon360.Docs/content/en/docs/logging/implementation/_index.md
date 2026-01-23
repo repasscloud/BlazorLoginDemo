@@ -6,8 +6,6 @@ tags: [logging]
 weight: 110
 ---
 
-_Last updated: 24 January 2026_
-
 ## Logger service shape
 
 The platform logger exposes level-specific methods plus a low-level method that lets you set level/outcome explicitly.

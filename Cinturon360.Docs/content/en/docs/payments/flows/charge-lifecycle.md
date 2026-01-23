@@ -6,8 +6,6 @@ tags: [payment-flows]
 weight: 20
 ---
 
-_Last updated: 24 January 2026_
-
 ## Lifecycle overview
 
 A “charge” in Cinturon360 is the financial representation of a payable amount arising from:

@@ -4,8 +4,6 @@ description: Build definition for the Cinturon360 API container
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## Purpose
 
 This Dockerfile defines the **API runtime container** used by Compose.

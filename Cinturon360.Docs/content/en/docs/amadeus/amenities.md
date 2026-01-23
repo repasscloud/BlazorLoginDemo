@@ -6,8 +6,6 @@ tags: [docs]
 weight: 2
 ---
 
-_Last updated: 24 January 2026_
-
 Two different fields matter:
 
 - **`amenityType`**: a coarse category bucket (seat, baggage, lounge, etc.)

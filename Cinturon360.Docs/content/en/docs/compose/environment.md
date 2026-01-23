@@ -5,8 +5,6 @@ description: Environment variables used by Compose
 weight: 60
 ---
 
-_Last updated: 24 January 2026_
-
 This page documents the environment variables consumed by the Compose stack.
 
 **Important**

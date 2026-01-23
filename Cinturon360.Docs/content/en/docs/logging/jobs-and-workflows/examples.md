@@ -6,8 +6,6 @@ tags: [jobs, workflows, examples]
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## Job lifecycle example
 
 ```

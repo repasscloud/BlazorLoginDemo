@@ -6,8 +6,6 @@ tags: [stripe, replacement, revocation]
 weight: 30
 ---
 
-_Last updated: 24 January 2026_
-
 ## Triggers for re-onboarding
 
 Re-onboarding is required when:

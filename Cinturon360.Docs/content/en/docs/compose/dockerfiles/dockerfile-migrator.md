@@ -4,8 +4,6 @@ description: One-shot database migration container used by Compose
 weight: 30
 ---
 
-_Last updated: 24 January 2026_
-
 ## Purpose
 
 This Dockerfile defines the **migrator container**, a short-lived, one-shot container
@@ -70,7 +68,6 @@ ENV PATH="$PATH:/root/.dotnet/tools" DOTNET_CLI_TELEMETRY_OPTOUT=1
 # restore cache
 COPY ${CSPROJ_WEB} Cinturon360.Web/Cinturon360.Web.csproj
 COPY ${CSPROJ_SHARED} Cinturon360.Shared/Cinturon360.Shared.csproj
-
 
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \

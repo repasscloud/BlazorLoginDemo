@@ -3,8 +3,6 @@ title: Action Button Standard
 description: Save, cancel, and secondary action patterns
 ---
 
-_Last updated: 24 January 2026_
-
 Primary actions are grouped and aligned consistently.
 
 ## Canonical Pattern

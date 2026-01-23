@@ -6,8 +6,6 @@ tags: [taxonomy, outcomes]
 weight: 30
 ---
 
-_Last updated: 24 January 2026_
-
 ## OUT (Outcome)
 
 `OUT` is the normalised result.

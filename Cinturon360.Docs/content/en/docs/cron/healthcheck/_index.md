@@ -4,8 +4,6 @@ description: Cron container health verification script
 weight: 40
 ---
 
-_Last updated: 24 January 2026_
-
 ## Purpose
 
 `healthcheck.sh` is executed by Docker to determine whether the cron

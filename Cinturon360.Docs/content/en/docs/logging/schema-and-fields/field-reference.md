@@ -6,8 +6,6 @@ tags: [fields, reference]
 weight: 20
 ---
 
-_Last updated: 24 January 2026_
-
 ## Field-by-field reference
 
 ### Timestamp

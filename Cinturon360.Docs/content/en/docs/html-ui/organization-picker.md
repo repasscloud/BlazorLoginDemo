@@ -3,8 +3,6 @@ title: Organization Picker Pattern
 description: Async organization selector used in NewDiscount.razor
 ---
 
-_Last updated: 24 January 2026_
-
 The organization picker uses a **read-only display field** with explicit selection and clear actions.
 
 ## Canonical Markup

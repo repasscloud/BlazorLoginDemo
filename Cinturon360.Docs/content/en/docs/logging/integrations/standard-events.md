@@ -6,8 +6,6 @@ tags: [integrations, events]
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## INT_CALL_START
 
 ```

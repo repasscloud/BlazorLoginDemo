@@ -6,8 +6,6 @@ tags: [legal, authorization, templates]
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## Default hosted terms vs custom agreements
 
 Cinturon360 provides default, platform-hosted legal terms to support payment authorisation and off-session charging.

@@ -4,8 +4,6 @@ description: Cron schedules grouped exactly as defined in the crontab file
 weight: 30
 ---
 
-_Last updated: 24 January 2026_
-
 This page mirrors the **actual structure of the crontab file**.
 Jobs are grouped and ordered **exactly as they appear**, so operators can mentally map:
 

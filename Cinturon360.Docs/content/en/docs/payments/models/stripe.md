@@ -6,8 +6,6 @@ tags: [billing, payment-models]
 weight: 20
 ---
 
-_Last updated: 24 January 2026_
-
 ## What Stripe means in Cinturon360
 
 Stripe is used as the payment processor for:

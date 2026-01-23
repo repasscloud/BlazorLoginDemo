@@ -4,8 +4,6 @@ description: Container build definition for the cron scheduler
 weight: 40
 ---
 
-_Last updated: 24 January 2026_
-
 ## Purpose
 
 The Dockerfile defines a **dedicated cron execution container**.

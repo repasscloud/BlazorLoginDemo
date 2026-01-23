@@ -3,9 +3,6 @@ title: Validation Standard
 description: Validation rules and display conventions
 ---
 
-_Last updated: 24 January 2026_
-
-
 Validation is enforced using **DataAnnotations** and rendered inline.
 
 ## Required Markup

@@ -6,8 +6,6 @@ tags: [security, audit]
 weight: 90
 ---
 
-_Last updated: 24 January 2026_
-
 ## Security events
 
 Security logs support auditing and incident response.

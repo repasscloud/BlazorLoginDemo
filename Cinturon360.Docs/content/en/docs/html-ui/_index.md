@@ -3,8 +3,6 @@ title: "HTML & Razor UI Design Standards"
 weight: 10
 ---
 
-_Last updated: 24 January 2026_
-
 ## Purpose
 
 This section is the **single source of truth** for all HTML and Razor UI design standards used in **Cinturon360.Web**.

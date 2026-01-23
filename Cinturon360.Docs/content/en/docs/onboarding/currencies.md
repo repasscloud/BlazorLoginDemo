@@ -6,8 +6,6 @@ tags: [docs]
 weight: 3
 ---
 
-_Last updated: 24 January 2026_
-
 # Currency & Billing
 
 This page documents how **currency**, **billing**, and **exchange handling** work within the application from a **Travel Management Company (TMC)** and **client** perspective.
