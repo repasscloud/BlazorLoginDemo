@@ -20725,4 +20725,20 @@ https://www.docsy.dev/docs/content/lookandfeel/#project-style-files
 .c360-hero-body {
   margin-top: 2vh; }
 
+.td-content--container {
+  /* Always keep the title/content below the fixed navbar */
+  padding-top: calc(var(--td-navbar-height, 4rem) + 1rem);
+  /* Do NOT add left/right padding here if you're using a Bootstrap .container inside.
+     The container already provides the correct horizontal alignment. */
+  padding-left: 0;
+  padding-right: 0; }
+
+/* The H1 is no longer a direct child of .td-content, so target it correctly */
+.td-content--container .container > h1, .td-content--container .container > .h1 {
+  margin-top: 0; }
+
+/* Optional: if you want extra breathing room under the title */
+.td-content--container .container > h1 + .lead, .td-content--container .container > .h1 + .lead {
+  margin-top: 0.75rem; }
+
 /*# sourceMappingURL=main.css.map */
