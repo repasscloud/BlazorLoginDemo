@@ -1,0 +1,13 @@
+{{ define "main" }}
+<div class="td-content">
+
+  <h1>{{ .Title }}</h1>
+
+  {{ if and (.Params.description) (ne .Params.show_description false) }}
+    <p class="lead">{{ .Params.description }}</p>
+  {{ end }}
+
+  {{ .Content }}
+
+</div>
+{{ end }}

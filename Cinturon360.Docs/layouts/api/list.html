@@ -1,0 +1,26 @@
+{{ define "main" }}
+<article class="api-doc api-list">
+  <header class="api-header">
+    <h1>{{ .Title }}</h1>
+  </header>
+
+  {{ if .Content }}
+  <section class="api-content">
+    {{ .Content }}
+  </section>
+  {{ end }}
+
+  {{ if .Pages }}
+  <section class="api-operations">
+    <h2>Operations</h2>
+    <ul>
+      {{ range .Pages.ByWeight }}
+        <li>
+          <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+        </li>
+      {{ end }}
+    </ul>
+  </section>
+  {{ end }}
+</article>
+{{ end }}
