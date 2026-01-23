@@ -1,11 +1,10 @@
 ---
-title: Amadeus Account Configuration
+title: Account Configuration
 description: TMC-facing configuration fields required to access Amadeus pricing, booking, and ticketing services
 categories: [amadeus]
 tags: [amadeus, tmc, external-api]
 weight: 2
 ---
-
 
 The values documented here are captured via the Amadeus configuration UI during onboarding or account setup.  
 They can also be accessed by navigating to **Org QuickView** and selecting **Amadeus Account** from the header of the **License Agreement** section.
