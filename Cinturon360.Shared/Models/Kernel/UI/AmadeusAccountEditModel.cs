@@ -47,4 +47,6 @@ public sealed class AmadeusAccountEditModel
     // Environment / URLs
     [Required]
     public string ApiEndpoint { get; set; } = string.Empty;
+
+    public bool ApiEndpointValidated { get; set; } = false;
 }

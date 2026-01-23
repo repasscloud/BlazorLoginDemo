@@ -2,7 +2,7 @@
 title: Bank Transfer (NZ)
 description: New Zealand bank transfer model, typically invoice-driven with NZ settlement details.
 categories: [platform, payments]
-tags: [bank-transfer, nz, invoice]
+tags: [billing, payment-models]
 weight: 50
 ---
 ## Summary

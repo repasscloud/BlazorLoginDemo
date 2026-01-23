@@ -2,7 +2,7 @@
 title: Apple Pay
 description: Wallet payment method available via processor enablement (typically Stripe).
 categories: [platform, payments]
-tags: [apple-pay, wallet]
+tags: [billing, payment-models]
 weight: 70
 ---
 ## Summary

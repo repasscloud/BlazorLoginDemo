@@ -2,7 +2,7 @@
 title: Invoice
 description: Postpaid invoicing model where charges are accumulated and invoiced per billing cycle and terms.
 categories: [platform, payments]
-tags: [invoice, postpaid, terms]
+tags: [billing, payment-models]
 weight: 10
 ---
 ## What Invoice means in Cinturon360

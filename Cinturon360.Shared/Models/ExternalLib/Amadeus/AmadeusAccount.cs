@@ -47,4 +47,6 @@ public sealed class AmadeusAccount
     // URLs (environment-specific)
     [Required]
     public AmadeusUrlSettings Url { get; init; } = new();
+
+    public bool ApiEndpointValidated { get; init; } = false;
 }

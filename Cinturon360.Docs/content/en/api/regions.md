@@ -1,6 +1,5 @@
 ---
 title: Regional API Endpoints
-type: docs
 ---
 
 Cinturon360 operates region-specific API endpoints to support data residency, latency, and regulatory requirements.

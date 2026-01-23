@@ -2,7 +2,7 @@
 title: Stripe
 description: Card-based payments using Stripe as the payment processor, including off-session charges and wallet options where enabled.
 categories: [platform, payments]
-tags: [stripe, card, off-session]
+tags: [billing, payment-models]
 weight: 20
 ---
 ## What Stripe means in Cinturon360

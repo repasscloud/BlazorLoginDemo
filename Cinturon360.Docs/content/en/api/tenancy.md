@@ -1,6 +1,5 @@
 ---
 title: Tenancy and Access Models
-type: docs
 ---
 
 All Cinturon360 API access is scoped to a tenant context.  

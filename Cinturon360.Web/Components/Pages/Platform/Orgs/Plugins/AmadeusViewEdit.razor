@@ -3,13 +3,20 @@
 @attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 
 @using Cinturon360.Shared.Auth
+@using Cinturon360.Shared.Mappers
+@using Cinturon360.Shared.Models.ExternalLib.Amadeus
 @using Cinturon360.Shared.Models.Kernel.UI.Amadeus
 @using System.Security.Claims
 @using Cinturon360.Shared.Services.Interfaces.External
+@using Cinturon360.Shared.Services.Interfaces.Kernel
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@using Serilog
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAmadeusAccountService AmadeusSvc
+@inject IAdminOrgServiceUnified OrgSvc
 @inject NavigationManager Nav
+@inject ILoggerService _log
 
 
 <!-- Page Header -->
@@ -66,8 +73,17 @@
                 <InputText class="form-control" @bind-Value="@_vm.ClientSecret" type="password" />
             </div>
             <div class="col-12">
-                <label class="form-label">Api Endpoint</label>
-                <InputText class="form-control" @bind-Value="@_vm.ApiEndpoint" />
+                <label class="form-label">API Endpoint</label>
+                <div class="input-group">
+                    <InputText class="form-control" @bind-Value="@_vm.ApiEndpoint" />
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        disabled>
+                        <i class="bi @( _vm.ApiEndpointValidated ? "bi-check-circle text-success" : "bi-x-circle text-danger")"></i>
+                    </button>
+                </div>
+                
             </div>
         </div>
     </div>
@@ -95,16 +111,16 @@
     <div class="card mb-3">
         <div class="card-header">Ticketing</div>
         <div class="card-body row g-3">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label">Ticketing Prefix</label>
                 <InputText class="form-control" @bind-Value="@_vm.TicketPrefix" />
             </div>
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label">Default Plating Carrier</label>
                 <InputText class="form-control" @bind-Value="@_vm.DefaultPlatingCarrier" />
             </div>
 
-            <div class="col-md-2">
+            <div class="col-md-4">
                 <label class="form-label">@(@_vm.TicketingEnabled ? "Enabled" : "Disabled")</label>
                 <div class="form-check form-switch mt-2">
                     <InputCheckbox class="form-check-input" @bind-Value="@_vm.TicketingEnabled" disabled/>
@@ -125,7 +141,7 @@
     private bool _isSaving;
     private string? _error;
 
-    private bool _hasAmadeusAccount => _vm.ClientSecret != string.Empty;  // check if _vm has Amadeus account info
+    private bool _hasAmadeusAccount = false;  // check if _vm has Amadeus account info
 
 
     // -----------------
@@ -144,48 +160,38 @@
 
         try
         {
-            @* // 1) Persist scalars (name, parent, addresses, tax, country, etc.)
-            bool ok = await OrgSvc.UpdateOrgAsync(_vm.Organization);
-            if (!ok)
+            if (_hasAmadeusAccount)
             {
-                _error = "Update did not apply: 0 rows affected (record may be unchanged or missing).";
-                return; // stay on page, show error
+                // log the save
+                await LogSaveAsync(_userId ?? "UNKNOWN_USER_ID", OrgId);
+
+                // update existing account
+                AmadeusAccount account = AmadeusAccountMapper.ToEntity(_vm);
+
+                await AmadeusSvc.UpdateAsync(account: account);
+                
+                if (navigateOnSuccess)
+                {
+                    Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}");
+                }
+                return;
             }
-
-            // 2) Persist domains via unified replace
-            List<string>? normalizedDomains = _vm.Domains
-                .Select(d => (d ?? string.Empty).Trim().ToLowerInvariant())
-                .Where(d => !string.IsNullOrWhiteSpace(d))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            IAdminOrgServiceUnified.OrgAggregate? updated = await OrgSvc.UpdateAsync(new IAdminOrgServiceUnified.UpdateOrgRequest(
-                OrgId: _vm.Organization.Id,
-                Name: null,
-                Type: null,
-                ParentOrganizationId: null,
-                IsActive: null,
-                DomainsReplace: normalizedDomains
-            ));
-
-            // 3) Rehydrate + recompute signature AFTER successful save
-            _vm.Organization = updated.Org;
-            _vm.Domains = (updated.Domains ?? Array.Empty<OrganizationDomainUnified>())
-                .Select(x => (x.Domain ?? string.Empty).Trim().ToLowerInvariant())
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            await LoadParentOrgInfo(_vm.Organization.ParentOrganizationId);
-            await LoadChildrenAsync(_vm.Organization.Id);
-
-            _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
-
-            if (navigateOnSuccess)
+            else
             {
-                await SaveOrgEditLogAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID");
-                Nav.NavigateTo("/platform/organizations");
-            } *@
+                // log the save
+                await LogSaveAsync(_userId ?? "UNKNOWN_USER_ID", OrgId);
+
+                // create new account
+                AmadeusAccount account = AmadeusAccountMapper.ToEntity(_vm);
+
+                await AmadeusSvc.CreateAsync(account: account);
+
+                if (navigateOnSuccess)
+                {
+                    Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}");
+                }
+                return;
+            }
         }
         catch (Exception ex)
         {
@@ -211,5 +217,90 @@
         _userId = _user?.FindFirstValue(ClaimTypes.NameIdentifier);
 
         // load _vm
+        if (string.IsNullOrWhiteSpace(OrgId))
+        {
+            _error = "Organization ID is required.";
+            await LogErrorAsync(_userId ?? "UNKNOWN_USER_ID", OrgId, _error, note: "OrgId parameter missing during Amadeus account edit page load.", ex: new Exception(_error));
+            return;
+        }
+
+        // get the TMC info
+        IAdminOrgServiceUnified.OrgAggregate? tmc = await OrgSvc.GetByIdAsync(OrgId);
+        if (tmc == null)
+        {
+            _error = $"Organization with ID '{OrgId}' not found.";
+            await LogErrorAsync(_userId ?? "UNKNOWN_USER_ID", OrgId, _error, note: "TMC not found during Amadeus account edit page load.", ex: new Exception(_error));
+            return;
+        }
+
+        // log the page was opened
+        await LogPageOpenAsync(_userId ?? "UNKNOWN_USER_ID", OrgId);
+
+        AmadeusAccount? amadeusAccount = await AmadeusSvc.GetAsync(OrgId);
+        if (amadeusAccount != null)
+        {
+            // hydrate the model (existing account)
+            _vm = AmadeusAccountMapper.ToEditModel(amadeusAccount);
+            _hasAmadeusAccount = true;
+        }
+        else
+        {
+            // new account
+            _vm = new AmadeusAccountEditModel();
+            _vm.TmcId = OrgId;
+            _vm.DisplayName = tmc.Org.Name ?? string.Empty;
+            _hasAmadeusAccount = false;
+        }
+    }
+
+    // -----------------
+    // Logging
+    // -----------------
+    // EVT = UI_^x_^y
+    // CAT = UI
+    // ACT = Click/View/Edit/Delete/Create
+    // PATH = /platform/organizations/plugins/amadeus/{orgId}/edit
+    private async Task LogPageOpenAsync(string userId, string orgId)
+    {
+        string? pageRoute = $"/platform/organizations/plugins/amadeus/{orgId}/edit";
+        await _log.InformationAsync(
+            evt: "UI_PAGE_OPEN",
+            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
+            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.View,
+            message: "Plugin Amadeus Account page accessed",
+            uid: userId,
+            entId: orgId,
+            path: pageRoute
+        );
+    }
+
+    private async Task LogSaveAsync(string userId, string orgId)
+    {
+        string? pageRoute = $"/platform/organizations/plugins/amadeus/{orgId}/edit";
+        await _log.InformationAsync(
+            evt: "UI_PLUGIN_SAVED",
+            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
+            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Submit,
+            message: "Plugin Amadeus Account changes saved",
+            uid: userId,
+            entId: orgId,
+            path: pageRoute
+        );
+    }
+
+    private async Task LogErrorAsync(string userId, string orgId, string errorMessage, string note, Exception ex)
+    {
+        string? pageRoute = $"/platform/organizations/plugins/amadeus/{orgId}/edit";
+        await _log.ErrorAsync(
+            evt: "UI_PLUGIN_ERROR",
+            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
+            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.End,
+            ex: ex,
+            message: $"Plugin Amadeus Account error: {errorMessage}",
+            uid: userId,
+            entId: orgId, 
+            path: pageRoute,
+            note: note
+        );
     }
 }

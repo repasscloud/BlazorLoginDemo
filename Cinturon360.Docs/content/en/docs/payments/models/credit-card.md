@@ -2,7 +2,7 @@
 title: Credit Card
 description: Direct card model (processor-agnostic) for stored credentials and off-session charges.
 categories: [platform, payments]
-tags: [card, stored-credential]
+tags: [billing, payment-models]
 weight: 60
 ---
 ## Summary

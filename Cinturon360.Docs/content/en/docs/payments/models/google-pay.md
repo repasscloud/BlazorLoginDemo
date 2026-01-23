@@ -2,7 +2,7 @@
 title: Google Pay
 description: Wallet payment method available via processor enablement (typically Stripe).
 categories: [platform, payments]
-tags: [payments]
+tags: [billing, payment-models]
 weight: 80
 ---
 ## Summary

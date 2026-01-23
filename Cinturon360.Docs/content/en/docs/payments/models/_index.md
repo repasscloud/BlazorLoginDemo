@@ -2,7 +2,7 @@
 title: Payment Models
 description: Definitions, setup requirements, and operational behaviour of each payment model.
 categories: [platform, payments]
-tags: [models, billing]
+tags: [billing, payment-models]
 weight: 10
 ---
 ## Model list

@@ -2,7 +2,7 @@
 title: PayPal
 description: Payments using PayPal as the settlement mechanism, subject to TMC enablement and contract.
 categories: [platform, payments]
-tags: [paypal]
+tags: [billing, payment-models]
 weight: 30
 ---
 ## Current scope

@@ -2,7 +2,7 @@
 title: Bank Transfer (AU)
 description: Australian bank transfer model, typically invoice-driven with local settlement details.
 categories: [platform, payments]
-tags: [bank-transfer, au, invoice]
+tags: [billing, payment-models]
 weight: 40
 ---
 ## Summary

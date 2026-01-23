@@ -22,7 +22,8 @@ public static class AmadeusAccountMapper
             Url = new AmadeusUrlSettings
             {
                 ApiEndpoint = model.ApiEndpoint
-            }
+            },
+            ApiEndpointValidated = model.ApiEndpointValidated
         };
     }
 
@@ -40,7 +41,8 @@ public static class AmadeusAccountMapper
             TicketingEnabled = entity.TicketingEnabled,
             DefaultPlatingCarrier = entity.DefaultPlatingCarrier,
             TicketPrefix = entity.TicketPrefix,
-            ApiEndpoint = entity.Url.ApiEndpoint
+            ApiEndpoint = entity.Url.ApiEndpoint,
+            ApiEndpointValidated = entity.ApiEndpointValidated
         };
     }
 }
