@@ -24,7 +24,7 @@
     <h2 class="mb-0">Edit Amadeus Account</h2>
     <div class="btn-group">
         <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">Cancel</button>
-        <button type="submit" class="btn btn-primary" form="user-edit-form" disabled="@_isSaving">
+        <button type="submit" class="btn btn-primary" form="amadeus-account-edit-form" disabled="@_isSaving">
             @if (_isSaving)
             {
                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -41,7 +41,7 @@
     </div>
 </div>
 
-<EditForm Model="_vm" OnValidSubmit="@(async () => await SaveAsync(true))">
+<EditForm id="amadeus-account-edit-form" Model="_vm" OnValidSubmit="@(async () => await SaveAsync(true))">
     <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
     <DataAnnotationsValidator />
 
@@ -158,50 +158,25 @@
         _error = null;
         _isSaving = true;
 
+        // someone clicked save button!
+        await LogSaveAsync(_userId ?? "UNKNOWN_USER_ID", OrgId);
+
         try
         {
+            AmadeusAccount account = AmadeusAccountMapper.ToEntity(_vm);
+
             if (_hasAmadeusAccount)
-            {
-                // log the save
-                await LogSaveAsync(_userId ?? "UNKNOWN_USER_ID", OrgId);
-
-                // update existing account
-                AmadeusAccount account = AmadeusAccountMapper.ToEntity(_vm);
-
-                await AmadeusSvc.UpdateAsync(account: account);
-                
-                if (navigateOnSuccess)
-                {
-                    Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}");
-                }
-                return;
-            }
+                await AmadeusSvc.UpdateAsync(account);
             else
-            {
-                // log the save
-                await LogSaveAsync(_userId ?? "UNKNOWN_USER_ID", OrgId);
+                await AmadeusSvc.CreateAsync(account);
 
-                // create new account
-                AmadeusAccount account = AmadeusAccountMapper.ToEntity(_vm);
-
-                await AmadeusSvc.CreateAsync(account: account);
-
-                if (navigateOnSuccess)
-                {
-                    Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}");
-                }
-                return;
-            }
+            if (navigateOnSuccess)
+                Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}");
         }
         catch (Exception ex)
         {
-            string? msg = ex.GetBaseException().Message;
-            @* if (!string.IsNullOrWhiteSpace(_vm.NewDomain) &&
-                msg.Contains("already", StringComparison.OrdinalIgnoreCase))
-            {
-                _vm.DomainMessage = BuildDomainConflictMessage(msg, _vm.NewDomain);
-            } *@
-            _error = msg;
+            _error = ex.GetBaseException().Message;
+            await LogErrorAsync(_userId ?? "UNKNOWN_USER_ID", OrgId, _error, note: "Error occurred while saving Amadeus account.", ex: ex);
         }
         finally
         {
