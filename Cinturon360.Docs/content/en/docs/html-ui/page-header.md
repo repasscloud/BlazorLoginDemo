@@ -3,6 +3,8 @@ title: Razor Page Header Standard
 description: Standard page header layout used across all Cinturon360.Web Razor pages
 ---
 
+_Last updated: 24 January 2026_
+
 This document defines the **mandatory page header pattern** used across **all `.razor` pages** in **Cinturon360.Web**.
 
 The header establishes a consistent visual anchor for every page and prevents ad-hoc spacing or layout drift.

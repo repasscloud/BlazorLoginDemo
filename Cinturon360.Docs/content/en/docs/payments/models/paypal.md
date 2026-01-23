@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [billing, payment-models]
 weight: 30
 ---
+
+_Last updated: 24 January 2026_
+
 ## Current scope
 
 PayPal is documented as a supported model. Implementation specifics depend on integration decisions.

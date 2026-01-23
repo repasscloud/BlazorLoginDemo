@@ -6,6 +6,8 @@ tags: [csharp, examples]
 weight: 10
 ---
 
+_Last updated: 24 January 2026_
+
 ## UI: page open
 
 ```csharp

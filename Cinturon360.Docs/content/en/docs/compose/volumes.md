@@ -5,11 +5,11 @@ description: Persistent and shared storage in Compose
 weight: 50
 ---
 
+_Last updated: 24 January 2026_
+
 This page documents all **named volumes** used by the Compose stack.
 
 Values and contents are **not** shown. This documentation describes **intent, lifecycle, ownership, and safety** only.
-
----
 
 ## Overview
 
@@ -21,8 +21,6 @@ Named volumes are used in Compose to:
 - Isolate sensitive runtime material (keys, certificates)
 
 Volumes are **explicitly declared** to avoid accidental data loss and to make lifecycle decisions visible.
-
----
 
 ## Database volumes
 
@@ -47,8 +45,6 @@ Persistent PostgreSQL cluster storage.
 - ❌ No  
   Deleting this volume destroys all database data.
 
----
-
 ### `pgadmin-data`
 
 **Purpose**  
@@ -69,8 +65,6 @@ Persistent pgAdmin UI and configuration state.
 **Safe to delete?**
 - ⚠️ Yes  
   pgAdmin will start fresh and require reconfiguration.
-
----
 
 ## Application cryptography volumes
 
@@ -95,8 +89,6 @@ ASP.NET Data Protection key ring for the API container.
 **Safe to delete?**
 - ⚠️ Only if you intend to invalidate all existing API tokens/sessions.
 
----
-
 ### `web-dataprotection`
 
 **Purpose**  
@@ -116,8 +108,6 @@ ASP.NET Data Protection key ring for the web application.
 
 **Safe to delete?**
 - ⚠️ Only if user sessions may be safely invalidated.
-
----
 
 ## Shared temporary storage
 
@@ -147,8 +137,6 @@ Shared temporary file storage between containers.
 - ✅ Yes  
   Files are temporary and recreated as needed.
 
----
-
 ## Documentation build caches
 
 ### `docsy_node_modules`
@@ -169,8 +157,6 @@ Cached Node.js dependencies for the Docsy documentation container.
 - ✅ Yes  
   Dependencies will be reinstalled.
 
----
-
 ### `docsy_go_cache`
 
 **Purpose**  
@@ -188,8 +174,6 @@ Go module cache for Hugo / Docsy.
 
 **Safe to delete?**
 - ✅ Yes
-
----
 
 ### `docsy_hugo_cache`
 
@@ -209,8 +193,6 @@ Hugo build cache.
 **Safe to delete?**
 - ✅ Yes
 
----
-
 ## Volumes not currently in use
 
 ### `caddy-data`
@@ -224,8 +206,6 @@ These volumes are **declared but not used**.
 - Local Compose currently connects directly to containers
 
 These volumes may be removed or repurposed in the future.
-
----
 
 ## Design principles
 

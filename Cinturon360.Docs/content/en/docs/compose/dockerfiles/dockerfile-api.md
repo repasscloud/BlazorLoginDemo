@@ -4,6 +4,8 @@ description: Build definition for the Cinturon360 API container
 weight: 10
 ---
 
+_Last updated: 24 January 2026_
+
 ## Purpose
 
 This Dockerfile defines the **API runtime container** used by Compose.
@@ -15,8 +17,6 @@ It is responsible for:
 
 This container is consumed by the `api` service in Compose.
 
----
-
 ## Build inputs
 
 This Dockerfile is parameterised via build arguments supplied by Compose:
@@ -26,8 +26,6 @@ This Dockerfile is parameterised via build arguments supplied by Compose:
 - `APP_DLL`
 
 These allow the Dockerfile to remain reusable without hardcoding project paths.
-
----
 
 ## Dockerfile
 
@@ -99,16 +97,12 @@ EXPOSE 5050
 ENTRYPOINT ["sh","-lc","exec dotnet \"$APP_DLL\""]
 ```
 
----
-
 ## Runtime characteristics
 
 - Runs as a non-root user (where applicable)
 - Exposes HTTP endpoints only
 - Health is validated via the `/api/v1/healthz/check` endpoint
 - Designed to be restarted safely
-
----
 
 ## Related documentation
 

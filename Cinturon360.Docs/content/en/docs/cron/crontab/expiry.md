@@ -4,6 +4,8 @@ description: Hourly expiry and cleanup trigger
 weight: 10
 ---
 
+_Last updated: 24 January 2026_
+
 ## Purpose
 
 The expiry job triggers server-side logic responsible for enforcing time-based rules.

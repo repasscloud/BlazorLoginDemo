@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [billing, stripe, invoice, legal, financials]
 weight: 10
 ---
+
+_Last updated: 24 January 2026_
+
 ## Audience and intent
 
 This documentation is written for:

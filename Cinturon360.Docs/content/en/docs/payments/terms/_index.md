@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [terms, invoice]
 weight: 10
 ---
+
+_Last updated: 24 January 2026_
+
 ## Scope
 
 Payment terms apply primarily to invoice-based models and bank transfer models, but are also stored for:

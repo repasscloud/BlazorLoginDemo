@@ -6,6 +6,8 @@ tags: [schema, reference]
 weight: 10
 ---
 
+_Last updated: 24 January 2026_
+
 ## Field naming rules
 
 Field names are short by design and intentionally stable.

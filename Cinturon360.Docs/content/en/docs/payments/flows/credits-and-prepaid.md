@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [payment-flows]
 weight: 40
 ---
+
+_Last updated: 24 January 2026_
+
 ## Definitions
 
 - **Credit**: a ledger entry that reduces the amount payable by the Client.

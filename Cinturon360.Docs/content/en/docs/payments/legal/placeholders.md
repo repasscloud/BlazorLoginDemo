@@ -6,6 +6,8 @@ tags: [placeholders, legal]
 weight: 40
 ---
 
+_Last updated: 24 January 2026_
+
 ## Placeholder resolution
 
 Placeholders are replaced at authorisation request generation time, using the current account configuration for:

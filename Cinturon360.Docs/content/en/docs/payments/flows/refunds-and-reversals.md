@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [payment-flows]
 weight: 30
 ---
+
+_Last updated: 24 January 2026_
+
 ## Refund sources
 
 Refunds may originate from:

@@ -6,6 +6,8 @@ cascade:
   type: docs
 ---
 
+_Last updated: 24 January 2026_
+
 This section documents the Cinturon360 HTTP API.
 
 The API is tenant-scoped, versioned, and region-specific.  

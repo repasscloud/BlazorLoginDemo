@@ -6,6 +6,8 @@ tags: [ui, traceability]
 weight: 50
 ---
 
+_Last updated: 24 January 2026_
+
 ## What UI traceability logs are for
 
 UI logs capture **user intent** in the interface.

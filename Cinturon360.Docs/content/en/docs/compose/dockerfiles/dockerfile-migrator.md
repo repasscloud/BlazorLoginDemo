@@ -4,6 +4,8 @@ description: One-shot database migration container used by Compose
 weight: 30
 ---
 
+_Last updated: 24 January 2026_
+
 ## Purpose
 
 This Dockerfile defines the **migrator container**, a short-lived, one-shot container
@@ -17,8 +19,6 @@ It exists to:
 - Block application startup until the database is ready
 
 Compose uses the migrator’s **exit code** as a control signal.
-
----
 
 ## Why a dedicated migrator container
 
@@ -34,8 +34,6 @@ This avoids common problems such as:
 - Race conditions between API instances
 - Hidden migration failures
 
----
-
 ## Build inputs
 
 This Dockerfile is parameterised via build arguments supplied by Compose:
@@ -44,8 +42,6 @@ This Dockerfile is parameterised via build arguments supplied by Compose:
 - `CSPROJ_SHARED`
 
 The migrator intentionally reuses shared project code without hosting a web server.
-
----
 
 ## Dockerfile
 
@@ -95,8 +91,6 @@ RUN chmod +x /usr/local/bin/migrate.sh
 ENTRYPOINT ["/usr/local/bin/migrate.sh"]
 ```
 
----
-
 ## Runtime characteristics
 
 - Runs once and exits
@@ -104,8 +98,6 @@ ENTRYPOINT ["/usr/local/bin/migrate.sh"]
 - Produces no exposed ports
 - No persistent volumes
 - Safe to re‑run if the database is already migrated
-
----
 
 ## Relationship to Compose
 
@@ -115,8 +107,6 @@ ENTRYPOINT ["/usr/local/bin/migrate.sh"]
 - Restart policy: `no`
 
 Compose blocks further startup until this container completes successfully.
-
----
 
 ## Related documentation
 

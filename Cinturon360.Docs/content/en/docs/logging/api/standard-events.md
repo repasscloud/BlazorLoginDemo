@@ -6,6 +6,9 @@ tags: [api, events]
 weight: 10
 ---
 
+_Last updated: 24 January 2026_
+
+
 ## API_REQ_END
 
 Emitted at the end of request processing.

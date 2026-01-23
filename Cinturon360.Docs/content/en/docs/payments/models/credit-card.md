@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [billing, payment-models]
 weight: 60
 ---
+
+_Last updated: 24 January 2026_
+
 ## Summary
 
 Credit Card is a conceptual model representing card-based settlement when the processor is not explicitly Stripe.

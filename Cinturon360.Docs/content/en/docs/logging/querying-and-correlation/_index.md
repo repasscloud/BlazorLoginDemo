@@ -6,6 +6,8 @@ tags: [operations, querying]
 weight: 100
 ---
 
+_Last updated: 24 January 2026_
+
 ## Primary search keys
 
 When searching logs, use the following order of operations:

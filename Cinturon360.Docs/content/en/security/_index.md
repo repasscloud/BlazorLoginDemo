@@ -7,6 +7,8 @@ layout: main-container-fixed
 show_description: false
 ---
 
+_Last updated: 24 January 2026_
+
 ## Security at Cinturon360
 
 Security is a core operational responsibility at Cinturon360. We are committed

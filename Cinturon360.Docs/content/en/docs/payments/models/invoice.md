@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [billing, payment-models]
 weight: 10
 ---
+
+_Last updated: 24 January 2026_
+
 ## What Invoice means in Cinturon360
 
 Invoice model is used when the Client pays the TMC by invoice based on agreed payment terms.

@@ -5,8 +5,6 @@ It is responsible for collecting traveller context, trip parameters, and policy-
 
 This page exists within the **New Booking** flow and always produces a *draft booking search*.
 
----
-
 ## Navigation context
 
 The Search page is reached via the following path:
@@ -29,8 +27,6 @@ Supported booking types include (but are not limited to):
 
 This document focuses **only on Flight search**.
 
----
-
 ## Traveller & organisation context
 
 Before reaching the Search page, the user must select *who the booking is for*.  
@@ -46,8 +42,6 @@ The available selection scope depends on the user’s effective role.
 | **Client user** | Self and/or other permitted users |
 
 Once the traveller context is resolved, the flow continues to Search.
-
----
 
 ## Search inputs
 
@@ -85,8 +79,6 @@ These fields narrow results but do not hard-filter availability.
 | **Alliances** | Allowed alliances (policy-constrained) |
 
 If a field is restricted by travel policy, the UI enforces the constraint and prevents invalid selections.
-
----
 
 ## Search submission
 
@@ -134,8 +126,6 @@ When the user presses **Search**, the UI generates a normalized JSON payload rep
 | `uid` | User ID |
 | `org` | Explicit org override (if applicable) |
 
----
-
 ## API interaction
 
 The payload is submitted as a **patch** against the draft booking.
@@ -164,8 +154,6 @@ This call:
 - Persists search intent
 - Triggers downstream flight availability processing
 
----
-
 ## Loading & results
 
 After submission:
@@ -175,8 +163,6 @@ After submission:
 3. Results are rendered once the search completes
 
 The Search page itself does not render results; it only initiates the search and hands off control.
-
----
 
 ## Summary
 

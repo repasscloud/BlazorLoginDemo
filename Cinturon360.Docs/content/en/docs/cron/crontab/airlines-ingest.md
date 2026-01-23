@@ -4,6 +4,8 @@ description: Weekly airline master data refresh
 weight: 30
 ---
 
+_Last updated: 24 January 2026_
+
 ## Purpose
 
 Refreshes airline reference data used across the platform.

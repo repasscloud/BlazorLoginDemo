@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [payment-flows]
 weight: 60
 ---
+
+_Last updated: 24 January 2026_
+
 ## Delinquency definition
 
 An account is delinquent when a payable amount remains outstanding beyond the due date and any configured grace period.

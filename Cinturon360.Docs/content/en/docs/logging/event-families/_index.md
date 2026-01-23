@@ -6,6 +6,8 @@ tags: [events, conventions]
 weight: 40
 ---
 
+_Last updated: 24 January 2026_
+
 ## Event families
 
 Event families group related events into predictable naming patterns.

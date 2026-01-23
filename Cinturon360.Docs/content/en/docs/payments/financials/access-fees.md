@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [financials, payments]
 weight: 20
 ---
+
+_Last updated: 24 January 2026_
+
 ## Fields
 
 - **Access Fee**: the monetary amount charged for platform access.

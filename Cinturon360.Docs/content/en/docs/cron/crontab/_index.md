@@ -4,6 +4,8 @@ description: Cron schedules grouped exactly as defined in the crontab file
 weight: 30
 ---
 
+_Last updated: 24 January 2026_
+
 This page mirrors the **actual structure of the crontab file**.
 Jobs are grouped and ordered **exactly as they appear**, so operators can mentally map:
 
@@ -12,8 +14,6 @@ Jobs are grouped and ordered **exactly as they appear**, so operators can mental
 Each group links to more detailed pages where required.
 
 All schedules run in **UTC**.
-
----
 
 ## Hourly jobs
 
@@ -34,8 +34,6 @@ Triggers time-based expiry and cleanup logic.
 
 ➡ See: [Expiry job details](expiry.md)
 
----
-
 ### External API connectivity check (Amadeus – test)
 
 **Schedule**
@@ -52,8 +50,6 @@ curl http://localhost:8090/v1/cron/extapi-check/amadeus-test
 Validates outbound connectivity to the Amadeus test environment.
 
 ➡ See: [External API check – Amadeus](extapi-amadeus.md)
-
----
 
 ## Weekly jobs
 
@@ -74,8 +70,6 @@ Refreshes airline reference data on a weekly cadence.
 
 ➡ See: [Airline data ingest](airlines-ingest.md)
 
----
-
 ## Heartbeat & monitoring
 
 ### Cron heartbeat
@@ -94,8 +88,6 @@ echo "heartbeat $(date -Iseconds)"
 Writes a heartbeat timestamp used by container health checks.
 
 ➡ See also: [Healthcheck]({{< relref "../healthcheck/_index.md" >}})
-
----
 
 ## Disabled / debug jobs
 

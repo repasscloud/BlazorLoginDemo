@@ -6,6 +6,8 @@ tags: [jobs, workflows]
 weight: 80
 ---
 
+_Last updated: 24 January 2026_
+
 ## Jobs (AUTO)
 
 Jobs are scheduled or queued units of work.

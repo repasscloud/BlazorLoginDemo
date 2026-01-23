@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [financials, payments]
 weight: 50
 ---
+
+_Last updated: 24 January 2026_
+
 ## Field
 
 - **Minimum Monthly Spend**: required spend amount per month.

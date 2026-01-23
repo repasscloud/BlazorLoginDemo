@@ -4,6 +4,8 @@ description: How to contribute to the docs
 weight: 10
 ---
 
+_Last updated: 24 January 2026_
+
 {{% pageinfo %}}
 
 These basic sample guidelines assume that your Docsy site is deployed using

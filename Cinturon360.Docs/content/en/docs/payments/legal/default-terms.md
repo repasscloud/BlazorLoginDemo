@@ -6,6 +6,8 @@ tags: [legal, default]
 weight: 20
 ---
 
+_Last updated: 24 January 2026_
+
 ## Purpose
 
 Cinturon360 provides default legal terms to ensure that:

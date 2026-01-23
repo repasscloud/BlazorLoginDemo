@@ -4,6 +4,8 @@ description: Build definition for the Cinturon360 web application container
 weight: 20
 ---
 
+_Last updated: 24 January 2026_
+
 ## Naming note
 
 This Dockerfile is currently named simply `Dockerfile`.
@@ -19,7 +21,6 @@ and to standardise terminology on **webapp** going forward.
 
 This documentation already uses the **webapp** name to avoid further churn.
 
----
 
 ## Purpose
 
@@ -32,8 +33,6 @@ It is responsible for:
 
 The resulting image is consumed by the `blazor` (future: `webapp`) service in Compose.
 
----
-
 ## Build inputs
 
 This Dockerfile is parameterised via build arguments supplied by Compose:
@@ -45,8 +44,6 @@ This Dockerfile is parameterised via build arguments supplied by Compose:
 These allow:
 - Reuse across projects
 - Future renaming without changing build logic
-
----
 
 ## Dockerfile
 
@@ -115,8 +112,6 @@ EXPOSE 8080
 ENTRYPOINT ["sh","-lc","exec dotnet \"$APP_DLL\""]
 ```
 
----
-
 ## Runtime characteristics
 
 - Runs as a non-root application user
@@ -124,16 +119,12 @@ ENTRYPOINT ["sh","-lc","exec dotnet \"$APP_DLL\""]
 - Persists ASP.NET DataProtection keys via a mounted volume
 - Designed for rapid rebuild during local development
 
----
-
 ## Relationship to Compose
 
 - Service name today: `blazor`
 - Intended future service name: `webapp`
 - Restart policy: `unless-stopped`
 - Health is validated via HTTP probe
-
----
 
 ## Related documentation
 

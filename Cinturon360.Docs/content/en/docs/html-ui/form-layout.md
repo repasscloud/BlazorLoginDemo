@@ -3,6 +3,8 @@ title: Form Layout Standard
 description: Grid-based form layout pattern
 ---
 
+_Last updated: 24 January 2026_
+
 All data-entry pages use a **Bootstrap grid-based form layout**.
 
 ## Canonical Structure

@@ -6,6 +6,8 @@ tags: [test, docs]
 weight: 2
 ---
 
+_Last updated: 24 January 2026_
+
 ## Amenity Type
 
 | AmenityType | What it refers to in Amadeus flight offers | Typical examples / notes |

@@ -6,6 +6,8 @@ tags: [authorization, off-session, template]
 weight: 50
 ---
 
+_Last updated: 24 January 2026_
+
 # Standing Payment Authorization for Approved Travel Charges
 
 ## Terminology

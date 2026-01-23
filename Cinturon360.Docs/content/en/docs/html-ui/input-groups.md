@@ -3,6 +3,8 @@ title: Input Field Pattern
 description: Standard label + input pattern for Razor forms
 ---
 
+_Last updated: 24 January 2026_
+
 Each input follows a strict **label + control + validation** pattern.
 
 ## Canonical Pattern

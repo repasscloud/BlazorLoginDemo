@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [support, operations]
 weight: 10
 ---
+
+_Last updated: 24 January 2026_
+
 ## Scope
 
 Support teams use these pages to:

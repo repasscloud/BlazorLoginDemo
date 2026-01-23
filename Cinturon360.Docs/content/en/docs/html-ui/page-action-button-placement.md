@@ -3,6 +3,8 @@ title: Page Action Button Placement Standard
 description: Defines the required placement and structure of primary and secondary page actions
 ---
 
+_Last updated: 24 January 2026_
+
 This document defines the **mandatory standard for page-level action buttons** in `Cinturon360.Web` Razor pages.
 
 Action buttons such as **Save**, **Cancel**, and similar page-scoped operations **MUST NOT** be placed at the bottom of the page.

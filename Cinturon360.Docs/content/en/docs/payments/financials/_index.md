@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [financials, payments]
 weight: 10
 ---
+
+_Last updated: 24 January 2026_
+
 ## Summary
 
 Financial configuration controls:

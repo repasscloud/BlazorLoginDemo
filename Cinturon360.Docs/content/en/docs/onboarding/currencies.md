@@ -1,10 +1,12 @@
 ---
 title: Currency & Billing
 description: Application billing currency model, supported currencies, and exchange handling for TMC onboarding
-categories: [application, billing, currency]
+categories: [onboarding]
 tags: [docs]
 weight: 3
 ---
+
+_Last updated: 24 January 2026_
 
 # Currency & Billing
 
@@ -43,8 +45,6 @@ These currencies are supported consistently across:
 - UI price displays
 - Payment processor integrations
 
----
-
 ## Currency selection hierarchy (important)
 
 The **effective billing currency** for a charge is resolved in the following order:
@@ -61,8 +61,6 @@ The **effective billing currency** for a charge is resolved in the following ord
 
 > **Key rule:**  
 > Expense and Travel Policy settings override the client currency profile.
-
----
 
 ## Built-in currency exchange
 
@@ -82,8 +80,6 @@ The application includes a **built-in currency exchange mechanism** that:
 - Client invoice issued in **EUR**
 - Amount converted and **settled in AUD** to the TMC’s account
 - Conversion handled by the **payment processor**
-
----
 
 ## Payment processing model
 
@@ -109,8 +105,6 @@ The application includes a **built-in currency exchange mechanism** that:
 
 > Stripe is **not mandatory** and can be skipped during onboarding.
 
----
-
 ## Settlement behaviour (summary)
 
 | Client Billing Currency | TMC Account Currency | Settlement |
@@ -123,8 +117,6 @@ The application includes a **built-in currency exchange mechanism** that:
 
 Settlement currency remains **AUD** unless the TMC has made alternative arrangements with their payment processor.
 
----
-
 ## What clients will see
 
 Clients will see:
@@ -136,8 +128,6 @@ Clients will see:
 
 All currency behaviour is transparent and policy-driven.
 
----
-
 ## Key takeaways
 
 - AUD is the **system and settlement base currency**
@@ -146,5 +136,3 @@ All currency behaviour is transparent and policy-driven.
 - Stripe is optional
 - FX is handled automatically when required
 - TMCs retain full control over payment processing
-
----

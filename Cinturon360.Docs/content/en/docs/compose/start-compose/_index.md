@@ -4,6 +4,8 @@ description: Canonical entry point for starting the Compose environment
 weight: 10
 ---
 
+_Last updated: 24 January 2026_
+
 ## Purpose
 
 `start-compose.zsh` is the **single supported entry point** for starting the local Compose environment.
@@ -16,8 +18,6 @@ It exists to:
 - Reduce copy‑paste and command drift
 
 You should **always** use this script instead of calling `compose` directly.
-
----
 
 ## What this script does
 
@@ -33,8 +33,6 @@ It does **not**:
 - Modify containers at runtime
 - Replace Compose configuration
 
----
-
 ## Usage
 
 ```sh
@@ -47,17 +45,12 @@ Build images before starting:
 ./start-compose.zsh --build
 ```
 
----
-
-
 ## Command-line switches
 
 `start-compose.zsh` accepts **exactly one switch** per invocation.
 The switch determines **both version bump behaviour and orchestration flow**.
 
 > Internally, the switch is parsed into the `ACTION` variable and drives all subsequent logic.
-
----
 
 ### `--web`
 
@@ -85,8 +78,6 @@ Fast iteration on the Blazor web frontend only.
 Version bump → git commit → docker compose up -d --build blazor → exit
 ```
 
----
-
 ### `--build`
 
 **Purpose**  
@@ -106,8 +97,6 @@ Full rebuild with a **build-number increment**.
 - Normal development cycle
 - “Give me a clean environment with a new build”
 
----
-
 ### `--build-only`
 
 **Purpose**  
@@ -121,8 +110,6 @@ Version bump **without changing orchestration behaviour**.
 **Why it exists**
 - Explicit signal that this run is about versioning + rebuild
 - Useful in CI-like local workflows
-
----
 
 ### `--patch`
 
@@ -145,8 +132,6 @@ N = 0
 - Bug fixes
 - Backwards-compatible behaviour changes
 
----
-
 ### `--minor`
 
 **Purpose**  
@@ -167,8 +152,6 @@ N = 0
 **Typical use**
 - New features
 - Non-breaking functional additions
-
----
 
 ### `--major`
 
@@ -193,8 +176,6 @@ N = 0
 - Architectural shifts
 - Contract changes
 
----
-
 ## Summary table
 
 | Switch | Scope | Rebuild | DB reset | Version effect |
@@ -206,16 +187,12 @@ N = 0
 | `--minor` | Full stack | ✅ | ✅ | Minor (`Y+1`) |
 | `--major` | Full stack | ✅ | ✅ | Major (`X+1`) |
 
----
-
 ## Important constraints
 
 - **Exactly one switch is required**
 - Multiple switches are rejected
 - Behaviour is intentionally explicit and non-composable
 - This script is **stateful** by design (it modifies versioned files)
-
----
 
 ## Design note
 
@@ -229,8 +206,6 @@ This ensures:
 - Version numbers reflect actual environment state
 - Reproducibility across machines
 - Reduced “it works on my machine” drift
-
----
 
 ## Script
 
@@ -539,15 +514,11 @@ echo
 echo "✅ Done."
 ```
 
----
-
 ## Behavioural notes
 
 - This script is intentionally small and explicit
 - All orchestration decisions live in `compose.yaml`
 - Any new flags or behaviour changes should be added here first
-
----
 
 ## When to modify this file
 

@@ -4,6 +4,8 @@ description: Cron container health verification script
 weight: 40
 ---
 
+_Last updated: 24 January 2026_
+
 ## Purpose
 
 `healthcheck.sh` is executed by Docker to determine whether the cron
@@ -16,8 +18,6 @@ It validates that:
 
 This script is referenced by the container `HEALTHCHECK` directive and is
 **not** invoked manually.
-
----
 
 ## Script
 
@@ -37,8 +37,6 @@ fi
 exit 0
 ```
 
----
-
 ## Exit codes
 
 | Code | Meaning |
@@ -48,8 +46,6 @@ exit 0
 | 3 | Heartbeat file missing |
 | 4 | Heartbeat stale (older than 10 minutes) |
 | 5 | No recent job execution detected |
-
----
 
 ## Design notes
 

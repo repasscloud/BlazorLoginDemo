@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [billing, payment-models]
 weight: 10
 ---
+
+_Last updated: 24 January 2026_
+
 ## Model list
 
 Supported payment models currently documented:

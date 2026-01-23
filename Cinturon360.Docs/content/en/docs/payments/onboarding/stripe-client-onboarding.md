@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [stripe, onboarding, legal]
 weight: 20
 ---
+
+_Last updated: 24 January 2026_
+
 ## Example scenario (BCA)
 
 - Vendor: `{Vendor_Legal_Name}`

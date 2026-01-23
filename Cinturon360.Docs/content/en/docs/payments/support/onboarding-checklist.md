@@ -5,6 +5,9 @@ categories: [platform, payments]
 tags: [checklist, onboarding]
 weight: 20
 ---
+
+_Last updated: 24 January 2026_
+
 ## Stripe checklist (Client relationship)
 
 ### Contract and configuration

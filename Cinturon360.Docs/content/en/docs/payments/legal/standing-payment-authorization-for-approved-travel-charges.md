@@ -3,6 +3,8 @@ title: Standing Payment Authorization for Approved Travel Charges
 description: Template clause for storing a payment method and charging it off-session for contractually approved travel services.
 ---
 
+_Last updated: 24 January 2026_
+
 # Standing Payment Authorization for Approved Travel Charges
 
 ## Terminology
