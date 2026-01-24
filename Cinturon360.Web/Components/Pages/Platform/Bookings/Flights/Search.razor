@@ -497,9 +497,9 @@
         AuthenticationState? authState = await AuthStateProvider.GetAuthenticationStateAsync();
         System.Security.Claims.ClaimsPrincipal? user = authState.User;
 
-        myOrgId = user.FindFirst("OrganizationId")?.Value
-            ?? user.FindFirst("organizationId")?.Value
-            ?? user.FindFirst("org")?.Value;
+        myOrgId = user.FindFirst(type: "OrganizationId")?.Value
+            ?? user.FindFirst(type: "organizationId")?.Value
+            ?? user.FindFirst(type: "org")?.Value;
 
         myUserId = user.GetUserId();
     }
@@ -786,16 +786,16 @@
         _isSearching = true;
 
         // Ensure RID exists for correlation on this action too
-        rid = string.IsNullOrWhiteSpace(rid) ? Guid.NewGuid().ToString("N") : rid;
+        rid = string.IsNullOrWhiteSpace(rid) ? Guid.NewGuid().ToString(format: "N") : rid;
 
         // Force the UI to paint "Searching..." before we start doing real work
         await InvokeAsync(StateHasChanged);
         await Task.Yield();
 
-        var sw = Stopwatch.StartNew();
-        var navigated = false;
+        Stopwatch? sw = Stopwatch.StartNew();
+        bool navigated = false;
 
-        var patchDto = new TravelQuoteFlightUIResultPatchDto()
+        TravelQuoteFlightUIResultPatchDto? patchDto = new TravelQuoteFlightUIResultPatchDto()
         {
             Id = _cfg.TravelQuoteId,
             TripType = Vm.Trip,
@@ -851,7 +851,7 @@
 
             if (resp.IsSuccessStatusCode)
             {
-                var durMsOk = (int)sw.ElapsedMilliseconds;
+                int durMsOk = (int)sw.ElapsedMilliseconds;
 
                 _ = _log.InformationAsync(
                     evt: "BOOKING_REQ_SEARCH_SUBMIT_OK",
@@ -875,7 +875,7 @@
                 await InvokeAsync(() =>
                 {
                     var tidStr = (Tid ?? Guid.Empty).ToString("D");
-                    var uri =
+                    string? uri =
                         $"/platform/bookings/drafts/{Uri.EscapeDataString(patchDto.Id)}/flights/results/0" +
                         $"?tid={Uri.EscapeDataString(tidStr)}";
 
