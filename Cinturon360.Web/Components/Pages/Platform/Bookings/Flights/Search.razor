@@ -845,7 +845,7 @@
         try
         {
             // BuildRequest uses JsonContent + adds X-Correlation-Id header. Yes, this is POST.
-            Cinturon360.Web.Helpers.JsonFileWriter.WriteToJsonFile(patchDto, $"FlightSearch_SubmitSearch_{patchDto.Id}.json");
+            //Cinturon360.Web.Helpers.JsonFileWriter.WriteToJsonFile(patchDto, fileName: $"FlightSearch_SubmitSearch_{patchDto.Id}.json");
             using HttpRequestMessage req = BuildRequest(HttpMethod.Post, url, patchDto, JsonOpts, rid);
             using HttpResponseMessage resp = await client.SendAsync(req, ct);
 
