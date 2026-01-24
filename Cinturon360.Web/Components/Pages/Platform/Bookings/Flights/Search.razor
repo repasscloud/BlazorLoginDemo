@@ -1578,7 +1578,15 @@
         req.Headers.TryAddWithoutValidation(CorrelationHeader, rid);
 
         if (payload is not null)
-            req.Content = JsonContent.Create(payload, options: jsonOpts);
+        {
+            string? json = JsonSerializer.Serialize(payload, jsonOpts);
+
+            req.Content = new StringContent(
+                json,
+                Encoding.UTF8,
+                mediaType: "application/json"
+            );
+        }
 
         return req;
     }
