@@ -2,7 +2,7 @@
 title: Standard API Events
 description: Standard EVT codes for API request start/end/errors and validation failures.
 categories: [platform, logging]
-tags: [api, events]
+tags: [logging, api]
 weight: 10
 ---
 

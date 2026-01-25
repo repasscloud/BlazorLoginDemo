@@ -38,7 +38,7 @@ When reporting a potential issue, please ensure that you:
 
 Security issues can be reported via email:
 
-**Email:** `security@cinturon360.com`  
+**Email:** `security (at) cinturon360.com`  
 **Subject:** `Security Disclosure – Cinturon360`
 
 Please include, where possible:

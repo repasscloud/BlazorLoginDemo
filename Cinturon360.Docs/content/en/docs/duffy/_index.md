@@ -3,6 +3,7 @@ title: Duffel
 description: Duffel booking, approval, and settlement flows
 categories: [duffel, external-api]
 tags: [duffel, external-api]
+date: 2026-01-25
 weight: 3
 ---
 
@@ -25,10 +26,10 @@ participant Org as 👥 Client
     U->>W: Submit search request
     W-->>U: Show loading screen
 
-    note over W: QuoteID Config START
+    note over W: START QuoteID Config
     W-->>E: POST req to external API
     E-->>W: Data returned
-    note over W: QuoteID Config END
+    note over W: END QuoteID Config
 
     W-->>U: Results displayed
     U->>W: Submit for approval

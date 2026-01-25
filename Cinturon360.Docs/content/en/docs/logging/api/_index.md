@@ -2,7 +2,7 @@
 title: API Logging
 description: How API requests are logged, including request lifecycle, validation, and controller actions.
 categories: [platform, logging]
-tags: [api, http]
+tags: [logging, api]
 weight: 60
 ---
 
