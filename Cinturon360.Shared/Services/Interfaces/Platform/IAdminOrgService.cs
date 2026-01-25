@@ -1,4 +1,5 @@
 using Cinturon360.Shared.Models.DTOs;
+using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using Cinturon360.Shared.Models.Kernel.Billing;
 using Cinturon360.Shared.Models.Kernel.Platform;
 using Cinturon360.Shared.Models.Static.Platform;
@@ -11,7 +12,16 @@ namespace Cinturon360.Shared.Services.Interfaces.Platform;
 public interface IAdminOrgServiceUnified
 {
     // convenience aggregate
-    public sealed record OrgAggregate(OrganizationUnified Org, IReadOnlyList<OrganizationDomainUnified> Domains, LicenseAgreementUnified? LicenseAgreement);
+    public sealed record OrgAggregate(
+        OrganizationUnified Org,
+        IReadOnlyList<OrganizationDomainUnified> Domains,
+        LicenseAgreementUnified? LicenseAgreement);
+
+    // convenience context for Amadeus TMC accounts
+    public sealed record AmadeusTmcContext(
+        OrganizationUnified Tmc,
+        AmadeusAccount AmadeusAccount
+    );
 
     // CREATE
     public sealed record CreateOrgRequest(
@@ -74,6 +84,7 @@ public interface IAdminOrgServiceUnified
     Task<IReadOnlyList<OrganizationPickerDto>> GetAllChildrenOrgsForPickerAsync(string parentOrgId, CancellationToken ct = default);
 
     Task<ClientGoverningTmcInfo> GetGoverningTmcInfoAsync(string clientOrgId, CancellationToken ct = default);
+    Task<AmadeusTmcContext> GetAmadeusTmcContextAsync(string clientOrgId, string tmcOrgId, CancellationToken ct = default);
 
     // UPDATE
     public sealed record UpdateOrgRequest(

@@ -201,9 +201,22 @@ public sealed class WebBookingsController : ControllerBase
         var rid = GetCorrelationId();
         Guid tid = dto.Tid;
 
-        var idx = 0; // placeholder for legIndex handling
+        var idx = 0;
         if (legIndex.HasValue)
-            idx = legIndex.Value;  // TODO: implement legIndex handling
+        {
+            if (legIndex.Value < 0)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid legIndex",
+                    Detail = "legIndex must be greater than or equal to 0.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Instance = HttpContext?.Request?.Path.Value
+                });
+            }
+
+            idx = legIndex.Value;
+        }
         
         // Step 1: retrieve queued job by correlationId (quoteId) [this will only return a value if it's not .Succeeded, .Failed, .Cancelled]
         var queuedJob = await _queuedJobService.GetJobByCorrelationIdAndNotCompletedAsync(correlationId: quoteId, cancellationToken:ct);
@@ -282,11 +295,12 @@ public sealed class WebBookingsController : ControllerBase
             });
 
         // get TmcId
-        var tmcInfo = await _adminOrgService.GetGoverningTmcInfoAsync(quote.OrganizationId, ct);
-        if (tmcInfo == null)
+        var tmcAmadeusContext = await _adminOrgService.GetAmadeusTmcContextAsync(clientOrgId: quote.OrganizationId, tmcOrgId: quote.TmcAssignedId, ct);
+        if (tmcAmadeusContext == null)
         {
+            // we should not be hitting this if the quote was properly validated earlier
             await _log.ErrorAsync(
-                evt: "FLIGHT_SEARCH_OPTIONS_TMC_NOT_FOUND",
+                evt: "FLIGHT_SEARCH_TMC_CONTEXT_NOT_FOUND",
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: new KeyNotFoundException($"TMC not found for organization ID '{quote.OrganizationId}'."),
@@ -296,7 +310,7 @@ public sealed class WebBookingsController : ControllerBase
             return NotFound("TMC not found for the organization associated with the travel quote.");
         }
 
-        string tmcId = tmcInfo.TmcId;
+        string tmcId = tmcAmadeusContext.Tmc.Id;
 
         // Step 2: build criteria from hydrated quote
         var criteria = await _travelQuoteService.BuildAmadeusFlightOfferSearchFromQuote(
@@ -304,7 +318,54 @@ public sealed class WebBookingsController : ControllerBase
             returnTrip: false,
             ct);
 
-        // Step 2.1: handle legIndex if provided (not implemented yet)
+        // Step 2.1: handle legIndex if provided
+        if (legIndex.HasValue)
+        {
+            var originDestinations = criteria.OriginDestinations;
+            if (originDestinations is null || originDestinations.Count == 0)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid flight search criteria",
+                    Detail = "No origin destinations are available to select a leg.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Instance = HttpContext?.Request?.Path.Value
+                });
+            }
+
+            if (idx >= originDestinations.Count)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid legIndex",
+                    Detail = $"legIndex {idx} is out of range. Must be between 0 and {originDestinations.Count - 1}.",
+                    Status = StatusCodes.Status400BadRequest,
+                    Instance = HttpContext?.Request?.Path.Value
+                });
+            }
+
+            var selectedOriginDestination = originDestinations[idx];
+            originDestinations.Clear();
+            originDestinations.Add(selectedOriginDestination);
+
+            var selectedOriginDestinationId = selectedOriginDestination.Id;
+            if (!string.IsNullOrWhiteSpace(selectedOriginDestinationId))
+            {
+                var cabinRestrictions = criteria.SearchCriteria?.Filters?.CabinRestrictions;
+                if (cabinRestrictions != null)
+                {
+                    foreach (var restriction in cabinRestrictions)
+                    {
+                        var originDestinationIds = restriction?.OriginDestinationIds;
+                        if (originDestinationIds is null)
+                            continue;
+
+                        originDestinationIds.Clear();
+                        originDestinationIds.Add(selectedOriginDestinationId);
+                    }
+                }
+            }
+        }
 
         // // Step 2.2: save criteria to db_dump for review
         // await _queuedJobService.EnqueueAsync(

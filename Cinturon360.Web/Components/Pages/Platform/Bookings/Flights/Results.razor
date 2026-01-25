@@ -577,7 +577,6 @@ else
                 Uid = myUserId,
                 Org = myOrgId
             };
-
         
             using HttpRequestMessage? req = BuildRequest(HttpMethod.Post, url, logTraceDto, JsonOpts, rid);
             using HttpResponseMessage response = await client.SendAsync(req, ct);

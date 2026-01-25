@@ -11,6 +11,7 @@ using HtmlAgilityPack;
 using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Models.DTOs;
 using static Cinturon360.Shared.Services.Interfaces.Platform.IAdminOrgServiceUnified;
+using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 
 namespace Cinturon360.Shared.Services.Platform;
 
@@ -267,6 +268,40 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             ClientId: clientOrg.Id,
             ClientName: clientOrg.Name
         );
+    }
+
+    public async Task<IAdminOrgServiceUnified.AmadeusTmcContext> GetAmadeusTmcContextAsync(string clientOrgId, string tmcOrgId, CancellationToken ct = default)
+    {
+        // should never hit this at this point, or we've messed up
+        var clientOrg = await _db.Organizations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == clientOrgId, ct)
+            ?? throw new InvalidOperationException($"Client organization '{clientOrgId}' not found.");
+
+        // should never hit this at this point, or we've messed up
+        var tmcOrg = await _db.Organizations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == tmcOrgId, ct)
+            ?? throw new InvalidOperationException($"TMC organization '{tmcOrgId}' not found.");
+
+        // should never hit this at this point, or we've messed up
+        if (clientOrg.ParentOrganizationId != tmcOrg.Id)
+            throw new InvalidOperationException($"Organization '{tmcOrgId}' is not the governing TMC for client organization '{clientOrgId}'.");
+
+        var amadeusAccount = await _db.AmadeusAccounts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.TmcId == tmcOrg.Id, ct)
+            ?? throw new InvalidOperationException($"Amadeus account for TMC organization '{tmcOrgId}' not found.");
+
+
+        IAdminOrgServiceUnified.AmadeusTmcContext amadeusContext =
+            new (
+                tmcOrg,
+                amadeusAccount
+            );
+
+
+        return amadeusContext;
     }
 
     // -------------- UPDATE --------------

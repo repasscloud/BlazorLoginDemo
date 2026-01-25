@@ -131,6 +131,7 @@ public class Program
         // MVC / Controllers
         // --------------------------
         builder.Services.AddControllers();
+            // #89 could have been resolved by this, but better to be explicit on DTOs that need it
             // .AddJsonOptions(o =>
             // {
             //     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());

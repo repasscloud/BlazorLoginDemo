@@ -488,3 +488,4 @@ Cinturon360.Web/appsettings.json
 notes.txt
 flightresult.json
 Cinturon360.Docs/public/*
+Cinturon360.Shared/test-duffel*.sh
