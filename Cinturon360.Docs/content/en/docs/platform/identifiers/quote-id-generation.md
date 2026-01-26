@@ -3,7 +3,6 @@ title: Quote ID Generation & Collision Handling
 description: How quote identifiers are generated, structured, and protected against collisions
 categories: [platform, identifiers]
 tags: [platform, identifiers]
-type: docs
 ---
 
 ## Overview
