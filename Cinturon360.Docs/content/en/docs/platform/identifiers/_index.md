@@ -1,44 +1,40 @@
 ---
 title: Identifiers
-description: Identifier standards, prefixes, and lifecycle rules used across the Cinturon360 platform
+description: Identifier standards, prefixes, lengths, and collision-handling rules used across the Cinturon360 platform
 categories: [platform, identifiers]
+tags: [platform, identifiers]
+type: docs
 ---
 
-## Overview
+## Purpose
 
-Cinturon360 uses **prefixed, high-entropy identifiers** across the platform to uniquely identify
-entities, policies, operational records, and transient artefacts.
+Identifiers in Cinturon360 are designed to be:
 
-Identifiers are designed to be:
+- **Unambiguous** in logs and support tooling (prefix + delimiter)
+- **Safe** for URLs, databases, exports, and integrations
+- **Collision-resistant** without coordination (NanoID entropy)
+- **Predictable** in format across all modules (`<prefix>_<random>`)
 
-- Globally unique within their scope
-- Human-readable in logs and diagnostics
-- Safe for URLs, databases, and exports
-- Collision-resistant without coordination
-- Explicit about *what* they identify via prefixes
+This section is written for **DevTeam**, **Product Support**, **Vendors**, and **TMCs**.
 
-This section documents:
-- Identifier structure
-- Prefix conventions
-- Length and lifecycle considerations
-- Entity-specific identifier usage
+## Canonical format
 
-## Identifier Structure
-
-All identifiers follow this canonical form:
+All platform identifiers follow:
 
 ```
 <prefix>_<random>
 ```
 
-Where:
-- `prefix` conveys semantic meaning
-- `_` is a hard delimiter
-- `random` is a NanoID-generated value with no embedded meaning
+- `prefix` conveys *what* the identifier refers to (entity / artefact class)
+- `_` is a hard delimiter for simple parsing
+- `random` is a NanoID value (entropy only; no embedded meaning)
 
-Different entities use different **prefixes** and **lengths** based on lifecycle and risk profile.
+## Generation & safety model
 
-## Pages in this section
+Cinturon360 uses **probabilistic uniqueness** (NanoID) plus **deterministic enforcement** (database uniqueness where applicable):
 
-- **Identifier Types & Usage** – entity-by-entity explanation of identifiers
-- **Identifier Prefix Reference** – canonical list of all prefixes
+- NanoID provides a huge keyspace (low collision probability)
+- **Unique constraints / indexes** make collisions non-events (retry on conflict)
+- Length is selected based on **lifetime**, **volume**, and **blast radius** of a collision
+
+

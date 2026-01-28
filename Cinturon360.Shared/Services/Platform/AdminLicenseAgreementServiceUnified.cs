@@ -116,7 +116,6 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
         {
             model.OrganizationUnifiedId = org.Id;
             model.CreatedByOrganizationUnifiedId = issuer.Id;
-            model.CreatedAtUtc = DateTime.UtcNow;
             model.LastUpdatedAtUtc = DateTime.UtcNow;
             ValidateDates(model);
             _db.LicenseAgreements.Add(model);

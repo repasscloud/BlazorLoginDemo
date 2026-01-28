@@ -106,8 +106,28 @@ public sealed class LicenseAgreementUnified
     // Status fields
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending; // rolling view of last invoice status
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    // ----------------------------
+    // Payment Method Cost Profile (e.g., Stripe fees) - optional
+    // ----------------------------
+    public string? StripeCustomerId { get; set; }  // linked Stripe Customer ID (can only be set internally by API/service)
+    public string? StripeAccountId { get; set; }   // linked Stripe Account ID (for Connect; can only be set internally by API/service)
+    public string? DefaultPaymentMethodId { get; set; }  // linked Stripe PaymentMethod ID (can only be set internally by API/service)
+    public CardBrand PaymentCardBrand { get; set; } = CardBrand.Unset;
+    [MaxLength(2)] public string? CardCountry { get; set; }
+    public CardFunding PaymentCardFunding { get; set; } = CardFunding.Unset;
+    public bool IsDomesticCard { get; set; } = false;
+    public bool IsHighCostCard { get; set; } = false;
+    public bool IsAmexLikeCard { get; set; } = false;
+    public BillingFeeTier PaymentBillingFeeTier { get; set; } = BillingFeeTier.Unset;
+    public string? CardLast4 { get; set; }
+    public string? CardFingerPrint { get; set; }
+    public DateTime? CardUpdatedAtUtc { get; set; }
+
+
+    // Audit fields
+    public DateTime CreatedAtUtc { get; init; } = DateTime.UtcNow;
     public DateTime LastUpdatedAtUtc { get; set; } = DateTime.UtcNow;
+
 
     // ------------------------------
     // EMBEDDED SUPPORTING TYPES
@@ -132,9 +152,43 @@ public sealed class LicenseAgreementUnified
     {
         public int GracePeriodDays { get; set; } = 0;
         public bool UseFixedAmount { get; set; } = false;
-        public decimal FixedAmount { get; set; } = 0m;          // charged once per late occurrence
-        public decimal PercentOfInvoice { get; set; } = 0m;     // additive percent of unpaid amount
-        public decimal MaxLateFeeCap { get; set; } = 0m;        // total cap across all late fees for the invoice
-        public PaymentTerms Terms { get; set; } = PaymentTerms.Net0; // allowed terms for invoices under this agreement
+        public decimal FixedAmount { get; set; } = 0m;                // charged once per late occurrence
+        public decimal PercentOfInvoice { get; set; } = 0m;           // additive percent of unpaid amount
+        public decimal MaxLateFeeCap { get; set; } = 0m;              // total cap across all late fees for the invoice
+        public PaymentTerms Terms { get; set; } = PaymentTerms.Net0;  // allowed terms for invoices under this agreement
+    }
+
+    public enum CardBrand
+    {
+        Unset = 0,
+        Visa = 1,
+        MasterCard = 2,
+        AmericanExpress = 3,
+        Discover = 4,
+        JCB = 5,
+        DinersClub = 6,
+        UnionPay = 7,
+        Other = 8,
+        Unknown = 9
+    }
+
+    public enum CardFunding
+    {
+        Unset = 0,
+        Credit = 1,
+        Debit = 2,
+        Prepaid = 3,
+        Other = 4,
+        Unknown = 5
+    }
+
+    public enum BillingFeeTier
+    {
+        Unset = 0,                    // 0.00% (should never be charged)
+        UnknownWorstCase = 1,         // 3.50% (defensive ceiling)
+        DomesticStandard = 2,         // 1.75% (AU Visa/MC equivalent)
+        DomesticHighCost = 3,         // 3.50% (AU Amex / Diners equivalent)
+        InternationalStandard = 4,    // 2.90% (Non-AU Visa/MC equivalent)
+        InternationalHighCost = 5     // 3.50% (Non-AU Amex / Diners equivalent)
     }
 }
