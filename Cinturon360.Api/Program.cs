@@ -24,12 +24,6 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // --------------------------
-        // Logging (Serilog first)
-        // --------------------------
-        // SerilogBootstrap.UseSerilogWithPostgres(builder.Configuration, appName: "Ava.API");
-        // builder.Host.UseSerilog();
-
-        // --------------------------
         // Options (JWT)
         // --------------------------
         builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));

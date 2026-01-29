@@ -30,18 +30,6 @@ public class Program
         // read token for blazorize
         var blazoriseProductToken = builder.Configuration["Blazorise:ProductToken"];
 
-        // Blazorize
-        // builder.Services
-        // .AddBlazorise(options =>
-        // {
-        //     options.Immediate = true;
-        //     options.ProductToken = blazoriseProductToken;
-        // })
-        // .AddBootstrap5Providers()
-        // .AddFontAwesomeIcons();
-
-        // Serilog first
-        SerilogBootstrap.UseSerilogWithPostgres(builder.Configuration, appName: "Ava.Web");
         builder.Host.UseSerilog();
 
         // Add services to the container.
