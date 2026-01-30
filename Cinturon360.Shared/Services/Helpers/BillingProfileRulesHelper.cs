@@ -1,4 +1,4 @@
-using static Cinturon360.Shared.Models.Kernel.Billing.LicenseAgreementUnified;
+using Cinturon360.Shared.Models.Static.Billing;
 
 namespace Cinturon360.Shared.Models.Kernel.Billing;
 

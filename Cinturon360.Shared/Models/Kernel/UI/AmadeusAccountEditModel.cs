@@ -6,8 +6,8 @@ public sealed class AmadeusAccountEditModel
 {
     // Tenant
     [Required]
-    [MaxLength(64)]
-    public string TmcId { get; set; } = string.Empty;
+    [MaxLength(25)]
+    public required string TmcId { get; set; } = string.Empty;
 
     [Required]
     [MaxLength(200)]

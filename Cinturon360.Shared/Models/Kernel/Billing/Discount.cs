@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Cinturon360.Shared.Helpers;
 using Microsoft.EntityFrameworkCore;
-using NanoidDotNet;
 
 namespace Cinturon360.Shared.Models.Kernel.Billing
 {
@@ -9,13 +9,13 @@ namespace Cinturon360.Shared.Models.Kernel.Billing
     public class Discount
     {
         [Key]
-        [MaxLength(30)]
-        public string Id { get; set; } = Nanoid.Generate(size: 21);
+        [MaxLength(16)]
+        public string Id { get; private set; } = IDGeneratorHelper.GenerateId(IdGenType.Discount);
 
-        [MaxLength(30)]
+        [MaxLength(25)]
         public string? ParentOrgId { get; set; }
 
-        [MaxLength(30)]
+        [MaxLength(35)]
         [Required]
         public required string DiscountCode { get; set; } = default!;
 

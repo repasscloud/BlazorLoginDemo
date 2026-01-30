@@ -2,17 +2,16 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using Cinturon360.Shared.Helpers;
 using Cinturon360.Shared.Models.Kernel.Platform;
 using Cinturon360.Shared.Validation;
-using NanoidDotNet;
 
 namespace Cinturon360.Shared.Models.Policies;
 
 public class TravelPolicy
 {
-    [Key]
-    [MaxLength(14)]
-    public string Id { get; set; } = Nanoid.Generate(size: 14);
+    [Key, MaxLength(23)]
+    public string Id { get; set; } = IDGeneratorHelper.GenerateId(IdGenType.TravelPolicy);
 
     public required string PolicyName { get; set; }
     public required string OrganizationUnifiedId { get; set; }

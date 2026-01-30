@@ -1,12 +1,12 @@
 // File: Shared/Services/Kernel/BillingService.cs
 using System.Linq.Expressions;
 using Cinturon360.Shared.Data;
+using Cinturon360.Shared.Helpers;
 using Cinturon360.Shared.Models.Kernel.Billing;
-using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using NanoidDotNet;
 
 namespace Cinturon360.Shared.Services.Kernel;
 
@@ -34,7 +34,7 @@ internal sealed class BillingService : IBillingService
             ? CodeGen.NewDiscountCode()
             : NormalizeCode(req.DiscountCode!);
         await _logger.InformationAsync(
-            evt: "DISCOUNT_CREATE",
+            evt: SysLogEvtType.DATA_CREATE,
             cat: SysLogCatType.Data,
             act: SysLogActionType.Create,
             message: $"Creating Discount '{code}' for Org '{req.ParentOrgId}'",
@@ -49,7 +49,7 @@ internal sealed class BillingService : IBillingService
         if (codeExists)
         {
             await _logger.WarningAsync(
-                evt: "DISCOUNT_CODE_EXISTS",
+                evt: SysLogEvtType.DATA_SAVE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Validate,
                 message: $"Discount code '{code}' already exists. Generating a new one.",
@@ -325,12 +325,10 @@ internal sealed class BillingService : IBillingService
 
     private static class CodeGen
     {
-        // Example: DS-202510-AB12CD34
+        // Example: disc_202510_AB12CD34
         public static string NewDiscountCode()
         {
-            var yyyymm = DateTime.UtcNow.ToString("yyyyMM");
-            var rand = Nanoid.Generate(size: 8).ToUpperInvariant();
-            return $"DS-{yyyymm}-{rand}";
+            return IDGeneratorHelper.GenerateId(IdGenType.DiscountCode);
         }
     }
 }

@@ -1,6 +1,6 @@
 using Cinturon360.Shared.Data;
 using Cinturon360.Shared.Models.Policies;
-using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Policy;
 using Microsoft.EntityFrameworkCore;
@@ -57,7 +57,7 @@ public sealed class TravelPolicyService : ITravelPolicyService
             throw new InvalidOperationException($"Organization '{policy.OrganizationUnifiedId}' not found.");
 
         await _logger.InformationAsync(
-            evt: "TRAVEL_POLICY_CREATE",
+            evt: SysLogEvtType.DATA_CREATE,
             cat: SysLogCatType.Data,
             act: SysLogActionType.Create,
             message: $"Creating TravelPolicy '{policy.PolicyName}' for Org '{policy.OrganizationUnifiedId}'",
@@ -72,7 +72,7 @@ public sealed class TravelPolicyService : ITravelPolicyService
             org.LastUpdatedUtc = now;
 
             await _logger.InformationAsync(
-                evt: "TRAVEL_POLICY_SET_DEFAULT_ON_CREATE",
+                evt: SysLogEvtType.DATA_UPDATE,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 message: $"Organization '{org.Id}' default Travel Policy set to '{policy.Id}' on creation.",
@@ -209,7 +209,7 @@ public sealed class TravelPolicyService : ITravelPolicyService
         if (tp is null)
         {
             await _logger.ErrorAsync(
-                evt: "TRAVEL_POLICY_NOT_FOUND",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: new InvalidOperationException($"TravelPolicy '{policyId}' not found."),
@@ -226,7 +226,7 @@ public sealed class TravelPolicyService : ITravelPolicyService
         if (org is null)
         {
             await _logger.ErrorAsync(
-                evt: "ORGANIZATION_NOT_FOUND",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: new InvalidOperationException($"Organization '{tp.OrganizationUnifiedId}' from TravelPolicy '{policyId}' not found."),
@@ -239,7 +239,7 @@ public sealed class TravelPolicyService : ITravelPolicyService
 
         if (!string.IsNullOrEmpty(org.DefaultExpensePolicyId))
             await _logger.InformationAsync(
-                evt: "TRAVEL_POLICY_UPDATE_DEFAULT",
+                evt: SysLogEvtType.DATA_UPDATE,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 message: $"Organization '{org.Id}' default Travel Policy updated from '{tp.OrganizationUnifiedId}' to '{policyId}'.",
@@ -247,7 +247,7 @@ public sealed class TravelPolicyService : ITravelPolicyService
                 entId: policyId);
         else
             await _logger.InformationAsync(
-                evt: "TRAVEL_POLICY_SET_DEFAULT",
+                evt: SysLogEvtType.DATA_UPDATE,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 message: $"Organization '{org.Id}' default Travel Policy set to '{policyId}'.",

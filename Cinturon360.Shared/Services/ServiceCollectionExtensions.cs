@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Cinturon360.Shared.Data;
-using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using Cinturon360.Shared.Models.Kernel.FX;
 using Cinturon360.Shared.Models.Kernel.Travel;
 using Cinturon360.Shared.Security;

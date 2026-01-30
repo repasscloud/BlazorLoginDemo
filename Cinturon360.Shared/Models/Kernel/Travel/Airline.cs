@@ -1,12 +1,16 @@
+using System.ComponentModel.DataAnnotations;
+using Cinturon360.Shared.Helpers;
 using Cinturon360.Shared.Models.Static.Travel;
 
 namespace Cinturon360.Shared.Models.Kernel.Travel;
 
 public sealed class Airline
 {
-    public int Id { get; set; }
+    [Key]
+    [MaxLength(12)]
+    public string Id { get; set; } = IDGeneratorHelper.GenerateId(IdGenType.Airline);
     public string Iata { get; set; } = default!;  // e.g., QF
-    public string Icao { get; set; } = string.Empty;  // optional
+    public string? Icao { get; set; }
     public string Name { get; set; } = default!;
     public string Alias { get; set; } = string.Empty;  // optional
     public string CallSign { get; set; } = string.Empty;  // optional

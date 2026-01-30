@@ -7,13 +7,11 @@ using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus.Flight;
 using Cinturon360.Shared.Models.ExternalLib.Kernel.Flight;
-using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Platform;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using NanoidDotNet;
 
 namespace Cinturon360.Shared.Services.External;
 
@@ -48,13 +46,23 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
     public async Task<AmadeusFlightOfferSearchResult> GetFlightOffersAsync(FlightOfferSearchRequestDto dto, CancellationToken ct = default)
     {
         await _loggerService.InformationAsync(
-            evt: "FLIGHT_OFFERS_REQ_START",
-            cat: SysLogCatType.Api,  // we RECEIVED a request (not calling Amadeus yet)
-            act: SysLogActionType.Start,
+            evt: SysLogEvtType.OFFER_SEARCH_START,
+            cat: SysLogCatType.Shopping,  // we RECEIVED a request (not calling Amadeus yet)
+            act: SysLogActionType.Exec,
             message: $"Received flight offers request (dto={nameof(FlightOfferSearchRequestDto)}, id={dto.Id})",
             ent: nameof(FlightOfferSearchRequestDto),
             entId: dto.Id,
-            note: "ingress:start");
+            note: "provider-Mixed," +
+                $"trip={(dto.IsOneWay ? "oneway" : "return")}," + 
+                $"pax={dto.Adults}," +
+                $"cabin={dto.CabinClass}," +
+                $"dep={dto.DepartureDate}," +
+                $"from={dto.OriginLocationCode}," +
+                $"to={dto.DestinationLocationCode}" + 
+                (dto.DepartureDateReturn is not null ? $",ret={dto.DepartureDateReturn}" : "") +
+                $",client={dto.ClientId}" + 
+                $",customer={dto.CustomerId}" +
+                $",tp={dto.TravelPolicyId}");
 
         // 0) Get TMC ID from DTO
         IAdminOrgServiceUnified.ClientGoverningTmcInfo? tmcInfo = await _adminOrgService.GetGoverningTmcInfoAsync(dto.ClientId, ct)
@@ -209,7 +217,7 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         if (string.IsNullOrEmpty(token))
         {
             await _loggerService.ErrorAsync(
-                evt: "AMADEUS_OAUTH_TOKEN_FAIL",
+                evt: SysLogEvtType.INT_OAUTH_TOKEN_FAIL,
                 cat: SysLogCatType.Integration,
                 act: SysLogActionType.Exec,
                 ex: new InvalidOperationException("Unable to retrieve valid OAuth token."),
@@ -233,7 +241,7 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             // 10) Persist a record of the search
             var record = new FlightOfferSearchResultRecord
             {
-                Id = await Nanoid.GenerateAsync(),
+                Id = IDGeneratorHelper.GenerateId(IdGenType.Default),
                 MetaCount = result.Meta.Count,
                 FlightOfferSearchRequestDtoId = dto.Id,
                 ClientId = dto.ClientId,                // unchanged field in your record model
@@ -247,7 +255,7 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             await _db.SaveChangesAsync(ct);
 
             await _loggerService.InformationAsync(
-                evt: "AMADEUS_FLIGHT_REQ_SUCCESS",
+                evt: SysLogEvtType.OFFER_SEARCH_END,
                 cat: SysLogCatType.Integration,
                 act: SysLogActionType.Exec,
                 message: "Calling Amadeus Flight Offers",
@@ -261,7 +269,7 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         {
             string errorBody = await response.Content.ReadAsStringAsync(ct);
             await _loggerService.ErrorAsync(
-                evt: "AMADEUS_API_ERROR",
+                evt: SysLogEvtType.INT_ERR,
                 cat: SysLogCatType.Integration,
                 act: SysLogActionType.Exec,
                 ex: new HttpRequestException($"Amadeus error {response.StatusCode}: {errorBody}"),
@@ -316,7 +324,7 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
         if (string.IsNullOrEmpty(token))
         {
             await _loggerService.ErrorAsync(
-                evt: "AMADEUS_OAUTH_TOKEN_FAIL",
+                evt: SysLogEvtType.INT_OAUTH_TOKEN_FAIL,
                 cat: SysLogCatType.Integration,
                 act: SysLogActionType.Exec,
                 ex: new InvalidOperationException("Unable to retrieve valid OAuth token."),
@@ -376,7 +384,7 @@ public class AmadeusFlightSearchService : IAmadeusFlightSearchService
             string errorBody = await response.Content.ReadAsStringAsync(ct);
 
             await _loggerService.ErrorAsync(
-                evt: "AMADEUS_API_ERROR",
+                evt: SysLogEvtType.INT_ERR,
                 cat: SysLogCatType.Integration,
                 act: SysLogActionType.Exec,
                 ex: new HttpRequestException(

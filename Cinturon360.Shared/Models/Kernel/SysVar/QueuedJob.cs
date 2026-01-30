@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using Cinturon360.Shared.Helpers;
+
 namespace Cinturon360.Shared.Models.Kernel.SysVar;
 
 public enum JobStatus
@@ -76,7 +79,9 @@ public enum JobStatus
 public sealed class QueuedJob
 {
     // Primary key (DB identity or GUID, your choice)
-    public Guid Id { get; init; } = Guid.NewGuid();
+    [Key]
+    [MaxLength(20)]
+    public string Id { get; init; } = IDGeneratorHelper.GenerateId(IdGenType.Job);
 
     /// <summary>
     /// Logical type key so you know what this payload is.

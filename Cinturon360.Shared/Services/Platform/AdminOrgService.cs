@@ -8,10 +8,10 @@ using Cinturon360.Shared.Services.Interfaces.Platform;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using HtmlAgilityPack;
-using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Models.DTOs;
 using static Cinturon360.Shared.Services.Interfaces.Platform.IAdminOrgServiceUnified;
-using Cinturon360.Shared.Models.ExternalLib.Amadeus;
+using Cinturon360.Shared.Models.Static.System.SysVar;
+using Cinturon360.Shared.Models.Static.Identity;
 
 namespace Cinturon360.Shared.Services.Platform;
 
@@ -91,7 +91,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         }
 
         await _logger.InformationAsync(
-            evt: "ORG_CREATE",
+            evt: SysLogEvtType.DATA_CREATE,
             cat: SysLogCatType.Data,
             act: SysLogActionType.Create,
             message: $"Created Organization '{org.Name}' (ID: {org.Id})",
@@ -114,7 +114,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         {
             var agg = await CreateAsync(req, ct);
             await _logger.InformationAsync(
-                evt: "ORG_CREATE_END",
+                evt: SysLogEvtType.DATA_CREATE,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.End,
                 message: $"CreateOrgAsync succeeded for Org '{agg.Org.Name}' (ID: {agg.Org.Id})",
@@ -142,7 +142,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
         await _logger.InformationAsync(
-            evt: "ORG_READ_BY_ID",
+            evt: SysLogEvtType.DATA_READ,
             cat: SysLogCatType.Data,
             act: SysLogActionType.Read,
             message: $"Retrieved organization by ID: {id}",
@@ -512,7 +512,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
     public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.Organizations.AnyAsync(o => o.Id == id, ct);
 
-    public async Task<bool> ValidateTaxIdAsync(string orgId, string taxId, string taxIdType, CancellationToken ct = default)
+    public async Task<bool> ValidateTaxIdAsync(string orgId, string taxId, TaxIdType taxIdType, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(taxId)) throw new ArgumentException("taxId is required", nameof(taxId));
         var tnorm = taxId.Trim();
@@ -521,7 +521,8 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
 
         switch (taxIdType)
         {
-            case "AU ABN" or "AU ACN":
+            case TaxIdType.AU_ABN:
+            case TaxIdType.AU_ACN:
                 {
                     var url = $"{AUBaseUrl}/ABN/View?id={taxId}";
                     var httpClient = _httpClientFactory.CreateClient();
@@ -560,7 +561,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
                 }
 
             default:
-                break;
+                return taxResultStatus;
         }
 
         if (taxResultStatus)
@@ -574,7 +575,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             await _db.SaveChangesAsync(ct);
 
             await _logger.InformationAsync(
-                evt: "ORG_TAX_ID_VALIDATE",
+                evt: SysLogEvtType.DATA_READ,
                 cat: SysLogCatType.Tax,
                 act: SysLogActionType.Validate,
                 message: $"Validated Tax ID for Org '{org.Name}' (ID: {org.Id})",
@@ -591,7 +592,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         if (string.IsNullOrWhiteSpace(orgId))
         {
             await _logger.ErrorAsync(
-                evt: "ORG_DEFAULT_POLICY_MISSING",
+                evt: SysLogEvtType.DATA_CONCURRENCY_CONFLICT,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Validate,
                 ex: new InvalidOperationException($"Organization {orgId} has no Default Travel Policy configured."),
@@ -634,7 +635,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         if (licenseAgreement == null)
         {
             await _logger.ErrorAsync(
-                evt: "ORG_PNR_FEES_MISSING",
+                evt: SysLogEvtType.DATA_CONCURRENCY_CONFLICT,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Validate,
                 ex: new InvalidOperationException($"Organization {orgId} has no PNR Service Fees configured."),
@@ -682,7 +683,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
         };
 
         await _logger.InformationAsync(
-                evt: "ORG_PNR_FEES_RETRIEVED",
+                evt: SysLogEvtType.DATA_READ,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 message: $"Organization {orgId} PNR Service Fees retrieved.",

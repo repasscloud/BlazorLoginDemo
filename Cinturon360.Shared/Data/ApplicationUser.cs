@@ -5,7 +5,8 @@ using System.Text.Json.Serialization;
 using Cinturon360.Shared.Models.Auth;
 using Cinturon360.Shared.Models.Kernel.Platform;
 using Cinturon360.Shared.Models.Policies;
-using Cinturon360.Shared.Models.Static;
+using Cinturon360.Shared.Models.Static.Geography;
+using Cinturon360.Shared.Models.Static.Identity;
 using Cinturon360.Shared.Models.Static.Platform;
 using Cinturon360.Shared.Models.User;
 using Cinturon360.Shared.Validation;
@@ -77,7 +78,11 @@ public class ApplicationUser : IdentityUser
 
     // Manager / org chart (self-referencing)
     public string? ManagerId { get; set; }
+
+    [JsonIgnore]
     public ApplicationUser? Manager { get; set; }
+
+    [JsonIgnore]
     public ICollection<ApplicationUser> DirectReports { get; set; } = new List<ApplicationUser>();
     public string? CostCentre { get; set; } = string.Empty;
 

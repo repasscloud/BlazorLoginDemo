@@ -361,7 +361,6 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
         // 3) Attach key-only stub with required members set (satisfies C# `required`)
         var stub = new LicenseAgreementUnified
         {
-            Id = id,
             OrganizationUnifiedId = orgIdInit,
             CreatedByOrganizationUnifiedId = issuerIdInit
         };

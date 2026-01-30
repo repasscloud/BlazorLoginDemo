@@ -8,8 +8,6 @@ using Cinturon360.Shared.Models.ExternalLib.Amadeus.Flight;
 using Cinturon360.Shared.Models.Kernel.Travel;
 using Cinturon360.Shared.Models.Policies;
 using Cinturon360.Shared.Models.Search;
-using Cinturon360.Shared.Models.Static;
-using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Platform;
@@ -19,6 +17,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Xml;
 using Cinturon360.Shared.Models.Static.Billing;
 using System.Net;
+using Cinturon360.Shared.Models.Static.System.SysVar;
+using Cinturon360.Shared.Models.Static.Geography;
 
 namespace Cinturon360.Shared.Services.Travel;
 
@@ -75,7 +75,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         var rid = string.IsNullOrWhiteSpace(dto.Rid) ? Guid.NewGuid().ToString("N") : dto.Rid;
 
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_TRANSLATE_START",
+            evt: SysLogEvtType.WF_FLOW_START,//"TRAVEL_QUOTE_TRANSLATE_START",
             cat: SysLogCatType.Workflow,
             act: SysLogActionType.Start,
             message: $"Translate TravelQuote DTO start (createdby={dto.CreatedByUserId}, type={dto.QuoteType}, org={dto.OrganizationId}, travellers={dto.TravellerUserIds?.Count ?? 0})",
@@ -92,7 +92,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             if (quote.Travellers.Count == 0)
             {
                 await _log.WarningAsync(
-                    evt: "TRAVEL_QUOTE_TRANSLATE_NO_TRAVELLERS",
+                    evt: SysLogEvtType.WF_STEP_START,
                     cat: SysLogCatType.Workflow,
                     act: SysLogActionType.Validate,
                     message: "No valid travellers with Travel Policy assigned to generate a quote. Assign users a Travel Policy or set an Org Default Travel Policy.",
@@ -104,7 +104,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     note: "no_travellers_or_policy");
 
                 await _log.InformationAsync(
-                    evt: "TRAVEL_QUOTE_TRANSLATE_FINISH",
+                    evt: SysLogEvtType.WF_FLOW_END,//"TRAVEL_QUOTE_TRANSLATE_FINISH",
                     cat: SysLogCatType.Workflow,
                     act: SysLogActionType.End,
                     message: $"Translate TravelQuote DTO finished (type={dto.QuoteType}, org={dto.OrganizationId})",
@@ -123,7 +123,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             await _db.SaveChangesAsync(ct);
 
             await _log.InformationAsync(
-                evt: "TRAVEL_QUOTE_CREATE_FROM_DTO_OK",
+                evt: SysLogEvtType.WF_FLOW_END,
                 cat: SysLogCatType.Workflow,
                 act: SysLogActionType.Create,
                 message: "CreateFromDtoAsync succeeded",
@@ -138,7 +138,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         catch (Exception ex)
         {
             await _log.ErrorAsync(
-                evt: "TRAVEL_QUOTE_CREATE_FROM_DTO_FAIL",
+                evt: SysLogEvtType.WF_FLOW_FAIL,
                 cat: SysLogCatType.Workflow,
                 act: SysLogActionType.Exec,
                 ex: ex,
@@ -256,7 +256,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
     public async Task IngestTravelQuoteFlightUIResultPatchDto(TravelQuoteFlightUIResultPatchDto dto, CancellationToken ct = default)
     {
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_UI_PATCH_START",
+            evt: SysLogEvtType.DATA_TX_BEGIN,
             cat: SysLogCatType.Data,
             act: SysLogActionType.Start,
             message: "Ingesting TravelQuote flight UI patch",
@@ -269,7 +269,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         {
             var ex = new InvalidOperationException($"TravelQuote '{dto.Id}' not found.");
             await _log.ErrorAsync(
-                evt: "TRAVEL_QUOTE_UPDATE_NOT_FOUND",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 ex: ex,
@@ -303,7 +303,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         await _db.SaveChangesAsync(ct);
 
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_UPDATED",
+            evt: SysLogEvtType.DATA_TX_COMMIT,
             cat: SysLogCatType.Data,
             act: SysLogActionType.Update,
             message: "TravelQuote updated from flight UI patch",
@@ -426,7 +426,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 .SetProperty(q => q.State, q => QuoteState.Expired), ct);
 
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_EXPIRE_OLD",
+            evt: SysLogEvtType.WF_FLOW_END,
             cat: SysLogCatType.Automation,          // background maintenance
             act: SysLogActionType.Update,           // bulk state change
             message: $"Expired {affected} travel quotes older than {cutoffUtc:o}",
@@ -466,7 +466,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             ?? throw new InvalidOperationException($"TravelQuote '{travelQuoteId}' not found.");
 
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_START",
+            evt: SysLogEvtType.WF_FLOW_START,
             cat: SysLogCatType.App,
             act: SysLogActionType.Start,
             message: $"Generating flight search UI options for TravelQuote '{travelQuoteId}'",
@@ -477,7 +477,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         var orgName = quote.Organization?.Name ?? "Unknown Org";
 
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+            evt: SysLogEvtType.WF_STEP_START,
             cat: SysLogCatType.App,
             act: SysLogActionType.Step,
             message: $"orgName set to '{orgName}'",
@@ -492,7 +492,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             case TravelQuotePolicyType.OrgDefault:
             case TravelQuotePolicyType.UserDefined:
                 await _log.InformationAsync(
-                    evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+                    evt: SysLogEvtType.WF_FLOW_STEP,
                     cat: SysLogCatType.App,
                     act: SysLogActionType.Step,
                     message: $"TravelPolicy type is '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
@@ -506,7 +506,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
             case TravelQuotePolicyType.Ephemeral:
                 await _log.InformationAsync(
-                    evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+                    evt: SysLogEvtType.WF_FLOW_STEP,
                     cat: SysLogCatType.App,
                     act: SysLogActionType.Step,
                     message: $"TravelPolicy type is '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
@@ -521,7 +521,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 {
                     travelPolicy = ConvertEphemeralToTravelPolicy(eph);
                     await _log.InformationAsync(
-                        evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_EPHEMERAL_CONVERTED",
+                        evt: SysLogEvtType.WF_FLOW_STEP,
                         cat: SysLogCatType.Workflow,
                         act: SysLogActionType.Step,
                         message: $"Converted EphemeralTravelPolicy '{eph.Id}' from TravelPolicy for TravelQuote '{travelQuoteId}'",
@@ -533,7 +533,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
             default:
                 await _log.WarningAsync(
-                    evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_UNKNOWN_POLICY_TYPE",
+                    evt: SysLogEvtType.API_REQ_ERR,
                     cat: SysLogCatType.Workflow,
                     act: SysLogActionType.Validate,
                     message: $"Unknown TravelPolicy type '{quote.PolicyType}' for TravelQuote '{travelQuoteId}'",
@@ -546,7 +546,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
         var policyName = travelPolicy?.PolicyName ?? "Unknown Policy";
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+            evt: SysLogEvtType.WF_FLOW_STEP,
             cat: SysLogCatType.App,
             act: SysLogActionType.Step,
             message: $"TravelPolicy name '{policyName}' for TravelQuote '{travelQuoteId}'",
@@ -556,7 +556,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
         var adults = quote.Travellers.Count;
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+            evt: SysLogEvtType.WF_FLOW_STEP,
             cat: SysLogCatType.App,
             act: SysLogActionType.Step,
             message: $"TravelPolicy adult count '{adults}' for TravelQuote '{travelQuoteId}'",
@@ -595,7 +595,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         if (allowedCountries.Count is 0)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_NO_ALLOWED_COUNTRIES",
+                evt: SysLogEvtType.WF_FLOW_STEP,
                 cat: SysLogCatType.Workflow,
                 act: SysLogActionType.Validate,
                 message: $"No allowed countries found for TravelPolicy '{travelPolicy?.Id}' associated with TravelQuote '{travelQuoteId}'",
@@ -607,7 +607,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         else
         {
             await _log.InformationAsync(
-                evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_ALLOWED_COUNTRIES_FOUND",
+                evt: SysLogEvtType.WF_FLOW_STEP,
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Step,
                 message: $"Found {allowedCountries.Count} allowed countries for TravelPolicy '{travelPolicy?.Id}' associated with TravelQuote '{travelQuoteId}'",
@@ -630,7 +630,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         if (allowedIso3166_Alpha2.Count > 0)
         {
             await _log.InformationAsync(
-                evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS_ALLOWED_ISO3166_ALPHA2",
+                evt: SysLogEvtType.WF_FLOW_STEP,
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Step,
                 message: $"Allowed ISO3166 Alpha-2 country codes for TravelPolicy '{travelPolicy?.Id}' associated with TravelQuote '{travelQuoteId}': {string.Join(", ", allowedIso3166_Alpha2)}",
@@ -711,7 +711,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         };
 
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_GENERATE_UI_OPTIONS",
+            evt: SysLogEvtType.WF_FLOW_STEP,
             cat: SysLogCatType.App,
             act: SysLogActionType.Read,
             message: $"Generated flight search UI options for TravelQuote '{travelQuoteId}'",
@@ -763,7 +763,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             // Log then throw
             var ex = new ArgumentException($"Invalid QuoteType '{dto.QuoteType}'.");
             await _log.ErrorAsync(
-                evt: "TRAVEL_QUOTE_TRANSLATE_INVALID_QUOTE_TYPE",
+                evt: SysLogEvtType.API_REQ_ERR,
                 cat: SysLogCatType.Workflow,
                 act: SysLogActionType.Validate,
                 ex: ex,
@@ -781,15 +781,13 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         await ValidateRootsAsync(dto.OrganizationId, dto.TmcAssignedId, dto.CreatedByUserId, ct);  // hard core error handling
         await EnsureTravellerUsersExistAsync(dto.TravellerUserIds, ct);  // hard core error handling
 
-        var q = new TravelQuote
-        {
-            Type = type,
-            State = QuoteState.Draft,
-            OrganizationId = dto.OrganizationId.Trim(),
-            TmcAssignedId = dto.TmcAssignedId.Trim(),
-            CreatedByUserId = dto.CreatedByUserId.Trim(),
-            CoverageType = CoverageType.MostSegments,  // default; can be updated later
-        };
+        var q = TravelQuote.CreateNew(
+            type: type,
+            organizationId: dto.OrganizationId.Trim(),
+            tmcAssignedId: dto.TmcAssignedId.Trim(),
+            createdByUserId: dto.CreatedByUserId.Trim(),
+            coverageType: CoverageType.MostSegments  // default; can be updated later
+        );
 
         // foreach (var uid in dto.TravellerUserIds.Distinct(StringComparer.Ordinal))
         //     q.Travellers.Add(new TravelQuoteUser { UserId = uid });
@@ -829,7 +827,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         // distinctPolicyIds: unique non-null policy IDs
         // excludedUserIds: which users were removed due to missing policy
         await _log.WarningAsync(
-            evt: "TRAVEL_QUOTE_TRANSLATE_NO_VALID_POLICIES",
+            evt: SysLogEvtType.WF_FLOW_WARN,
             cat: SysLogCatType.Workflow,
             act: SysLogActionType.Validate,
             message: $"Quote DTO translation: {dto.TravellerUserIds?.Count() ?? 0} travellers, {distinctPolicyIds.Count} distinct non-null policies, {excludedUserIds.Count} users excluded due to missing policy.",
@@ -843,7 +841,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         foreach (var e in excludedUserIds)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_QUOTE_TRANSLATE_EXCLUDED_USER",
+                evt: SysLogEvtType.WF_FLOW_WARN,
                 cat: SysLogCatType.Workflow,
                 act: SysLogActionType.Validate,
                 message: $"Excluded traveller due to missing policy. userId={e}",
@@ -858,7 +856,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         if (distinctPolicyIds.Count > 1)
         {
             await _log.InformationAsync(
-                evt: "TRAVEL_QUOTE_TRANSLATE_MULTI_POLICY",
+                evt: SysLogEvtType.WF_FLOW_STEP,
                 cat: SysLogCatType.Workflow,
                 act: SysLogActionType.Step,
                 message: $"Quote '{q.Id}' has travellers with multiple distinct policies: {string.Join(", ", distinctPolicyIds)}",
@@ -867,8 +865,8 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 entId: q.Id);
 
             await _log.InformationAsync(
-                evt: "TRAVEL_QUOTE_EPHEMERAL_CREATED",
-                cat: SysLogCatType.Tax, // or Data if you actually persist it immediately
+                evt: SysLogEvtType.WF_FLOW_STEP,
+                cat: SysLogCatType.Workflow, // or Data if you actually persist it immediately
                 act: SysLogActionType.Create,
                 message: "An ephemeral travel policy will be created to unify policies for the quote lifecycle.",
                 ent: "EphemeralTravelPolicy",
@@ -888,7 +886,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             if (policy is null)
             {
                 await _log.WarningAsync(
-                    evt: "TRAVEL_QUOTE_TRANSLATE_POLICY_NOT_FOUND",
+                    evt: SysLogEvtType.WF_FLOW_WARN,
                     cat: SysLogCatType.Workflow,
                     act: SysLogActionType.Validate,
                     message: $"Travel policy '{pid}' referenced by travellers not found in DB.",
@@ -923,7 +921,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 if (!effectiveOk)
                 {
                     await _log.WarningAsync(
-                        evt: "TRAVEL_QUOTE_TRANSLATE_POLICY_NOT_EFFECTIVE",
+                        evt: SysLogEvtType.WF_FLOW_WARN,
                         cat: SysLogCatType.Workflow,
                         act: SysLogActionType.Validate,
                         message: $"Travel policy '{pid}' not yet effective. EffectiveFromUtc={eff:o}",
@@ -936,7 +934,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                 if (!expiresOk)
                 {
                     await _log.WarningAsync(
-                        evt: "TRAVEL_QUOTE_TRANSLATE_POLICY_EXPIRED",
+                        evt: SysLogEvtType.WF_FLOW_WARN,
                         cat: SysLogCatType.Workflow,
                         act: SysLogActionType.Validate,
                         message: $"Travel policy '{pid}' expired. ExpiresOnUtc={exp:o}",
@@ -951,7 +949,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         if (pL.Count == 0)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_QUOTE_TRANSLATE_NO_VALID_POLICIES",
+                evt: SysLogEvtType.WF_FLOW_WARN,
                 cat: SysLogCatType.Workflow,
                 act: SysLogActionType.Validate,
                 message: "No travellers with valid/effective travel policies found for quote.",
@@ -1009,8 +1007,8 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             // Merge all policies into eTravelPolicy
             //eTravelPolicy.MergeFrom(pL);
             await _log.InformationAsync(
-                evt: "TRAVEL_QUOTE_EPHEMERAL_CREATED",
-                cat: SysLogCatType.Data,
+                evt: SysLogEvtType.WF_FLOW_STEP,
+                cat: SysLogCatType.Workflow,
                 act: SysLogActionType.Create,
                 message: $"Created EphemeralTravelPolicy for quote '{q.Id}' with Id '{eTravelPolicy.Id}'",
                 ent: "EphemeralTravelPolicy",
@@ -1400,7 +1398,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         if (results?.Data == null || results.Data.Count == 0)
         {
             await _log.InformationAsync(
-                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_NO_DATA",
+                evt: SysLogEvtType.DATA_READ,
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Read,
                 message: $"No flight search results data found for TravelQuote '{travelQuoteId}'",
@@ -1425,7 +1423,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         if (quote is null)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_QUOTE_NOT_FOUND",
+                evt: SysLogEvtType.DATA_READ,
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Read,
                 message: $"TravelQuote '{travelQuoteId}' not found when retrieving flight search results",
@@ -1447,7 +1445,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         if (orgFees is null)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_ORG_FEES_NOT_FOUND",
+                evt: SysLogEvtType.DATA_READ,
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Read,
                 message: $"Organization fees/markup not found for Organization '{quote.OrganizationId}' when retrieving flight search results for TravelQuote '{travelQuoteId}'",
@@ -1466,53 +1464,53 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         // fees
         decimal markupPercentage = 0m;
         decimal markupAmount = 0m;
-        ServiceFeeType feeType = ServiceFeeType.None;
+        ServiceFeeType feeType = ServiceFeeType.NONE;
 
-        if (orgFees.TravelFeeType != ServiceFeeType.None)
+        if (orgFees.TravelFeeType != ServiceFeeType.NONE)
         {
             // apply markup to each flight option price
             switch (orgFees.TravelFeeType)
             {
-                case ServiceFeeType.MarkupOnly:
+                case ServiceFeeType.MARKUP_ONLY:
                     // markup is percentage-based
                     markupPercentage = orgFees.TravelMarkupPercent != 0m ? orgFees.TravelMarkupPercent : 0m;
-                    feeType = ServiceFeeType.MarkupOnly;
+                    feeType = ServiceFeeType.MARKUP_ONLY;
                     break;
-                case ServiceFeeType.PerItemFeeOnly:
+                case ServiceFeeType.PER_ITEM_FEE_ONLY:
                     // markup is amount-based
                     markupAmount = orgFees.TravelPerItemFee != 0m ? orgFees.TravelPerItemFee : 0m;
-                    feeType = ServiceFeeType.PerItemFeeOnly;
+                    feeType = ServiceFeeType.PER_ITEM_FEE_ONLY;
                     break;
 
-                case ServiceFeeType.MarkupAndPerItemFee:
+                case ServiceFeeType.MARKUP_AND_PER_ITEM_FEE:
                     // both markup and amount-based
                     markupPercentage = orgFees.TravelMarkupPercent != 0m ? orgFees.TravelMarkupPercent : 0m;
                     markupAmount = orgFees.TravelPerItemFee != 0m ? orgFees.TravelPerItemFee : 0m;
-                    feeType = ServiceFeeType.MarkupAndPerItemFee;
+                    feeType = ServiceFeeType.MARKUP_AND_PER_ITEM_FEE;
                     break;
             }
         }
-        else if (orgFees.FlightFeeType != ServiceFeeType.None)
+        else if (orgFees.FlightFeeType != ServiceFeeType.NONE)
         {
             // apply markup to each flight option price
             switch (orgFees.FlightFeeType)
             {
-                case ServiceFeeType.MarkupOnly:
+                case ServiceFeeType.MARKUP_ONLY:
                     // markup is percentage-based
                     markupPercentage = orgFees.FlightMarkupPercent != 0m ? orgFees.FlightMarkupPercent : 0m;
-                    feeType = ServiceFeeType.MarkupOnly;
+                    feeType = ServiceFeeType.MARKUP_ONLY;
                     break;
-                case ServiceFeeType.PerItemFeeOnly:
+                case ServiceFeeType.PER_ITEM_FEE_ONLY:
                     // markup is amount-based
                     markupAmount = orgFees.FlightPerItemFee != 0m ? orgFees.FlightPerItemFee : 0m;
-                    feeType = ServiceFeeType.PerItemFeeOnly;
+                    feeType = ServiceFeeType.PER_ITEM_FEE_ONLY;
                     break;
 
-                case ServiceFeeType.MarkupAndPerItemFee:
+                case ServiceFeeType.MARKUP_AND_PER_ITEM_FEE:
                     // both markup and amount-based
                     markupPercentage = orgFees.FlightMarkupPercent != 0m ? orgFees.FlightMarkupPercent : 0m;
                     markupAmount = orgFees.FlightPerItemFee != 0m ? orgFees.FlightPerItemFee : 0m;
-                    feeType = ServiceFeeType.MarkupAndPerItemFee;
+                    feeType = ServiceFeeType.MARKUP_AND_PER_ITEM_FEE;
                     break;
             }
         }
@@ -1520,7 +1518,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
         {
             // no markup - did someone do something stupid?
             await _log.WarningAsync(
-                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_NO_ORG_MARKUP",
+                evt: SysLogEvtType.DATA_READ,
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Read,
                 message: $"No organization markup defined for Organization '{quote.OrganizationId}' when retrieving flight search results for TravelQuote '{travelQuoteId}'",
@@ -1546,9 +1544,9 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             // calculate cost (what the client will pay) after markup/fees
             decimal costMarkedUp = feeType switch
             {
-                ServiceFeeType.MarkupOnly => costBaseAmount * (1 + markupPercentage / 100),
-                ServiceFeeType.PerItemFeeOnly => costBaseAmount + markupAmount,
-                ServiceFeeType.MarkupAndPerItemFee => costBaseAmount * (1 + markupPercentage / 100) + markupAmount,
+                ServiceFeeType.MARKUP_ONLY => costBaseAmount * (1 + markupPercentage / 100),
+                ServiceFeeType.PER_ITEM_FEE_ONLY => costBaseAmount + markupAmount,
+                ServiceFeeType.MARKUP_AND_PER_ITEM_FEE   => costBaseAmount * (1 + markupPercentage / 100) + markupAmount,
                 _ => costBaseAmount
             };
 
@@ -2055,7 +2053,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
                                 default:
                                     await _log.WarningAsync(
-                                        evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_OFFER_AMENITY_UNKNOWN",
+                                        evt: SysLogEvtType.DATA_READ,
                                         cat: SysLogCatType.App,
                                         act: SysLogActionType.Read,
                                         message: $"Unknown amenity type encountered when mapping flight offer amenity for TravelQuote '{travelQuoteId}': AmenityType='{a.AmenityType}', Description='{a.Description}'");
@@ -2066,7 +2064,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
                     else
                     {
                         await _log.WarningAsync(
-                            evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_OFFER_AMENITY_MISSING",
+                            evt: SysLogEvtType.DATA_READ,
                             cat: SysLogCatType.App,
                             act: SysLogActionType.Read,
                             message: $"No amenities found when mapping flight offer amenity for TravelQuote '{travelQuoteId}': SegmentId='{segmentId}'");
@@ -2180,7 +2178,7 @@ internal sealed class TravelQuoteService : ITravelQuoteService
             flightViewOptions.Add(flightViewOption);
 
             await _log.InformationAsync(
-                evt: "TRAVEL_QUOTE_GET_FLIGHT_RESULTS_OFFER",
+                evt: SysLogEvtType.DATA_READ,
                 cat: SysLogCatType.App,
                 act: SysLogActionType.Read,
                 message: $"Flight offer found for TravelQuote '{travelQuoteId}': OfferId='{flightOffer?.Id}', Price='{flightOffer?.Price?.Total} {flightOffer?.Price?.Currency}'",
@@ -2207,15 +2205,15 @@ internal sealed class TravelQuoteService : ITravelQuoteService
 
         switch (feeType)
         {
-            case ServiceFeeType.MarkupOnly:
+            case ServiceFeeType.MARKUP_ONLY:
                 total += baseAmount * pctVal;
                 break;
 
-            case ServiceFeeType.PerItemFeeOnly:
+            case ServiceFeeType.PER_ITEM_FEE_ONLY:
                 total += flatVal;
                 break;
 
-            case ServiceFeeType.MarkupAndPerItemFee:
+            case ServiceFeeType.MARKUP_AND_PER_ITEM_FEE:
                 total += baseAmount * pctVal;
                 total += flatVal;
                 break;
