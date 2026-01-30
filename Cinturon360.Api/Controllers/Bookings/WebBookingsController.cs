@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Travel;
 using Cinturon360.Shared.Models.Kernel.Travel;
@@ -9,6 +8,7 @@ using Cinturon360.Shared.Models.DTOs;
 using System.Text.Json;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Platform;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 
 namespace Cinturon360.Api.Controllers;
 
@@ -55,7 +55,7 @@ public sealed class WebBookingsController : ControllerBase
         if (dto is null)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_QUOTE_DRAFT_CREATE_BODY_MISSING",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 message: "Body required.",
@@ -80,7 +80,7 @@ public sealed class WebBookingsController : ControllerBase
         if (!ok || string.IsNullOrWhiteSpace(travelQuoteId))
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_QUOTE_DRAFT_CREATE_FAILED",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 message: "CreateFromDtoAsync returned failure.",
@@ -100,7 +100,7 @@ public sealed class WebBookingsController : ControllerBase
         }
 
         await _log.InformationAsync(
-            evt: "TRAVEL_QUOTE_DRAFT_CREATED",
+            evt: SysLogEvtType.DATA_CREATE,
             cat: SysLogCatType.Api,
             act: SysLogActionType.Create,
             message: "Draft travel quote created.",
@@ -133,7 +133,7 @@ public sealed class WebBookingsController : ControllerBase
         if (dto is null)
         {
             await _log.WarningAsync(
-                evt: "FLIGHT_SEARCH_QUEUED_JOB_ENQUEUE_BODY_MISSING",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 message: "Body required.",
@@ -156,7 +156,7 @@ public sealed class WebBookingsController : ControllerBase
             cancellationToken: ct);
 
         await _log.InformationAsync(
-            evt: "FLIGHT_SEARCH_QUEUED_JOB_ENQUEUED",
+            evt: SysLogEvtType.QUEUE_CREATE,
             cat: SysLogCatType.Api,
             act: SysLogActionType.Create,
             message: "Flight search queued job enqueued.",
@@ -199,7 +199,7 @@ public sealed class WebBookingsController : ControllerBase
 
         var sw = Stopwatch.StartNew();
         var rid = GetCorrelationId();
-        Guid tid = dto.Tid;
+        var tid = dto.TID;
 
         var idx = 0;
         if (legIndex.HasValue)
@@ -245,7 +245,7 @@ public sealed class WebBookingsController : ControllerBase
         catch (JsonException ex)
         {
             await _log.ErrorAsync(
-                evt: "QUEUED_JOB_PAYLOAD_DESERIALIZATION_FAILED",
+                evt: SysLogEvtType.QUEUE_MSG_FAIL,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: ex,
@@ -300,7 +300,7 @@ public sealed class WebBookingsController : ControllerBase
         {
             // we should not be hitting this if the quote was properly validated earlier
             await _log.ErrorAsync(
-                evt: "FLIGHT_SEARCH_TMC_CONTEXT_NOT_FOUND",
+                evt: SysLogEvtType.GENERIC,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: new KeyNotFoundException($"TMC not found for organization ID '{quote.OrganizationId}'."),
@@ -409,7 +409,7 @@ public sealed class WebBookingsController : ControllerBase
         await _queuedJobService.MarkAsSucceededAsync(queuedJob, ct);
 
         await _log.InformationAsync(
-            evt: "FLIGHT_SEARCH_RESULTS_RETRIEVED",
+            evt: SysLogEvtType.DATA_READ,
             cat: SysLogCatType.Api,
             act: SysLogActionType.Read,
             message: "Flight search results retrieved successfully.",
@@ -418,7 +418,7 @@ public sealed class WebBookingsController : ControllerBase
             rid: rid,
             tid: tid,
             org: quote.OrganizationId,
-            uid: dto.Uid,
+            uid: dto.UID,
             durMs: (int)sw.ElapsedMilliseconds,
             http: Request.Method,
             stat: StatusCodes.Status200OK);

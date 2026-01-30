@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
 
 namespace Cinturon360.Api.Infrastructure;
 

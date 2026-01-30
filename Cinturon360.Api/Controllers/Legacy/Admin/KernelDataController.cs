@@ -2,13 +2,13 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text;
 using Cinturon360.Shared.Models.Kernel.Travel;
-using Cinturon360.Shared.Models.Static;
-using Cinturon360.Shared.Models.Static.Travel;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
 using Cinturon360.Shared.Services.External;
 using Cinturon360.Shared.Security;
+using Cinturon360.Shared.Models.Static.Geography;
+using Cinturon360.Shared.Models.Static.Travel;
 
 namespace Cinturon360.Api.Controllers.Admin;
 
@@ -28,7 +28,7 @@ public sealed class KernelDataController : ControllerBase
 
     // ---------- READ ----------
     [HttpGet("airport-info/{id:int}")]
-    public async Task<ActionResult<AirportInfo>> GetById(int id, CancellationToken ct)
+    public async Task<ActionResult<AirportInfo>> GetById(string id, CancellationToken ct)
     {
         var a = await _airportInfoService.GetByIdAsync(id, ct);
         return a is null ? NotFound() : Ok(a);
@@ -114,7 +114,7 @@ public sealed class KernelDataController : ControllerBase
 
     // ---------- UPDATE ----------
     [HttpPut("airport-info/{id:int}")]
-    public async Task<ActionResult<AirportInfo>> Update(int id, [FromBody] AirportInfo input, CancellationToken ct)
+    public async Task<ActionResult<AirportInfo>> Update(string id, [FromBody] AirportInfo input, CancellationToken ct)
     {
         if (id != input.Id) return BadRequest("Id in route and body must match.");
         if (!await _airportInfoService.ExistsAsync(id, ct)) return NotFound();
@@ -124,8 +124,8 @@ public sealed class KernelDataController : ControllerBase
     }
 
     // ---------- DELETE ----------
-    [HttpDelete("airport-info/{id:int}")]
-    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    [HttpDelete("airport-info/{id}")]
+    public async Task<IActionResult> Delete(string id, CancellationToken ct)
         => (await _airportInfoService.DeleteAsync(id, ct)) ? NoContent() : NotFound();
 
     // ---------- BULK ----------

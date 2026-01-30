@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Http;
-
 namespace Cinturon360.Api.Infrastructure.Middleware;
 
 public sealed class CorrelationIdMiddleware : IMiddleware

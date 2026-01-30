@@ -3,11 +3,11 @@ using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Microsoft.AspNetCore.Mvc;
-using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Services.Interfaces.Travel;
 using Cinturon360.Shared.Models.Kernel.Travel;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using Cinturon360.Shared.Services.Interfaces.Platform;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 
 namespace Cinturon360.Api.Controllers.Flights;
 
@@ -52,7 +52,7 @@ public class FlightsController : ControllerBase
         if (existing is not null)
         {
             await _log.ErrorAsync(
-                evt: "FLIGHT_SEARCH_REQUEST_DUP",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Validate,
                 ex: new InvalidOperationException($"Table '{nameof(FlightOfferSearchRequestDto)}' has matching value for {criteria.Id}"),
@@ -65,7 +65,7 @@ public class FlightsController : ControllerBase
 
         // save it to the db
         await _log.DebugAsync(
-            evt: "FLIGHT_SEARCH_REQUEST_CREATE",
+            evt: SysLogEvtType.DATA_CREATE,
             cat: SysLogCatType.Data,
             act: SysLogActionType.Create,
             message: $"Created record '{nameof(FlightOfferSearchRequestDto)}' with ID '{criteria.Id}'",
@@ -109,7 +109,7 @@ public class FlightsController : ControllerBase
         {
             // we should never reach this path at this point, this is called from a series of steps where the quote existence is already validated
             await _log.ErrorAsync(
-                evt: "FLIGHT_SEARCH_OPTIONS_QUOTE_NOT_FOUND",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: new KeyNotFoundException($"Travel quote with ID '{travelQuoteId}' not found."),
@@ -123,7 +123,7 @@ public class FlightsController : ControllerBase
         if (tmcInfo == null)
         {
             await _log.ErrorAsync(
-                evt: "FLIGHT_SEARCH_OPTIONS_TMC_NOT_FOUND",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: new KeyNotFoundException($"TMC not found for organization ID '{quote.OrganizationId}'."),

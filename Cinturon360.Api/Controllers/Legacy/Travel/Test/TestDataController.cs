@@ -1,13 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Cinturon360.Shared.Services.Interfaces.Platform;
 using System.ComponentModel.DataAnnotations;
-using Cinturon360.Shared.Security;
 using Cinturon360.Shared.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Cinturon360.Shared.Models.Kernel.Billing;
 using Cinturon360.Shared.Models.Static.Billing;
-using static Cinturon360.Shared.Models.Kernel.Billing.LicenseAgreementUnified;
 //using Cinturon360.Shared.Services.Interfaces.Platform;
 
 namespace Cinturon360.Api.Controllers.Test;
@@ -236,11 +234,11 @@ public class TestDataController : ControllerBase
             StartDate = start,
             ExpiryDate = expiry,
             AutoRenew = true,
-            BillingType = BillingType.Prepaid,
-            BillingFrequency = BillingFrequency.Monthly,
+            BillingType = BillingType.PREPAID,
+            BillingFrequency = BillingFrequency.MONTHLY,
             AccessFee = 0m,
-            AccessFeeScope = BillingPeriodScope.Monthly,
-            PaymentStatus = PaymentStatus.Pending,
+            AccessFeeScope = BillingPeriodScope.MONTHLY,
+            PaymentStatus = PaymentStatus.PENDING,
             PrepaidBalance = 0m,
             GracePeriodDays = 0
         };
@@ -253,11 +251,11 @@ public class TestDataController : ControllerBase
             StartDate = start,
             ExpiryDate = expiry,
             AutoRenew = true,
-            BillingType = BillingType.Prepaid,
-            BillingFrequency = BillingFrequency.Monthly,
+            BillingType = BillingType.PREPAID,
+            BillingFrequency = BillingFrequency.MONTHLY,
             AccessFee = 199m,
-            AccessFeeScope = BillingPeriodScope.Monthly,
-            PaymentStatus = PaymentStatus.Pending,
+            AccessFeeScope = BillingPeriodScope.MONTHLY,
+            PaymentStatus = PaymentStatus.PENDING,
             PrepaidBalance = 1000m,
             GracePeriodDays = 7
         };
@@ -270,11 +268,11 @@ public class TestDataController : ControllerBase
             StartDate = start,
             ExpiryDate = expiry,
             AutoRenew = true,
-            BillingType = BillingType.Postpaid,
-            BillingFrequency = BillingFrequency.Monthly,
+            BillingType = BillingType.POSTPAID,
+            BillingFrequency = BillingFrequency.MONTHLY,
             AccessFee = 49m,
-            AccessFeeScope = BillingPeriodScope.Monthly,
-            PaymentStatus = PaymentStatus.Pending,
+            AccessFeeScope = BillingPeriodScope.MONTHLY,
+            PaymentStatus = PaymentStatus.PENDING,
             MinimumMonthlySpend = 500m,
             GracePeriodDays = 5
         };

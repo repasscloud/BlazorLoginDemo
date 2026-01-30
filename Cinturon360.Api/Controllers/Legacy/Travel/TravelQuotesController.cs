@@ -1,17 +1,16 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
-using Cinturon360.Shared.Security;
 using Cinturon360.Shared.Models.Kernel.Travel;
 using Cinturon360.Shared.Services.Interfaces.Travel;
 using Cinturon360.Shared.Models.Search;
 using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
-using Cinturon360.Shared.Models.Static.SysVar;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using System.Text.Json;
 using System.Diagnostics;
 using Cinturon360.Shared.Services.Interfaces.Platform;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 
 namespace Cinturon360.Api.Controllers.Travel;
 
@@ -172,7 +171,7 @@ public sealed class TravelQuotesController : ControllerBase
         catch (JsonException ex)
         {
             await _log.ErrorAsync(
-                evt: "QUEUED_JOB_PAYLOAD_DESERIALIZATION_FAILED",
+                evt: SysLogEvtType.QUEUE_MSG_FAIL,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: ex,
@@ -226,7 +225,7 @@ public sealed class TravelQuotesController : ControllerBase
         if (tmcInfo == null)
         {
             await _log.ErrorAsync(
-                evt: "FLIGHT_SEARCH_OPTIONS_TMC_NOT_FOUND",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: new KeyNotFoundException($"TMC not found for organization ID '{quote.OrganizationId}'."),
@@ -287,7 +286,7 @@ public sealed class TravelQuotesController : ControllerBase
         {
             // we should never reach this path at this point, this is called from a series of steps where the quote existence is already validated
             await _log.ErrorAsync(
-                evt: "FLIGHT_SEARCH_OPTIONS_QUOTE_NOT_FOUND",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: new KeyNotFoundException($"Travel quote with ID '{travelQuoteId}' not found."),
@@ -303,7 +302,7 @@ public sealed class TravelQuotesController : ControllerBase
         if (tmcInfo == null)
         {
             await _log.ErrorAsync(
-                evt: "FLIGHT_SEARCH_OPTIONS_TMC_NOT_FOUND",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 ex: new KeyNotFoundException($"TMC not found for organization ID '{quote.OrganizationId}'."),

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.Search;
-using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Travel;
 using Microsoft.AspNetCore.Mvc;
@@ -38,7 +38,7 @@ public sealed class WebUiConfigController : ControllerBase
         var config = await _travelQuoteService.GenerateFlightSearchUIOptionsAsync(id, rid, ct);
 
         await _log.InformationAsync(
-            evt: "FLIGHT_SEARCH_CONFIG_GENERATE_RESULT",
+            evt: SysLogEvtType.DATA_READ,
             cat: SysLogCatType.Api,
             act: SysLogActionType.Read,
             message: config is null
@@ -47,7 +47,7 @@ public sealed class WebUiConfigController : ControllerBase
             ent: nameof(FlightSearchPageConfig),
             entId: id,
             rid: rid,
-            tid: dto.Tid,
+            tid: dto.TID,
             durMs: (int)sw.ElapsedMilliseconds,
             http: Request.Method,
             stat: config is null ? StatusCodes.Status404NotFound : StatusCodes.Status200OK,

@@ -1,8 +1,7 @@
 using System.Diagnostics;
 using System.Security.Claims;
 using Cinturon360.Shared.Models.Policies;
-using Cinturon360.Shared.Models.Kernel.SysVar;
-using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Policy;
 using Microsoft.AspNetCore.Mvc;
@@ -52,7 +51,7 @@ public sealed class PoliciesController : ControllerBase
         catch (ArgumentException ex)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_LIST_BAD_REQUEST",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 message: "Bad request in ListTravelPolicies",
@@ -102,7 +101,7 @@ public sealed class PoliciesController : ControllerBase
             if (created is null)
             {
                 await _log.ErrorAsync(
-                    evt: "TRAVEL_POLICY_CREATE_RETRIEVE_FAILED",
+                    evt: SysLogEvtType.DATA_CREATE_ERR,
                     cat: SysLogCatType.Data,
                     act: SysLogActionType.Create,
                     ex: new InvalidOperationException("Policy was created but could not be retrieved."),
@@ -131,7 +130,7 @@ public sealed class PoliciesController : ControllerBase
         catch (ArgumentException ex)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_CREATE_VALIDATION_FAILED",
+                evt: SysLogEvtType.DATA_CREATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 message: "Validation failure in CreateTravelPolicy",
@@ -155,7 +154,7 @@ public sealed class PoliciesController : ControllerBase
             // Your service throws InvalidOperationException when organization or policy doesn't exist.
             // Map to 404 for "not found".
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_CREATE_NOT_FOUND",
+                evt: SysLogEvtType.DATA_CREATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 message: "Not found / invalid operation in CreateTravelPolicy",
@@ -219,7 +218,7 @@ public sealed class PoliciesController : ControllerBase
         catch (ArgumentException ex)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_UPDATE_VALIDATION_FAILED",
+                evt: SysLogEvtType.DATA_UPDATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 message: "Validation failure in UpdateTravelPolicy",
@@ -241,7 +240,7 @@ public sealed class PoliciesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_UPDATE_NOT_FOUND",
+                evt: SysLogEvtType.DATA_UPDATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 message: "Not found / invalid operation in UpdateTravelPolicy",
