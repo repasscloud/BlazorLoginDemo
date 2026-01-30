@@ -42,7 +42,7 @@ else if (_error is not null)
 {
     <div class="alert alert-danger">@_error</div>
 }
-else if (_org?.Org is not null)  @* guard both _org and _org.Org *@
+else if (_org?.Org is not null)
 {
     OrganizationUnified? org = _org.Org;
 
@@ -53,7 +53,7 @@ else if (_org?.Org is not null)  @* guard both _org and _org.Org *@
             <div class="col-md-3">
                 <label class="form-label">Id</label>
                 <div class="input-group">
-                    <InputText class="form-control bg-light" @bind-Value="@org.Id" readonly />
+                    <InputText class="form-control bg-light" Value="@org.Id" readonly />
                     <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(org.Id)">
                         <i class="bi bi-clipboard"></i>
                     </button>

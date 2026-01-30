@@ -7,6 +7,8 @@
 @using Cinturon360.Shared.Models.Kernel.Platform
 @using Cinturon360.Shared.Models.Policies
 @using Cinturon360.Shared.Models.Static
+@using Cinturon360.Shared.Models.Static.Billing
+@using Cinturon360.Shared.Models.Static.Travel
 @using Cinturon360.Shared.Services.Interfaces.Platform
 @using Cinturon360.Shared.Services.Interfaces.Policy
 @using Cinturon360.Shared.Services.Interfaces.Policies
@@ -60,9 +62,9 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Default Currency</label>
                         <InputSelect id="defaultCurrencyChoice" class="form-select" @bind-Value="Vm.DefaultCurrencyCode">
-                            @foreach ((string code, string label) c in UniversalData.CurrencyFullNameOptions)
+                            @foreach ((string Code, string Label) c in Currencies.DropdownOptions)
                             {
-                                <option value="@c.code">@c.label</option>
+                                <option value="@c.Code">@c.Label</option>
                             }
                         </InputSelect>
                     </div>
@@ -137,7 +139,7 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Default Seating</label>
                         <InputSelect id="defaultFlightSeatingChoice" class="form-select" @bind-Value="Vm.DefaultFlightSeating">
-                            @foreach ((string code, string label) c in FareType.BookingClassOptions)
+                            @foreach ((string code, string label) c in FareType.DropdownOptions)
                             {
                                 <option value="@c.code">@c.label</option>
                             }
@@ -146,7 +148,7 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Max Seating</label>
                         <InputSelect id="maxFlightSeatingChoice" class="form-select" @bind-Value="Vm.MaxFlightSeating">
-                            @foreach ((string code, string label) c in FareType.BookingClassOptions)
+                            @foreach ((string code, string label) c in FareType.DropdownOptions)
                             {
                                 <option value="@c.code">@c.label</option>
                             }
@@ -174,7 +176,7 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Max Seat at ≥6h</label>
                         <InputSelect id="flightSeatAtGt6hChoice" class="form-select" @bind-Value="Vm.MaxFlightSeatingAt6Hours">
-                            @foreach ((string code, string label) c in FareType.BookingClassOptions)
+                            @foreach ((string code, string label) c in FareType.DropdownOptions)
                             {
                                 <option value="@c.code">@c.label</option>
                             }
@@ -183,7 +185,7 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Max Seat at ≥8h</label>
                         <InputSelect id="flightSeatAtGt8hChoice" class="form-select" @bind-Value="Vm.MaxFlightSeatingAt8Hours">
-                            @foreach ((string code, string label) c in FareType.BookingClassOptions)
+                            @foreach ((string code, string label) c in FareType.DropdownOptions)
                             {
                                 <option value="@c.code">@c.label</option>
                             }
@@ -192,7 +194,7 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Max Seat at ≥10h</label>
                         <InputSelect id="flightSeatAtGt10hChoice" class="form-select" @bind-Value="Vm.MaxFlightSeatingAt10Hours">
-                            @foreach ((string code, string label) c in FareType.BookingClassOptions)
+                            @foreach ((string code, string label) c in FareType.DropdownOptions)
                             {
                                 <option value="@c.code">@c.label</option>
                             }
@@ -201,7 +203,7 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Max Seat at ≥14h</label>
                         <InputSelect id="flightSeatAtGt14hChoice" class="form-select" @bind-Value="Vm.MaxFlightSeatingAt14Hours">
-                            @foreach ((string code, string label) c in FareType.BookingClassOptions)
+                            @foreach ((string code, string label) c in FareType.DropdownOptions)
                             {
                                 <option value="@c.code">@c.label</option>
                             }
@@ -240,7 +242,7 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Default Room Type</label>
                         <InputSelect id="defaultRoomChoice" class="form-select" @bind-Value="Vm.DefaultHotelRoomType">
-                            @foreach ((string code, string label) c in HotelRoomType.HotelRoomOptions)
+                            @foreach ((string code, string label) c in HotelRoomType.DropdownOptions)
                             {
                                 <option value="@c.code">@c.label</option>
                             }
@@ -249,7 +251,7 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Max Room Type</label>
                         <InputSelect id="maxRoomChoice" class="form-select" @bind-Value="Vm.MaxHotelRoomType">
-                            @foreach ((string code, string label) c in HotelRoomType.HotelRoomOptions)
+                            @foreach ((string code, string label) c in HotelRoomType.DropdownOptions)
                             {
                                 <option value="@c.code">@c.label</option>
                             }
@@ -401,7 +403,7 @@ else
                     <div class="col-md-3">
                         <label class="form-label">Max Train Class</label>
                         <InputSelect id="railfareMaxChoice" class="form-select" @bind-Value="Vm.MaxTrainClass">
-                            @foreach ((string code, string label) c in RailFareType.BookingClassOptions)
+                            @foreach ((string code, string label) c in RailFareType.DropdownOptions)
                             {
                                 <option value="@c.code">@c.label</option>
                             }

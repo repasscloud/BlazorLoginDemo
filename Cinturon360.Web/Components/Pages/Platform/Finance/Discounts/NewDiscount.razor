@@ -2,6 +2,8 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Platform:Finance:Discounts:Create")]
 
+@using Cinturon360.Shared.Models.Static.Billing
+@using Cinturon360.Web.Components.Pages.Tmc.Reports
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @using System.ComponentModel.DataAnnotations
@@ -10,7 +12,7 @@
 @using Cinturon360.Shared.Services.Interfaces.Platform
 @using Cinturon360.Shared.Models.Static
 @using System.Reflection
-@using Cinturon360.Shared.Models.Static.SysVar;
+@using Cinturon360.Shared.Models.Static.System.SysVar;
 
 @inject IBillingService Billing
 @inject IAdminOrgServiceUnified Orgs
@@ -101,10 +103,10 @@
             <div class="row g-3 mb-3">
                 <div class="col-md-3">
                     <label class="form-label">Currency</label>
-                    <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Currency" disabled="@(_vm.Type == DiscountType.Percentage)">
-                        @foreach (UniversalData.CurrencyOption c in UniversalData._currencyOptions)
+                    <InputSelect class="form-select" @bind-Value="_vm.Currency" disabled="@(_vm.Type == DiscountType.Percentage)">
+                        @foreach ((string Code, string Name) c in Currencies.DropdownOptions)
                         {
-                            <option value="@c.Code">@c.Code @c.Flag</option>
+                            <option value="@c.Code">@c.Name</option>
                         }
                     </InputSelect>
                 </div>
@@ -168,7 +170,7 @@
         AuthenticationState? authState = await AuthStateTask;
         _user = authState.User;
         await _log.InformationAsync(
-            evt: "PAGE_VIEW",
+            evt: SysLogEvtType.UI_PAGE_OPEN,
             cat: SysLogCatType.Ui,
             act: SysLogActionType.View,
             message: "Accessed New Discount page",
@@ -208,7 +210,7 @@
 
             Discount? created = await Billing.CreateDiscountAsync(req);
             await _log.InformationAsync(
-                evt: "DISCOUNT_CREATE_OK",
+                evt: SysLogEvtType.DATA_CREATE,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 message: $"Created discount {created.Id} ({created.DisplayName})",
@@ -222,7 +224,7 @@
         catch (Exception ex)
         {
             await _log.ErrorAsync(
-                evt: "DISCOUNT_CREATE_EXCEPTION",
+                evt: SysLogEvtType.DATA_CREATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 ex: ex,
@@ -231,7 +233,7 @@
                 uid: _user?.FindFirstValue(ClaimTypes.NameIdentifier),
                 note: "exception_caught");
             await _log.ErrorAsync(
-                evt: "DISCOUNT_CREATE_FAIL",
+                evt: SysLogEvtType.DATA_CREATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 ex: new InvalidOperationException("Create discount failed"),

@@ -3,7 +3,7 @@
 
 @using Cinturon360.Shared.Models.DTOs
 @using Cinturon360.Shared.Models.Kernel.Travel
-@using Cinturon360.Shared.Models.Static.SysVar
+@using Cinturon360.Shared.Models.Static.System.SysVar
 @using Cinturon360.Shared.Services.Interfaces.Kernel
 @using System.Linq
 @using System.Text.Json
@@ -533,7 +533,7 @@ else
         if (string.IsNullOrWhiteSpace(id))
         {
             await _log.WarningAsync(
-                evt: "BOOKING_REQ_RESULTS_NO_TQID",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Read,
                 message: "No TravelQuoteId provided in route or query string",
@@ -559,7 +559,7 @@ else
         string? url = $"v1/bookings/drafts/{Uri.EscapeDataString(id ?? string.Empty)}/flight-quotes/{EffectiveLegCount}";
         
         await _log.InformationAsync(
-            evt: "BOOKING_REQ_RESULTS_FETCH_START",
+            evt: SysLogEvtType.UI_FUNCTION_EXECUTED,
             cat: SysLogCatType.Api,
             act: SysLogActionType.Start,
             message: $"Fetching flight results for quoteId: '{id}'",
@@ -573,9 +573,9 @@ else
 
             LogTraceDto logTraceDto = new LogTraceDto
             {
-                Tid = Tid ?? Guid.Empty,
-                Uid = myUserId,
-                Org = myOrgId
+                TID = Tid ?? Guid.Empty,
+                UID = myUserId,
+                ORG = myOrgId
             };
         
             using HttpRequestMessage? req = BuildRequest(HttpMethod.Post, url, logTraceDto, JsonOpts, rid);
@@ -588,7 +588,7 @@ else
             {
                 _error = "Flight results data is null";
                 await _log.WarningAsync(
-                    evt: "BOOKING_REQ_RESULTS_EMPTY",
+                    evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                     cat: SysLogCatType.Api,
                     act: SysLogActionType.Read,
                     message: _error,
@@ -605,7 +605,7 @@ else
                 o.IsOpen = false;
 
             await _log.InformationAsync(
-                evt: "BOOKING_REQ_RESULTS_FETCH_OK",
+                evt: SysLogEvtType.UI_FUNCTION_EXECUTED,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.End,
                 message: "Flight results fetched",
@@ -617,7 +617,7 @@ else
         {
             _error = $"Network error: {ex.Message}";
             await _log.ErrorAsync(
-                evt: "BOOKING_REQ_RESULTS_HTTP_ERR",
+                evt: SysLogEvtType.UI_FUNCTION_EXECUTED,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Read,
                 message: "HTTP error while fetching flight results",
@@ -631,7 +631,7 @@ else
         catch (TaskCanceledException)
         {
             await _log.WarningAsync(
-                evt: "BOOKING_REQ_RESULTS_CANCELED",
+                evt: SysLogEvtType.UI_FUNCTION_EXECUTED,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Cancel,
                 message: "Flight results fetch cancelled",
@@ -648,7 +648,7 @@ else
             {
                 _error = "QuoteId is expired or invalid. Create new ";
                 await _log.WarningAsync(
-                    evt: "BOOKING_REQ_RESULTS_NO_RESULTS",
+                    evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                     cat: SysLogCatType.Api,
                     act: SysLogActionType.Read,
                     message: _error,
@@ -660,7 +660,7 @@ else
             }
             _error = $"Unexpected error: {ex.Message}";
             await _log.ErrorAsync(
-                evt: "BOOKING_REQ_RESULTS_UNEXPECTED",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 message: ex.ToString(),
@@ -692,6 +692,4 @@ else
 
         return req;
     }
-
-
 }

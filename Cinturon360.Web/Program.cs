@@ -11,9 +11,6 @@ using Cinturon360.Web.Services;  // MailerSendEmailSender + MailerSendOptions
 using Cinturon360.Web.Security;  // SeedData
 using Cinturon360.Shared.Auth;
 using Cinturon360.Shared.Services;
-
-using Cinturon360.Shared.Logging;
-using Serilog;
 using Cinturon360.Web.Services.Api;
 // using Blazorise;
 // using Blazorise.Bootstrap5;
@@ -30,7 +27,6 @@ public class Program
         // read token for blazorize
         var blazoriseProductToken = builder.Configuration["Blazorise:ProductToken"];
 
-        builder.Host.UseSerilog();
 
         // Add services to the container.
         builder.Services.AddRazorComponents()
@@ -212,24 +208,6 @@ public class Program
         var inContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 
         var app = builder.Build();
-
-        // Serilog
-        app.UseSerilogRequestLogging(opts =>
-        {
-            // add request-scoped properties
-            opts.EnrichDiagnosticContext = (ctx, http) =>
-            {
-                ctx.Set("RequestPath", http.Request.Path);
-                ctx.Set("RequestId", http.TraceIdentifier);
-                var userId = http.User?.Identity?.IsAuthenticated == true
-                    ? (http.User.Identity?.Name ?? http.User.FindFirst("sub")?.Value)
-                    : null;
-                if (!string.IsNullOrWhiteSpace(userId))
-                    ctx.Set("UserId", userId);
-                ctx.Set("Environment", app.Environment.EnvironmentName);
-                ctx.Set("Application", "Ava.API");
-            };
-        });
 
         // Culture switch endpoint
         app.MapGet("/set-culture", (string culture, string? redirectUri, HttpContext ctx) =>

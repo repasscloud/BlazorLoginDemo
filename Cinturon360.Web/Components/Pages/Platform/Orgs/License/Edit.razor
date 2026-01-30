@@ -47,97 +47,97 @@ else if (model is not null)
                 <strong>Core</strong>
                 @switch(model.PaymentStatus)
                 {
-                    case PaymentStatus.Pending:
+                    case PaymentStatus.PENDING:
                         <button type="button" class="btn btn-secondary btn-sm">
                             <i class="bi-hourglass-split me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Processing:
+                    case PaymentStatus.PROCESSING:
                         <button type="button" class="btn btn-info btn-sm">
                             <i class="bi-arrow-repeat me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Authorized:
+                    case PaymentStatus.AUTHORIZED:
                         <button type="button" class="btn btn-primary btn-sm">
                             <i class="bi-shield-check me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.PartiallyPaid:
+                    case PaymentStatus.PARTIALLY_PAID:
                         <button type="button" class="btn btn-warning btn-sm text-dark">
                             <i class="bi-cash-coin me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Paid:
+                    case PaymentStatus.PAID:
                         <button type="button" class="btn btn-success btn-sm">
                             <i class="bi-check-circle me-1"></i> Paid
                         </button>
                         break;
 
-                    case PaymentStatus.Failed:
+                    case PaymentStatus.FAILED:
                         <button type="button" class="btn btn-danger btn-sm">
                             <i class="bi-x-circle me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Overdue:
+                    case PaymentStatus.OVERDUE:
                         <button type="button" class="btn btn-warning btn-sm text-dark">
                             <i class="bi-exclamation-triangle me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Disputed:
+                    case PaymentStatus.DISPUTED:
                         <button type="button" class="btn btn-danger btn-sm">
                             <i class="bi-exclamation-octagon me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Refunded:
+                    case PaymentStatus.REFUNDED:
                         <button type="button" class="btn btn-info btn-sm">
                             <i class="bi-arrow-counterclockwise me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.PartiallyRefunded:
+                    case PaymentStatus.PARTIALLY_REFUNDED:
                         <button type="button" class="btn btn-info btn-sm">
                             <i class="bi-arrow-left-right me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Cancelled:
+                    case PaymentStatus.CANCELLED:
                         <button type="button" class="btn btn-secondary btn-sm">
                             <i class="bi-slash-circle me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.WrittenOff:
+                    case PaymentStatus.WRITTEN_OFF:
                         <button type="button" class="btn btn-secondary btn-sm">
                             <i class="bi-journal-x me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Chargeback:
+                    case PaymentStatus.CHARGEBACK:
                         <button type="button" class="btn btn-danger btn-sm">
                             <i class="bi-bank me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Voided:
+                    case PaymentStatus.VOIDED:
                         <button type="button" class="btn btn-secondary btn-sm">
                             <i class="bi-ban me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.Scheduled:
+                    case PaymentStatus.SCHEDULED:
                         <button type="button" class="btn btn-primary btn-sm">
                             <i class="bi-calendar-event me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
                         break;
 
-                    case PaymentStatus.OnHold:
+                    case PaymentStatus.ON_HOLD:
                         <button type="button" class="btn btn-warning btn-sm text-dark">
                             <i class="bi-pause-circle me-1"></i> @DisplayName(model.PaymentStatus)
                         </button>
@@ -238,10 +238,10 @@ else if (model is not null)
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Access Fee Scope</label>
-                        <InputSelect TValue="LicenseAgreementUnified.BillingPeriodScope" class="form-select" @bind-Value="model.AccessFeeScope">
-                            @foreach (var v in EnumValues<LicenseAgreementUnified.BillingPeriodScope>())
+                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.AccessFeeScope">
+                            @foreach (var o in BillingPeriodScopes.DropdownOptions)
                             {
-                                <option value="@v">@v</option>
+                                <option value="@o.Code">@o.Label</option>
                             }
                         </InputSelect>
                     </div>
@@ -251,10 +251,10 @@ else if (model is not null)
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Threshold Scope</label>
-                        <InputSelect TValue="LicenseAgreementUnified.BillingPeriodScope" class="form-select" @bind-Value="model.ThresholdScope">
-                            @foreach (var v in EnumValues<LicenseAgreementUnified.BillingPeriodScope>())
+                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.ThresholdScope">
+                            @foreach (var o in BillingPeriodScopes.DropdownOptions)
                             {
-                                <option value="@v">@v</option>
+                                <option value="@o.Code">@o.Label</option>
                             }
                         </InputSelect>
                     </div>
@@ -290,10 +290,10 @@ else if (model is not null)
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Scope</label>
-                        <InputSelect TValue="LicenseAgreementUnified.BillingPeriodScope" class="form-select" @bind-Value="model.DiscountA!.Scope">
-                            @foreach (var v in EnumValues<LicenseAgreementUnified.BillingPeriodScope>())
+                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.DiscountA!.Scope">
+                            @foreach (var o in BillingPeriodScopes.DropdownOptions)
                             {
-                                <option value="@v">@v</option>
+                                <option value="@o.Code">@o.Label</option>
                             }
                         </InputSelect>
                     </div>
@@ -307,10 +307,10 @@ else if (model is not null)
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Scope</label>
-                        <InputSelect TValue="LicenseAgreementUnified.BillingPeriodScope" class="form-select" @bind-Value="model.DiscountB!.Scope">
-                            @foreach (var v in EnumValues<LicenseAgreementUnified.BillingPeriodScope>())
+                        <InputSelect TValue="BillingPeriodScope" class="form-select" @bind-Value="model.DiscountB!.Scope">
+                            @foreach (var o in BillingPeriodScopes.DropdownOptions)
                             {
-                                <option value="@v">@v</option>
+                                <option value="@o.Code">@o.Label</option>
                             }
                         </InputSelect>
                     </div>
@@ -479,9 +479,9 @@ else if (model is not null)
                             <div class="col-md-4">
                                 <label class="form-label">All Travel Fee Type</label>
                                 <InputSelect TValue="ServiceFeeType" class="form-select" @bind-Value="model.TravelFeeType">
-                                    @foreach (var v in EnumValues<ServiceFeeType>())
+                                    @foreach (var o in ServiceFeeTypes.DropdownOptions)
                                     {
-                                        <option value="@v">@DisplayName(v)</option>
+                                        <option value="@o.Code">@o.Label</option>
                                     }
                                 </InputSelect>
                             </div>

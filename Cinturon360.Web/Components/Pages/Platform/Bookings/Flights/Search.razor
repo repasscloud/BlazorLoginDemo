@@ -3,8 +3,9 @@
 
 @using Cinturon360.Shared.Models.DTOs
 @using Cinturon360.Shared.Models.Search
-@using Cinturon360.Shared.Models.Static.SysVar
+@using Cinturon360.Shared.Models.Static.System.SysVar
 @using Cinturon360.Shared.Models.Static.Travel
+@using Cinturon360.Shared.Models.Static.Travel.Components
 @using Cinturon360.Shared.Services.Helpers
 @using Cinturon360.Shared.Services.Interfaces.Kernel
 @using System.ComponentModel.DataAnnotations
@@ -521,7 +522,7 @@
         if (string.IsNullOrWhiteSpace(id))
         {
             await _log.WarningAsync(
-                evt: "BOOKING_REQ_ID_MISSING",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Ui,
                 act: SysLogActionType.Validate,
                 message: "Missing travelQuoteId (route) and tq (query). Redirecting to create flow.",
@@ -549,13 +550,13 @@
 
         LogTraceDto logTraceDto = new LogTraceDto
         {
-            Tid = Tid ?? Guid.Empty,
-            Uid = myUserId,
-            Org = myOrgId
+            TID = Tid ?? Guid.Empty,
+            UID = myUserId,
+            ORG = myOrgId
         };
 
         await _log.InformationAsync(
-            evt: "BOOKING_REQ_CONFIG_FETCH_START",
+            evt: SysLogEvtType.UI_FUNCTION_EXECUTED,
             cat: SysLogCatType.Api,
             act: SysLogActionType.Start,
             message: "Fetching flight search page config for WebUI",
@@ -589,7 +590,7 @@
                 if ((int)response.StatusCode >= 500)
                 {
                     await _log.WarningAsync(
-                        evt: "BOOKING_REQ_CONFIG_POST_HTTP_5XX",
+                        evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                         cat: SysLogCatType.Api,
                         act: SysLogActionType.Read,
                         message: "Server error while fetching flight search page config",
@@ -608,7 +609,7 @@
                 else
                 {
                     await _log.WarningAsync(
-                        evt: "BOOKING_REQ_CONFIG_POST_HTTP_NON2XX",
+                        evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                         cat: SysLogCatType.Api,
                         act: SysLogActionType.Read,
                         message: "Non-success while fetching flight search page config",
@@ -638,7 +639,7 @@
                 _error = "Configuration data is null";
 
                 await _log.WarningAsync(
-                    evt: "BOOKING_REQ_CONFIG_EMPTY",
+                    evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                     cat: SysLogCatType.Api,
                     act: SysLogActionType.Read,
                     message: _error,
@@ -663,7 +664,7 @@
             _error = null;
 
             await _log.InformationAsync(
-                evt: "BOOKING_REQ_CONFIG_FETCH_OK",
+                evt: SysLogEvtType.API_HTTP_200_OK,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.End,
                 message: "Fetched flight search page config",
@@ -682,7 +683,7 @@
         {
             // Normal when params change quickly (we cancel the previous request). Don’t redirect.
             await _log.VerboseAsync(
-                evt: "BOOKING_REQ_CONFIG_FETCH_CANCEL",
+                evt: SysLogEvtType.UI_CANCEL_PRESSED,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Read,
                 message: "Config fetch cancelled (likely due to parameter change)",
@@ -706,7 +707,7 @@
             _error = $"Error loading configuration: {ex.Message}";
 
             await _log.ErrorAsync(
-                evt: "BOOKING_REQ_CONFIG_FETCH_ERR",
+                evt: SysLogEvtType.API_HTTP_500_INTERNAL_SERVER_ERROR,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Read,
                 ex: ex,
@@ -732,7 +733,7 @@
             _error = $"Unexpected error loading configuration: {ex.GetBaseException().Message}";
 
             await _log.FatalAsync(
-                evt: "BOOKING_REQ_CONFIG_FETCH_UNHANDLED",
+                evt: SysLogEvtType.API_HTTP_500_INTERNAL_SERVER_ERROR,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Read,
                 ex: ex,
@@ -828,7 +829,7 @@
 
         // fire and ignore the response, we will navigate away on success
         _ = _log.InformationAsync(
-            evt: "BOOKING_REQ_SEARCH_SUBMIT_START",
+            evt: SysLogEvtType.UI_SEARCH_SUBMITTED,
             cat: SysLogCatType.Api,
             act: SysLogActionType.Create,
             message: "Submitting flight search request",
@@ -854,7 +855,7 @@
                 int durMsOk = (int)sw.ElapsedMilliseconds;
 
                 _ = _log.InformationAsync(
-                    evt: "BOOKING_REQ_SEARCH_SUBMIT_OK",
+                    evt: SysLogEvtType.API_HTTP_200_OK,
                     cat: SysLogCatType.Api,
                     act: SysLogActionType.End,
                     message: "Flight search request queued",
@@ -888,7 +889,7 @@
             string? body = await resp.Content.ReadAsStringAsync(ct);
 
             await _log.WarningAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_NON2XX",
+                evt: SysLogEvtType.API_HTTP_NO_2XX,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 message: $"Non-success submitting flight search request ({(int)resp.StatusCode} {resp.ReasonPhrase})",
@@ -908,7 +909,7 @@
         {
             // Submit cancelled (user action/navigation). Don't treat as error.
             await _log.VerboseAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_CANCEL",
+                evt: SysLogEvtType.UI_CANCEL_PRESSED,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 message: "Flight search submit cancelled",
@@ -926,7 +927,7 @@
         catch (HttpRequestException ex)
         {
             await _log.ErrorAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_HTTP_ERR",
+                evt: SysLogEvtType.API_HTTP_500_INTERNAL_SERVER_ERROR,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 ex: ex,
@@ -945,7 +946,7 @@
         catch (Exception ex)
         {
             await _log.FatalAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_UNHANDLED",
+                evt: SysLogEvtType.API_HTTP_500_INTERNAL_SERVER_ERROR,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 ex: ex,
@@ -985,8 +986,6 @@
         rid = string.IsNullOrWhiteSpace(rid) ? Guid.NewGuid().ToString(format: "N") : rid;
 
         StateHasChanged();
-        @* await InvokeAsync(StateHasChanged);
-        await Task.Yield(); *@
 
         Stopwatch? sw = Stopwatch.StartNew();
 
@@ -1022,7 +1021,7 @@
 
         // fire and ignore the response, we will navigate away on success
         _ = _log.InformationAsync(
-            evt: "BOOKING_REQ_SEARCH_SUBMIT_START",
+            evt: SysLogEvtType.UI_SEARCH_SUBMITTED,
             cat: SysLogCatType.Api,
             act: SysLogActionType.Create,
             message: "Submitting flight search request",
@@ -1046,8 +1045,8 @@
             {
                 // fire and forget navigation to results page
                 _ = _log.InformationAsync(
-                    evt: "BOOKING_REQ_SEARCH_SUBMIT_OK",
-                    cat: SysLogCatType.Api,
+                    evt: SysLogEvtType.QUEUE_MSG_ENQUEUE,
+                    cat: SysLogCatType.Queue,
                     act: SysLogActionType.End,
                     message: "Flight search request queued",
                     ent: nameof(TravelQuoteFlightUIResultPatchDto),
@@ -1072,7 +1071,7 @@
 
             // No exception here; server responded. Use Warning (or create synthetic Exception if you insist on ErrorAsync).
             await _log.WarningAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_NON2XX",
+                evt: SysLogEvtType.API_HTTP_NO_2XX,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 message: $"Non-success submitting flight search request ({(int)resp.StatusCode} {resp.ReasonPhrase})",
@@ -1092,7 +1091,7 @@
         {
             // Submit cancelled (user action/navigation). Don't treat as error.
             await _log.VerboseAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_CANCEL",
+                evt: SysLogEvtType.UI_CANCEL_PRESSED,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 message: "Flight search submit cancelled",
@@ -1110,7 +1109,7 @@
         catch (HttpRequestException ex)
         {
             await _log.ErrorAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_HTTP_ERR",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 ex: ex,
@@ -1129,7 +1128,7 @@
         catch (Exception ex)
         {
             await _log.FatalAsync(
-                evt: "BOOKING_REQ_SEARCH_SUBMIT_UNHANDLED",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Create,
                 ex: ex,
