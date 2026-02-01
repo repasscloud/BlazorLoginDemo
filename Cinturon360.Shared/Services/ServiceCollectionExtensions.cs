@@ -3,20 +3,20 @@ using Cinturon360.Shared.Data;
 using Cinturon360.Shared.Models.Kernel.FX;
 using Cinturon360.Shared.Models.Kernel.Travel;
 using Cinturon360.Shared.Security;
+using Cinturon360.Shared.Services.API.Geography;
 using Cinturon360.Shared.Services.External;
+using Cinturon360.Shared.Services.Interfaces.API.Geography;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Persistence;
 using Cinturon360.Shared.Services.Interfaces.Platform;
-using Cinturon360.Shared.Services.Interfaces.Policies;
 using Cinturon360.Shared.Services.Interfaces.Policy;
-using Cinturon360.Shared.Services.Interfaces.Travel;
+// using Cinturon360.Shared.Services.Interfaces.Travel;
 using Cinturon360.Shared.Services.Kernel;
 using Cinturon360.Shared.Services.Persistence;
 using Cinturon360.Shared.Services.Platform;
-using Cinturon360.Shared.Services.Policies;
 using Cinturon360.Shared.Services.Policy;
-using Cinturon360.Shared.Services.Travel;
+// using Cinturon360.Shared.Services.Travel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,30 +26,6 @@ namespace Cinturon360.Shared.Services;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddAvaApiHttpClient(
-        this IServiceCollection services, IConfiguration config)
-    {
-        // Options for outbound header
-        services.AddOptions<OutboundApiKeyOptions>()
-            .Bind(config.GetSection("OutboundApiKeyAuth"))
-            .Validate(o => !string.IsNullOrWhiteSpace(o.HeaderName) &&
-                           !string.IsNullOrWhiteSpace(o.Key),
-                      "OutboundApiKeyAuth: HeaderName and Key must be set.")
-            .ValidateOnStart();
-
-        services.AddTransient<ApiKeyDelegatingHandler>();
-
-        services.AddHttpClient("AvaApi", c =>
-        {
-            var baseAddress = config["Api:BaseAddress"];
-            if (!string.IsNullOrWhiteSpace(baseAddress))
-                c.BaseAddress = new Uri(baseAddress);
-        })
-        .AddHttpMessageHandler<ApiKeyDelegatingHandler>();
-
-        return services;
-    }
-
     public static IServiceCollection PlatformServices(this IServiceCollection services)
     {
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
@@ -175,7 +151,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
         services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
         services.AddScoped<ITravelPolicyService, TravelPolicyService>();
-        services.AddScoped<ITravelQuoteService, TravelQuoteService>();
+        // services.AddScoped<ITravelQuoteService, TravelQuoteService>();
         services.AddScoped<IErrorCodeService, ErrorCodeService>();
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
         services.AddScoped<IQueuedJobService, QueuedJobService>();

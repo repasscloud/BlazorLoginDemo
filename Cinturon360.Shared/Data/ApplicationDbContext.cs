@@ -1,12 +1,11 @@
 // ApplicationDbContext.cs (overhauled)
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-
 using Cinturon360.Shared.Models.Auth;                       // RefreshToken
 using Cinturon360.Shared.Models.Kernel.Travel;              // TravelPolicy, Region, Continent, Country, etc.
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;        // AmadeusOAuthToken
 using Cinturon360.Shared.Models.ExternalLib.Kernel.Flight;
-using Cinturon360.Shared.Models.Kernel.SysVar;              // AvaSystemLog
+using Cinturon360.Shared.Models.Kernel.SysVar;              // C360SystemLog
 using Cinturon360.Shared.Models.Kernel.Platform;            // OrganizationUnified, OrganizationDomainUnified
 using Cinturon360.Shared.Models.Kernel.Billing;             // LicenseAgreementUnified
 using Cinturon360.Shared.Models.Policies;                   // ExpensePolicy
@@ -14,6 +13,7 @@ using Cinturon360.Shared.Models.User;
 using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.Kernel.FX;
 using Cinturon360.Shared.Models.Static.Travel;
+using Cinturon360.Shared.Models.Geography;
 
 namespace Cinturon360.Shared.Data;
 

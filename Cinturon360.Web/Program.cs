@@ -7,14 +7,11 @@ using Microsoft.Extensions.Options;
 
 using Cinturon360.Web.Components;
 using Cinturon360.Web.Components.Account;
-using Cinturon360.Web.Services;  // MailerSendEmailSender + MailerSendOptions
 using Cinturon360.Web.Security;  // SeedData
 using Cinturon360.Shared.Auth;
 using Cinturon360.Shared.Services;
-using Cinturon360.Web.Services.Api;
-// using Blazorise;
-// using Blazorise.Bootstrap5;
-// using Blazorise.Icons.FontAwesome;
+using Cinturon360.Web.Infrastructure.Http;
+using Cinturon360.Web.Infrastructure.SMTP.Providers.MailerSend;
 
 namespace Cinturon360.Web;
 
@@ -23,10 +20,6 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
-        // read token for blazorize
-        var blazoriseProductToken = builder.Configuration["Blazorise:ProductToken"];
-
 
         // Add services to the container.
         builder.Services.AddRazorComponents()
@@ -162,11 +155,12 @@ public class Program
         });
 
         // Email Sender (MailerSend)
-        builder.Services.Configure<MailerSendOptions>(builder.Configuration.GetSection("MailerSend"));
+        builder.Services.Configure<MailerSendEmailOptions>(
+            builder.Configuration.GetSection("MailerSend"));
 
-        // Http
+        // Http Clients
         builder.Services.AddHttpClient();
-        builder.Services.AddAvaApiHttpClient(builder.Configuration);
+        builder.Services.AddC360ApiHttpClient(builder.Configuration);
 
         // Services
         builder.Services.PlatformServices();
@@ -174,11 +168,10 @@ public class Program
         builder.Services.AddAvaFinanceServices();
         builder.Services.AddAvaPolicyServices();
         builder.Services.AddTransient<IEmailSender, MailerSendEmailSender>();
-        builder.Services.AddTransient<IEmailSender<ApplicationUser>, MailerSendEmailSender>();
+        builder.Services.AddTransient<IEmailSender, MailerSendEmailSender>();
 
         // Web Specific Services
-        builder.Services.AddScoped<IPoliciesApi, PoliciesApi>();
-
+        
 
         builder.Services.Configure<IdentityOptions>(o =>
         {
