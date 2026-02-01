@@ -1,6 +1,7 @@
 using Cinturon360.Shared.Contracts.Geography;
 using Cinturon360.Web.Exceptions;
 using Microsoft.AspNetCore.Mvc;
+using static Cinturon360.Shared.Contracts.Policies.TravelPolicyUnifiedDto;
 
 namespace Cinturon360.Web.Infrastructure.Http.Policy.Travel;
 
@@ -40,8 +41,8 @@ public sealed class TravelPolicyApiClient
         }
 
         return await response.Content
-            .ReadFromJsonAsync<PLACEHOLDER_RETURN_VALUE>(ct)
+            .ReadFromJsonAsync<TravelPolicyNoResponseAggregate>(ct)
             ?? throw new InvalidOperationException(
-                "Failed to deserialize PLACEHOLDER_RETURN_VALUE.");
+                "Failed to deserialize TravelPolicyNoResponseAggregate.");
     }
 }
