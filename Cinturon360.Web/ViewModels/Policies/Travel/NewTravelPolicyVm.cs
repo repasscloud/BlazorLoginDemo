@@ -1,5 +1,7 @@
 using Cinturon360.Web.ViewModels.ReferenceData;
 
+namespace Cinturon360.Web.ViewModels.Policies.Travel;
+
 public sealed record NewTravelPolicyVm
 {
     // Context

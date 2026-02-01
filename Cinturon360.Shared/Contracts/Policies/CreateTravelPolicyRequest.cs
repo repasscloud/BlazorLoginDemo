@@ -113,7 +113,7 @@ public sealed class CreateTravelPolicyRequest
     // =========================================================================
 
     [Column(TypeName = "numeric(14,2)")]
-    public decimal? MaxHotelNightlyRate { get; set; }
+    public decimal MaxHotelNightlyRate { get; set; } = 0m;
 
     public string DefaultHotelRoomType { get; set; } = "STANDARD";
     public string MaxHotelRoomType { get; set; } = "STANDARD";

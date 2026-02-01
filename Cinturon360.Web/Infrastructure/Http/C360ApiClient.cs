@@ -1,4 +1,5 @@
 using Cinturon360.Web.Infrastructure.Http.Geography;
+using Cinturon360.Web.Infrastructure.Http.Policy.Travel;
 
 namespace Cinturon360.Web.Infrastructure.Http;
 
@@ -11,6 +12,7 @@ public sealed class C360ApiClient
     // ------------------------
 
     public GeographyApiClient Geography { get; }
+    public TravelPolicyApiClient TravelPolicy { get; }
 
     // ------------------------
     // Construction
@@ -21,6 +23,8 @@ public sealed class C360ApiClient
         _http = httpClientFactory.CreateClient("C360Api");
 
         Geography = new GeographyApiClient(_http);
+
+        TravelPolicy = new TravelPolicyApiClient(_http);
     }
 
     // ------------------------

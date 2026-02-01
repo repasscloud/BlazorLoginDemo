@@ -1,0 +1,73 @@
+@using Microsoft.AspNetCore.Components
+
+<div class="loading-overlay">
+    <div class="card shadow loading-card">
+        <div class="card-body text-center">
+
+            <!-- Spinner -->
+            <div class="mb-3">
+                <div class="spinner-border text-primary"
+                     style="width: 3rem; height: 3rem;"
+                     role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <h2 class="h5 mb-1">@Title</h2>
+
+            <!-- Message -->
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <p class="text-muted mb-2">
+                    @Message
+                </p>
+            }
+
+            <!-- RID -->
+            @if (!string.IsNullOrWhiteSpace(RequestId))
+            {
+                <div class="mono text-muted">
+                    RID: @RequestId
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Fullscreen overlay */
+    .loading-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(2px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .loading-card {
+        min-width: 320px;
+        max-width: 420px;
+    }
+
+    .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
+                     Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.85rem;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "Loading";
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public string? RequestId { get; set; }
+}

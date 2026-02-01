@@ -1,11 +1,19 @@
-@page "/platform/organizations/{OrgId}/edit"
+@page "/platform/org/{OrgId}/policies/travel/new"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
+@* @attribute [Authorize(Policy = "Platform:ManageUsers")] *@
+
+@using System.Security.Claims
+@using Cinturon360.Shared.Auth
 @using Cinturon360.Shared.Models.Static.Billing
 @using Cinturon360.Shared.Models.Static.Travel
+@using Cinturon360.Web.Drafts.Platform.Org.Policies.Travel
+@using Cinturon360.Web.Exceptions
 @using Cinturon360.Web.Infrastructure.Http
-@using System.Security.Claims
 @using Cinturon360.Shared.Contracts.Geography
 @using Cinturon360.Web.ViewModels.ReferenceData
-@rendermode InteractiveServer
+@using Cinturon360.Web.ViewModels.Policies.Travel
+@using Org.BouncyCastle.Crypto.Engines
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject C360ApiClient Api
@@ -15,7 +23,10 @@
 
 @if (_vm is null || _vm.IsLoading)
 {
-    <LoadingOverlay />
+    <LoadingOverlay
+        Message="Preparing travel policy configuration…"
+        RequestId="_vm.Rid" />
+
 }
 else if (_vm.Error is not null)
 {
@@ -24,17 +35,33 @@ else if (_vm.Error is not null)
         RequestId="_vm.Rid"
         OnRetry="ReloadAsync"
         OnLogSupport="LogSupportAsync" />
-
 }
 else
 {
     <!-- existing UI style goes here -->
+    <EditForm EditContext="_editCtx" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <!-- Example field -->
+        <div class="mb-3">
+            <label class="form-label">Policy name</label>
+            <InputText class="form-control"
+                    @bind-Value="_draft.PolicyName" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Save
+        </button>
+    </EditForm>
 }
 
 @code {
     [Parameter, EditorRequired]
     public string OrgId { get; set; } = default!;
 
+    private NewOrgTravelPolicyDraft _draft = default!;
+    private EditContext _editCtx = default!;
     private NewTravelPolicyVm? _vm;
 
     protected override async Task OnInitializedAsync()
@@ -43,20 +70,26 @@ else
 
         try
         {
-            AuthenticationState? state = await AuthStateProvider.GetAuthenticationStateAsync();
-            System.Security.Claims.ClaimsPrincipal? user = state.User;
+            AuthenticationState? auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            ClaimsPrincipal? user = auth.User;
             string? userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
                 ?? throw new InvalidOperationException("UserId missing");
 
-            _vm = new NewTravelPolicyVm
+            // build the draft with safe defaults
+            _draft = new NewOrgTravelPolicyDraft
             {
-                Rid = rid,
                 OrgId = OrgId,
-                UserId = userId,
-                IsLoading = true
+                EffectiveFromUtc = DateTime.UtcNow.Date
             };
 
-            // Currency reference data
+            // create EditContext ONCE
+            _editCtx = new EditContext(_draft);
+
+            // Optional: hook validation events later if needed
+            // _editCtx.OnValidationRequested += ...
+            // _editCtx.OnFieldChanged += ...
+
+            // load reference data
             CurrencyReference? currencyRef = new CurrencyReference
             {
                 Options = Currencies.All
@@ -67,7 +100,6 @@ else
                     .ToList()
             };
 
-            // Geography reference data
             GeographyUnifiedDto.GeographyAggregate? aggregate = await Api.Geography.GetAggregateAsync(rid);
             GeographyReference? geographyRef = new GeographyReference
             {
@@ -76,7 +108,6 @@ else
                 Countries = aggregate.Countries
             };
 
-            // FareType reference data
             FareTypeReference? fareTypeRef = new FareTypeReference
             {
                 Options = FareType.All
@@ -87,7 +118,6 @@ else
                     .ToList()
             };
 
-            // CabinClass reference data
             CabinClassCoverageReference? cabinClassCoverageRef = new CabinClassCoverageReference
             {
                 Options = CabinClassCoverages.All
@@ -99,7 +129,6 @@ else
                     .ToList()
             };
 
-            // HotelRoomType reference data
             HotelRoomTypeReference? hotelRoomTypeRef = new HotelRoomTypeReference
             {
                 Options = HotelRoomType.All
@@ -110,7 +139,6 @@ else
                     .ToList()
             };
 
-            // RailClass reference data
             RailClassReference? railClassRef = new RailClassReference
             {
                 Options = RailFareType.All
@@ -121,7 +149,6 @@ else
                     .ToList()
             };
 
-            // HireCar reference data
             AcrissReference? acrissRef = new AcrissReference
             {
                 Categories = AcrissType.CategoryOptions
@@ -141,15 +168,20 @@ else
                     .ToList()
             };
 
-            _vm = _vm with
+            _vm = new NewTravelPolicyVm
             {
+                Rid = rid,
+                OrgId = OrgId,
+                UserId = userId,
+                IsLoading = true,
+
                 CurrencyRef = currencyRef,
                 GeographyRef = geographyRef,
                 FareTypeRef = fareTypeRef,
                 CabinClassCoverageRef = cabinClassCoverageRef,
                 HotelRoomTypeRef = hotelRoomTypeRef,
                 RailClassRef = railClassRef,
-                AcrissRef = acrissRef,
+                AcrissRef = acrissRef
             };
         }
         catch (Exception ex)
@@ -165,16 +197,50 @@ else
         }
     }
 
-        private async Task ReloadAsync()
+    private async Task ReloadAsync()
     {
         _vm = _vm with { IsLoading = true };
         await OnInitializedAsync();
     }
 
+    private async Task SaveAsync()
+    {
+        if (!_editCtx.Validate())
+        {
+            return;
+        }
+
+        _vm = _vm! with { IsLoading = true, Error = null };
+
+        try
+        {
+            // map draft to DTO
+            var request = MapToRequest(_draft);
+
+            // call API
+            await Api.TravelPolicy.CreateAsync(
+                rid: _vm!.Rid,
+                request
+            );
+
+            // navigate on success
+            Navigation.NavigateTo(
+                uri: $"/platform/org/{OrgId}/policies");
+        }
+        catch (ApiException apiEx)
+        {
+            _vm = _vm! with
+            {
+                Error = $"API Error: {apiEx.Message}",
+                IsLoading = false
+            };
+        }
+    }
+
     private void LogSupportAsync()
     {
         Navigation.NavigateTo(
-            $"/support/new?rid={_vm.Rid}&page=NewTravelPolicy");
+            $"/support/new?rid={_vm?.Rid}&page=NewTravelPolicy");
     }
 
 }

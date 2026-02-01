@@ -15,4 +15,9 @@ public class TravelPolicyUnifiedDto
         CreateTravelPolicyRequest CreateTravelPolicy,
         CommandMetadata Metadata
     );
+
+    public sealed record TravelPolicyNoResponseAggregate(
+        string TravelPolicyId,
+        CommandMetadata Metadata
+    );
 }

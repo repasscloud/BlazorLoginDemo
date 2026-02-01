@@ -1,11 +1,28 @@
-﻿@using Cinturon360.Web.Components.Account.Shared
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Cinturon360.Web.Components.Account.Shared
+
 <Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
-        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+        <AuthorizeRouteView
+            RouteData="routeData"
+            DefaultLayout="typeof(Layout.MainLayout)">
+
+            <Authorizing>
+                <LoadingOverlay Message="Checking permissions…" />
+            </Authorizing>
+
             <NotAuthorized>
-                <RedirectToLogin />
+                <NotAuthorizedRouter />
             </NotAuthorized>
+
         </AuthorizeRouteView>
+
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
+
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <Pages.NotFound />
+        </LayoutView>
+    </NotFound>
 </Router>

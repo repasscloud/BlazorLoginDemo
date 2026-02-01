@@ -1,0 +1,21 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+
+@code {
+    private bool _isAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAuthenticated = state.User.Identity?.IsAuthenticated == true;
+    }
+}
+
+@if (_isAuthenticated)
+{
+    <Pages.NotAuthorized />
+}
+else
+{
+    <RedirectToLogin />
+}
