@@ -40,6 +40,7 @@ public static class IDGeneratorHelper
             { IdGenType.FlightSearch,    new IdSpec("fos_", 20) },
             { IdGenType.TravelQuoteUser, new IdSpec("tqu_", 16) },
             { IdGenType.UserSysPref,     new IdSpec("usp_", 16) },
+            { IdGenType.RailOperator,    new IdSpec("rop_", 16) },
 
             // Reference data
             { IdGenType.LoyaltyAccount, new IdSpec("loy_", 16) },
@@ -131,6 +132,7 @@ public enum IdGenType : short
     TravelQuoteUser,       // tqu_
     LoyaltyAccount,        // loy_
     UserSysPref,           // usp_
+    RailOperator,          // rop_
 
     // Reference / master data
     Dto,                   // dto_

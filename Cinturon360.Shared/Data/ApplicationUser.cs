@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Cinturon360.Shared.Models.Auth;
 using Cinturon360.Shared.Models.Kernel.Platform;
 using Cinturon360.Shared.Models.Policies;
+using Cinturon360.Shared.Models.Static.Communication;
 using Cinturon360.Shared.Models.Static.Geography;
 using Cinturon360.Shared.Models.Static.Identity;
 using Cinturon360.Shared.Models.Static.Platform;
@@ -98,6 +99,9 @@ public class ApplicationUser : IdentityUser
 
     [DataType(DataType.Date)]
     public DateOnly? PassportExpirationDate { get; set; }
+
+    public SmsConsentState SmsConsentStatus { get; set; } = SmsConsentState.None;
+    public DateTime? SmsConsentLastUpdatedUtc { get; set; } = null;
 
     // -----------------------------
     // Travel defaults & constraints

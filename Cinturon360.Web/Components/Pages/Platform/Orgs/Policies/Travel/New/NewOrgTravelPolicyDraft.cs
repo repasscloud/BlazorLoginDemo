@@ -21,21 +21,22 @@ public sealed class NewOrgTravelPolicyDraft
 
     [Required, RegularExpression(@"^[A-Z]{3}$",
         ErrorMessage = "Currency must be exactly 3 uppercase letters.")]
-    public string DefaultCurrencyCode { get; set; } = string.Empty;
+    public string DefaultCurrencyCode { get; set; } = "AUD";
 
     public bool SetAsDefaultPolicy { get; set; } = false;
 
     [Required]
-    public DateTime EffectiveFromUtc { get; set; }
+    public DateTime? EffectiveFromUtc { get; set; }
 
     // Only optional field by design
     public DateTime? EffectiveToUtc { get; set; } = null;
+
 
     // -------------------------
     // Flights
     // -------------------------
 
-    public decimal MaxFlightPrice { get; set; } = 0m;
+    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxFlightPrice { get; set; } = 0m;
 
     public FlightTravelClassType DefaultFlightSeating { get; set; }
         = FlightTravelClassType.ECONOMY;
@@ -48,8 +49,8 @@ public sealed class NewOrgTravelPolicyDraft
 
     public bool NonStopFlight { get; set; } = false;
 
-    public string[] IncludedAirlineCodes { get; set; } = Array.Empty<string>();
-    public string[] ExcludedAirlineCodes { get; set; } = Array.Empty<string>();
+    public List<string> IncludedAirlineCodes { get; set; } = new();
+    public List<string> ExcludedAirlineCodes { get; set; } = new();
 
     [Required, RegularExpression(@"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$")]
     public string FlightBookingTimeAvailableFrom { get; set; } = "00:00:00";
@@ -72,10 +73,10 @@ public sealed class NewOrgTravelPolicyDraft
     public FlightTravelClassType MaxFlightSeatingAt14Hours { get; set; }
         = FlightTravelClassType.PREMIUM_ECONOMY;
 
-    public decimal MaxFlightPriceAt6Hours { get; set; } = 0m;
-    public decimal MaxFlightPriceAt8Hours { get; set; } = 0m;
-    public decimal MaxFlightPriceAt10Hours { get; set; } = 0m;
-    public decimal MaxFlightPriceAt14Hours { get; set; } = 0m;
+    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxFlightPriceAt6Hours { get; set; } = 0m;
+    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxFlightPriceAt8Hours { get; set; } = 0m;
+    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxFlightPriceAt10Hours { get; set; } = 0m;
+    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxFlightPriceAt14Hours { get; set; } = 0m;
 
     
     // -------------------------
@@ -109,8 +110,8 @@ public sealed class NewOrgTravelPolicyDraft
     [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxTaxiFarePerRide { get; set; } = 0m;
     [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxTaxiSurgeMultiplier { get; set; } = 0m;
 
-    public string[] IncludedTaxiVendors { get; set; } = Array.Empty<string>();
-    public string[] ExcludedTaxiVendors { get; set; } = Array.Empty<string>();
+    public List<string> IncludedTaxiVendors { get; set; } = new List<string>();
+    public List<string> ExcludedTaxiVendors { get; set; } = new List<string>();
 
     public RailTravelClassType DefaultTrainClass { get; set; }
         = RailTravelClassType.SECOND;
@@ -120,8 +121,9 @@ public sealed class NewOrgTravelPolicyDraft
 
     [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxTrainPrice { get; set; } = 0m;
 
-    public string[] IncludedRailOperators { get; set; } = Array.Empty<string>();
-    public string[] ExcludedRailOperators { get; set; } = Array.Empty<string>();
+    public List<string> IncludedRailOperators { get; set; } = new List<string>();
+    public List<string> ExcludedRailOperators { get; set; } = new List<string>();
+
 
     // -------------------------
     // Car hire
@@ -129,10 +131,10 @@ public sealed class NewOrgTravelPolicyDraft
 
     [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxCarDailyRate { get; set; } = 0m;
 
-    public char DefaultCarCategory { get; set; } = 'C';
+    public char DefaultCarCategory { get; set; } = 'M';
     public char MaxCarCategory { get; set; } = 'P';
 
-    public char DefaultCarBody { get; set; } = 'C';
+    public char DefaultCarBody { get; set; } = 'B';
     public char MaxCarBody { get; set; } = 'F';
 
     public char DefaultCarTransmission { get; set; } = 'A';

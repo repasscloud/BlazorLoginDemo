@@ -13,6 +13,8 @@ public sealed class C360ApiClient
 
     public GeographyApiClient Geography { get; }
     public TravelPolicyApiClient TravelPolicy { get; }
+    public AirlineDataProviderApiClient AirlineDataProvider { get; }
+    public RailDataProviderApiClient RailDataProvider { get; }
 
     // ------------------------
     // Construction
@@ -23,8 +25,9 @@ public sealed class C360ApiClient
         _http = httpClientFactory.CreateClient("C360Api");
 
         Geography = new GeographyApiClient(_http);
-
         TravelPolicy = new TravelPolicyApiClient(_http);
+        RailDataProvider = new RailDataProviderApiClient(_http);
+        AirlineDataProvider = new AirlineDataProviderApiClient(_http);
     }
 
     // ------------------------

@@ -78,7 +78,7 @@
 //         ('D', "Automatic AWD"),
 //         ('M', "Manual"),
 //         ('N', "Manual 4WD"),
-//         ('C', "Manual AWD")        
+//         ('C', "Manual AWD")
 //     ];
 
 //     public static readonly (char code, string label)[] FuelOptions =

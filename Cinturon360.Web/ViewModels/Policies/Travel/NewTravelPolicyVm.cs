@@ -18,6 +18,8 @@ public sealed record NewTravelPolicyVm
     public HotelRoomTypeReference HotelRoomTypeRef { get; init; } = default!;
     public RailClassReference RailClassRef { get; init; } = default!;
     public CabinClassCoverageReference CabinClassCoverageRef { get; init; } = default!;
+    public AirlineReference AirlineRef { get; init; } = default!;
+    public RailOperatorReference RailOperatorRef { get; init; } = default!;
 
     // UI state
     public bool IsLoading { get; set; }

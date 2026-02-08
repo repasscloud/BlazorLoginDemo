@@ -8,6 +8,7 @@
 @using Cinturon360.Shared.Models.Static.Billing
 @using Cinturon360.Shared.Models.Static.Travel
 @using Cinturon360.Shared.Models.Static.Travel.Acriss
+@using Cinturon360.Shared.Models.Travel.Rail.Entities
 @using Cinturon360.Web.Drafts.Platform.Org.Policies.Travel
 @using Cinturon360.Web.Exceptions
 @using Cinturon360.Web.Infrastructure.Http
@@ -42,18 +43,633 @@ else
     <!-- existing UI style goes here -->
     <EditForm EditContext="_editCtx" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator />
-        <ValidationSummary />
+        <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
 
-        <!-- Example field -->
-        <div class="mb-3">
-            <label class="form-label">Policy name</label>
-            <InputText class="form-control"
-                    @bind-Value="_draft.PolicyName" />
+        <!-- default page header -->
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="mb-0">New Travel Policy</h2>
+
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary"
+                        type="button"
+                        @onclick="Cancel">
+                    Cancel
+                </button>
+
+                <button type="submit"
+                        class="btn btn-primary">
+                    Save
+                </button>
+            </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">
-            Save
-        </button>
+        <div class="card shadow-sm mb-3">
+            <div class="card-header">
+                <small class="text-muted">[ORG_NAME]</small>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Policy Name</label>
+                        <InputText class="form-control"
+                                   @bind-Value="_draft.PolicyName" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Policy Currency</label>
+                        <InputSelect class="form-select"
+                                     @bind-Value="_draft.DefaultCurrencyCode">
+                            @foreach (CurrencyOption option in _vm.CurrencyRef.Options)
+                            {
+                                <option value="@option.Code">@option.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Org Id</label>
+                        <InputText class="form-control bg-light" @bind-Value="_draft.OrgId" readonly />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Geographic Scope -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Geographic Scope</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+
+                    <!-- Regions -->
+                    <div class="col-md-4">
+                        <label class="form-label">Enabled Regions</label>
+
+                        <InputSelect class="form-select"
+                                     multiple
+                                     size="8"
+                                     @bind-Value="_draft.RegionIds">
+                            @foreach (Cinturon360.Shared.Models.Geography.Region r in _vm.GeographyRef.Regions)
+                            {
+                                <option value="@r.Id">@r.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <!-- Continents -->
+                    <div class="col-md-4">
+                        <label class="form-label">Enabled Continents</label>
+                        <InputSelect class="form-select"
+                                     multiple
+                                     size="8"
+                                     @bind-Value="_draft.ContinentIds">
+                            @foreach (Cinturon360.Shared.Models.Geography.Continent c in _vm.GeographyRef.Continents)
+                            {
+                                <option value="@c.Id.ToString()">@c.Name (@c.IsoCode)</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <!-- Countries -->
+                    <div class="col-md-4">
+                        <label class="form-label">Enabled Countries</label>
+                        <InputSelect class="form-select" multiple size="8" @bind-Value="_draft.CountryIds">
+                            @foreach (Cinturon360.Shared.Models.Geography.Country c in _vm.GeographyRef.Countries)
+                            {
+                                <option value="@c.Id.ToString()">@c.Name (@c.IsoCode)</option>
+                            }
+                        </InputSelect>
+                        <div class="form-text">These are allowed even if a continent/region is not selected.</div>
+                    </div>
+
+                    <!-- Disabled Countries -->
+                    <div class="col-md-12">
+                        <label class="form-label">Disabled Countries</label>
+                        <InputSelect class="form-select" multiple size="8" @bind-Value="_draft.DisabledCountryIds">
+                            @foreach (Cinturon360.Shared.Models.Geography.Country c in _vm.GeographyRef.Countries)
+                            {
+                                <option value="@c.Id.ToString()">@c.Name (@c.IsoCode)</option>
+                            }
+                        </InputSelect>
+                        <div class="form-text">Disabled overrides any enablement above.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flights -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Flights</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Max Flight Price</label>
+                        <InputNumber class="form-control" @bind-Value="_draft.MaxFlightPrice" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Default Seating</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.DefaultFlightSeating">
+                            @foreach ((string Code, string Label) c in FareType.DropdownOptions)
+                            {
+                                <option value="@c.Code">@c.Label</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Seating</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxFlightSeating">
+                            @foreach ((string Code, string Label) c in FareType.DropdownOptions)
+                            {
+                                <option value="@c.Code">@c.Label</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Non-Stop only</label>
+                        <div class="form-check form-switch mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="_draft.NonStopFlight" />
+                            <label class="form-check-label" title="@(_draft.NonStopFlight ? "Required" : "Optional")">
+                                <span aria-hidden="true">@(_draft.NonStopFlight ? " ✅" : " ❌")</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Included Airline Codes</label>
+
+                        <div class="border rounded p-2"
+                            style="max-height: 260px; overflow-y: auto;">
+
+                            @foreach (var a in _vm.AirlineRef!.Options)
+                            {
+                                <div class="form-check d-flex align-items-center gap-2 mb-1">
+                                    <input class="form-check-input"
+                                        type="checkbox"
+                                        checked="@_draft.IncludedAirlineCodes.Contains(a.Code)"
+                                        @onchange="e => ToggleAirline(a.Code, (bool)e.Value!)" />
+
+                                    <img src="@a.LogoUrl"
+                                        alt="@a.Code"
+                                        style="height:20px;width:auto;" />
+
+                                    <label class="form-check-label">
+                                        @a.Code @a.Name
+                                    </label>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="form-text">
+                            Select zero or more airlines.
+                        </div>
+                    </div>
+
+                    
+                    <div class="col-md-6">
+                        <label class="form-label">Excluded Airline Codes</label>
+
+                        <div class="border rounded p-2"
+                            style="max-height: 260px; overflow-y: auto;">
+
+                            @foreach (var a in _vm.AirlineRef!.Options)
+                            {
+                                <div class="form-check d-flex align-items-center gap-2 mb-1">
+                                    <input class="form-check-input"
+                                        type="checkbox"
+                                        checked="@_draft.ExcludedAirlineCodes.Contains(a.Code)"
+                                        @onchange="e => ToggleAirline(a.Code, (bool)e.Value!)" />
+
+                                    <img src="@a.LogoUrl"
+                                        alt="@a.Code"
+                                        style="height:20px;width:auto;" />
+
+                                    <label class="form-check-label">
+                                        @a.Code @a.Name
+                                    </label>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="form-text">
+                            Select zero or more airlines.
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Max Seat at ≥6h</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxFlightSeatingAt6Hours">
+                            @foreach ((string Code, string Label) c in FareType.DropdownOptions)
+                            {
+                                <option value="@c.Code">@c.Label</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Seat at ≥8h</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxFlightSeatingAt8Hours">
+                            @foreach ((string Code, string Label) c in FareType.DropdownOptions)
+                            {
+                                <option value="@c.Code">@c.Label</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Seat at ≥10h</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxFlightSeatingAt10Hours">
+                            @foreach ((string Code, string Label) c in FareType.DropdownOptions)
+                            {
+                                <option value="@c.Code">@c.Label</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Seat at ≥14h</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxFlightSeatingAt14Hours">
+                            @foreach ((string Code, string Label) c in FareType.DropdownOptions)
+                            {
+                                <option value="@c.Code">@c.Label</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Max Price ≥6h</label>
+                        <InputNumber class="form-control" @bind-Value="_draft.MaxFlightPriceAt6Hours" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Price ≥8h</label>
+                        <InputNumber class="form-control" @bind-Value="_draft.MaxFlightPriceAt8Hours" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Price ≥10h</label>
+                        <InputNumber class="form-control" @bind-Value="_draft.MaxFlightPriceAt10Hours" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Price ≥14h</label>
+                        <InputNumber class="form-control" @bind-Value="_draft.MaxFlightPriceAt14Hours" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hotels -->
+                <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Accommodation</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Max Nightly Rate</label>
+                        <InputNumber class="form-control" @bind-Value="_draft.MaxHotelNightlyRate" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Default Room Type</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.DefaultHotelRoomType">
+                            @foreach ((string code, string label) c in HotelRoomType.DropdownOptions)
+                            {
+                                <option value="@c.code">@c.label</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Max Room Type</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxHotelRoomType">
+                            @foreach ((string code, string label) c in HotelRoomType.DropdownOptions)
+                            {
+                                <option value="@c.code">@c.label</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Included Hotel Chains (CSV)</label>
+                        <textarea class="form-control" rows="3" @bind="_draft.IncludedHotelChains"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Excluded Hotel Chains (CSV)</label>
+                        <textarea class="form-control" rows="3" @bind="_draft.ExcludedHotelChains"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HIRE CAR -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Hire Car</h6></div>
+            <div class="card-body">
+
+                <!-- Default Car -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Default Category</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.DefaultCarCategory">
+                            @foreach (AcrissOption opt in _vm.AcrissRef.Categories)
+                            {
+                                <option value="@opt.Code">@opt.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Default Type (Body)</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.DefaultCarBody">
+                            @foreach (AcrissOption opt in _vm.AcrissRef.Bodies)
+                            {
+                                <option value="@opt.Code">@opt.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Default Transmission</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.DefaultCarTransmission">
+                            @foreach (AcrissOption opt in _vm.AcrissRef.Transmissions)
+                            {
+                                <option value="@opt.Code">@opt.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Default Fuel</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.DefaultCarFuel">
+                            @foreach (AcrissOption opt in _vm.AcrissRef.Fuels)
+                            {
+                                <option value="@opt.Code">@opt.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <!-- Max Car -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Max Category</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxCarCategory">
+                            @foreach (AcrissOption opt in _vm.AcrissRef.Categories)
+                            {
+                                <option value="@opt.Code">@opt.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Max Type (Body)</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxCarBody">
+                            @foreach (AcrissOption opt in _vm.AcrissRef.Bodies)
+                            {
+                                <option value="@opt.Code">@opt.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Max Transmission</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxCarTransmission">
+                            @foreach (AcrissOption opt in _vm.AcrissRef.Transmissions)
+                            {
+                                <option value="@opt.Code">@opt.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Max Fuel</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MaxCarFuel">
+                            @foreach (AcrissOption opt in _vm.AcrissRef.Fuels)
+                            {
+                                <option value="@opt.Code">@opt.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Default Car Class</label>
+                        <InputText class="form-control bg-light" Value="@DefaultCarClass" readonly />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Max Car Class</label>
+                        <InputText class="form-control bg-light" Value="@MaxCarClass" readonly />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RAIL -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Rail</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label">Max Train Class</label>
+                        <InputSelect id="railfareMaxChoice" class="form-select" @bind-Value="_draft.MaxTrainClass">
+                            @foreach ((string code, string label) c in FareType.DropdownOptions)
+                            {
+                                <option value="@c.code">@c.label</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Max Train Price</label>
+                        <InputNumber class="form-control" @bind-Value="_draft.MaxTrainPrice" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Enabled Rail Operators</label>
+
+                        <div class="border rounded p-2"
+                            style="max-height: 260px; overflow-y: auto;">
+
+                            @foreach (var a in _vm.RailOperatorRef!.Options)
+                            {
+                                <div class="form-check d-flex align-items-center gap-2 mb-1">
+                                    <input class="form-check-input"
+                                        type="checkbox"
+                                        checked="@_draft.IncludedRailOperators.Contains(a.Code)"
+                                        @onchange="e => ToggleRailOperator(a.Code, (bool)e.Value!)" />
+
+                                    <img src="@a.LogoUrl"
+                                        alt="@a.Code"
+                                        style="height:20px;width:auto;" />
+
+                                    <label class="form-check-label">
+                                        @a.Code @a.Name
+                                    </label>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="form-text">
+                            Select zero or more rail operators.
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Excluded Rail Operators</label>
+
+                        <div class="border rounded p-2"
+                            style="max-height: 260px; overflow-y: auto;">
+
+                            @foreach (var a in _vm.RailOperatorRef!.Options)
+                            {
+                                <div class="form-check d-flex align-items-center gap-2 mb-1">
+                                    <input class="form-check-input"
+                                        type="checkbox"
+                                        checked="@_draft.ExcludedRailOperators.Contains(a.Code)"
+                                        @onchange="e => ToggleRailOperator(a.Code, (bool)e.Value!)" />
+
+                                    <img src="@a.LogoUrl"
+                                        alt="@a.Code"
+                                        style="height:20px;width:auto;" />
+
+                                    <label class="form-check-label">
+                                        @a.Code @a.Name
+                                    </label>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="form-text">
+                            Select zero or more rail operators.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- APPROVALS -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><h6 class="mb-0">Approvals</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Auto-approve up to policy limit</label>
+                        <div class="form-check form-switch mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="_draft.AutoApproveToPolicyLimit" />
+                            <label class="form-check-label" title="@(_draft.AutoApproveToPolicyLimit ? "Auto-Approve To Policy Limit Active" : "Auto-Approve To Policy Limit Inactive")">
+                                <span aria-hidden="true">@(_draft.AutoApproveToPolicyLimit ? " ✅" : " ❌")</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Require manager approval to limit</label>
+                        <div class="form-check form-switch mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="_draft.RequireManagerApprovalToPolicyLimit" />
+                            <label class="form-check-label" title="@(_draft.RequireManagerApprovalToPolicyLimit ? "Manager Approval To Policy Limit Active" : "Manager Approval To Policy Limit Inactive")">
+                                <span aria-hidden="true">@(_draft.RequireManagerApprovalToPolicyLimit ? " ✅" : " ❌")</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Billing Contact to Limit Approval</label>
+                        <div class="form-check form-switch mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="_draft.OrgBillingContactApprovalToPolicyLimit" />
+                            <label class="form-check-label" title="@(_draft.OrgBillingContactApprovalToPolicyLimit ? "Billing Contact To Limit Approval Active" : "Billing Contact To Limit Approval Inactive")">
+                                <span aria-hidden="true">@(_draft.OrgBillingContactApprovalToPolicyLimit ? " ✅" : " ❌")</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Billing Contact Above Limit Approval</label>
+                        <div class="form-check form-switch mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="_draft.OrgBillingContactApprovalAbovePolicyLimit" />
+                            <label class="form-check-label" title="@(_draft.OrgBillingContactApprovalAbovePolicyLimit ? "Billing Contact Above Limit Approval Active" : "Billing Contact Above Limit Approval Inactive")">
+                                <span aria-hidden="true">@(_draft.OrgBillingContactApprovalAbovePolicyLimit ? " ✅" : " ❌")</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">L1 Approval Required</label>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                            <!-- switch -->
+                            <div class="form-check form-switch m-0">
+                                <InputCheckbox class="form-check-input" @bind-Value="_draft.L1ApprovalRequired" />
+                            </div>
+                            <!-- green tick / red x -->
+                            <span class="ms-1" title="@(_draft.L1ApprovalRequired ? "L1 Approval Required" : "L1 Approval Not Required")">
+                                @(_draft.L1ApprovalRequired ? "✅" : "❌")
+                            </span>
+                            <!-- amount -->
+                            <div class="input-group input-group-sm flex-grow-1">
+                                <span class="input-group-text">$</span>
+                                <InputNumber @bind-Value="_draft.L1ApprovalAmount"
+                                            class="form-control"
+                                            placeholder="L1 amount"
+                                            disabled="@(!_draft.L1ApprovalRequired)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">L2 Approval Required</label>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                            <!-- switch -->
+                            <div class="form-check form-switch m-0">
+                                <InputCheckbox class="form-check-input" @bind-Value="_draft.L2ApprovalRequired" />
+                            </div>
+                            <!-- green tick / red x -->
+                            <span class="ms-1" title="@(_draft.L2ApprovalRequired ? "L2 Approval Required" : "L2 Approval Not Required")">
+                                @(_draft.L2ApprovalRequired ? "✅" : "❌")
+                            </span>
+                            <!-- amount -->
+                            <div class="input-group input-group-sm flex-grow-1">
+                                <span class="input-group-text">$</span>
+                                <InputNumber @bind-Value="_draft.L2ApprovalAmount"
+                                            class="form-control"
+                                            placeholder="L2 amount"
+                                            disabled="@(!_draft.L2ApprovalRequired)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-1">L3 Approval Required</label>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                            <!-- switch -->
+                            <div class="form-check form-switch m-0">
+                                <InputCheckbox class="form-check-input" @bind-Value="_draft.L3ApprovalRequired" />
+                            </div>
+                            <!-- green tick / red x -->
+                            <span class="ms-1" title="@(_draft.L3ApprovalRequired ? "L3 Approval Required" : "L3 Approval Not Required")">
+                                @(_draft.L3ApprovalRequired ? "✅" : "❌")
+                            </span>
+                            <!-- amount -->
+                            <div class="input-group input-group-sm flex-grow-1">
+                                <span class="input-group-text">$</span>
+                                <InputNumber @bind-Value="_draft.L3ApprovalAmount"
+                                            class="form-control"
+                                            placeholder="L3 amount"
+                                            disabled="@(!_draft.L3ApprovalRequired)" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EFFECTIVE WINDOW -->
+        <div class="card shadow-sm mb-5">
+            <div class="card-header"><h6 class="mb-0">Policy Window</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Effective From (UTC)</label>
+                        <InputDate TValue="DateTime?" Value="_draft.EffectiveFromUtc"
+                                   ValueChanged="@(EventCallback.Factory.Create<DateTime?>(this, OnEffectiveChanged))"
+                                   ValueExpression="() => _draft.EffectiveFromUtc"
+                                   class="form-control" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Expires On (UTC)</label>
+                        <InputDate TValue="DateTime?" Value="_draft.EffectiveToUtc"
+                                   ValueChanged="@(EventCallback.Factory.Create<DateTime?>(this, OnExpiresChanged))"
+                                   ValueExpression="() => _draft.EffectiveToUtc"
+                                   class="form-control" />
+                    </div>
+                </div>
+            </div>
+        </div>
     </EditForm>
 }
 
@@ -181,6 +797,30 @@ else
                     .ToList()
             };
 
+            AirlineReference? airlineRef = new AirlineReference
+            {
+                Options = (await Api.AirlineDataProvider.GetAirlinesAsync(rid))
+                    .Airlines
+                    .Select(a => new AirlineOption(
+                        Code: a.IataCode,
+                        Name: a.Name,
+                        LogoUrl: a.LogoLockupUrl 
+                                ?? "/img/airlines/placeholder.svg"
+                    ))
+                    .ToList()
+            };
+
+            RailOperatorReference? railOperatorRef = new RailOperatorReference
+            {
+                Options = (await Api.RailDataProvider.GetRailOperatorsAsync(rid))
+                .RailOperators
+                .Select(r => new RailOperatorOption(
+                    Code: r.OperatorId,
+                    Name: r.Name,
+                    LogoUrl: r.LogoSymbolUrl ?? "/img/railoperators/placeholder.svg"))
+                .ToList()
+            };
+
             _vm = new NewTravelPolicyVm
             {
                 Rid = rid,
@@ -194,7 +834,9 @@ else
                 CabinClassCoverageRef = cabinClassCoverageRef,
                 HotelRoomTypeRef = hotelRoomTypeRef,
                 RailClassRef = railClassRef,
-                AcrissRef = acrissRef
+                AcrissRef = acrissRef,
+                AirlineRef = airlineRef,
+                RailOperatorRef = railOperatorRef
             };
         }
         catch (Exception ex)
@@ -250,6 +892,12 @@ else
         }
     }
 
+    private void Cancel()
+    {
+        Navigation.NavigateTo(
+            uri: $"/platform/org/{OrgId}/policies");
+    }
+
     private void LogSupportAsync()
     {
         Navigation.NavigateTo(
@@ -268,4 +916,63 @@ else
         };
     }
 
+    // update airline code lists based on checkbox changes - this is a bit manual since we want to support two separate lists (included vs excluded) with checkboxes, but it keeps the UI responsive without needing to wait for API calls
+    private void ToggleAirline(string code, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!_draft.IncludedAirlineCodes.Contains(code))
+                _draft.IncludedAirlineCodes.Add(code);
+        }
+        else
+        {
+            _draft.IncludedAirlineCodes.Remove(code);
+        }
+    }
+
+    private void ToggleRailOperator(string code, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!_draft.IncludedRailOperators.Contains(code))
+                _draft.IncludedRailOperators.Add(code);
+        }
+        else
+        {
+            _draft.IncludedRailOperators.Remove(code);
+        }
+    }
+
+    // ===== MBAR values are concatenated strings of the 4 car attributes, so we can compute them on the fly for display or API submission
+    private string DefaultCarClass =>
+    $"{_draft.DefaultCarCategory}{_draft.DefaultCarBody}{_draft.DefaultCarTransmission}{_draft.DefaultCarFuel}";
+
+    private string MaxCarClass =>
+        $"{_draft.MaxCarCategory}{_draft.MaxCarBody}{_draft.MaxCarTransmission}{_draft.MaxCarFuel}";
+
+    
+    // ===== Travel Policy Start Date End Date Helper
+    private bool _expiresManuallyEdited;
+
+    private static DateTime? AsUtcMidnight(DateTime? d)
+        => d.HasValue
+            ? new DateTime(d.Value.Year, d.Value.Month, d.Value.Day, hour: 0, minute: 0, second: 0, DateTimeKind.Utc)
+            : null;
+
+    private Task OnEffectiveChanged(DateTime? newValue)
+    {
+        _draft.EffectiveFromUtc = AsUtcMidnight(newValue);
+
+        if (!_expiresManuallyEdited)
+            _draft.EffectiveToUtc = _draft.EffectiveFromUtc?.AddYears(value: 1);
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnExpiresChanged(DateTime? newValue)
+    {
+        _expiresManuallyEdited = true;
+        _draft.EffectiveToUtc = AsUtcMidnight(newValue);
+        return Task.CompletedTask;
+    }
 }
