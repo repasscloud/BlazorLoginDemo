@@ -47,7 +47,7 @@ public sealed class CreateTravelPolicyRequest
     /// Policy end date (UTC).
     /// Defaults to 12 months.
     /// </summary>
-    public DateTime EffectiveToUtc { get; set; } = DateTime.UtcNow.AddYears(1);
+    public DateTime? EffectiveToUtc { get; set; }
 
     // =========================================================================
     // FLIGHTS – blanket defaults (apply unless overridden)
@@ -160,9 +160,6 @@ public sealed class CreateTravelPolicyRequest
     // =========================================================================
 
     [Column(TypeName = "numeric(14,2)")]
-    public decimal? MaxCarHireDailyRate { get; set; }
-
-    [Column(TypeName = "numeric(14,2)")]
     public decimal MaxCarDailyRate { get; set; } = 0m; // UI-aligned field
 
     public string DefaultCarClass { get; set; } = "ECONOMY";
@@ -193,7 +190,10 @@ public sealed class CreateTravelPolicyRequest
 
     public decimal MinSimDataGb { get; set; } = 5m;
     public int MinSimValidityDays { get; set; } = 30;
-
+    public bool EnableVoiceSimCards { get; set; } = false;
+    public bool EnableDataSimCards { get; set; } = true;
+    public bool EnableSimHotspotTethering { get; set; } = true;
+    public bool EnablePortableWifiRental { get; set; } = true;
     public string[] IncludedSimVendors { get; set; } = Array.Empty<string>();
     public string[] ExcludedSimVendors { get; set; } = Array.Empty<string>();
 
@@ -202,7 +202,7 @@ public sealed class CreateTravelPolicyRequest
     // =========================================================================
 
     [Column(TypeName = "numeric(14,2)")]
-    public decimal? MaxActivityPricePerPerson { get; set; }
+    public decimal? MaxActivityPricePerBooking { get; set; }
 
     public bool AllowHighRiskActivities { get; set; } = false;
 

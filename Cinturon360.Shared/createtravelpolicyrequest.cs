@@ -3,7 +3,7 @@ using Cinturon360.Shared.Models.Static.Travel;
 
 namespace Cinturon360.Web.Drafts.Platform.Org.Policies.Travel;
 
-public sealed class NewOrgTravelPolicyDraft
+public sealed class NewOrgTravelPolicyDraft_TMP
 {
     // -------------------------
     // Context
@@ -60,29 +60,13 @@ public sealed class NewOrgTravelPolicyDraft
     public bool EnableSaturdayFlightBookings { get; set; } = false;
     public bool EnableSundayFlightBookings { get; set; } = false;
 
-    [Range(0, int.MaxValue, ErrorMessage = "Must be 0 or greater")] public int DefaultCalendarDaysInAdvanceForFlightBooking { get; set; } = 0;
+    public int DefaultCalendarDaysInAdvanceForFlightBooking { get; set; } = 0;
 
-    public FlightTravelClassType MaxFlightSeatingAt6Hours { get; set; }
-        = FlightTravelClassType.ECONOMY;
-    
-    public FlightTravelClassType MaxFlightSeatingAt8Hours { get; set; }
-        = FlightTravelClassType.ECONOMY;
-    public FlightTravelClassType MaxFlightSeatingAt10Hours { get; set; }
-        = FlightTravelClassType.PREMIUM_ECONOMY;
-    public FlightTravelClassType MaxFlightSeatingAt14Hours { get; set; }
-        = FlightTravelClassType.PREMIUM_ECONOMY;
-
-    public decimal MaxFlightPriceAt6Hours { get; set; } = 0m;
-    public decimal MaxFlightPriceAt8Hours { get; set; } = 0m;
-    public decimal MaxFlightPriceAt10Hours { get; set; } = 0m;
-    public decimal MaxFlightPriceAt14Hours { get; set; } = 0m;
-
-    
     // -------------------------
     // Hotels
     // -------------------------
 
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxHotelNightlyRate { get; set; } = 0m;
+    public decimal MaxHotelNightlyRate { get; set; } = 0m;
 
     public HotelRoomClassType DefaultHotelRoomType { get; set; }
         = HotelRoomClassType.STANDARD;
@@ -106,8 +90,8 @@ public sealed class NewOrgTravelPolicyDraft
     // Ground transport
     // -------------------------
 
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxTaxiFarePerRide { get; set; } = 0m;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxTaxiSurgeMultiplier { get; set; } = 0m;
+    public decimal MaxTaxiFarePerRide { get; set; } = 0m;
+    public decimal MaxTaxiSurgeMultiplier { get; set; } = 0m;
 
     public string[] IncludedTaxiVendors { get; set; } = Array.Empty<string>();
     public string[] ExcludedTaxiVendors { get; set; } = Array.Empty<string>();
@@ -118,7 +102,7 @@ public sealed class NewOrgTravelPolicyDraft
     public RailTravelClassType MaxTrainClass { get; set; }
         = RailTravelClassType.FIRST;
 
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxTrainPrice { get; set; } = 0m;
+    public decimal? MaxTrainPrice { get; set; }
 
     public string[] IncludedRailOperators { get; set; } = Array.Empty<string>();
     public string[] ExcludedRailOperators { get; set; } = Array.Empty<string>();
@@ -127,7 +111,7 @@ public sealed class NewOrgTravelPolicyDraft
     // Car hire
     // -------------------------
 
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxCarDailyRate { get; set; } = 0m;
+    public decimal MaxCarDailyRate { get; set; } = 0m;
 
     public char DefaultCarCategory { get; set; } = 'C';
     public char MaxCarCategory { get; set; } = 'P';
@@ -150,7 +134,7 @@ public sealed class NewOrgTravelPolicyDraft
     // -------------------------
     // Bus / Coach
     // -------------------------
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxBusFarePerTicket { get; set; } = 0m;
+    public decimal MaxBusFarePerTicket { get; set; } = 0m;
     public string[] IncludedBusOperators { get; set; } = Array.Empty<string>();
     public string[] ExcludedBusOperators { get; set; } = Array.Empty<string>();
 
@@ -158,24 +142,11 @@ public sealed class NewOrgTravelPolicyDraft
     // -------------------------
     // eSIM / SIM cards
     // -------------------------
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxSimCardPrice { get; set; } = 0m;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MinSimDataAllowanceGb { get; set; } = 0m;
-    [Range(0, int.MaxValue, ErrorMessage = "Must be 0 or greater")] public int MinSimValidityDays { get; set; } = 0;
+    public decimal MaxSimCardPrice { get; set; } = 0m;
+    public decimal MinSimDataAllowanceGb { get; set; } = 0m;
+    public int MinSimValidityDays { get; set; } = 0;
     public bool EnableVoiceSimCards { get; set; } = false;
     public bool EnableDataSimCards { get; set; } = true;
-    public bool EnableSimHotspotTethering { get; set; } = true;
-    public bool EnablePortableWifiRental { get; set; } = true;
-    public string[] IncludedSimVendors { get; set; } = Array.Empty<string>();
-    public string[] ExcludedSimVendors { get; set; } = Array.Empty<string>();
-
-
-    // -------------------------
-    // Activities / Experiences
-    // -------------------------
-    public bool AllowHighRiskActivities { get; set; } = false;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")]public decimal MaxActivityPricePerBooking { get; set; } = 0m;
-    public string[] IncludedActivityProviders { get; set; } = Array.Empty<string>();
-    public string[] ExcludedActivityProviders { get; set; } = Array.Empty<string>();
 
 
     // -------------------------
@@ -195,13 +166,13 @@ public sealed class NewOrgTravelPolicyDraft
     public bool RequireManagerApprovalToPolicyLimit { get; set; } = false;
 
     public bool L1ApprovalRequired { get; set; } = false;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")]public decimal L1ApprovalAmount { get; set; } = 0m;
+    public decimal L1ApprovalAmount { get; set; } = 0m;
 
     public bool L2ApprovalRequired { get; set; } = false;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")]public decimal L2ApprovalAmount { get; set; } = 0m;
+    public decimal L2ApprovalAmount { get; set; } = 0m;
 
     public bool L3ApprovalRequired { get; set; } = false;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")]public decimal L3ApprovalAmount { get; set; } = 0m;
+    public decimal L3ApprovalAmount { get; set; } = 0m;
 
     public bool OrgBillingContactApprovalToPolicyLimit { get; set; } = false;
     public bool OrgBillingContactApprovalAbovePolicyLimit { get; set; } = false;

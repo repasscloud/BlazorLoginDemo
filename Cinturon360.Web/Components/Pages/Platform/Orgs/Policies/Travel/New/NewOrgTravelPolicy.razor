@@ -7,6 +7,7 @@
 @using Cinturon360.Shared.Auth
 @using Cinturon360.Shared.Models.Static.Billing
 @using Cinturon360.Shared.Models.Static.Travel
+@using Cinturon360.Shared.Models.Static.Travel.Acriss
 @using Cinturon360.Web.Drafts.Platform.Org.Policies.Travel
 @using Cinturon360.Web.Exceptions
 @using Cinturon360.Web.Infrastructure.Http
@@ -23,14 +24,14 @@
 
 @if (_vm is null || _vm.IsLoading)
 {
-    <LoadingOverlay
+    <Cinturon360.Web.Components.Shared.LoadingOverlay
         Message="Preparing travel policy configuration…"
         RequestId="_vm.Rid" />
 
 }
 else if (_vm.Error is not null)
 {
-    <ErrorPanel
+    <Cinturon360.Web.Components.Shared.ErrorPanel
         Message="_vm.Error"
         RequestId="_vm.Rid"
         OnRetry="ReloadAsync"
@@ -149,22 +150,34 @@ else
                     .ToList()
             };
 
-            AcrissReference? acrissRef = new AcrissReference
+            AcrissReference? acrissRef = new()
             {
-                Categories = AcrissType.CategoryOptions
-                    .Select(o => new AcrissOption(o.code, o.label))
+                Categories = AcrissCategories.All
+                    .Select(c => new AcrissOption(
+                        c.Code,
+                        c.CodeUpper,
+                        c.Label))
                     .ToList(),
 
-                Bodies = AcrissType.BodyOptions
-                    .Select(o => new AcrissOption(o.code, o.label))
+                Bodies = AcrissBodies.All
+                    .Select(b => new AcrissOption(
+                        b.Code,
+                        b.CodeUpper,
+                        b.Label))
                     .ToList(),
 
-                Transmissions = AcrissType.TransmissionOptions
-                    .Select(o => new AcrissOption(o.code, o.label))
+                Transmissions = AcrissTransmissions.All
+                    .Select(t => new AcrissOption(
+                        t.Code,
+                        t.CodeUpper,
+                        t.Label))
                     .ToList(),
 
-                Fuels = AcrissType.FuelOptions
-                    .Select(o => new AcrissOption(o.code, o.label))
+                Fuels = AcrissFuels.All
+                    .Select(f => new AcrissOption(
+                        f.Code,
+                        f.CodeUpper,
+                        f.Label))
                     .ToList()
             };
 
@@ -199,7 +212,7 @@ else
 
     private async Task ReloadAsync()
     {
-        _vm = _vm with { IsLoading = true };
+        _vm = _vm! with { IsLoading = true };
         await OnInitializedAsync();
     }
 
@@ -240,7 +253,19 @@ else
     private void LogSupportAsync()
     {
         Navigation.NavigateTo(
-            $"/support/new?rid={_vm?.Rid}&page=NewTravelPolicy");
+            uri: $"/support/new?rid={_vm?.Rid}&page=NewTravelPolicy");
+    }
+
+    private object MapToRequest(NewOrgTravelPolicyDraft draft)
+    {
+        // TODO: Replace with your actual request DTO type
+        return new
+        {
+            OrgId = draft.OrgId,
+            PolicyName = draft.PolicyName,
+            EffectiveFromUtc = draft.EffectiveFromUtc
+            // Add other properties as needed
+        };
     }
 
 }

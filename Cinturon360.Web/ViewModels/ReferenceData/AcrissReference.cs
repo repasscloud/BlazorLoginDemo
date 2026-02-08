@@ -3,8 +3,10 @@ namespace Cinturon360.Web.ViewModels.ReferenceData;
 // Generic option for ACRISS dimensions
 public sealed record AcrissOption(
     char Code,          // 'M'
-    string DisplayName  // "Mini"
+    string CodeUpper,   // "MINI", "ECONOMY_ELITE"
+    string DisplayName  // "Mini", "Economy Elite"
 );
+
 
 // Full reference set
 public sealed record AcrissReference

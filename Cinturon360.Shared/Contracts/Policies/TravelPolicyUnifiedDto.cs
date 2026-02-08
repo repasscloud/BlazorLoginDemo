@@ -16,6 +16,11 @@ public class TravelPolicyUnifiedDto
         CommandMetadata Metadata
     );
 
+    public sealed record UpdateTravelPolicyAggregate(
+        UpdateTravelPolicyRequest UpdateTravelPolicy,
+        CommandMetadata Metadata
+    );
+
     public sealed record TravelPolicyNoResponseAggregate(
         string TravelPolicyId,
         CommandMetadata Metadata

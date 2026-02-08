@@ -8,7 +8,7 @@
             DefaultLayout="typeof(Layout.MainLayout)">
 
             <Authorizing>
-                <LoadingOverlay Message="Checking permissions…" />
+                <Cinturon360.Web.Components.Shared.LoadingOverlay Message="Checking permissions…" />
             </Authorizing>
 
             <NotAuthorized>
@@ -22,7 +22,7 @@
 
     <NotFound>
         <LayoutView Layout="typeof(Layout.MainLayout)">
-            <Pages.NotFound />
+            <Cinturon360.Web.Components.Pages.NotFound />
         </LayoutView>
     </NotFound>
 </Router>
