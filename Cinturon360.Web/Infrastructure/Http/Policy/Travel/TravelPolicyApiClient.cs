@@ -13,8 +13,7 @@ public sealed class TravelPolicyApiClient
         _http = http;
     }
 
-    public async Task<TravelPolicyNoResponseAggregate>
-    CreateAsync<TRequest>(
+    public async Task<TravelPolicyNoResponseAggregate> CreateAsync<TRequest>(
         string rid,
         TRequest payload,
         CancellationToken ct = default)
@@ -45,8 +44,7 @@ public sealed class TravelPolicyApiClient
                 "Failed to deserialize TravelPolicyNoResponseAggregate.");
     }
 
-    public async Task<TravelPolicyNoResponseAggregate>
-    UpdateAsync<TRequest>(
+    public async Task<TravelPolicyNoResponseAggregate> UpdateAsync<TRequest>(
         string rid,
         string policyId,
         TRequest payload,
@@ -76,5 +74,32 @@ public sealed class TravelPolicyApiClient
             .ReadFromJsonAsync<TravelPolicyNoResponseAggregate>(ct)
             ?? throw new InvalidOperationException(
                 "Failed to deserialize TravelPolicyNoResponseAggregate.");
+    }
+
+    public async Task<ListIdsTravelPolicyAggregate> GetPoliciesAsync(
+        string rid,
+        string orgId,
+        CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/v1/orgs/{orgId}/policies/travel");
+
+        request.Headers.Add("X-Correlation-Id", rid);
+
+        var response = await _http.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var problem = await response.Content
+                .ReadFromJsonAsync<ProblemDetails>(ct);
+
+            throw new ApiException(problem, response.StatusCode, rid);
+        }
+
+        return await response.Content
+            .ReadFromJsonAsync<ListIdsTravelPolicyAggregate>(ct)
+            ?? throw new InvalidOperationException(
+                "Failed to deserialize ListIdsTravelPolicyAggregate.");
     }
 }
