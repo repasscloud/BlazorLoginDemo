@@ -3,33 +3,33 @@ using Cinturon360.Shared.Models.Static.Travel;
 
 namespace Cinturon360.Web.Drafts.Platform.Org.Policies.Travel;
 
-public sealed class NewOrgTravelPolicyDraft
+public sealed class EditOrgTravelPolicyDraft
 {
     // -------------------------
     // Context
     // -------------------------
 
+    [StringLength(23)] public string TravelPolicyId { get; init; } = default!;
+
     [Required, StringLength(25)]
-    public string OrgId { get; set; } = default!;
+    public string OrgId { get; init; } = default!;
 
     // -------------------------
     // Core policy info
     // -------------------------
 
-    [Required, StringLength(100)]
+    [Required(
+        ErrorMessage = "Policy name is required.")]
+    [StringLength(100,
+        ErrorMessage = "Policy name must not exceed 100 characters.")]
     public string PolicyName { get; set; } = string.Empty;
-
-    [Required, RegularExpression(@"^[A-Z]{3}$",
-        ErrorMessage = "Currency must be exactly 3 uppercase letters.")]
-    public string DefaultCurrencyCode { get; set; } = "AUD";
+    public string DefaultCurrencyCode { get; init; } = default!;
 
     public bool SetAsDefaultPolicy { get; set; } = false;
-
-    [Required]
-    public DateTime EffectiveFromUtc { get; set; } = DateTime.UtcNow;
+    public DateTime EffectiveFromUtc { get; init; }
 
     // Only optional field by design
-    public DateTime EffectiveToUtc { get; set; } = DateTime.MaxValue;
+    public DateTime EffectiveToUtc { get; set; } = DateTime.UtcNow.AddMonths(12);
 
 
     // -------------------------
@@ -65,7 +65,7 @@ public sealed class NewOrgTravelPolicyDraft
 
     public FlightTravelClassType MaxFlightSeatingAt6Hours { get; set; }
         = FlightTravelClassType.ECONOMY;
-    
+
     public FlightTravelClassType MaxFlightSeatingAt8Hours { get; set; }
         = FlightTravelClassType.ECONOMY;
     public FlightTravelClassType MaxFlightSeatingAt10Hours { get; set; }
@@ -78,7 +78,7 @@ public sealed class NewOrgTravelPolicyDraft
     [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxFlightPriceAt10Hours { get; set; } = 0m;
     [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxFlightPriceAt14Hours { get; set; } = 0m;
 
-    
+
     // -------------------------
     // Hotels
     // -------------------------
@@ -175,7 +175,7 @@ public sealed class NewOrgTravelPolicyDraft
     // Activities / Experiences
     // -------------------------
     public bool AllowHighRiskActivities { get; set; } = false;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")]  public decimal MaxActivityPricePerBooking { get; set; } = 0m;
+    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal MaxActivityPricePerBooking { get; set; } = 0m;
     public string[] IncludedActivityProviders { get; set; } = Array.Empty<string>();
     public string[] ExcludedActivityProviders { get; set; } = Array.Empty<string>();
 
@@ -197,14 +197,22 @@ public sealed class NewOrgTravelPolicyDraft
     public bool RequireManagerApprovalToPolicyLimit { get; set; } = false;
 
     public bool L1ApprovalRequired { get; set; } = false;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")]  public decimal L1ApprovalAmount { get; set; } = 0m;
+    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal L1ApprovalAmount { get; set; } = 0m;
 
     public bool L2ApprovalRequired { get; set; } = false;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")]  public decimal L2ApprovalAmount { get; set; } = 0m;
+    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal L2ApprovalAmount { get; set; } = 0m;
 
     public bool L3ApprovalRequired { get; set; } = false;
-    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")]  public decimal L3ApprovalAmount { get; set; } = 0m;
+    [Range(0, double.MaxValue, ErrorMessage = "Must be 0 or greater")] public decimal L3ApprovalAmount { get; set; } = 0m;
 
     public bool OrgBillingContactApprovalToPolicyLimit { get; set; } = false;
     public bool OrgBillingContactApprovalAbovePolicyLimit { get; set; } = false;
+
+    // -------------------------
+    // Audit (non-editable by user, but required for tracking changes)
+    // -------------------------
+    public DateTime CreateAtUtc { get; init; }
+    public DateTime LastModifiedAtUtc { get; set; }
+    public string CreatedByUserId { get; init; } = default!;
+    public string LastModifiedByUserId { get; set; } = default!;
 }

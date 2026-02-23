@@ -2,16 +2,16 @@ using Cinturon360.Web.ViewModels.ReferenceData;
 
 namespace Cinturon360.Web.ViewModels.Policies.Travel;
 
-public sealed record NewTravelPolicyVm
+public sealed record EditTravelPolicyVm
 {
     // Context
     public string Rid { get; init; } = default!;
     public string OrgId { get; init; } = default!;
     public string UserId { get; init; } = default!;
+    public string TravelPolicyId { get; init; } = default!;
 
     // Reference data (UI only)
     public GeographyReference GeographyRef { get; init; } = default!;
-    public CurrencyReference CurrencyRef { get; init; } = default!;
     public AcrissReference AcrissRef { get; init; } = default!;
     public FareTypeReference FareTypeRef { get; init; } = default!;
     public HotelRoomTypeReference HotelRoomTypeRef { get; init; } = default!;

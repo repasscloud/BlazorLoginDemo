@@ -1,4 +1,4 @@
-@page "/platform/org/{OrgId}/policies/travel/new"
+@page "/platform/org/{OrgId}/policies/travel/{TravelPolicyId}/edit"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 @* @attribute [Authorize(Policy = "Platform:ManageUsers")] *@
@@ -76,17 +76,15 @@ else
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Policy Currency</label>
-                        <InputSelect class="form-select"
-                                     @bind-Value="_draft.DefaultCurrencyCode">
-                            @foreach (CurrencyOption option in _vm.CurrencyRef.Options)
-                            {
-                                <option value="@option.Code">@option.DisplayName</option>
-                            }
-                        </InputSelect>
+                        <InputText class="form-control bg-light"
+                            Value="_draft.DefaultCurrencyCode"
+                            readonly />
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Org Id</label>
-                        <InputText class="form-control bg-light" @bind-Value="_draft.OrgId" readonly />
+                        <InputText class="form-control bg-light"
+                            Value="_draft.OrgId"
+                            readonly />
                     </div>
                 </div>
             </div>
@@ -654,10 +652,11 @@ else
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Effective From (UTC)</label>
-                        <InputDate TValue="DateTime" Value="_draft.EffectiveFromUtc"
-                                   ValueChanged="@(EventCallback.Factory.Create<DateTime>(this, OnEffectiveChanged))"
-                                   ValueExpression="() => _draft.EffectiveFromUtc"
-                                   class="form-control" />
+                        <InputDate TValue="DateTime"
+                            Value="_draft.EffectiveFromUtc"
+                            ValueExpression="() => _draft.EffectiveFromUtc"
+                            class="form-control"
+                            readonly />
                     </div>
 
                     <div class="col-md-4">
@@ -677,9 +676,9 @@ else
     [Parameter, EditorRequired]
     public string OrgId { get; set; } = default!;
 
-    private NewOrgTravelPolicyDraft _draft = default!;
+    private EditOrgTravelPolicyDraft _draft = default!;
     private EditContext _editCtx = default!;
-    private NewTravelPolicyVm? _vm;
+    private EditTravelPolicyVm? _vm;
 
     protected override async Task OnInitializedAsync()
     {
@@ -692,14 +691,18 @@ else
             string? userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
                 ?? throw new InvalidOperationException("UserId missing");
 
-            // build the draft with safe defaults
-            _draft = new NewOrgTravelPolicyDraft
+            // call api to get UpdateTravelPolicyRequest
+
+            // map the response to EditOrgTravelPolicyDraft for data binding
+
+            // assign _draft to mapped result
+            _draft = new EditOrgTravelPolicyDraft
             {
                 OrgId = OrgId,
                 EffectiveFromUtc = DateTime.UtcNow.Date
             };
 
-            // create EditContext ONCE
+            // create EditContext from _draft
             _editCtx = new EditContext(_draft);
 
             // Optional: hook validation events later if needed
@@ -707,16 +710,6 @@ else
             // _editCtx.OnFieldChanged += ...
 
             // load reference data
-            CurrencyReference? currencyRef = new CurrencyReference
-            {
-                Options = Currencies.All
-                    .Select(c => new CurrencyOption(
-                        Code: c.Code,
-                        DisplayName: $"{c.Name} ({c.LetterSymbol})"
-                    ))
-                    .ToList()
-            };
-
             GeographyUnifiedDto.GeographyAggregate? aggregate = await Api.Geography.GetAggregateAsync(rid);
             GeographyReference? geographyRef = new GeographyReference
             {
@@ -821,14 +814,13 @@ else
                 .ToList()
             };
 
-            _vm = new NewTravelPolicyVm
+            _vm = new EditTravelPolicyVm
             {
                 Rid = rid,
                 OrgId = OrgId,
                 UserId = userId,
                 IsLoading = true,
 
-                CurrencyRef = currencyRef,
                 GeographyRef = geographyRef,
                 FareTypeRef = fareTypeRef,
                 CabinClassCoverageRef = cabinClassCoverageRef,
@@ -841,7 +833,7 @@ else
         }
         catch (Exception ex)
         {
-            _vm = new NewTravelPolicyVm
+            _vm = new EditTravelPolicyVm
             {
                 Rid = rid,
                 OrgId = OrgId,
@@ -904,7 +896,7 @@ else
             uri: $"/support/new?rid={_vm?.Rid}&page=NewTravelPolicy");
     }
 
-    private object MapToRequest(NewOrgTravelPolicyDraft draft)
+    private object MapToRequest(EditOrgTravelPolicyDraft draft)
     {
         // TODO: Replace with your actual request DTO type
         return new
@@ -952,24 +944,11 @@ else
 
     
     // ===== Travel Policy Start Date End Date Helper
-    private bool _expiresManuallyEdited;
-
     private static DateTime AsUtcMidnight(DateTime d)
         => new DateTime(d.Year, d.Month, d.Day, hour: 0, minute: 0, second: 0, DateTimeKind.Utc);
 
-    private Task OnEffectiveChanged(DateTime newValue)
-    {
-        _draft.EffectiveFromUtc = AsUtcMidnight(newValue);
-
-        if (!_expiresManuallyEdited)
-            _draft.EffectiveToUtc = _draft.EffectiveFromUtc.AddYears(value: 1);
-
-        return Task.CompletedTask;
-    }
-
     private Task OnExpiresChanged(DateTime newValue)
     {
-        _expiresManuallyEdited = true;
         _draft.EffectiveToUtc = AsUtcMidnight(newValue);
         return Task.CompletedTask;
     }

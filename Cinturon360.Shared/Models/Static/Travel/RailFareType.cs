@@ -80,22 +80,36 @@ public static class RailFareType
     }
 
     // Replacement for old Normalize()
-    public static string Normalize(string? text) =>
-        ToCode(ToEnum(text) ?? RailTravelClassType.SECOND);
+    public static string Normalize(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return ToCode(RailTravelClassType.SECOND);
+
+        try
+        {
+            return ToCode(ToEnum(text));
+        }
+        catch
+        {
+            // Normalize() is a tolerant helper; unknown supplier/free-text values fall back to SECOND.
+            return ToCode(RailTravelClassType.SECOND);
+        }
+    }
 
     public static string ToCode(RailTravelClassType type) =>
         Get(type).Code;
 
-    public static RailTravelClassType? ToEnum(string? text)
+    public static RailTravelClassType ToEnum(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
-            return RailTravelClassType.SECOND;
+            throw new InvalidOperationException("Rail fare code cannot be null or empty.");
 
         var normalized = text.Trim().ToUpperInvariant();
 
         return _all.FirstOrDefault(f =>
             f.Code.Equals(normalized, StringComparison.OrdinalIgnoreCase) ||
             f.Aliases.Any(a => normalized.Contains(a))
-        )?.Type;
+        )?.Type
+        ?? throw new InvalidOperationException($"Invalid rail fare code '{text}'.");
     }
 }

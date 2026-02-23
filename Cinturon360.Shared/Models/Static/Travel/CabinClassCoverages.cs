@@ -57,6 +57,7 @@ public static class CabinClassCoverages
     public static string ToCode(CabinClassCoverageType type) =>
         Get(type).Code;
 
-    public static CabinClassCoverageType? ToEnum(string code) =>
-        GetByCode(code)?.Type;
+    public static CabinClassCoverageType ToEnum(string code) =>
+        GetByCode(code)?.Type
+        ?? throw new InvalidOperationException($"Invalid cabin class coverage code '{code}'.");
 }

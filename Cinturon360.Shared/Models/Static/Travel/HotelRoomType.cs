@@ -76,6 +76,7 @@ public static class HotelRoomType
     public static string ToCode(HotelRoomClassType type) =>
         Get(type).Code;
 
-    public static HotelRoomClassType? ToEnum(string code) =>
-        GetByCode(code)?.Type;
+    public static HotelRoomClassType ToEnum(string code) =>
+        GetByCode(code)?.Type
+        ?? throw new InvalidOperationException($"Invalid hotel room type code '{code}'.");
 }

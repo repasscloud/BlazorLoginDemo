@@ -16,21 +16,20 @@ public sealed class UpdateTravelPolicyRequest
     // =========================================================================
 
     /// <summary>
-    /// Unique travel policy identifier.
+    /// Unique identifier for the travel policy to update.
     /// </summary>
-    [StringLength(25)]
-    public string PolicyId { get; set; } = string.Empty;
+    public string PolicyId { get; init; } = default!;
 
     /// <summary>
     /// Human-friendly policy name.
     /// Displayed in UI and approval workflows.
     /// </summary>
-    public string PolicyName { get; set; } = string.Empty;
+    public string PolicyName { get; init; } = default!;
 
     /// <summary>
     /// Owning organisation (Unified org ID).
     /// </summary>
-    public string OrganizationId { get; set; } = string.Empty;
+    public string OrganizationId { get; init; } = default!;
 
     // =========================================================================
     // Currency & effective window
@@ -40,9 +39,7 @@ public sealed class UpdateTravelPolicyRequest
     /// Default settlement currency for policy limits.
     /// ISO 4217, enforced as uppercase.
     /// </summary>
-    [CurrencyTypeValidation]
-    [RegularExpression(@"^[A-Z]{3}$", ErrorMessage = "Currency must be exactly 3 uppercase letters.")]
-    public string DefaultCurrencyCode { get; set; } = "AUD";
+    public string DefaultCurrencyCode { get; init; } = default!;
 
     /// <summary>
     /// Policy start date (UTC).
@@ -53,7 +50,7 @@ public sealed class UpdateTravelPolicyRequest
     /// Policy end date (UTC).
     /// Defaults to 12 months.
     /// </summary>
-    public DateTime EffectiveToUtc { get; set; } = DateTime.UtcNow.AddYears(1);
+    public DateTime EffectiveToUtc { get; set; } = DateTime.UtcNow.AddMonths(12);
 
     // =========================================================================
     // FLIGHTS – blanket defaults (apply unless overridden)
@@ -156,7 +153,7 @@ public sealed class UpdateTravelPolicyRequest
     public string MaxTrainClass { get; set; } = "STANDARD";
 
     [Column(TypeName = "numeric(14,2)")]
-    public decimal? MaxTrainPrice { get; set; }
+    public decimal MaxTrainPrice { get; set; } = 0m;
 
     public string[] IncludedRailOperators { get; set; } = Array.Empty<string>();
     public string[] ExcludedRailOperators { get; set; } = Array.Empty<string>();
@@ -166,13 +163,10 @@ public sealed class UpdateTravelPolicyRequest
     // =========================================================================
 
     [Column(TypeName = "numeric(14,2)")]
-    public decimal? MaxCarHireDailyRate { get; set; }
-
-    [Column(TypeName = "numeric(14,2)")]
     public decimal MaxCarDailyRate { get; set; } = 0m; // UI-aligned field
 
-    public string DefaultCarClass { get; set; } = "MBAR";
-    public string MaxCarClass { get; set; } = "MBAR";
+    public string DefaultCarClass { get; set; } = "ECONOMY";
+    public string MaxCarClass { get; set; } = "FULLSIZE";
 
     public bool RequireInclusiveInsurance { get; set; } = true;
 
@@ -199,15 +193,10 @@ public sealed class UpdateTravelPolicyRequest
 
     public decimal MinSimDataGb { get; set; } = 5m;
     public int MinSimValidityDays { get; set; } = 30;
-
-    public bool EnableVoiceSupport { get; set; } = false;
-    public bool EnableSmsSupport { get; set; } = false;
-    public bool EnableHotspotSupport { get; set; } = false;
-    public bool Enable5GSupport { get; set; } = false;
-    public bool Enable4GSupport { get; set; } = false;
-    public bool Enable3GSupport { get; set; } = false;
-    public bool EnableWiFiDeviceRental { get; set; } = false;
-
+    public bool EnableVoiceSimCards { get; set; } = false;
+    public bool EnableDataSimCards { get; set; } = true;
+    public bool EnableSimHotspotTethering { get; set; } = true;
+    public bool EnablePortableWifiRental { get; set; } = true;
     public string[] IncludedSimVendors { get; set; } = Array.Empty<string>();
     public string[] ExcludedSimVendors { get; set; } = Array.Empty<string>();
 
@@ -216,7 +205,7 @@ public sealed class UpdateTravelPolicyRequest
     // =========================================================================
 
     [Column(TypeName = "numeric(14,2)")]
-    public decimal? MaxActivityPricePerPerson { get; set; }
+    public decimal MaxActivityPricePerBooking { get; set; } = 0m;
 
     public bool AllowHighRiskActivities { get; set; } = false;
 
@@ -279,4 +268,12 @@ public sealed class UpdateTravelPolicyRequest
 
     public bool OrgBillingContactApprovalToPolicyLimit { get; set; } = false;
     public bool OrgBillingContactApprovalAbovePolicyLimit { get; set; } = false;
+
+    // =========================================================================
+    // AUDIT & COMPLIANCE
+    // =========================================================================
+    public DateTime CreatedAtUtc { get; init; }
+    public DateTime LastModifiedAtUtc { get; init; }
+    public string CreatedByUserId { get; init; } = default!;
+    public string LastModifiedByUserId { get; init; } = default!;
 }

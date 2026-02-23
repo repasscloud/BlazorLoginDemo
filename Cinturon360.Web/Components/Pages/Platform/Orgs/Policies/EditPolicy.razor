@@ -1,4 +1,4 @@
-@page "/platform/travelpolicy/edit/{TravelPolicyId}"
+@* @page "/platform/travelpolicy/edit/{TravelPolicyId}"
 @rendermode InteractiveServer
 
 @using System.ComponentModel.DataAnnotations
@@ -910,4 +910,4 @@ else
         Vm.ExpiresOnUtc = AsUtcMidnight(newValue);
         return Task.CompletedTask;
     }
-}
+} *@

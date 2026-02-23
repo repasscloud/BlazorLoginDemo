@@ -38,6 +38,7 @@ public static class FareType
     public static string ToCode(FlightTravelClassType type) =>
         Get(type).Code;
 
-    public static FlightTravelClassType? ToEnum(string code) =>
-        GetByCode(code)?.Type;
+    public static FlightTravelClassType ToEnum(string code) =>
+        GetByCode(code)?.Type
+        ?? throw new InvalidOperationException($"Invalid fare code '{code}'.");
 }

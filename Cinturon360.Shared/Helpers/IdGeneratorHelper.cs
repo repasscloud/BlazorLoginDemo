@@ -17,14 +17,14 @@ public static class IDGeneratorHelper
         new Dictionary<IdGenType, IdSpec>
         {
             // Core / platform
-            { IdGenType.Default,       new IdSpec("xxx_", 10) },
+            { IdGenType.Default,         new IdSpec("xxx_", 10) },
 
-            { IdGenType.Organization, new IdSpec("org_", 21) },
-            { IdGenType.Domain,       new IdSpec("dom_", 18) },
-            { IdGenType.License,      new IdSpec("lic_", 14) },
-            { IdGenType.Job,          new IdSpec("job_", 16) },
-            { IdGenType.Log,          new IdSpec("log_", 18) },
-            { IdGenType.Error,        new IdSpec("err_", 10) },
+            { IdGenType.Organization,    new IdSpec("org_", 21) },
+            { IdGenType.Domain,          new IdSpec("dom_", 18) },
+            { IdGenType.License,         new IdSpec("lic_", 14) },
+            { IdGenType.Job,             new IdSpec("job_", 16) },
+            { IdGenType.Log,             new IdSpec("log_", 18) },
+            { IdGenType.Error,           new IdSpec("err_", 10) },
 
             // Financial / policy
             { IdGenType.ExchangeRate,    new IdSpec("fxs_", 16) },
@@ -43,20 +43,20 @@ public static class IDGeneratorHelper
             { IdGenType.RailOperator,    new IdSpec("rop_", 16) },
 
             // Reference data
-            { IdGenType.LoyaltyAccount, new IdSpec("loy_", 16) },
-            { IdGenType.Dto,            new IdSpec("dto_", 18) },
-            { IdGenType.Tmc,            new IdSpec("tmc_", 12) },
-            { IdGenType.Vendor,         new IdSpec("ven_", 12) },
-            { IdGenType.User,           new IdSpec("usr_", 16) },
-            { IdGenType.GitHubOAuth,    new IdSpec("gho_", 24) },
+            { IdGenType.LoyaltyAccount,  new IdSpec("loy_", 16) },
+            { IdGenType.Dto,             new IdSpec("dto_", 18) },
+            { IdGenType.Tmc,             new IdSpec("tmc_", 12) },
+            { IdGenType.Vendor,          new IdSpec("ven_", 12) },
+            { IdGenType.User,            new IdSpec("usr_", 16) },
+            { IdGenType.GitHubOAuth,     new IdSpec("gho_", 24) },
 
             // Master data
-            { IdGenType.AircraftMaker, new IdSpec("acm_", 12) },
-            { IdGenType.Employee,      new IdSpec("emp_", 12) },
-            { IdGenType.Sales,         new IdSpec("sal_", 14) },
-            { IdGenType.Storage,       new IdSpec("sto_", 20) },
-            { IdGenType.Airline,       new IdSpec("air_", 8) },
-            { IdGenType.Airport,       new IdSpec("apt_", 6) },
+            { IdGenType.AircraftMaker,   new IdSpec("acm_", 12) },
+            { IdGenType.Employee,        new IdSpec("emp_", 12) },
+            { IdGenType.Sales,           new IdSpec("sal_", 14) },
+            { IdGenType.Storage,         new IdSpec("sto_", 20) },
+            { IdGenType.Airline,         new IdSpec("air_", 8) },
+            { IdGenType.Airport,         new IdSpec("apt_", 6) },
 
             // Quote (special)
             { IdGenType.Quote, new IdSpec(null, 12, RequiresExternalPrefix: true) },
