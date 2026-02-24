@@ -1,5 +1,5 @@
 namespace Cinturon360.Shared.Models.Static.Billing;
-public enum CardFunding
+public enum CardFunding : int
 {
     Unset = 0,
     Credit = 1,

@@ -2,7 +2,7 @@ using Cinturon360.Shared.Contracts.Policies;
 using Cinturon360.Shared.Models.Static.Travel;
 using Cinturon360.Shared.Models.Static.Travel.Acriss;
 
-namespace Cinturon360.Web.Drafts.Platform.Org.Policies.Travel;
+namespace Cinturon360.Web.Drafts.Platform.Orgs.Policies.Travel;
 
 internal static class NewOrgTravelPolicyMapper
 {
@@ -30,7 +30,6 @@ internal static class NewOrgTravelPolicyMapper
 
         var allowedCarHireClasses =
             BuildAcrissClassRange(defaultCarClass, maxCarClass);
-
 
         return new CreateTravelPolicyRequest
         {

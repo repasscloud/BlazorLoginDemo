@@ -213,7 +213,7 @@ else
 
         if (IsSudo)
         {
-            Vendors = (await OrgSvc.SearchAsync(type: OrganizationType.Vendor))
+            Vendors = (await OrgSvc.SearchAsync(type: OrganizationType.MasterVendor))
                       .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
                       {
                           Id = a.Org.Id,

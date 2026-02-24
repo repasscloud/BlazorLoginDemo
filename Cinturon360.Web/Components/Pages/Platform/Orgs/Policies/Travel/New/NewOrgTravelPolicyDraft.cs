@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Cinturon360.Shared.Models.Static.Travel;
 
-namespace Cinturon360.Web.Drafts.Platform.Org.Policies.Travel;
+namespace Cinturon360.Web.Drafts.Platform.Orgs.Policies.Travel;
 
 public sealed class NewOrgTravelPolicyDraft
 {
