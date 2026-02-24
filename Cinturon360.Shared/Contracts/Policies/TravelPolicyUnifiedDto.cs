@@ -25,4 +25,9 @@ public class TravelPolicyUnifiedDto
         string TravelPolicyId,
         CommandMetadata Metadata
     );
+
+    public sealed record ListTravelPolicyItemsAggregate(
+        IReadOnlyList<Models.Policies.TravelPolicyListItem> TravelPolicyItems,
+        CommandMetadata Metadata
+    );
 }

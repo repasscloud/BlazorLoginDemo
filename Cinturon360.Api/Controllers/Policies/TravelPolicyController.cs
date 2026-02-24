@@ -365,9 +365,22 @@ public sealed class PoliciesController : ControllerBase
         //=> Activity.Current?.Id ?? string.Empty;
 
     private string? GetUserId()
-        => User?.FindFirstValue(ClaimTypes.NameIdentifier)
-           ?? User?.FindFirstValue("sub")
-           ?? User?.FindFirstValue("uid");
+    {
+        // 1. Preferred: authenticated identity (future-proof, most secure)
+        var uid =
+            User?.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User?.FindFirstValue("sub")
+            ?? User?.FindFirstValue("uid");
+
+        if (!string.IsNullOrWhiteSpace(uid))
+            return uid;
+
+        // 2. Fallback: trusted internal header from Blazor Server
+        if (Request.Headers.TryGetValue("X-User-Id", out var header))
+            return header.FirstOrDefault();
+
+        return null;
+    }
 
     private ObjectResult ProblemEx(int status, string errorCode, string title, string? detail = null)
     {

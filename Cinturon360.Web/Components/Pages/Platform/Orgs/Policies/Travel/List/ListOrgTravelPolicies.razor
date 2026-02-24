@@ -61,7 +61,7 @@ else
             </thead>
 
             <tbody>
-                @foreach (var p in _vm.Policies)
+                @foreach (TravelPolicyListItemVm p in _vm.Policies)
                 {
                     <tr>
 
@@ -97,21 +97,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        string? rid = RequestIdFactory.Create();
-
-        try
-        {
-            AuthenticationState? auth = await AuthStateProvider.GetAuthenticationStateAsync();
-            ClaimsPrincipal? user = auth.User;
-            string? userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new InvalidOperationException(message: "UserId missing");
-            
-            // call the API to get the values needed
-            await Api.TravelPolicy.
-        }
-
-
-
         await ReloadAsync();
     }
 
@@ -125,16 +110,51 @@ else
 
         try
         {
-            var response =
-                await Api.Platform.Org.Policies.Travel.ListAsync(OrgId, rid);
+            // Optional: access authenticated user (for logging / debugging only)
+            AuthenticationState auth =
+                await AuthStateProvider.GetAuthenticationStateAsync();
 
-            _vm =
-                ListOrgTravelPoliciesMapper.ToVm(response, rid);
+            ClaimsPrincipal user = auth.User;
+
+            string userId =
+                user.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new InvalidOperationException("UserId missing");
+
+            // call API
+            var response = 
+                await Api.TravelPolicy.GetPoliciesAsync(
+                    rid: rid,
+                    orgId: OrgId);
+                
+            if (response is null)
+            {
+                _vm = 
+                    ListOrgTravelPoliciesVm.Failed(
+                        "No response from server",
+                        rid);
+            }
+            else
+            {
+                // correct mapper usage
+                _vm = 
+                    ListOrgTravelPoliciesMapper.ToVm(
+                        response,
+                        rid);
+            }
         }
         catch (ApiException ex)
         {
             _vm =
-                ListOrgTravelPoliciesVm.Failed(ex.Message, rid);
+                ListOrgTravelPoliciesVm.Failed(
+                    ex.Message,
+                    rid);
+        }
+        catch (Exception ex)
+        {
+            _vm =
+                ListOrgTravelPoliciesVm.Failed(
+                    error: $"An unexpected error occurred: {ex.Message}",
+                    rid: rid);
         }
 
         StateHasChanged();
@@ -143,18 +163,15 @@ else
     private void NewPolicy()
     {
         Navigation.NavigateTo(
-            $"/platform/org/{OrgId}/policies/travel/new");
+            uri: $"/platform/org/{OrgId}/policies/travel/new");
     }
 
     private void EditPolicy(string travelPolicyId)
     {
         Navigation.NavigateTo(
-            $"/platform/org/{OrgId}/policies/travel/{travelPolicyId}/edit");
+            uri: $"/platform/org/{OrgId}/policies/travel/{travelPolicyId}/edit");
     }
 
-    private Task LogSupportAsync()
-    {
-        return Task.CompletedTask;
-    }
-
+    private Task LogSupportAsync() 
+        => Task.CompletedTask;
 }

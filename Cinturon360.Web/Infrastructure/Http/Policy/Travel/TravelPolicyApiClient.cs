@@ -76,7 +76,7 @@ public sealed class TravelPolicyApiClient
                 "Failed to deserialize TravelPolicyNoResponseAggregate.");
     }
 
-    public async Task<ListIdsTravelPolicyAggregate> GetPoliciesAsync(
+    public async Task<ListTravelPolicyItemsAggregate> GetPoliciesAsync(
         string rid,
         string orgId,
         CancellationToken ct = default)
@@ -98,8 +98,8 @@ public sealed class TravelPolicyApiClient
         }
 
         return await response.Content
-            .ReadFromJsonAsync<ListIdsTravelPolicyAggregate>(ct)
+            .ReadFromJsonAsync<ListTravelPolicyItemsAggregate>(ct)
             ?? throw new InvalidOperationException(
-                "Failed to deserialize ListIdsTravelPolicyAggregate.");
+                "Failed to deserialize ListTravelPolicyItemsAggregate.");
     }
 }

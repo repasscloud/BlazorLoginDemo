@@ -5,6 +5,7 @@ public sealed class ListOrgTravelPoliciesVm
     public string Rid { get; }
     public bool IsLoading { get; }
     public string? Error { get; }
+    
     public List<TravelPolicyListItemVm> Policies { get; }
 
     private ListOrgTravelPoliciesVm(

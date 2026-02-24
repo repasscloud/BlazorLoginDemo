@@ -1,15 +1,15 @@
+using static Cinturon360.Shared.Contracts.Policies.TravelPolicyUnifiedDto;
+
 namespace Cinturon360.Web.ViewModels.Policies.Travel;
 
 public static class ListOrgTravelPoliciesMapper
 {
-
     public static ListOrgTravelPoliciesVm ToVm(
-        ListTravelPoliciesResponse response,
+        ListTravelPolicyItemsAggregate aggregate,
         string rid)
     {
-
         var items =
-            response.Policies
+            aggregate.TravelPolicyItems
                 .Select(p => new TravelPolicyListItemVm
                 {
                     Id = p.Id,
@@ -19,9 +19,6 @@ public static class ListOrgTravelPoliciesMapper
                 })
                 .ToList();
 
-        return
-            ListOrgTravelPoliciesVm.Ready(rid, items);
-
+        return ListOrgTravelPoliciesVm.Ready(rid, items);
     }
-
 }
