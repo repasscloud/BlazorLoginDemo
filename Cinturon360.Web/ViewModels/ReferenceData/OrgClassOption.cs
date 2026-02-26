@@ -1,4 +1,4 @@
-using Cinturon360.Shared.Models.Static.Platform;
+using static Cinturon360.Shared.Models.Static.Organization.OrganizationClassifications;
 
 namespace Cinturon360.Web.ViewModels.ReferenceData;
 

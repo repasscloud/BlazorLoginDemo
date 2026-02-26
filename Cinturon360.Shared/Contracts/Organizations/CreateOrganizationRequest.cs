@@ -1,7 +1,9 @@
+using Cinturon360.Shared.Models.Static.Billing;
 using Cinturon360.Shared.Models.Static.Geography;
-using Cinturon360.Shared.Models.Static.Identity;
-using Cinturon360.Shared.Models.Static.Platform;
-using Cinturon360.Shared.Models.Static.Support;
+using static Cinturon360.Shared.Models.Static.Organization.OrganizationClassifications;
+using static Cinturon360.Shared.Models.Static.Organization.OrganizationSectors;
+using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes;
+using static Cinturon360.Shared.Models.Static.Support.SlaTiers;
 
 namespace Cinturon360.Shared.Contracts.Organizations;
 
@@ -24,17 +26,17 @@ public sealed class CreateOrganizationRequest
     public string? City { get; set; }
     public string? State { get; set; }
     public string? PostalCode { get; set; }
-    public PassportCountry Country { get; set; } = PassportCountry.AUS;
+    public int Country { get; set; } = 14;  // Default to Australia
     public string? MailingAddressLine1 { get; set; }
     public string? MailingAddressLine2 { get; set; }
     public string? MailingAddressLine3 { get; set; }
     public string? MailingCity { get; set; }
     public string? MailingState { get; set; }
     public string? MailingPostalCode { get; set; }
-    public PassportCountry MailingCountry { get; set; } = PassportCountry.AUS;
+    public int MailingCountry { get; set; } = 14;  // Default to Australia
     public string? ContactPersonFirstName { get; set; }
     public string? ContactPersonLastName { get; set; }
-    public CountryDialingCode ContactPersonCountryCode { get; set; } = CountryDialingCode.Australia;
+    public int ContactPersonCountryCode { get; set; } = 61;  // Default to Australia
     public string? ContactPersonPhoneNumber { get; set; }
     public bool ContactPersonPhoneNumberIsMobile { get; set; } = false;
     public bool ContactPersonPhoneNumberIsWhatsApp { get; set; } = false;
@@ -42,7 +44,7 @@ public sealed class CreateOrganizationRequest
     public string? ContactPersonJobTitle { get; set; }
     public string? BillingPersonFirstName { get; set; }
     public string? BillingPersonLastName { get; set; }
-    public CountryDialingCode BillingPersonCountryCode { get; set; } = CountryDialingCode.Australia;
+    public int BillingPersonCountryCode { get; set; } = 61;  // Default to Australia
     public string? BillingPersonPhoneNumber { get; set; }
     public bool BillingPersonPhoneNumberIsMobile { get; set; } = false;
     public bool BillingPersonPhoneNumberIsWhatsApp { get; set; } = false;
@@ -50,7 +52,7 @@ public sealed class CreateOrganizationRequest
     public string? BillingPersonJobTitle { get; set; }
     public string? AdminPersonFirstName { get; set; }
     public string? AdminPersonLastName { get; set; }
-    public CountryDialingCode AdminPersonCountryCode { get; set; } = CountryDialingCode.Australia;
+    public int AdminPersonCountryCode { get; set; } = 61;  // Default to Australia
     public string? AdminPersonPhoneNumber { get; set; }
     public bool AdminPersonPhoneNumberIsMobile { get; set; } = false;
     public bool AdminPersonPhoneNumberIsWhatsApp { get; set; } = false;

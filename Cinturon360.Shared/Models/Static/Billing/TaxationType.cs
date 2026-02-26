@@ -1,4 +1,4 @@
-namespace Cinturon360.Shared.Models.Static.Identity;
+namespace Cinturon360.Shared.Models.Static.Billing;
 
 public enum TaxationType : int
 {

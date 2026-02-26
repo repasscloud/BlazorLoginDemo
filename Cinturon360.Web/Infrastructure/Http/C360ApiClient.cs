@@ -1,4 +1,5 @@
 using Cinturon360.Web.Infrastructure.Http.Geography;
+using Cinturon360.Web.Infrastructure.Http.Organization;
 using Cinturon360.Web.Infrastructure.Http.Policy.Travel;
 
 namespace Cinturon360.Web.Infrastructure.Http;
@@ -16,6 +17,8 @@ public sealed class C360ApiClient
     public AirlineDataProviderApiClient AirlineDataProvider { get; }
     public RailDataProviderApiClient RailDataProvider { get; }
 
+    public OrganizationApiClient Organization { get; }
+
     // ------------------------
     // Construction
     // ------------------------
@@ -28,6 +31,7 @@ public sealed class C360ApiClient
         TravelPolicy = new TravelPolicyApiClient(_http);
         RailDataProvider = new RailDataProviderApiClient(_http);
         AirlineDataProvider = new AirlineDataProviderApiClient(_http);
+        Organization = new OrganizationApiClient(_http);
     }
 
     // ------------------------

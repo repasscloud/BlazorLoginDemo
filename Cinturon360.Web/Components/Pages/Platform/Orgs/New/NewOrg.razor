@@ -1,0 +1,297 @@
+@page "/platform/orgs/new"
+
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
+
+@using System.Security.Claims
+@using Cinturon360.Shared.Auth
+@using Cinturon360.Shared.Contracts.Geography
+@using Cinturon360.Shared.Contracts.Organizations
+@using Cinturon360.Shared.Models.Static.Billing
+@using Cinturon360.Shared.Models.Static.Organization
+@using Cinturon360.Shared.Models.Static.Support
+@using Cinturon360.Web.Drafts.Platform.Org
+@using Cinturon360.Web.Drafts.Platform.Orgs.New
+@using Cinturon360.Web.Exceptions
+@using Cinturon360.Web.Infrastructure.Http
+@using Cinturon360.Web.ViewModels.Orgs
+@using Cinturon360.Web.ViewModels.ReferenceData
+@using Org.BouncyCastle.Crypto.Engines
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject C360ApiClient Api
+@inject NavigationManager Navigation
+
+<PageTitle>New Organization</PageTitle>
+
+@if (_vm is null || _vm.IsLoading)
+{
+    <Cinturon360.Web.Components.Shared.LoadingOverlay
+        Message="Preparing organization configuration…"
+        RequestId="_vm.Rid" />
+
+}
+else if (_vm.Error is not null)
+{
+    <Cinturon360.Web.Components.Shared.ErrorPanel
+        Message="_vm.Error"
+        RequestId="_vm.Rid"
+        OnRetry="ReloadAsync"
+        OnLogSupport="LogSupportAsync" />
+}
+else
+{
+    <EditForm EditContext="_editCtx" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
+
+        <!-- default page header -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <h2 class="mb-0">New Organization</h2>
+
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary"
+                        type="button"
+                        @onclick="Cancel">
+                    Cancel
+                </button>
+
+                <button type="submit"
+                        class="btn btn-primary">
+                    Save
+                </button>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Organization Details</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Organization Name</label>
+                        <InputText class="form-control" @bind-Value="_draft.OrgName" />
+                        <ValidationMessage For="@(() => _draft.OrgName)" class="text-danger" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Organization Type</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.OrgType">
+                            @foreach (OrgTypeOption option in _vm.OrgTypeRef.Options)
+                            {
+                                <option value="@option.Id">@option.DisplayName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _draft.OrgType)" class="text-danger" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Active</label>
+                        <div class="form-check form-switch mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="_draft.IsActive" />
+                            <label class="form-check-label ms-2">Enabled</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </EditForm>
+}
+
+
+@code {
+    private NewOrgDraft _draft = default!;
+    private EditContext _editCtx = default!;
+    private NewOrgVm? _vm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string? rid = RequestIdFactory.Create();
+
+        try
+        {
+            AuthenticationState? auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            ClaimsPrincipal? user = auth.User;
+            string? userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new InvalidOperationException("UserId missing");
+
+            // build the draft with safe defaults
+            _draft = new NewOrgDraft();
+
+            // create EditContext ONCE
+            _editCtx = new EditContext(_draft);
+
+            // Optional: hook validation events later if needed
+            // _editCtx.OnValidationRequested += ...
+            // _editCtx.OnFieldChanged += ...
+
+            // load reference data
+            OrgTypeReference? orgTypeRef = new OrgTypeReference
+            {
+                Options = OrganizationTypes.All
+                    .Select(t => new OrgTypeOption(
+                        Id: t.Type,
+                        DisplayName: t.Name
+                    ))
+                    .ToList()
+            };
+
+            OrgSectorReference? orgSectorRef = new OrgSectorReference
+            {
+                Options = OrganizationSectors.All
+                    .Select(t => new OrgSectorOption(
+                        Type: t.Enum,
+                        DisplayName: t.Name
+                    ))
+                    .ToList()
+            };
+
+            OrgClassReference? orgClassRef = new OrgClassReference
+            {
+                Options = OrganizationClassifications.All
+                    .Select(c => new OrgClassOption(
+                        Type: c.Enum,
+                        DisplayName: c.Name
+                    ))
+                    .ToList()
+            };
+
+            SlaTierReference? slaTierRef = new SlaTierReference
+            {
+                Options = SlaTiers.All
+                    .Select(t => new SlaTierOption(
+                        Type: t.Enum,
+                        DisplayName: t.Name
+                    ))
+                    .ToList()
+            };
+
+            CurrencyReference? currencyRef = new CurrencyReference
+            {
+                Options = Currencies.All
+                    .Select(c => new CurrencyOption(
+                        Code: c.Code,
+                        DisplayName: $"{c.Name} ({c.LetterSymbol})"
+                    ))
+                    .ToList()
+            };
+
+            IDDReference? iDDRef = new IDDReference
+            {
+                Options = Cinturon360.Shared.Models.Static.Geography.Countries.All
+                    .Select(c => new IDDOption(
+                        CountryCode: c.PhoneCode,
+                        DisplayName: $"{c.Name} (+{c.PhoneCode})"
+                    ))
+                    .ToList()
+            };
+
+            TaxTypeReference? taxTypeRef = new TaxTypeReference
+            {
+                Options = TaxationTypeCatalog.All
+                    .Select(t => new TaxTypeOption(
+                        Id: t.Type,
+                        DisplayName: t.Label,
+                        RegexPattern: t.Regex,
+                        Description: t.Description
+                    ))
+                    .ToList()
+            };
+
+            TimeZoneReference? timeZoneRef = new TimeZoneReference
+            {
+                Options = SystemTimeZones.All
+                    .Select(tz => new TimeZoneOption(
+                        Id: tz.Id,
+                        IanaId: tz.IanaId
+                    ))
+                    .ToList()
+            };
+
+            CountryReference? countryRef = new CountryReference
+            {
+                Options = Cinturon360.Shared.Models.Static.Geography.Countries.All
+                    .Select(c => new CountryOption(
+                        Id: c.Id,
+                        DisplayName: c.Name
+                    ))
+                    .ToList()
+            };
+
+            _vm = new NewOrgVm
+            {
+                Rid = rid,
+                UserId = userId,
+                IsLoading = true,
+
+                OrgTypeRef = orgTypeRef,
+                OrgSectorRef = orgSectorRef,
+                OrgClassRef = orgClassRef,
+                SlaTierRef = slaTierRef,
+                CurrencyRef = currencyRef,
+                IDDRef = iDDRef,
+                TaxTypeRef = taxTypeRef,
+                TimeZoneRef = timeZoneRef,
+                CountryRef = countryRef
+            };
+        }
+        catch (Exception ex)
+        {
+            _vm = new NewOrgVm
+            {
+                Rid = rid,
+                UserId = string.Empty,
+                IsLoading = false,
+                Error = ex.Message
+            };
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        _vm = _vm! with { IsLoading = true };
+        await OnInitializedAsync();
+    }
+
+    private void Cancel()
+        => Navigation.NavigateTo(uri: "/platform/orgs");
+
+    private void LogSupportAsync()
+        => Navigation.NavigateTo(uri: $"/support/new?rid={_vm?.Rid}&page=NewOrg_Platform");
+
+    private CreateOrganizationRequest MapToRequest(NewOrgDraft draft)
+        => NewOrgMapper.ToRequest(draft);
+
+    private async Task SaveAsync()
+    {
+        if (!_editCtx.Validate())
+        {
+            return;
+        }
+
+        _vm = _vm! with { IsLoading = true, Error = null };
+
+        try
+        {
+            // map draft to DTO
+            CreateOrganizationRequest? request = MapToRequest(_draft);
+
+            // call API
+            await Api.Organization.CreateAsync(
+                payload: request,
+                rid: _vm!.Rid);
+
+            // navigate on success
+            Navigation.NavigateTo(
+                uri: $"/platform/orgs");
+        }
+        catch (ApiException apiEx)
+        {
+            _vm = _vm! with
+            {
+                Error = $"API Error: {apiEx.Message}",
+                IsLoading = false
+            };
+        }
+    }
+}

@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Cinturon360.Shared.Models.Static.Platform
 @using Cinturon360.Shared.Services.Interfaces.Platform
+@using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes
 @inject IAdminOrgServiceUnified AdminOrgService
 @inject NavigationManager Nav
 
@@ -56,7 +57,7 @@
                     <div class="col-md-3">
                         <label class="form-label">Type</label>
                         <InputSelect class="form-select" @bind-Value="_vm.Type">
-                            @foreach (var v in Enum.GetValues<Cinturon360.Shared.Models.Static.Platform.OrganizationType>())
+                            @foreach (var v in Enum.GetValues<OrganizationType>())
                             {
                                 <option value="@v">@v</option>
                             }
@@ -174,8 +175,7 @@
         public string Name { get; set; } = string.Empty;
 
         [Required]
-        public Cinturon360.Shared.Models.Static.Platform.OrganizationType Type { get; set; } =
-            Cinturon360.Shared.Models.Static.Platform.OrganizationType.Client;
+        public OrganizationType Type { get; set; } = OrganizationType.Client;
 
         public string? ParentOrganizationId { get; set; }
 

@@ -1,7 +1,7 @@
 namespace Cinturon360.Web.ViewModels.ReferenceData;
 
 public sealed record IDDOption(
-    string Code,          // "61"
+    string CountryCode,   // "61"
     string DisplayName    // "Australia (+61)"
 );
 

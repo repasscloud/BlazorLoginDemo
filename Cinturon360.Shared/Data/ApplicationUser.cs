@@ -8,6 +8,7 @@ using Cinturon360.Shared.Models.Policies;
 using Cinturon360.Shared.Models.Static.Communication;
 using Cinturon360.Shared.Models.Static.Geography;
 using Cinturon360.Shared.Models.Static.Identity;
+using Cinturon360.Shared.Models.Static.Organization;
 using Cinturon360.Shared.Models.Static.Platform;
 using Cinturon360.Shared.Models.User;
 using Cinturon360.Shared.Validation;
@@ -64,13 +65,13 @@ public class ApplicationUser : IdentityUser
     [NotMapped]
     public string? TmcId => Organization?.Type switch
     {
-        OrganizationType.Tmc    => Organization.Id,
-        OrganizationType.Client => Organization.ParentOrganizationId,
+        OrganizationTypes.OrganizationType.Tmc    => Organization.Id,
+        OrganizationTypes.OrganizationType.Client => Organization.ParentOrganizationId,
         _ => null
     };
 
     [NotMapped]
-    public string? ClientId => Organization?.Type == OrganizationType.Client ? Organization.Id : null;
+    public string? ClientId => Organization?.Type == OrganizationTypes.OrganizationType.Client ? Organization.Id : null;
 
     // -----------------------------
     // Identity / auth adjuncts

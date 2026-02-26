@@ -4,7 +4,7 @@ using Cinturon360.Shared.Models.Kernel.Billing;
 using Cinturon360.Shared.Models.Kernel.Platform;
 using Cinturon360.Shared.Models.Static.Geography;
 using Cinturon360.Shared.Models.Static.Identity;
-using Cinturon360.Shared.Models.Static.Platform;
+using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes;
 
 namespace Cinturon360.Shared.Services.Interfaces.Platform;
 
@@ -47,7 +47,7 @@ public interface IAdminOrgServiceUnified
     {
         public required string Id { get; set; }
         public required string Name { get; set; }
-        public OrganizationType Type { get; set; }
+        public OrganizationType Type { get; set; } = OrganizationType.Client;
         public bool IsActive { get; set; }
 
         public string? ContactPersonFirstName { get; set; }

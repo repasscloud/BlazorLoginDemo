@@ -1,4 +1,4 @@
-using Cinturon360.Shared.Models.Static.Support;
+using static Cinturon360.Shared.Models.Static.Support.SlaTiers;
 
 namespace Cinturon360.Web.ViewModels.ReferenceData;
 

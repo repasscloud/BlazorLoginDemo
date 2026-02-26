@@ -1,12 +1,12 @@
 using System.ComponentModel.DataAnnotations;
-using Cinturon360.Shared.Models.Static.Platform; // OrganizationType
 using Cinturon360.Shared.Models.Kernel.Billing;
 using System.ComponentModel; // enums: BillingType, BillingFrequency, PaymentMethod, ServiceFeeType, PaymentStatus
 using System.Text.Json.Serialization;
 using Cinturon360.Shared.Models.Policies;
 using Cinturon360.Shared.Helpers;
 using Cinturon360.Shared.Models.Static.Identity;
-using Cinturon360.Shared.Models.Static.Geography; // JSON: avoid self-referencing cycles on navs
+using Cinturon360.Shared.Models.Static.Geography;
+using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes; // JSON: avoid self-referencing cycles on navs
 
 namespace Cinturon360.Shared.Models.Kernel.Platform;
 
@@ -24,7 +24,7 @@ public sealed class OrganizationUnified
 
     // Tier in the hierarchy
     [Required]
-    public OrganizationType Type { get; set; }
+    public OrganizationType Type { get; set; } = OrganizationType.Client;
 
     // Parent/child links
     public string? ParentOrganizationId { get; set; }

@@ -2,7 +2,6 @@ using System.Net;
 using Cinturon360.Shared.Data;
 using Cinturon360.Shared.Models.Kernel.Billing;
 using Cinturon360.Shared.Models.Kernel.Platform;
-using Cinturon360.Shared.Models.Static.Platform;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Platform;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +11,7 @@ using Cinturon360.Shared.Models.DTOs;
 using static Cinturon360.Shared.Services.Interfaces.Platform.IAdminOrgServiceUnified;
 using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Models.Static.Identity;
+using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes;
 
 namespace Cinturon360.Shared.Services.Platform;
 
@@ -166,12 +166,12 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             .Include(o => o.LicenseAgreement)
             .AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(nameContains))
-            q = q.Where(o => EF.Functions.ILike(o.Name, $"%{nameContains.Trim()}%"));
-        if (type.HasValue) q = q.Where(o => o.Type == type.Value);
-        if (isActive.HasValue) q = q.Where(o => o.IsActive == isActive.Value);
-        if (!string.IsNullOrWhiteSpace(parentOrgId)) q = q.Where(o => o.ParentOrganizationId == parentOrgId.Trim());
-        if (!string.IsNullOrWhiteSpace(domainContains)) q = q.Where(o => o.Domains.Any(d => EF.Functions.ILike(d.Domain, $"%{domainContains.Trim()}%")));
+        // if (!string.IsNullOrWhiteSpace(nameContains))
+        //     q = q.Where(o => EF.Functions.ILike(o.Name, $"%{nameContains.Trim()}%"));
+        // if (type.HasValue) q = q.Where(o => o.Type == type.Value);
+        // if (isActive.HasValue) q = q.Where(o => o.IsActive == isActive.Value);
+        // if (!string.IsNullOrWhiteSpace(parentOrgId)) q = q.Where(o => o.ParentOrganizationId == parentOrgId.Trim());
+        // if (!string.IsNullOrWhiteSpace(domainContains)) q = q.Where(o => o.Domains.Any(d => EF.Functions.ILike(d.Domain, $"%{domainContains.Trim()}%")));
 
         var list = await q.OrderBy(o => o.Name).ThenBy(o => o.Id).ToListAsync(ct);
         return list.Select(o => new IAdminOrgServiceUnified.OrgAggregate(o, o.Domains.ToList(), o.LicenseAgreement)).ToList();
@@ -321,7 +321,7 @@ internal sealed class AdminOrgServiceUnified : IAdminOrgServiceUnified
             if (n.Length == 0) throw new ArgumentException("Name cannot be empty.", nameof(req.Name));
             org.Name = n;
         }
-        if (req.Type.HasValue) org.Type = req.Type.Value;
+        //if (req.Type.HasValue) org.Type = req.Type.Value;
         if (req.ParentOrganizationId is not null)
         {
             var pid = req.ParentOrganizationId.Trim();
