@@ -91,13 +91,404 @@ else
                             <label class="form-check-label ms-2">Enabled</label>
                         </div>
                     </div>
+                    <div class="col-12">
+                        <label class="form-label">Parent Organization Id (optional)</label>
+                        <InputText class="form-control" @bind-Value="_draft.ParentOrgId" />
+                        <ValidationMessage For="@(() => _draft.ParentOrgId)" class="text-danger" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Classification</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.OrgClass">
+                            @foreach (OrgClassOption option in _vm.OrgClassRef.Options)
+                            {
+                                <option value="@option.Type">@option.DisplayName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _draft.OrgClass)" class="text-danger" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Sector</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.OrgSector">
+                            @foreach (OrgSectorOption option in _vm.OrgSectorRef.Options)
+                            {
+                                <option value="@option.Type">@option.DisplayName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _draft.OrgSector)" class="text-danger" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">SLA</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.ServiceLevelAgreementTier">
+                            @foreach (SlaTierOption option in _vm.SlaTierRef.Options)
+                            {
+                                <option value="@option.Type">@option.DisplayName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _draft.ServiceLevelAgreementTier)" class="text-danger" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Time Zone</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.TimeZoneId">
+                            @foreach (TimeZoneOption option in _vm.TimeZoneRef.Options)
+                            {
+                                <option value="@option.Id">@option.Id</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _draft.TimeZoneId)" class="text-danger" />
+                    </div>
+                </div>
+            </div> 
+        </div><!-- end card -->
+
+        <!-- Finance & Tax section -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Finance &mp; Tax</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Tax Registration Number</label>
+                        <InputText class="form-control" @bind-Value="_draft.TaxRegistrationNumber" />
+                        <ValidationMessage For="@(() => _draft.TaxRegistrationNumber)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Taxation Type</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.TaxRegistrationType">
+                            @foreach (TaxTypeOption option in _vm.TaxTypeRef.Options)
+                            {
+                                <option value="@option.Id">@option.DisplayName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _draft.TaxRegistrationType)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Currency</label>
+                        <InputText class="form-control" @bind-Value="_draft.DefaultCurrencyCode" />
+                        <ValidationMessage For="@(() => _draft.DefaultCurrencyCode)" class="text-danger" />
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Addresses -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Addresses</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Address Line 1</label>
+                        <InputText class="form-control" @bind-Value="_draft.AddressLine1" />
+                        <ValidationMessage For="@(() => _draft.AddressLine1)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Address Line 2</label>
+                        <InputText class="form-control" @bind-Value="_draft.AddressLine2" />
+                        <ValidationMessage For="@(() => _draft.AddressLine2)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Address Line 3</label>
+                        <InputText class="form-control" @bind-Value="_draft.AddressLine3" />
+                        <ValidationMessage For="@(() => _draft.AddressLine3)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">City</label>
+                        <InputText class="form-control" @bind-Value="_draft.City" />
+                        <ValidationMessage For="@(() => _draft.City)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">State/Province</label>
+                        <InputText class="form-control" @bind-Value="_draft.State" />
+                        <ValidationMessage For="@(() => _draft.State)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Postal Code</label>
+                        <InputText class="form-control" @bind-Value="_draft.PostalCode" />
+                        <ValidationMessage For="@(() => _draft.PostalCode)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Country</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.CountryId">
+                            @foreach (CountryOption option in _vm.CountryRef.Options)
+                            {
+                                <option value="@option.Id">@option.DisplayName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _draft.CountryId)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mailing Address Line 1</label>
+                        <InputText class="form-control" @bind-Value="_draft.MailingAddressLine1" />
+                        <ValidationMessage For="@(() => _draft.MailingAddressLine1)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mailing Address Line 2</label>
+                        <InputText class="form-control" @bind-Value="_draft.MailingAddressLine2" />
+                        <ValidationMessage For="@(() => _draft.MailingAddressLine2)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mailing Address Line 3</label>
+                        <InputText class="form-control" @bind-Value="_draft.MailingAddressLine3" />
+                        <ValidationMessage For="@(() => _draft.MailingAddressLine3)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mailing City</label>
+                        <InputText class="form-control" @bind-Value="_draft.MailingCity" />
+                        <ValidationMessage For="@(() => _draft.MailingCity)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mailing State/Province</label>
+                        <InputText class="form-control" @bind-Value="_draft.MailingState" />
+                        <ValidationMessage For="@(() => _draft.MailingState)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mailing Postal Code</label>
+                        <InputText class="form-control" @bind-Value="_draft.MailingPostalCode" />
+                        <ValidationMessage For="@(() => _draft.MailingPostalCode)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mailing Country</label>
+                        <InputSelect class="form-select" @bind-Value="_draft.MailingCountryId">
+                            @foreach (CountryOption option in _vm.CountryRef.Options)
+                            {
+                                <option value="@option.Id">@option.DisplayName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _draft.MailingCountryId)" class="text-danger" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contacts -->
+        <div class="row">
+            <!-- Commercial -->
+            <div class="col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Commercial Contact</span>
+
+                        <div class="btn-group">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                @onclick="CopyGeneralContactDownAsync">
+                                Copy Down
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name</label>
+                            <InputText class="form-control"
+                                    @bind-Value="_draft.ContactPersonFirstName" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name</label>
+                            <InputText class="form-control"
+                                    @bind-Value="_draft.ContactPersonLastName" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">IDD</label>
+                            <InputSelect class="form-select"
+                                    @bind-Value="_draft.ContactPersonCountryCode">
+                                @foreach (IDDOption option in _vm.IDDRef.Options)
+                                {
+                                    <option value="@option.CountryCode">@option.DisplayName</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label">Phone</label>
+                            <InputText class="form-control"
+                                @bind-Value="_draft.ContactPersonPhone" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                    @bind-Value="_draft.ContactPersonPhoneReceiveSMS" />
+                                <label class="form-check-label ms-2">Receive SMS</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                    @bind-Value="_draft.ContactPersonPhoneReceiveWhatsApp" />
+                                <label class="form-check-label ms-2">Receive WhatsApp</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control"
+                                @bind-Value="_draft.ContactPersonEmail" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Job Title</label>
+                            <InputText class="form-control"
+                                    @bind-Value="_draft.ContactPersonJobTitle" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Billing -->
+            <div class="col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Billing Contact</span>
+
+                        <div class="btn-group">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                @onclick="CopyBillingContactDownAsync">
+                                Copy Down
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name</label>
+                            <InputText class="form-control"
+                                    @bind-Value="_draft.BillingPersonFirstName" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name</label>
+                            <InputText class="form-control"
+                                    @bind-Value="_draft.BillingPersonLastName" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">IDD</label>
+                            <InputSelect class="form-select"
+                                    @bind-Value="_draft.BillingPersonCountryCode">
+                                @foreach (IDDOption option in _vm.IDDRef.Options)
+                                {
+                                    <option value="@option.CountryCode">@option.DisplayName</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label">Phone</label>
+                            <InputText class="form-control"
+                                @bind-Value="_draft.BillingPersonPhone" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                    @bind-Value="_draft.BillingPersonPhoneReceiveSMS" />
+                                <label class="form-check-label ms-2">Receive SMS</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                    @bind-Value="_draft.BillingPersonPhoneReceiveWhatsApp" />
+                                <label class="form-check-label ms-2">Receive WhatsApp</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control"
+                                @bind-Value="_draft.BillingPersonEmail" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Job Title</label>
+                            <InputText class="form-control"
+                                    @bind-Value="_draft.BillingPersonJobTitle" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Contact -->
+            <div class="col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Billing Contact</span>
+                    </div>
+
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name</label>
+                            <InputText class="form-control"
+                                    @bind-Value="_draft.AdminPersonFirstName" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name</label>
+                            <InputText class="form-control"
+                                    @bind-Value="_draft.AdminPersonLastName" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">IDD</label>
+                            <InputSelect class="form-select"
+                                    @bind-Value="_draft.AdminPersonCountryCode">
+                                @foreach (IDDOption option in _vm.IDDRef.Options)
+                                {
+                                    <option value="@option.CountryCode">@option.DisplayName</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label">Phone</label>
+                            <InputText class="form-control"
+                                @bind-Value="_draft.AdminPersonPhone" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                    @bind-Value="_draft.AdminPersonPhoneReceiveSMS" />
+                                <label class="form-check-label ms-2">Receive SMS</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                    @bind-Value="_draft.AdminPersonPhoneReceiveWhatsApp" />
+                                <label class="form-check-label ms-2">Receive WhatsApp</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control"
+                                @bind-Value="_draft.AdminPersonEmail" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Job Title</label>
+                            <InputText class="form-control"
+                                    @bind-Value="_draft.AdminPersonJobTitle" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End Contacts -->
         
     </EditForm>
 }
-
 
 @code {
     private NewOrgDraft _draft = default!;
@@ -293,5 +684,41 @@ else
                 IsLoading = false
             };
         }
+    }
+
+    private void CopyGeneralContactDownAsync()
+    {
+        _draft.AdminPersonFirstName = _draft.ContactPersonFirstName;
+        _draft.AdminPersonLastName = _draft.ContactPersonLastName;
+        _draft.AdminPersonCountryCode = _draft.ContactPersonCountryCode;
+        _draft.AdminPersonPhone = _draft.ContactPersonPhone;
+        _draft.AdminPersonPhoneReceiveSMS = _draft.ContactPersonPhoneReceiveSMS;
+        _draft.AdminPersonPhoneReceiveWhatsApp = _draft.ContactPersonPhoneReceiveWhatsApp;
+        _draft.AdminPersonEmail = _draft.ContactPersonEmail;
+        _draft.AdminPersonJobTitle = _draft.ContactPersonJobTitle;
+        _draft.BillingPersonFirstName = _draft.ContactPersonFirstName;
+        _draft.BillingPersonLastName = _draft.ContactPersonLastName;
+        _draft.BillingPersonCountryCode = _draft.ContactPersonCountryCode;
+        _draft.BillingPersonPhone = _draft.ContactPersonPhone;
+        _draft.BillingPersonPhoneReceiveSMS = _draft.ContactPersonPhoneReceiveSMS;
+        _draft.BillingPersonPhoneReceiveWhatsApp = _draft.ContactPersonPhoneReceiveWhatsApp;
+        _draft.BillingPersonEmail = _draft.ContactPersonEmail;
+        _draft.BillingPersonJobTitle = _draft.ContactPersonJobTitle;
+
+        StateHasChanged();
+    }
+
+    private void CopyBillingContactDownAsync()
+    {
+        _draft.AdminPersonFirstName = _draft.BillingPersonFirstName;
+        _draft.AdminPersonLastName = _draft.BillingPersonLastName;
+        _draft.AdminPersonCountryCode = _draft.BillingPersonCountryCode;
+        _draft.AdminPersonPhone = _draft.BillingPersonPhone;
+        _draft.AdminPersonPhoneReceiveSMS = _draft.BillingPersonPhoneReceiveSMS;
+        _draft.AdminPersonPhoneReceiveWhatsApp = _draft.BillingPersonPhoneReceiveWhatsApp;
+        _draft.AdminPersonEmail = _draft.BillingPersonEmail;
+        _draft.AdminPersonJobTitle = _draft.BillingPersonJobTitle;
+
+        StateHasChanged();
     }
 }

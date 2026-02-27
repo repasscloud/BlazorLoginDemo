@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using Cinturon360.Shared.Models.Static.Billing;
-using Cinturon360.Shared.Models.Static.Geography;
 using Cinturon360.Shared.Models.Static.Organization;
 using static Cinturon360.Shared.Models.Static.Organization.OrganizationClassifications;
 using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes;
@@ -24,7 +23,12 @@ public sealed class NewOrgDraft
     public OrganizationType OrgType { get; set; } = OrganizationType.Client;
 
     public bool IsActive { get; set; } = true;
-    [MaxLength(25)] public string? ParentOrgId { get; set; }
+    [StringLength(
+        25,
+        MinimumLength = 25,
+        ErrorMessage = "Parent Org Id must be exactly 25 characters."
+    )]
+    public string? ParentOrgId { get; set; }
 
     [Required, RegularExpression(@"^[A-Z]{3}$",
         ErrorMessage = "Currency must be exactly 3 uppercase letters.")]
@@ -48,7 +52,7 @@ public sealed class NewOrgDraft
     public string? City { get; set; }
     public string? State { get; set; }
     public string? PostalCode { get; set; }
-    public int Country { get; set; } = 14; // Default to Australia
+    public int CountryId { get; set; } = 14; // Default to Australia
 
     public string? MailingAddressLine1 { get; set; }
     public string? MailingAddressLine2 { get; set; }
@@ -56,7 +60,7 @@ public sealed class NewOrgDraft
     public string? MailingCity { get; set; }
     public string? MailingState { get; set; }
     public string? MailingPostalCode { get; set; }
-    public int MailingCountry { get; set; } = 14; // Default to Australia
+    public int MailingCountryId { get; set; } = 14; // Default to Australia
 
     public string? ContactPersonFirstName { get; set; }
     public string? ContactPersonLastName { get; set; }
