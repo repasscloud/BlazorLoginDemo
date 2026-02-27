@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+using Cinturon360.Shared.Helpers;
 using Cinturon360.Shared.Models.Kernel.Platform;
 using Cinturon360.Shared.Models.Static.Billing;
 
@@ -10,16 +12,20 @@ namespace Cinturon360.Shared.Models.Kernel.Billing;
 public sealed class LicenseAgreementUnified
 {
     [Key]
-    [MaxLength(64)]
-    public string Id { get; set; } = NanoidDotNet.Nanoid.Generate(NanoidDotNet.Nanoid.Alphabets.HexadecimalUppercase, 14);
+    [MaxLength(18)]
+    public string Id { get; private set; } = IDGeneratorHelper.GenerateId(IdGenType.License);
 
     // Who is the agreement FOR and who created/issued it
     [Required]
     public required string OrganizationUnifiedId { get; set; } // the org that is being billed/licensed
+    
+    [JsonIgnore]
     public OrganizationUnified Organization { get; set; } = default!;
 
     [Required]
     public required string CreatedByOrganizationUnifiedId { get; set; } // issuer (e.g., Platform or TMC)
+    
+    [JsonIgnore]
     public OrganizationUnified CreatedByOrganization { get; set; } = default!;
 
     // Core dates
@@ -30,22 +36,21 @@ public sealed class LicenseAgreementUnified
     // Remittance & payment rails
     [EmailAddress]
     public string? RemittanceEmail { get; set; }
-    public PaymentTerms PaymentTerms { get; set; } = PaymentTerms.Net0;
-    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Stripe;
+    public PaymentTerms PaymentTerms { get; set; } = PaymentTerms.NET_0;
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.STRIPE;
 
     // Billing model
-    public BillingType BillingType { get; set; } = BillingType.Prepaid;   // Prepaid vs Postpaid
-    public BillingFrequency BillingFrequency { get; set; } = BillingFrequency.Monthly; // For access fee cycle
+    public BillingType BillingType { get; set; } = BillingType.PREPAID;   // Prepaid vs Postpaid
+    public BillingFrequency BillingFrequency { get; set; } = BillingFrequency.MONTHLY; // For access fee cycle
     public bool AutoRenew { get; set; } = false;
 
     // Access fee (fee to access the system). If PAYG, set AccessFee to 0 and scope to PAYG
     public decimal AccessFee { get; set; } = 0m;
-    public BillingPeriodScope AccessFeeScope { get; set; } = BillingPeriodScope.Monthly; // PAYG/Monthly/Quarterly/BiAnnual/Annual
+    public BillingPeriodScope AccessFeeScope { get; set; } = BillingPeriodScope.MONTHLY; // PAYG/Monthly/Quarterly/BiAnnual/Annual
 
     // Thresholds & financials
     public decimal AccountThreshold { get; set; } = 0m; // Limit applied according to ThresholdScope
-    public BillingPeriodScope ThresholdScope { get; set; } = BillingPeriodScope.Monthly;
-
+    public BillingPeriodScope ThresholdScope { get; set; } = BillingPeriodScope.MONTHLY;
     public decimal TaxRate { get; set; } = 0m;          // applied during invoice generation
     public decimal? MinimumMonthlySpend { get; set; }   // optional minimum spend
     public decimal PrepaidBalance { get; set; } = 0m;   // upfront funds held on account
@@ -65,31 +70,30 @@ public sealed class LicenseAgreementUnified
 
     public decimal FlightMarkupPercent { get; set; } = 0m;
     public decimal FlightPerItemFee { get; set; } = 0m;
-    public ServiceFeeType FlightFeeType { get; set; } = ServiceFeeType.None;
+    public ServiceFeeType FlightFeeType { get; set; } = ServiceFeeType.NONE;
 
     public decimal HotelMarkupPercent { get; set; } = 0m;
     public decimal HotelPerItemFee { get; set; } = 0m;
-    public ServiceFeeType HotelFeeType { get; set; } = ServiceFeeType.None;
-
+    public ServiceFeeType HotelFeeType { get; set; } = ServiceFeeType.NONE;
     public decimal CarMarkupPercent { get; set; } = 0m;
     public decimal CarPerItemFee { get; set; } = 0m;
-    public ServiceFeeType CarFeeType { get; set; } = ServiceFeeType.None;
+    public ServiceFeeType CarFeeType { get; set; } = ServiceFeeType.NONE;
 
     public decimal RailMarkupPercent { get; set; } = 0m;
     public decimal RailPerItemFee { get; set; } = 0m;
-    public ServiceFeeType RailFeeType { get; set; } = ServiceFeeType.None;
+    public ServiceFeeType RailFeeType { get; set; } = ServiceFeeType.NONE;
 
     public decimal TransferMarkupPercent { get; set; } = 0m;
     public decimal TransferPerItemFee { get; set; } = 0m;
-    public ServiceFeeType TransferFeeType { get; set; } = ServiceFeeType.None;
+    public ServiceFeeType TransferFeeType { get; set; } = ServiceFeeType.NONE;
 
     public decimal ActivityMarkupPercent { get; set; } = 0m;
     public decimal ActivityPerItemFee { get; set; } = 0m;
-    public ServiceFeeType ActivityFeeType { get; set; } = ServiceFeeType.None;
+    public ServiceFeeType ActivityFeeType { get; set; } = ServiceFeeType.NONE;
 
     public decimal TravelMarkupPercent { get; set; } = 0m;
     public decimal TravelPerItemFee { get; set; } = 0m;
-    public ServiceFeeType TravelFeeType { get; set; } = ServiceFeeType.None;
+    public ServiceFeeType TravelFeeType { get; set; } = ServiceFeeType.NONE;
 
     // Late fees (embedded, unified)
     public LateFeeSettings LateFees { get; set; } = new();
@@ -99,16 +103,34 @@ public sealed class LicenseAgreementUnified
     public int? UserAccountLimit { get; set; }   // For Client: max user accounts
 
     // Status fields
-    public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending; // rolling view of last invoice status
+    public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.PENDING; // rolling view of last invoice status
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    // ----------------------------
+    // Payment Method Cost Profile (e.g., Stripe fees) - optional
+    // ----------------------------
+    public string? StripeCustomerId { get; set; }  // linked Stripe Customer ID (can only be set internally by API/service)
+    public string? StripeAccountId { get; set; }   // linked Stripe Account ID (for Connect; can only be set internally by API/service)
+    public string? DefaultPaymentMethodId { get; set; }  // linked Stripe PaymentMethod ID (can only be set internally by API/service)
+    public CardBrand PaymentCardBrand { get; set; } = CardBrand.Unset;
+    [MaxLength(2)] public string? CardCountry { get; set; }
+    public CardFunding PaymentCardFunding { get; set; } = CardFunding.Unset;
+    public bool IsDomesticCard { get; set; } = false;
+    public bool IsHighCostCard { get; set; } = false;
+    public bool IsAmexLikeCard { get; set; } = false;
+    public BillingFeeTier PaymentBillingFeeTier { get; set; } = BillingFeeTier.Unset;
+    public string? CardLast4 { get; set; }
+    public string? CardFingerPrint { get; set; }
+    public DateTime? CardUpdatedAtUtc { get; set; }
+
+
+    // Audit fields
+    public DateTime CreatedAtUtc { get; init; } = DateTime.UtcNow;
     public DateTime LastUpdatedAtUtc { get; set; } = DateTime.UtcNow;
+
 
     // ------------------------------
     // EMBEDDED SUPPORTING TYPES
     // ------------------------------
-    public enum BillingPeriodScope { PAYG = 0, Monthly = 1, Quarterly = 2, BiAnnual = 3, Annual = 4 }
-
     public sealed class PeriodScopedFlatDiscount
     {
         public decimal Amount { get; set; }               // flat amount
@@ -127,9 +149,9 @@ public sealed class LicenseAgreementUnified
     {
         public int GracePeriodDays { get; set; } = 0;
         public bool UseFixedAmount { get; set; } = false;
-        public decimal FixedAmount { get; set; } = 0m;          // charged once per late occurrence
-        public decimal PercentOfInvoice { get; set; } = 0m;     // additive percent of unpaid amount
-        public decimal MaxLateFeeCap { get; set; } = 0m;        // total cap across all late fees for the invoice
-        public PaymentTerms Terms { get; set; } = PaymentTerms.Net0; // allowed terms for invoices under this agreement
+        public decimal FixedAmount { get; set; } = 0m;                // charged once per late occurrence
+        public decimal PercentOfInvoice { get; set; } = 0m;           // additive percent of unpaid amount
+        public decimal MaxLateFeeCap { get; set; } = 0m;              // total cap across all late fees for the invoice
+        public PaymentTerms Terms { get; set; } = PaymentTerms.NET_0;  // allowed terms for invoices under this agreement
     }
 }

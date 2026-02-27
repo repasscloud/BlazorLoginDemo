@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Cinturon360.Shared.Helpers;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus.Flight;
 
 namespace Cinturon360.Shared.Models.ExternalLib.Kernel.Flight;
@@ -6,7 +7,7 @@ namespace Cinturon360.Shared.Models.ExternalLib.Kernel.Flight;
 public sealed class FlightOfferSearchResultRecord
 {
     [Key]
-    public string Id { get; set; } = default!;
+    public string Id { get; set; } = IDGeneratorHelper.GenerateId(IdGenType.Default);
 
     [Required]
     public required int MetaCount { get; set; } = default!;

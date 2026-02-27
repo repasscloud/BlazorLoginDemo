@@ -116,7 +116,6 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
         {
             model.OrganizationUnifiedId = org.Id;
             model.CreatedByOrganizationUnifiedId = issuer.Id;
-            model.CreatedAtUtc = DateTime.UtcNow;
             model.LastUpdatedAtUtc = DateTime.UtcNow;
             ValidateDates(model);
             _db.LicenseAgreements.Add(model);
@@ -362,7 +361,6 @@ internal sealed class AdminLicenseAgreementServiceUnified : IAdminLicenseAgreeme
         // 3) Attach key-only stub with required members set (satisfies C# `required`)
         var stub = new LicenseAgreementUnified
         {
-            Id = id,
             OrganizationUnifiedId = orgIdInit,
             CreatedByOrganizationUnifiedId = issuerIdInit
         };

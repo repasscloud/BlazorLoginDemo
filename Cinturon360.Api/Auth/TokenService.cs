@@ -4,7 +4,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Cinturon360.Shared.Models.Auth;
 using Cinturon360.Shared.Data;
-using Cinturon360.Shared.Models.User;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -23,7 +22,7 @@ public class TokenService
     }
 
     public async Task<(string accessToken, RefreshToken refresh)> GenerateTokensAsync(
-        AvaUser user, string? ip = null, CancellationToken ct = default)
+        ApplicationUser user, string? ip = null, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
 
@@ -31,7 +30,7 @@ public class TokenService
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(ClaimTypes.Name, user.AspNetUsersId ?? user.Email ?? user.Id),
+            new(ClaimTypes.Name, user.Id ?? user.Email ?? string.Empty),
         };
 
         var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.SigningKey));
@@ -46,10 +45,13 @@ public class TokenService
             signingCredentials: creds);
 
         var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+        
+        if (!Guid.TryParse(user.Id, out var userGuid))
+            throw new InvalidOperationException($"IdentityUser.Id is not a GUID: '{user.Id}'");
 
         var refresh = new RefreshToken
         {
-            AvaUserId   = user.Id,
+            Id = userGuid,
             Token       = GenerateSecureToken(64),
             ExpiresUtc  = now.AddDays(_jwt.RefreshTokenDays),
             CreatedUtc  = now,
@@ -66,7 +68,7 @@ public class TokenService
         string refreshToken, string? ip = null, CancellationToken ct = default)
     {
         var existing = await _db.RefreshTokens
-            .Include(r => r.AvaUser)
+            .Include(r => r.C360User)
             .FirstOrDefaultAsync(r => r.Token == refreshToken, ct);
 
         if (existing == null || existing.RevokedUtc != null || existing.ExpiresUtc <= DateTime.UtcNow)
@@ -76,7 +78,7 @@ public class TokenService
         existing.RevokedByIp = ip;
 
         (string newAccess, RefreshToken newRefresh) =
-            await GenerateTokensAsync(existing.AvaUser, ip, ct);
+            await GenerateTokensAsync(existing.C360User, ip, ct);
 
         existing.ReplacedByToken = newRefresh.Token;
         await _db.SaveChangesAsync(ct);

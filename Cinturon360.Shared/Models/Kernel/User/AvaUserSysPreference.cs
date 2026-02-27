@@ -1,18 +1,19 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using Cinturon360.Shared.Models.Kernel.Client;
+using Cinturon360.Shared.Helpers;
+using Cinturon360.Shared.Models.Kernel.Platform;
 using Cinturon360.Shared.Models.Policies;
-using Cinturon360.Shared.Models.Static;
+using Cinturon360.Shared.Models.Static.Geography;
+using Cinturon360.Shared.Models.Static.Identity;
 using Cinturon360.Shared.Validation;
-using NanoidDotNet;
 
 namespace Cinturon360.Shared.Models.Kernel.User;
 
 public class AvaUserSysPreference
 {
-    [Key]
-    public string Id { get; set; } = Nanoid.Generate();
+    [Key, MaxLength(20)]
+    public string Id { get; set; } = IDGeneratorHelper.GenerateId(IdGenType.UserSysPref);
     
     [Required]
     public required string AspNetUsersId { get; set; }
@@ -24,7 +25,7 @@ public class AvaUserSysPreference
     public required string Email { get; set; }
 
     [Required]
-    // [PassportNameValidation]
+    //[PassportNameValidation]
     public required string FirstName { get; set; } = string.Empty;
     
     // [PassportNameValidation]
@@ -39,11 +40,8 @@ public class AvaUserSysPreference
     [DataType(DataType.Date)] // Only year, month, day
     public DateOnly DateOfBirth { get; set; } = new DateOnly(1900, 1, 1);
 
-    [Required]
-    public required GenderType Gender { get; set; } = GenderType.Unspecified;
-
-    [Required]
-    public required PassportCountry CountryOfIssue { get; set; } = PassportCountry.AUS;
+    public GenderType Gender { get; set; } = GenderType.Unspecified;
+    public PassportCountry CountryOfIssue { get; set; } = PassportCountry.AUS;
 
     [Required]
     [DataType(DataType.Date)]
@@ -180,8 +178,8 @@ public class AvaUserSysPreference
     // Optional link to a Client; not every user must have a Client parent, this will also be
     // updated by the API if it finds a match for the email address domain
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? AvaClientId { get; set; }
+    public string? C360ClientId { get; set; }
 
     [JsonIgnore]
-    public AvaClient? AvaClient { get; set; }
+    public OrganizationUnified? C360Client { get; set; }
 }

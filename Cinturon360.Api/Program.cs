@@ -6,12 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using Cinturon360.Shared.Data;
 using Cinturon360.Api.Auth;
 using Cinturon360.Shared.Models.Auth;
-using Cinturon360.Shared.Logging;
 using Cinturon360.Shared.Services;
 
-using Serilog;
-using Cinturon360.Shared.Models.ExternalLib.Amadeus;
-using System.Text.Json.Serialization;
+// using Serilog;
+using Cinturon360.Api.Infrastructure.Middleware;
+using Cinturon360.Shared.Security;
 
 public class Program
 {
@@ -23,18 +22,12 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // --------------------------
-        // Logging (Serilog first)
-        // --------------------------
-        SerilogBootstrap.UseSerilogWithPostgres(builder.Configuration, appName: "Ava.API");
-        builder.Host.UseSerilog();
-
-        // --------------------------
         // Options (JWT)
         // --------------------------
         builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
         var jwt = builder.Configuration.GetSection("Jwt");
-        builder.Services.Configure<AmadeusOAuthClientSettings>(
-            builder.Configuration.GetSection("Amadeus"));
+        // builder.Services.Configure<AmadeusOAuthClientSettings>(
+        //     builder.Configuration.GetSection("Amadeus"));
 
         // --------------------------
         // Data (DbContext)
@@ -130,6 +123,7 @@ public class Program
         // MVC / Controllers
         // --------------------------
         builder.Services.AddControllers();
+            // #89 could have been resolved by this, but better to be explicit on DTOs that need it
             // .AddJsonOptions(o =>
             // {
             //     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -140,6 +134,17 @@ public class Program
         // --------------------------
         builder.Services.AddScoped<TokenService>();
 
+
+        // --------------------------------------------------------------------
+        // Register middleware + filter (IMiddleware requires DI)
+        // --------------------------------------------------------------------
+        builder.Services.AddScoped<CorrelationIdMiddleware>();
+        builder.Services.AddScoped<ProblemDetailsExceptionMiddleware>();
+        builder.Services.AddScoped<ApiRequestLoggingMiddleware>();
+
+        builder.Services.AddScoped<RequireApiKeyFilter>(); // for [ServiceFilter(typeof(RequireApiKeyFilter))]
+        // --------------------------------------------------------------------
+
         // --------------------------
         // Build app
         // --------------------------
@@ -148,25 +153,25 @@ public class Program
         // --------------------------
         // Middleware pipeline
         // --------------------------
-        app.UseSerilogRequestLogging(opts =>
-        {
-            // Enrich requests with useful properties
-            opts.EnrichDiagnosticContext = (ctx, http) =>
-            {
-                ctx.Set("RequestPath", http.Request.Path);
-                ctx.Set("RequestId", http.TraceIdentifier);
+        // app.UseSerilogRequestLogging(opts =>
+        // {
+        //     // Enrich requests with useful properties
+        //     opts.EnrichDiagnosticContext = (ctx, http) =>
+        //     {
+        //         ctx.Set("RequestPath", http.Request.Path);
+        //         ctx.Set("RequestId", http.TraceIdentifier);
 
-                var userId = http.User?.Identity?.IsAuthenticated == true
-                    ? (http.User.Identity?.Name ?? http.User.FindFirst("sub")?.Value)
-                    : null;
+        //         var userId = http.User?.Identity?.IsAuthenticated == true
+        //             ? (http.User.Identity?.Name ?? http.User.FindFirst("sub")?.Value)
+        //             : null;
 
-                if (!string.IsNullOrWhiteSpace(userId))
-                    ctx.Set("UserId", userId);
+        //         if (!string.IsNullOrWhiteSpace(userId))
+        //             ctx.Set("UserId", userId);
 
-                ctx.Set("Environment", app.Environment.EnvironmentName);
-                ctx.Set("Application", "Ava.API");
-            };
-        });
+        //         ctx.Set("Environment", app.Environment.EnvironmentName);
+        //         ctx.Set("Application", "Ava.API");
+        //     };
+        // });
 
         if (app.Environment.IsDevelopment())
         {

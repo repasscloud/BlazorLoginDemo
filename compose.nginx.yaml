@@ -1,0 +1,243 @@
+services:
+  db:
+    image: postgres:18.0-alpine3.22
+    container_name: pgsql
+    env_file: .env
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=peer
+      - APP_DB_USER=${APP_DB_USER}
+      - APP_DB_NAME=${APP_DB_NAME}
+      - APP_DB_PASSWORD=${APP_DB_PASSWORD}
+    volumes:
+      - ./.docker/db/init:/docker-entrypoint-initdb.d:ro
+      - postgresql-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=${APP_DB_PASSWORD} psql -h 127.0.0.1 -U ${APP_DB_USER} -d ${APP_DB_NAME} -tAc 'select 1' >/dev/null || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    env_file: .env
+    restart: unless-stopped
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./.docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./.docker/pgadmin/pgpass:/var/lib/pgadmin/pgpass:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -nv -O - http://localhost/misc/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  pgweb:
+    image: sosedoff/pgweb:latest
+    container_name: pgweb
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${PGWEB_DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS --max-time 3 http://localhost:8081/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  blazor:
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CSPROJ_WEB: Cinturon360.Web/Cinturon360.Web.csproj
+        CSPROJ_SHARED: Cinturon360.Shared/Cinturon360.Shared.csproj
+        APP_DLL: Cinturon360.Web.dll
+    image: blazor-app:dev
+    container_name: blazor
+    restart: unless-stopped
+    tmpfs:
+      - /tmp:rw,size=8m,mode=1777
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=${DOTNET_SYSTEM_GLOBALIZATION_INVARIANT}
+      - ConnectionStrings__DefaultConnection=${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+      - MailerSend__ApiToken=${MAILERSEND__APITOKEN}
+      - MailerSend__FromEmail=${MAILERSEND__FROMEMAIL}
+      - MailerSend__FromName=${MAILERSEND__FROMNAME}
+      - AdminEmail=${ADMINEMAIL}
+      - AdminPassword=${ADMINPASSWORD}
+      - API__BASEADDRESS=${API__BASEADDRESS}
+      - OUTBOUNDAPIKEYAUTH__HEADERNAME=${OUTBOUNDAPIKEYAUTH__HEADERNAME}
+      - OUTBOUNDAPIKEYAUTH__KEY=${OUTBOUNDAPIKEYAUTH__KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - web-dataprotection:/home/app/.aspnet/DataProtection-Keys
+
+  api:
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      args:
+        CSPROJ_API: Cinturon360.Api/Cinturon360.Api.csproj
+        CSPROJ_SHARED: Cinturon360.Shared/Cinturon360.Shared.csproj
+        APP_DLL: Cinturon360.Api.dll
+    image: web-api:dev
+    container_name: api
+    restart: unless-stopped
+    tmpfs:
+      - /tmp:rw,size=256m,mode=1777
+    environment:
+      - TMPDIR=/sharedtmp
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=${DOTNET_SYSTEM_GLOBALIZATION_INVARIANT}
+      - ConnectionStrings__DefaultConnection=${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+      - MailerSend__ApiToken=${MAILERSEND__APITOKEN}
+      - MailerSend__FromEmail=${MAILERSEND__FROMEMAIL}
+      - MailerSend__FromName=${MAILERSEND__FROMNAME}
+      - AdminEmail=${ADMINEMAIL}
+      - AdminPassword=${ADMINPASSWORD}
+      - AMADEUS__CLIENTID=${AMADEUS__CLIENTID}
+      - AMADEUS__CLIENTSECRET=${AMADEUS__CLIENTSECRET}
+      - AMADEUS__URL__APIENDPOINT=${AMADEUS__URL__APIENDPOINT}
+      - AMADEUS__URL__FLIGHTOFFER=${AMADEUS__URL__FLIGHTOFFER}
+      - INBOUNDAPIKEYAUTH__HEADERNAME=${INBOUNDAPIKEYAUTH__HEADERNAME}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__0=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__0}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__1=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__1}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__2=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__2}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__3=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__3}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__4=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__4}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__5=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__5}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__6=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__6}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__7=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__7}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__8=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__8}
+      - INBOUNDAPIKEYAUTH__ALLOWEDKEYS__9=${INBOUNDAPIKEYAUTH__ALLOWEDKEYS__9}
+      - EXCHANGERATEAPI__BASEURL=${EXCHANGERATEAPI__BASEURL}
+      - EXCHANGERATEAPI__APIKEY=${EXCHANGERATEAPI__APIKEY}
+      - EXCHANGERATEAPI__DEFAULTBASECODE=${EXCHANGERATEAPI__DEFAULTBASECODE}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/healthz/check || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - api-dataprotection:/home/app/.aspnet/DataProtection-Keys
+      - sharedtmp:/sharedtmp
+
+  # migrator:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.migrator
+  #     args:
+  #       CSPROJ_WEB: Cinturon360.Web/Cinturon360.Web.csproj
+  #       CSPROJ_SHARED: Cinturon360.Shared/Cinturon360.Shared.csproj
+  #   container_name: migrator
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   env_file: .env
+  #   environment:
+  #     - DB_HOST=${POSTGRES_HOST}
+  #     - DB_PORT=${POSTGRES_PORT}
+  #     - DB_NAME=${APP_DB_NAME}
+  #     - DB_USER=${APP_DB_USER}
+  #     - DB_PASSWORD=${APP_DB_PASSWORD}
+  #     - ConnectionStrings__DefaultConnection=${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+  #   tty: true
+  #   restart: "no"
+
+  crontab:
+    build:
+      context: ./.docker/cron
+      dockerfile: Dockerfile
+      args:
+        TARGETARCH: arm64
+    platform: linux/arm64
+    container_name: crontab
+    depends_on:
+      - api
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,size=8m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  tmp-cleaner:
+    image: busybox:1.36
+    container_name: tmp-cleaner
+    depends_on:
+      - api
+    restart: unless-stopped
+    command:
+      - sh
+      - -lc
+      - |
+        while true; do
+          find /sharedtmp -maxdepth 1 -type f -name 'ASPNETCORE_*' -mmin +120 -exec rm -f {} \;
+          sleep 3600
+        done
+    volumes:
+      - sharedtmp:/sharedtmp
+
+  docs:
+    build:
+      context: ./Cinturon360.Docs
+      dockerfile: ../Dockerfile.docs
+    image: cinturon360-docs:static
+    container_name: docs
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./.docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - blazor
+      - api
+      - pgadmin
+      - pgweb
+      - docs
+
+volumes:
+  postgresql-data:
+  pgadmin-data:
+  web-dataprotection:
+  api-dataprotection:
+  sharedtmp:
+  docsy_node_modules:
+  docsy_go_cache:
+  docsy_hugo_cache:

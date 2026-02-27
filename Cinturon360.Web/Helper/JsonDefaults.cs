@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Macross.Json.Extensions;
 
 namespace Cinturon360.Web.Helpers;
 

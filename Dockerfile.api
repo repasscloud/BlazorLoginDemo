@@ -2,6 +2,14 @@
 
 # --- Build stage --------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+LABEL org.opencontainers.image.title="cinturon360-api"
+LABEL org.opencontainers.image.description="Dedicated API container"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.created="2025-10-24"
+LABEL org.opencontainers.image.authors="Cinturon360 Platform Team"
+LABEL org.opencontainers.image.source="https://github.com/repasscloud/cinturon360"
+LABEL org.opencontainers.image.documentation="https://docs.cinturon360.com/docs/api/dockerfile"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 ARG CSPROJ_API
 ARG CSPROJ_SHARED
 WORKDIR /src
@@ -43,9 +51,12 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build /app/publish/ ./
 
-# Ensure DataProtection keys directory exists and is writable
-RUN mkdir -p /home/app/.aspnet/DataProtection-Keys \
- && chown -R app:app /home/app /app
+# Ensure ASP.NET DataProtection keys and shared temp directories exist,
+# are owned by the non-root app user, and have restrictive permissions
+RUN mkdir -p /home/app/.aspnet/DataProtection-Keys /sharedtmp \
+ && chown -R app:app /home/app /sharedtmp \
+ && chmod 700 /home/app/.aspnet/DataProtection-Keys \
+ && chmod 770 /sharedtmp
 
 USER app
 EXPOSE 5050

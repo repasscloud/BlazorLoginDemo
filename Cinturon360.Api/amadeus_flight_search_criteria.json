@@ -1,0 +1,43 @@
+{
+    "currencyCode": "AUD",
+    "originDestinations": [
+        {
+            "id": "1",
+            "originLocationCode": "PER",
+            "destinationLocationCode": "AKL",
+            "departureDateTimeRange": {
+                "date": "2026-01-11",
+                "time": "00:00:00"
+            }
+        }
+    ],
+    "travelers": [
+        {
+            "id": "1",
+            "travelerType": "ADULT",
+            "fareOptions": [
+                "STANDARD"
+            ]
+        }
+    ],
+    "sources": [
+        "GDS"
+    ],
+    "searchCriteria": {
+        "maxFlightOffers": 250,
+        "flightFilters": {
+            "cabinRestrictions": [
+                {
+                    "cabin": "ECONOMY",
+                    "coverage": "MOST_SEGMENTS",
+                    "originDestinationIds": [
+                        "1"
+                    ]
+                }
+            ],
+            "carrierRestrictions": {
+                "blacklistedInEUAllowed": false
+            }
+        }
+    }
+}
