@@ -1,0 +1,27 @@
+# All schedules are evaluated in UTC
+CRON_TZ=UTC
+
+# -------------------------------------------------------------------
+# HOURLY JOBS
+# -------------------------------------------------------------------
+
+# Hourly: expire time-based entities (bookings, sessions, etc.)
+0 * * * * curl -fsS --max-time 10 --retry 2 --retry-connrefused -H 'accept: */*' http://api:8080/v1/cron/expire/hourly
+
+# Hourly (at HH:05): external API connectivity / health check (Amadeus test)
+5 * * * * curl -fsS --max-time 10 --retry 2 --retry-connrefused -H 'accept: */*' -X GET http://api:8080/v1/cron/amadeus/health
+
+# -------------------------------------------------------------------
+# HEARTBEAT / MONITORING
+# -------------------------------------------------------------------
+
+# Health heartbeat: confirms cron scheduler is alive (every 5 minutes)
+*/5 * * * * echo "heartbeat $(date -Iseconds)"
+
+# -------------------------------------------------------------------
+# HIGH-FREQUENCY / DEBUG (DISABLED)
+# -------------------------------------------------------------------
+
+# Fast heartbeat for debugging scheduler latency (every 30 seconds)
+# Requires a cron implementation that supports seconds
+#*/30 * * * * * echo "fast-heartbeat $(date -Iseconds)"

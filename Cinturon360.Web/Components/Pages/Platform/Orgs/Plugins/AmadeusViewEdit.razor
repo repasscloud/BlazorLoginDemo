@@ -1,0 +1,280 @@
+@page "/platform/organizations/plugins/amadeus/{OrgId}/edit"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
+
+@using Cinturon360.Shared.Auth
+@using Cinturon360.Shared.Mappers
+@using Cinturon360.Shared.Models.ExternalLib.Amadeus
+@using Cinturon360.Shared.Models.Kernel.UI.Amadeus
+@using System.Security.Claims
+@using Cinturon360.Shared.Models.Static.System.SysVar
+@using Cinturon360.Shared.Services.Interfaces.External
+@using Cinturon360.Shared.Services.Interfaces.Kernel
+@using Cinturon360.Shared.Services.Interfaces.Platform
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAmadeusAccountService AmadeusSvc
+@inject IAdminOrgServiceUnified OrgSvc
+@inject NavigationManager Nav
+@inject ILoggerService _log
+
+
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Edit Amadeus Account</h2>
+    <div class="btn-group">
+        <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">Cancel</button>
+        <button type="submit" class="btn btn-primary" form="amadeus-account-edit-form" disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            }
+            else if (_hasAmadeusAccount)
+            {
+                <span>Save Changes</span>
+            }
+            else
+            {
+                <span>Create Account</span>
+            }
+        </button>
+    </div>
+</div>
+
+<EditForm id="amadeus-account-edit-form" Model="_vm" OnValidSubmit="@(async () => await SaveAsync(true))">
+    <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
+    <DataAnnotationsValidator />
+
+    <!-- TMC Info Card -->
+    <div class="card mb-3">
+        <div class="card-header">TMC Info</div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Id</label>
+                <InputText class="form-control bg-light" @bind-Value="@_vm.TmcId" readonly />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Name</label>
+                <InputText class="form-control bg-light" @bind-Value="@_vm.DisplayName" readonly />
+            </div>
+        </div>
+    </div>
+
+    <!-- Amadeus Client Credentials Card -->
+    <div class="card mb-3">
+        <div class="card-header">Amadeus Client Credentials</div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Client ID</label>
+                <InputText class="form-control" @bind-Value="@_vm.ClientId" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Client Secret</label>
+                <InputText class="form-control" @bind-Value="@_vm.ClientSecret" type="password" />
+            </div>
+            <div class="col-12">
+                <label class="form-label">API Endpoint</label>
+                <div class="input-group">
+                    <InputText class="form-control" @bind-Value="@_vm.ApiEndpoint" />
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        disabled>
+                        <i class="bi @( _vm.ApiEndpointValidated ? "bi-check-circle text-success" : "bi-x-circle text-danger")"></i>
+                    </button>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- Office Info Card -->
+    <div class="card mb-3">
+        <div class="card-header">Office Info</div>
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Office ID</label>
+                <InputText class="form-control" @bind-Value="@_vm.OfficeId" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Country Code</label>
+                <InputText class="form-control" @bind-Value="@_vm.CountryCode" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Default Currency</label>
+                <InputText class="form-control" @bind-Value="@_vm.DefaultCurrency" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticketing Card -->
+    <div class="card mb-3">
+        <div class="card-header">Ticketing</div>
+        <div class="card-body row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Ticketing Prefix</label>
+                <InputText class="form-control" @bind-Value="@_vm.TicketPrefix" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Default Plating Carrier</label>
+                <InputText class="form-control" @bind-Value="@_vm.DefaultPlatingCarrier" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">@(@_vm.TicketingEnabled ? "Enabled" : "Disabled")</label>
+                <div class="form-check form-switch mt-2">
+                    <InputCheckbox class="form-check-input" @bind-Value="@_vm.TicketingEnabled" disabled/>
+                    <label class="form-check-label" title="@(@_vm.TicketingEnabled ? "Enabled" : "Disabled")">
+                        <span aria-hidden="true">@(@_vm.TicketingEnabled ? " ✅" : " ❌")</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</EditForm>
+
+@code {
+    [Parameter] public string OrgId { get; set; } = string.Empty;
+
+    private AmadeusAccountEditModel _vm = new AmadeusAccountEditModel() { TmcId = string.Empty };
+    private bool _isSaving;
+    private string? _error;
+
+    private bool _hasAmadeusAccount = false;  // check if _vm has Amadeus account info
+
+
+    // -----------------
+    // Authentication
+    // -----------------
+    private ClaimsPrincipal? _user;
+    private string? _userId;
+    //private bool _isAuthChecked;
+    //private bool _isAuthenticated;
+
+    private void GoBack() => Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}");
+    private async Task SaveAsync(bool navigateOnSuccess = true)
+    {
+        _error = null;
+        _isSaving = true;
+
+        // someone clicked save button!
+        await LogSaveAsync(_userId ?? "UNKNOWN_USER_ID", OrgId);
+
+        try
+        {
+            AmadeusAccount account = AmadeusAccountMapper.ToEntity(_vm);
+
+            if (_hasAmadeusAccount)
+                await AmadeusSvc.UpdateAsync(account);
+            else
+                await AmadeusSvc.CreateAsync(account);
+
+            if (navigateOnSuccess)
+                Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.GetBaseException().Message;
+            await LogErrorAsync(_userId ?? "UNKNOWN_USER_ID", OrgId, _error, note: "Error occurred while saving Amadeus account.", ex: ex);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState? state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _user = state.User;
+        _userId = _user?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        // load _vm
+        if (string.IsNullOrWhiteSpace(OrgId))
+        {
+            _error = "Organization ID is required.";
+            await LogErrorAsync(_userId ?? "UNKNOWN_USER_ID", OrgId, _error, note: "OrgId parameter missing during Amadeus account edit page load.", ex: new Exception(_error));
+            return;
+        }
+
+        // get the TMC info
+        IAdminOrgServiceUnified.OrgAggregate? tmc = await OrgSvc.GetByIdAsync(OrgId);
+        if (tmc == null)
+        {
+            _error = $"Organization with ID '{OrgId}' not found.";
+            await LogErrorAsync(_userId ?? "UNKNOWN_USER_ID", OrgId, _error, note: "TMC not found during Amadeus account edit page load.", ex: new Exception(_error));
+            return;
+        }
+
+        // log the page was opened
+        await LogPageOpenAsync(_userId ?? "UNKNOWN_USER_ID", OrgId);
+
+        AmadeusAccount? amadeusAccount = await AmadeusSvc.GetAsync(OrgId);
+        if (amadeusAccount != null)
+        {
+            // hydrate the model (existing account)
+            _vm = AmadeusAccountMapper.ToEditModel(amadeusAccount);
+            _hasAmadeusAccount = true;
+        }
+        else
+        {
+            // new account
+            _vm = new AmadeusAccountEditModel() { TmcId = OrgId };
+            _vm.DisplayName = tmc.Org.Name ?? string.Empty;
+            _hasAmadeusAccount = false;
+        }
+    }
+
+    // -----------------
+    // Logging
+    // -----------------
+    // EVT = UI_^x_^y
+    // CAT = UI
+    // ACT = Click/View/Edit/Delete/Create
+    // PATH = /platform/organizations/plugins/amadeus/{orgId}/edit
+    private async Task LogPageOpenAsync(string userId, string orgId)
+    {
+        string? pageRoute = $"/platform/organizations/plugins/amadeus/{orgId}/edit";
+        await _log.InformationAsync(
+            evt: SysLogEvtType.UI_PAGE_OPEN,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.View,
+            message: "Plugin Amadeus Account page accessed",
+            uid: userId,
+            entId: orgId,
+            path: pageRoute
+        );
+    }
+
+    private async Task LogSaveAsync(string userId, string orgId)
+    {
+        string? pageRoute = $"/platform/organizations/plugins/amadeus/{orgId}/edit";
+        await _log.InformationAsync(
+            evt: SysLogEvtType.UI_SAVE_PRESSED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Submit,
+            message: "Plugin Amadeus Account changes saved",
+            uid: userId,
+            entId: orgId,
+            path: pageRoute
+        );
+    }
+
+    private async Task LogErrorAsync(string userId, string orgId, string errorMessage, string note, Exception ex)
+    {
+        string? pageRoute = $"/platform/organizations/plugins/amadeus/{orgId}/edit";
+        await _log.ErrorAsync(
+            evt: SysLogEvtType.DATA_SAVE_ERR,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.End,
+            ex: ex,
+            message: $"Plugin Amadeus Account error: {errorMessage}",
+            uid: userId,
+            entId: orgId, 
+            path: pageRoute,
+            note: note
+        );
+    }
+}

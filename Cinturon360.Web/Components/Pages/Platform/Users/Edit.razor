@@ -1,0 +1,1290 @@
+@page "/platform/users/{id}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
+
+@using Cinturon360.Shared.Auth
+@using Cinturon360.Shared.Data
+@using Cinturon360.Shared.Models.Kernel.Platform
+@using Cinturon360.Shared.Models.Static
+@using Cinturon360.Shared.Models.Static.Geography
+@using Cinturon360.Shared.Models.Static.Identity
+@using Cinturon360.Shared.Models.Static.Platform
+@using Cinturon360.Shared.Models.Static.System.SysVar
+@using Cinturon360.Shared.Models.Static.Travel
+@using Cinturon360.Shared.Services.Interfaces.Kernel
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@using Cinturon360.Web.Components.Shared
+@using System.Security.Claims
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAdminUserServiceUnified UserSvc
+@inject IAdminOrgServiceUnified OrgSvc
+@inject NavigationManager Nav
+@inject ILoggerService _log
+
+
+@{ ApplicationUser? U = _vm.User!; }
+
+<PageTitle>Edit User</PageTitle>
+
+@if (_vm.LoadError is not null)
+{
+    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@_vm.LoadError</div>
+}
+else if (_vm.IsLoading)
+{
+    <div class="alert alert-light border d-inline-flex align-items-center">
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        Loading user…
+    </div>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(_topBanner))
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            @_topBanner
+            <button type="button" class="btn-close" aria-label="Close" @onclick="() => _topBanner = null"></button>
+        </div>
+    }
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">Edit User</h2>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-secondary" @onclick="BackButton">Back</button>
+            <button type="submit" class="btn btn-primary" form="user-edit-form" disabled="@_vm.IsSaving">
+                @if (_vm.IsSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                Save
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_vm.Toast))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@_vm.Toast
+            <button type="button" class="btn-close" @onclick="() => _vm.Toast = string.Empty" aria-label="Close"></button>
+        </div>
+    }
+
+    <EditForm id="user-edit-form" Model="_vm.User" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
+
+        <div class="row g-3">
+            <!-- Account / Status -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Identity</span>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleAccountReadOnly">
+                            @if (_isAccountReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Email/Login</label>
+                            <InputText
+                                class="@($"form-control {(_isAccountReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.Email"
+                                readonly="@_isAccountReadOnly">
+                            </InputText>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">User Category</label>
+                            <InputSelect
+                                class="@($"form-select {(_isAccountReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.UserCategory"
+                                disabled="@_isAccountReadOnly">
+                                @foreach (UserCategoryType cat in Enum.GetValues<UserCategoryType>())
+                                {
+                                    <option value="@cat">@cat</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">@(_vm.User.IsActive ? "Active" : "Inactive")</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox
+                                    class="form-check-input"
+                                    @bind-Value="_vm.User.IsActive"
+                                    disabled="@_isAccountReadOnly" />
+                                <label class="form-check-label" title="@(_vm.User.IsActive ? "Active" : "Inactive")">
+                                    <span aria-hidden="true">@(_vm.User.IsActive ? " ✅" : " ❌")</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Organization -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Organization</span>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleOrganizationReadOnly">
+                            @if (_isOrganizationReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Organization</label>
+                            <InputSelect
+                                class="@($"form-select {(_isOrganizationReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.OrganizationId"
+                                disabled="@_isOrganizationReadOnly">
+                                <option value="">— No org —</option>
+                                @foreach (IAdminOrgServiceUnified.OrganizationPickerDto o in _vm.Orgs)
+                                {
+                                    <option value="@o.Id">@o.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Department</label>
+                            <InputText
+                                class="@($"form-control {(_isOrganizationReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.Department"
+                                readonly="@_isOrganizationReadOnly">
+                            </InputText>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Cost Centre</label>
+                            <InputText
+                                class="@($"form-control {(_isOrganizationReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.User.CostCentre"
+                                readonly="@_isOrganizationReadOnly">
+                            </InputText>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Manager</label>
+                            <div class="input-group">
+                                <InputText
+                                    class="@($"form-control {(_isOrganizationReadOnly ? "bg-light" : "")}")"
+                                    Value="@ManagerDisplay"
+                                    ValueExpression="@(() => ManagerDisplay)"
+                                    readonly />
+
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-secondary"
+                                    disabled="@_isOrganizationReadOnly"
+                                    @onclick="OpenManagerPickerAsync">
+                                    <i class="bi bi-person-add" aria-hidden="true"></i>
+                                    <span class="ms-1">Assign</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Names / Profile -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Profile</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleProfileReadOnly">
+                            @if (_isProfileReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">First Name</label>
+                            <InputText
+                                class="@($"form-control {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.FirstName"
+                                readonly="@_isProfileReadOnly">
+                            </InputText>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Middle Name</label>
+                            <InputText
+                                class="@($"form-control {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.MiddleName"
+                                readonly="@_isProfileReadOnly">
+                            </InputText>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Last Name</label>
+                            <InputText
+                                class="@($"form-control {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.LastName"
+                                readonly="@_isProfileReadOnly">
+                            </InputText>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Display Name</label>
+                            <InputText
+                                class="@($"form-control {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.DisplayName"
+                                readonly="@_isProfileReadOnly">
+                            </InputText>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Preferred Culture</label>
+                            <InputSelect
+                                id="preferredCultureSelect"
+                                class="@($"form-select {(_isProfileReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.PreferredCulture"
+                                disabled="@_isProfileReadOnly">
+                                @foreach ((string Tag, string Label) c in CulturesType.Bcp47)
+                                {
+                                    <option value="@c.Tag">@c.Label</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PII & Travel-docs -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>PII & Travel Documents</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="TogglePIITravelDocumentsReadOnly">
+                            @if (_isPIITravelDocumentsReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Date of Birth</label>
+                            <InputDate
+                                class="@($"form-control {(_isPIITravelDocumentsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.DateOfBirth"
+                                disabled="@_isPIITravelDocumentsReadOnly" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Passport Country</label>
+                            <InputSelect class="@($"form-select {(_isPIITravelDocumentsReadOnly ? "bg-light" : "")}")"
+                                        @bind-Value="U.CountryOfIssue"
+                                        disabled="@_isPIITravelDocumentsReadOnly">
+
+                                @foreach (var c in PassportCountries.All)
+                                {
+                                    <option value="@c.Code">@c.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Passport Expiry</label>
+                            <InputDate
+                                class="@($"form-control {(_isPIITravelDocumentsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.PassportExpirationDate"
+                                disabled="@_isPIITravelDocumentsReadOnly" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Gender</label>
+                            <InputSelect
+                                class="@($"form-select {(_isPIITravelDocumentsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.Gender"
+                                disabled="@_isPIITravelDocumentsReadOnly">
+                                @foreach (GenderType g in Enum.GetValues<GenderType>())
+                                {
+                                    <option value="@g">@g</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flight Preferences -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Flight Preferences</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleFlightPreferencesReadOnly">
+                            @if (_isFlightPreferencesReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Origin Location (IATA)</label>
+                            <InputText
+                                class="@($"form-control {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.OriginLocationCode"
+                                readonly="@_isFlightPreferencesReadOnly">
+                            </InputText>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Default Flight Seating</label>
+                           <InputSelect
+                                class="@($"form-select {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.DefaultFlightSeating"
+                                disabled="@_isFlightPreferencesReadOnly">
+
+                                @foreach (var o in FareType.DropdownOptions)
+                                {
+                                    <option value="@o.Code">@o.Label</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Flight Seating</label>
+                            <InputSelect
+                                class="@($"form-select {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.MaxFlightSeating"
+                                disabled="@_isFlightPreferencesReadOnly">
+
+                                @foreach (var o in FareType.DropdownOptions)
+                                {
+                                    <option value="@o.Code">@o.Label</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Cabin Class Coverage</label>
+                            <InputSelect
+                                class="@($"form-select {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.CabinClassCoverage"
+                                isabled="@_isFlightPreferencesReadOnly">
+
+                                @foreach (var o in FareType.DropdownOptions)
+                                {
+                                    <option value="@o.Code">@o.Label</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Non-stop Flights</label>
+                            <InputSelect
+                                class="@($"form-select {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.NonStopFlight"
+                                disabled="@_isFlightPreferencesReadOnly">
+
+                                <option value="">Unset</option>
+                                <option value="false">No</option>
+                                <option value="true">Yes</option>
+
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Booking Lead Days</label>
+                            <InputNumber
+                                class="@($"form-control {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.DefaultCalendarDaysInAdvanceForFlightBooking"
+                                disabled="@_isFlightPreferencesReadOnly" />
+                        </div>
+
+                        <div class="col-md-9">
+                            <label class="form-label">Included Airline Codes (one per line)</label>
+                            <textarea
+                                class="@($"form-control {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
+                                rows="4"
+                                @bind="_vm.IncludedAirlineCodesText"
+                                readonly="@_isFlightPreferencesReadOnly">
+                            </textarea>
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">Excluded Airline Codes (one per line)</label>
+                            <textarea
+                                class="@($"form-control {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
+                                rows="4"
+                                @bind="_vm.ExcludedAirlineCodesText"
+                                readonly="@_isFlightPreferencesReadOnly">
+                            </textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial & Limits -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Financial & Limits</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleFinancialLimitsReadOnly">
+                            @if (_isFinancialLimitsReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Default Currency (ISO 4217)</label>
+                            <InputText
+                                class="@($"form-control {(_isFinancialLimitsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.DefaultCurrencyCode"
+                                readonly="@_isFinancialLimitsReadOnly">
+                            </InputText>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Flight Price</label>
+                            <InputNumber
+                                class="@($"form-control {(_isFinancialLimitsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.MaxFlightPrice"
+                                disabled="@_isFinancialLimitsReadOnly" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Results</label>
+                            <InputNumber
+                                class="@($"form-control {(_isFinancialLimitsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.MaxResults"
+                                disabled="@_isFinancialLimitsReadOnly" />
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+
+            <!-- Booking Windows -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Booking Windows</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleBookingWindowsReadOnly">
+                            @if (_isBookingWindowsReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Flights Available From (hh:mm:ss)</label>
+                            <InputText
+                                class="@($"form-control {(_isBookingWindowsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.FlightBookingTimeAvailableFrom"
+                                readonly="@_isBookingWindowsReadOnly" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Flights Available To (hh:mm:ss)</label>
+                            <InputText
+                                class="@($"form-control {(_isBookingWindowsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.FlightBookingTimeAvailableTo"
+                                readonly="@_isBookingWindowsReadOnly" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Policy Links -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Policy Links</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="TogglePolicyLinksReadOnly">
+                            @if (_isPolicyLinksReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Travel Policy Name</label>
+                            <InputText
+                                class="@($"form-control {(_isPolicyLinksReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.TravelPolicyName"
+                                readonly="@_isPolicyLinksReadOnly" />
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Travel Policy Id</label>
+                            <InputText
+                                class="@($"form-control {(_isPolicyLinksReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.TravelPolicyId"
+                                readonly="@_isPolicyLinksReadOnly" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Expense Policy Name</label>
+                            <InputText
+                                class="@($"form-control {(_isPolicyLinksReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.ExpensePolicyName"
+                                readonly="@_isPolicyLinksReadOnly" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Expense Policy Id</label>
+                            <InputText
+                                class="@($"form-control {(_isPolicyLinksReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="U.ExpensePolicyId"
+                                readonly="@_isPolicyLinksReadOnly" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Policy Toggles -->
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Policy Toggles</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="TogglePolicyTogglesReadOnly">
+                            @if (_isPolicyTogglesReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Default Flight Seating</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.DefaultFlightSeatingVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.DefaultFlightSeatingVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Flight Seating</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.MaxFlightSeatingVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.MaxFlightSeatingVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Cabin Class Coverage</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.CabinClassCoverageVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.CabinClassCoverageVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Airlines Codes</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.AirlineCodesVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.AirlineCodesVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Non-Stop</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.NonStopFlightVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.NonStopFlightVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Default Currency</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.DefaultCurrencyCodeVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.DefaultCurrencyCodeVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Flight Price</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.MaxFlightPriceVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.MaxFlightPriceVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Max Results</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.MaxResultsVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.MaxResultsVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Booking Windows</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.FlightBookingTimeAvailableVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.FlightBookingTimeAvailableVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Saturday Bookings</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="EnableSaturdayFlightBookingsValue"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">
+                                        @(EnableSaturdayFlightBookingsValue ? " ✅ Visible" : " ❌ Invisible")
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Sunday Bookings</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="EnableSundayFlightBookingsValue"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">
+                                        @(EnableSundayFlightBookingsValue ? " ✅ Visible" : " ❌ Invisible")
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Adv. Calendar Days</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.CalendarDaysInAdvanceForFlightBookingVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.CalendarDaysInAdvanceForFlightBookingVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Weekend Options</label>
+                            <div class="form-check form-switch mt-2">
+                                <InputCheckbox class="form-check-input"
+                                            @bind-Value="U.EnableWeekendFlightBookingsVisible"
+                                            disabled="@_isPolicyTogglesReadOnly" />
+                                <label class="form-check-label">
+                                    <span aria-hidden="true">@(U.EnableWeekendFlightBookingsVisible ? " ✅ Visible" : " ❌ Invisible")</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Roles -->
+            <div class="col-12 mb-3">
+                <div class="card mb-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Roles</span>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleRolesReadOnly">
+                            @if (_isRolesReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrWhiteSpace(_rolesError))
+                        {
+                            <div class="alert alert-danger py-2">@_rolesError</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_rolesInfo))
+                        {
+                            <div class="alert alert-success py-2">@_rolesInfo</div>
+                        }
+                        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2">
+                            @foreach (string r in _allRoles)
+                            {
+                                var isSaving = _savingRoles.Contains(r);
+
+                                <div class="col">
+                                    <div class="form-check d-flex align-items-center">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            id="role_@r"
+                                            checked="@_selected.Contains(r)"
+                                            disabled="@(_isRolesReadOnly || isSaving)"
+                                            @onchange="@(e => OnToggleRoleAsync(r, e))" />
+
+                                        <label class="form-check-label ms-2 d-inline-flex align-items-center" for="role_@r">
+                                            @r
+                                            @if (isSaving)
+                                            {
+                                                <span class="spinner-border spinner-border-sm ms-2"
+                                                    role="status"
+                                                    aria-hidden="true"></span>
+                                            }
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+
+<UserPickerModal @ref="_userPicker" />
+
+@code {
+    [Parameter] public string? id { get; set; }
+
+    private VM _vm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState? state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _user = state.User;
+
+        _userId = _user?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        _vm.IsLoading = true;
+        _vm.LoadError = null;
+
+        try
+        {
+            _vm.Orgs = (await OrgSvc.GetAllForPickerAsync()).ToList();
+
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                _vm.LoadError = "Invalid route. No user id provided.";
+                return;
+            }
+
+            // Assuming your user service has this signature:
+            // Task<IAdminUserServiceUnified.UserAggregate?> GetByIdAsync(string id)
+            var agg = await UserSvc.GetByIdAsync(id);
+            if (agg is null)
+            {
+                _vm.LoadError = $"User '{id}' not found.";
+                return;
+            }
+
+            _vm.User = agg.User;
+
+            // hydrate multi-line editor helpers for airline codes
+            _vm.IncludedAirlineCodesText = string.Join(Environment.NewLine, _vm.User.IncludedAirlineCodes ?? Array.Empty<string>());
+            _vm.ExcludedAirlineCodesText = string.Join(Environment.NewLine, _vm.User.ExcludedAirlineCodes ?? Array.Empty<string>());
+
+            // Set the manager display text from ManagerId
+            if (_vm.User?.ManagerId is not null)
+            {
+                // Retrieve the manager aggregate
+                IAdminUserServiceUnified.UserAggregate? _mgr =
+                    await UserSvc.GetByIdAsync(_vm.User.ManagerId);
+
+                ApplicationUser? u = _mgr?.User;
+                if (u is not null)
+                {
+                    // Prefer DisplayName; otherwise First + Last
+                    string? name = !string.IsNullOrWhiteSpace(u.DisplayName)
+                        ? u.DisplayName!.Trim()
+                        : $"{(u.FirstName ?? string.Empty).Trim()} {(u.LastName ?? string.Empty).Trim()}".Trim();
+
+                    // Prefer Email; otherwise EmailAddress
+                    var email = !string.IsNullOrWhiteSpace(u.Email)
+                        ? u.Email!.Trim()
+                        : (u.Email ?? string.Empty).Trim();
+
+                    // Join only the non-empty parts (no extra spaces)
+                    if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(email))
+                        _managerDisplay = $"{name} {email}";
+                    else if (!string.IsNullOrWhiteSpace(name))
+                        _managerDisplay = name;
+                    else
+                        _managerDisplay = email; // could be empty if nothing available
+                }
+                else
+                {
+                    _managerDisplay = string.Empty; // or keep existing value if you prefer
+                }
+            }
+
+            // ---- roles (merged) ----
+            _allRoles = (await UserSvc.GetAllRolesAsync()).ToList();
+            var current = await UserSvc.GetUserRolesAsync(id);
+            _selected = current.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            _vm.IsLoading = false;
+            StateHasChanged();
+        }
+
+        await LogUserEditPageOpenAsync(_userId ?? "UNKNOWN_USER_ID", id ?? "UNKNOWN_EDITED_USER_ID");
+    }
+
+private async Task SaveAsync()
+{
+    if (_vm.User is null) return;
+
+    _vm.IsSaving = true; _vm.Toast = string.Empty;
+
+    _vm.User.IncludedAirlineCodes = SplitCodes(_vm.IncludedAirlineCodesText);
+    _vm.User.ExcludedAirlineCodes = SplitCodes(_vm.ExcludedAirlineCodesText);
+
+    _vm.User.OrganizationId = string.IsNullOrWhiteSpace(_vm.User.OrganizationId) ? null : _vm.User.OrganizationId.Trim();
+    _vm.User.ManagerId      = string.IsNullOrWhiteSpace(_vm.User.ManagerId)      ? null : _vm.User.ManagerId.Trim();
+
+    // 🔑 Stop EF “fix-up” from overwriting your FK with the old nav value
+    _vm.User.Organization = null;
+    _vm.User.Manager      = null;
+
+    var ok = await UserSvc.UpdateUserAsync(_vm.User);
+
+    _vm.IsSaving = false;
+    _vm.Toast = ok ? "Saved." : string.Empty;
+    if (!ok) _vm.LoadError ??= "Update failed.";
+}
+
+    private static string[] SplitCodes(string? text)
+        => string.IsNullOrWhiteSpace(text)
+            ? Array.Empty<string>()
+            : text
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim().ToUpperInvariant())
+                .Where(s => s.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+    private sealed class VM
+    {
+        public bool IsLoading { get; set; }
+        public bool IsSaving { get; set; }
+        public string? LoadError { get; set; }
+        public string Toast { get; set; } = string.Empty;
+
+        public ApplicationUser User { get; set; } = new();
+
+        public List<IAdminOrgServiceUnified.OrganizationPickerDto> Orgs { get; set; } = new();
+
+        // UI helpers for string[] fields
+        public string IncludedAirlineCodesText { get; set; } = string.Empty;
+        public string ExcludedAirlineCodesText { get; set; } = string.Empty;
+    }
+
+    // -------------- ROLES --------------
+    private List<string> _allRoles = new();
+    private HashSet<string> _selected = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task SaveRolesAsync()
+    {
+        var res = await UserSvc.ReplaceUserRolesAsync(
+            new IAdminUserServiceUnified.UpdateUserRolesRequest(_vm.User.Id, _selected));
+        if (!res.Ok)
+        {
+            // show res.Error
+        }
+        else
+        {
+            // toast: $"Roles updated. Added: {string.Join(", ", res.Added)} Removed: {string.Join(", ", res.Removed)}"
+        }
+    }
+
+    private void OnToggleRole(string role, bool isChecked)
+    {
+        if (isChecked) _selected.Add(role);
+        else _selected.Remove(role);
+    }
+
+    // Assumes you already populated _allRoles and _selected in OnInitializedAsync (we merged earlier).
+    private readonly HashSet<string> _savingRoles = new(StringComparer.OrdinalIgnoreCase);
+    private string? _rolesError;
+    private string? _rolesInfo;
+
+    // Helper to resolve the user id consistently
+    private string? CurrentUserId => _vm?.User?.Id ?? id;
+
+    private async Task OnToggleRoleAsync(string role, ChangeEventArgs e)
+    {
+        // Blazor gives bool for checkbox; guard for string just in case
+        var isChecked = e.Value is bool b
+            ? b
+            : (bool.TryParse(e.Value?.ToString(), out var parsed) && parsed);
+
+        await SaveRoleToggleAsync(role, isChecked);
+    }
+
+    private async Task SaveRoleToggleAsync(string role, bool isChecked)
+    {
+        _rolesError = null;
+        _rolesInfo = null;
+
+        var userId = CurrentUserId;
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            _rolesError = "Cannot update roles: user id is missing.";
+            StateHasChanged();
+            return;
+        }
+
+        // Optimistic UI update
+        var had = _selected.Contains(role);
+        if (isChecked) _selected.Add(role); else _selected.Remove(role);
+        _savingRoles.Add(role);
+        StateHasChanged();
+
+        try
+        {
+            bool ok = isChecked
+                ? await UserSvc.AddUserRolesAsync(userId, new[] { role })
+                : await UserSvc.RemoveUserRolesAsync(userId, new[] { role });
+
+            if (!ok)
+            {
+                // revert on failure
+                if (had) _selected.Add(role); else _selected.Remove(role);
+                _rolesError = $"Failed to {(isChecked ? "add" : "remove")} role '{role}'.";
+            }
+            else
+            {
+                _rolesInfo = $"Role '{role}' {(isChecked ? "added" : "removed")}.";
+            }
+        }
+        catch (Exception ex)
+        {
+            // revert on exception
+            if (had) _selected.Add(role); else _selected.Remove(role);
+            _rolesError = ex.Message;
+        }
+        finally
+        {
+            _savingRoles.Remove(role);
+            StateHasChanged();
+        }
+    }
+
+    private void BackButton()
+    {
+        Nav.NavigateTo(uri: "/platform/users");
+        return;
+    }
+
+    // Non-nullable wrappers for binding/conditional usage
+    private bool EnableSaturdayFlightBookingsValue
+    {
+        get => _vm?.User?.EnableSaturdayFlightBookings ?? false;
+        set => _vm!.User!.EnableSaturdayFlightBookings = value;
+    }
+
+    private bool EnableSundayFlightBookingsValue
+    {
+        get => _vm?.User?.EnableSundayFlightBookings ?? false;
+        set => _vm!.User!.EnableSundayFlightBookings = value;
+    }
+
+    private UserPickerModal? _userPicker;
+
+    private string? _topBanner; // show when user has no org
+    private string? _managerDisplay; // optional: pretty label next to Manager field
+
+    private async Task OpenManagerPickerAsync()
+    {
+        var user = _vm?.User;
+        if (user is null) return;
+
+        // If the user is not in an org -> show banner instead of opening the modal
+        if (string.IsNullOrWhiteSpace(user.OrganizationId))
+        {
+            _topBanner = "Manager cannot be assigned because this user is not a member of an organization.";
+            return;
+        }
+
+        var res = await _userPicker!.OpenAsync(
+            excludeUserId: user.Id,                 // no self-reference
+            organizationId: user.OrganizationId!,   // same org only
+            title: "Select Manager",
+            onlyActive: true);
+
+        if (res is null) return; // closed/cancelled
+
+        if (res.Action == UserPickerModal.UserPickerAction.Cleared)
+        {
+            // Clear manager (server treats empty string as 'clear')
+            await UserSvc.UpdateAsync(new IAdminUserServiceUnified.UpdateUserRequest(
+                UserId: user.Id,
+                FirstName: null,
+                MiddleName: null,
+                LastName: null,
+                DisplayName: null,
+                OrganizationId: null,
+                IsActive: null,
+                ManagerUserId: "",   // <= clears per service implementation
+                CostCentre: null
+            ));
+
+            user.ManagerId = null;
+            _managerDisplay = "(none)";
+            StateHasChanged();
+            return;
+        }
+
+        // Assign new manager
+        UserPickerModal.SimpleUser? picked = res.User!;
+        await UserSvc.UpdateAsync(new IAdminUserServiceUnified.UpdateUserRequest(
+            UserId: user.Id,
+            FirstName: null,
+            MiddleName: null,
+            LastName: null,
+            DisplayName: null,
+            OrganizationId: null,
+            IsActive: null,
+            ManagerUserId: picked.Id,
+            CostCentre: null
+        ));
+
+        user.ManagerId = picked.Id;
+        _managerDisplay = $"{picked.Label}{(string.IsNullOrWhiteSpace(picked.Email) ? "" : $" ({picked.Email})")}";
+        StateHasChanged();
+    }
+
+    private void OnOrgPicked(OrganizationUnified? picked)
+    {
+        _vm.User.OrganizationId = picked?.Id;  // ✅ set FK the service persists
+        _vm.User.Organization = null;          // ✅ avoid nav confusion on attach
+    }
+
+    // -----------------
+    // Logging
+    // -----------------
+    private async Task LogUserEditPageOpenAsync(string userId, string userIdParam)
+    {
+        string? pageRoute = $"/platform/users/{userIdParam}";
+        await _log.InformationAsync(
+            evt: SysLogEvtType.UI_PAGE_OPEN,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.View,
+            message: "User Edit page accessed",
+            uid: userId,
+            entId: userIdParam,
+            path: pageRoute
+        );
+    }
+
+    private async Task LogUserEditSectionClickedAsync(string userId, string userIdParam, string sectionName)
+    {
+        string? pageRoute = $"/platform/users/{userIdParam}";
+        await _log.InformationAsync(
+            evt: SysLogEvtType.UI_EDIT_MODE_ENABLED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Click,
+            message: $"User Edit section clicked: {sectionName}",
+            uid: userId,
+            entId: userIdParam,
+            path: pageRoute
+        );
+    }
+
+    private async Task SaveUserEditLogAsync(string userId, string userIdParam)
+    {
+        string? pageRoute = $"/platform/users/{userIdParam}";
+        await _log.InformationAsync(
+            evt: SysLogEvtType.UI_SAVE_PRESSED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Submit,
+            message: "User Edit changes saved",
+            uid: userId,
+            entId: userIdParam,
+            path: pageRoute
+        );
+    }
+
+    // -----------------
+    // Authenticated user
+    // -----------------
+    private ClaimsPrincipal? _user;
+    private string? _userId;
+
+    // -----------------
+    // Enable Edit Flags
+    // -----------------
+    private bool _isAccountReadOnly = true;
+    private bool _isOrganizationReadOnly = true;
+    private bool _isProfileReadOnly = true;
+    private bool _isPIITravelDocumentsReadOnly = true;
+    private bool _isFlightPreferencesReadOnly = true;
+    private bool _isFinancialLimitsReadOnly = true;
+    private bool _isBookingWindowsReadOnly = true;
+    private bool _isPolicyLinksReadOnly = true;
+    private bool _isPolicyTogglesReadOnly = true;
+    private bool _isRolesReadOnly = true;
+
+    // Generic toggle method
+    private static void Toggle(ref bool value) => value = !value;
+
+    // Specific toggle methods
+    private async Task ToggleAccountReadOnly()
+    {
+        Toggle(ref _isAccountReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "Account");
+    }
+    private async Task ToggleOrganizationReadOnly()
+    {
+        Toggle(ref _isOrganizationReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "Organization");
+    }
+    private async Task ToggleProfileReadOnly()
+    {
+        Toggle(ref _isProfileReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "Profile");
+    }
+    private async Task TogglePIITravelDocumentsReadOnly()
+    {
+        Toggle(ref _isPIITravelDocumentsReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "PIITravelDocuments");
+    }
+    private async Task ToggleFlightPreferencesReadOnly()
+    {
+        Toggle(ref _isFlightPreferencesReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "FlightPreferences");
+    }
+    private async Task ToggleFinancialLimitsReadOnly()
+    {
+        Toggle(ref _isFinancialLimitsReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "FinancialLimits");
+    }
+    private async Task ToggleBookingWindowsReadOnly()
+    {
+        Toggle(ref _isBookingWindowsReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "BookingWindows");
+    }
+    private async Task TogglePolicyLinksReadOnly()
+    {
+        Toggle(ref _isPolicyLinksReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "PolicyLinks");
+    }
+    private async Task TogglePolicyTogglesReadOnly()
+    {
+        Toggle(ref _isPolicyTogglesReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "PolicyToggles");
+    }
+    private async Task ToggleRolesReadOnly()
+    {
+        Toggle(ref _isRolesReadOnly);
+        await LogUserEditSectionClickedAsync(_userId!, id!, sectionName: "Roles");
+    }
+
+
+    // -----------------
+    // Helpers
+    // -----------------
+    private string ManagerDisplay =>
+        _vm.User?.ManagerId is null
+            ? "(none)"
+            : (_managerDisplay ?? _vm.User.ManagerId);
+}

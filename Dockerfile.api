@@ -1,29 +1,37 @@
-# syntax=docker/dockerfile:1.7-labs
+# syntax=docker/dockerfile:1.19.0
 
 # --- Build stage --------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+LABEL org.opencontainers.image.title="cinturon360-api"
+LABEL org.opencontainers.image.description="Dedicated API container"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.created="2025-10-24"
+LABEL org.opencontainers.image.authors="Cinturon360 Platform Team"
+LABEL org.opencontainers.image.source="https://github.com/repasscloud/cinturon360"
+LABEL org.opencontainers.image.documentation="https://docs.cinturon360.com/docs/api/dockerfile"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 ARG CSPROJ_API
 ARG CSPROJ_SHARED
 WORKDIR /src
 
 # Copy only csproj first for better caching
-COPY ${CSPROJ_API} BlazorLoginDemo.Api/BlazorLoginDemo.Api.csproj
-COPY ${CSPROJ_SHARED} BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+COPY ${CSPROJ_API} Cinturon360.Api/Cinturon360.Api.csproj
+COPY ${CSPROJ_SHARED} Cinturon360.Shared/Cinturon360.Shared.csproj
 
 # Restore with cache mounts (NuGet packages + HTTP v3 cache)
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
-    dotnet restore BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
+    dotnet restore Cinturon360.Shared/Cinturon360.Shared.csproj
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
-    dotnet restore BlazorLoginDemo.Api/BlazorLoginDemo.Api.csproj
+    dotnet restore Cinturon360.Api/Cinturon360.Api.csproj
 
 # Copy ONLY the api project sources and publish
-COPY ./BlazorLoginDemo.Shared/ ./BlazorLoginDemo.Shared/
-COPY ./BlazorLoginDemo.Api/ ./BlazorLoginDemo.Api/
+COPY ./Cinturon360.Shared/ ./Cinturon360.Shared/
+COPY ./Cinturon360.Api/ ./Cinturon360.Api/
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/v3-cache \
-    dotnet publish BlazorLoginDemo.Api/BlazorLoginDemo.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+    dotnet publish Cinturon360.Api/Cinturon360.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # --- Runtime stage ------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS final
@@ -43,12 +51,15 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build /app/publish/ ./
 
-# Ensure DataProtection keys directory exists and is writable
-RUN mkdir -p /home/app/.aspnet/DataProtection-Keys \
- && chown -R app:app /home/app /app
+# Ensure ASP.NET DataProtection keys and shared temp directories exist,
+# are owned by the non-root app user, and have restrictive permissions
+RUN mkdir -p /home/app/.aspnet/DataProtection-Keys /sharedtmp \
+ && chown -R app:app /home/app /sharedtmp \
+ && chmod 700 /home/app/.aspnet/DataProtection-Keys \
+ && chmod 770 /sharedtmp
 
 USER app
 EXPOSE 5050
 
-# Run the built DLL provided via APP_DLL (e.g., BlazorLoginDemo.Api.dll)
+# Run the built DLL provided via APP_DLL (e.g., Cinturon360.Api.dll)
 ENTRYPOINT ["sh","-lc","exec dotnet \"$APP_DLL\""]

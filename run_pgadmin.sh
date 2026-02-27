@@ -76,18 +76,18 @@ SQL
 
 echo "✅ __EFMigrationsHistory ensured in database '$dbName'."
 
-rm -rf /Users/danijeljw/Developer/Ava-Warren-Tests/BlazorLoginDemo/BlazorLoginDemo.Web/Migrations
+rm -rf /Users/danijeljw/Developer/Ava-Warren-Tests/Cinturon360/Cinturon360.Web/Migrations
 
 dotnet ef migrations add initDb \
-  --project "/Users/danijeljw/Developer/Ava-Warren-Tests/BlazorLoginDemo/BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj" \
-  --startup-project "/Users/danijeljw/Developer/Ava-Warren-Tests/BlazorLoginDemo/BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj"
+  --project "/Users/danijeljw/Developer/Ava-Warren-Tests/Cinturon360/Cinturon360.Web/Cinturon360.Web.csproj" \
+  --startup-project "/Users/danijeljw/Developer/Ava-Warren-Tests/Cinturon360/Cinturon360.Web/Cinturon360.Web.csproj"
 
 dotnet ef database update \
-  --project "/Users/danijeljw/Developer/Ava-Warren-Tests/BlazorLoginDemo/BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj" \
-  --startup-project "/Users/danijeljw/Developer/Ava-Warren-Tests/BlazorLoginDemo/BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj"
+  --project "/Users/danijeljw/Developer/Ava-Warren-Tests/Cinturon360/Cinturon360.Web/Cinturon360.Web.csproj" \
+  --startup-project "/Users/danijeljw/Developer/Ava-Warren-Tests/Cinturon360/Cinturon360.Web/Cinturon360.Web.csproj"
 
 
-docker cp /Users/danijeljw/Developer/Ava-Warren-Tests/BlazorLoginDemo/HashGen/seed_identity.sql webshop-db:/seed_identity.sql
+docker cp /Users/danijeljw/Developer/Ava-Warren-Tests/Cinturon360/HashGen/seed_identity.sql webshop-db:/seed_identity.sql
 
 docker exec -e PGPASSWORD=webshop -it webshop-db \
   psql -U webshop -d webshop -v "ON_ERROR_STOP=1" -f /seed_identity.sql

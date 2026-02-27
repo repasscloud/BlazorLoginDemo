@@ -1,0 +1,77 @@
+# --- Postgres Admin (cluster owner / maintenance DB) ---
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=YourAdminPassword
+POSTGRES_DB=postgres
+
+# --- App DB/user (what your app + migrator will use) ---
+APP_DB_NAME=demodb
+APP_DB_USER=demodb
+APP_DB_PASSWORD=YourAppPassword
+
+# --- App connection string (used by blazor/migrator) ---
+CONNECTIONSTRINGS__DEFAULTCONNECTION="Host=db;Port=5432;Database=demodb;Username=demodb;Password=YourAppPassword;Timeout=5;Command Timeout=5"
+CONNECTIONSTRINGS__LOGGINGDB="Host=db;Port=5432;Database=demodb;Username=serilog;Password=YourSerilogPassword;Timeout=5;Command Timeout=5"
+
+# EF Core (this will override appsettings.json at runtime)
+ASPNETCORE_URLS="http://+:8080"
+ASPNETCORE_ENVIRONMENT=Development
+DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+
+# Logging Level
+Logging__LogLevel__Default=Information
+Logging__LogLevel__Microsoft_AspNetCore=Warning
+Logging__LogLevel__Microsoft_EntityFrameworkCore_Database_Command=Warning
+
+# pgAdmin credentials
+PGADMIN_DEFAULT_EMAIL=admin@localhost.com
+PGADMIN_DEFAULT_PASSWORD=admin123
+
+# MailerSend credentials
+MAILERSEND__APITOKEN=
+MAILERSEND__FROMEMAIL=
+MAILERSEND__FROMNAME="MailerSend Smoke Registration"
+
+# Sudo Credentials
+ADMINEMAIL=admin@example.com
+ADMINPASSWORD=YourStrongP@ss1
+
+# Amadeus Settings
+AMADEUS__CLIENTID=""
+AMADEUS__CLIENTSECRET=""
+AMADEUS__URL__APIENDPOINT="https://test.api.amadeus.com/v1/security/oauth2/token"
+AMADEUS__URL__FLIGHTOFFER="https://test.api.amadeus.com/v2/shopping/flight-offers"
+
+# X-Api-Key Settings
+INBOUNDAPIKEYAUTH__HEADERNAME="X-Ava-ApiKey"
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__0=""
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__1=""
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__2=""
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__3=""
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__4=""
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__5=""
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__6=""
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__7=""
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__8=""
+INBOUNDAPIKEYAUTH__ALLOWEDKEYS__9=""
+OUTBOUNDAPIKEYAUTH__HEADERNAME="X-Ava-ApiKey"
+OUTBOUNDAPIKEYAUTH__KEY=""
+
+# AvaApi Settings
+API__BASEADDRESS="http://api:8080"
+
+# --- pgweb connection(s) ---
+# pgweb
+PGWEB_DATABASE_URL=postgres://${APP_DB_USER}:${APP_DB_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${APP_DB_NAME}?sslmode=disable
+# or admin:
+PGWEB_DATABASE_URL_ADMIN=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/postgres?sslmode=disable
+
+# Exchange Rates API
+EXCHANGERATEAPI__BASEURL=https://v6.exchangerate-api.com/v6
+EXCHANGERATEAPI__APIKEY=
+EXCHANGERATEAPI__DEFAULTBASECODE=USD
+
+# Airlines Ingestor Settings
+AIRLINEINGESTION__SOURCEURL="https://raw.githubusercontent.com/jpatokal/openflights/master/data/airlines.dat"
+AIRLINEINGESTION__HTTPCLIENTNAME="airlines"

@@ -28,11 +28,11 @@ echo "✅ DB is queryable."
 CONNECTION="Host=${DB_HOST};Port=${DB_PORT};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD};"
 
 echo "🧱  Adding migration: initDb (if missing)..."
-if ! ls ./BlazorLoginDemo.Web/Migrations/*initDb*.cs >/dev/null 2>&1; then
+if ! ls ./Cinturon360.Web/Migrations/*initDb*.cs >/dev/null 2>&1; then
   echo "   - creating initDb..."
   dotnet ef migrations add InitDb \
-    -p ./BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj \
-    -s ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj \
+    -p ./Cinturon360.Shared/Cinturon360.Shared.csproj \
+    -s ./Cinturon360.Web/Cinturon360.Web.csproj \
     --configuration Release \
     --framework net9.0 \
     --no-build
@@ -42,7 +42,7 @@ fi
 
 echo "🏗  Applying migrations..."
 dotnet ef database update \
-  -p ./BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj \
+  -p ./Cinturon360.Web/Cinturon360.Web.csproj \
   --connection "$CONNECTION" \
 
 echo "✅ Migrations applied."

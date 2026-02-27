@@ -1,0 +1,70 @@
+/* Flight Results UI — Custom styles on top of Bootstrap 5 */
+:root{
+  --timeline-color: var(--bs-border-color);
+  --timeline-stop-bg: var(--bs-emphasis-color);
+}
+
+.airline-logo{
+  width: 40px; height: 40px;
+  font-size: 18px;
+}
+
+.card-flight .timeline,
+.flight-tile .timeline{
+  position: relative;
+  width: 160px;
+  height: 34px;
+}
+.card-flight .timeline.small,
+.flight-tile .timeline.small { width: 120px; height: 28px; }
+
+.card-flight .timeline .line,
+.flight-tile .timeline .line{
+  position: absolute; top: 50%; left: 10px; right: 10px;
+  height: 2px; transform: translateY(-50%);
+  background: var(--timeline-color);
+}
+
+.card-flight .timeline .dot,
+.flight-tile .timeline .dot{
+  position: absolute; top: 50%;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--timeline-stop-bg);
+  transform: translate(-50%, -50%);
+}
+.card-flight .timeline .dot.start,
+.flight-tile .timeline .dot.start { left: 10px; }
+.card-flight .timeline .dot.end,
+.flight-tile .timeline .dot.end { right: 10px; transform: translate(50%, -50%); }
+.card-flight .timeline .dot.mid,
+.flight-tile .timeline .dot.mid { left: 50%; }
+
+.card-flight .timeline .stop-badge,
+.flight-tile .timeline .stop-badge{
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  font-size: .75rem;
+  border: 1px solid var(--bs-border-color);
+}
+
+.price .fs-4{ letter-spacing: .2px; }
+
+/* Compact table */
+.table-compact td, .table-compact th{ white-space: nowrap; }
+.table-compact .amenities i{ margin-right: .35rem; font-size: 1rem; color: var(--bs-secondary-color); }
+
+/* Accordion segment timeline */
+.timeline-col{
+  position: relative; width: 10px; flex: 0 0 10px;
+}
+.timeline-col .line-vert{
+  position: absolute; left: 4px; top: 8px; bottom: 8px; width: 2px;
+  background: var(--bs-border-color);
+}
+.timeline-col .dot-sm{
+  width: 8px; height: 8px; border-radius: 50%; background: var(--bs-emphasis-color);
+  position: relative; left: 1px;
+}
+
+/* Tile adjustments */
+.flight-tile .card-header{ background: var(--bs-body-bg); }
+.flight-tile .card-footer{ background: var(--bs-body-bg); }

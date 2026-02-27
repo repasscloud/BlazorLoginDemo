@@ -5,9 +5,9 @@ services:
       context: .
       dockerfile: Dockerfile.blazor
       args:
-        CSPROJ_WEB: BlazorLoginDemo.Web/BlazorLoginDemo.Web.csproj
-        CSPROJ_SHARED: BlazorLoginDemo.Shared/BlazorLoginDemo.Shared.csproj
-        APP_DLL: BlazorLoginDemo.Web.dll
+        CSPROJ_WEB: Cinturon360.Web/Cinturon360.Web.csproj
+        CSPROJ_SHARED: Cinturon360.Shared/Cinturon360.Shared.csproj
+        APP_DLL: Cinturon360.Web.dll
     image: blazor-app:dev
     container_name: blazor
     restart: unless-stopped

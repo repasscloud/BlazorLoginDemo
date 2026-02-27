@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flight Results v3 · Hybrid Carrier Demo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root{
+      --ring:#0d6efd;
+      --muted:#6c757d;
+      --chip:#eef2ff;
+      --card-r:1rem;
+    }
+    body{background:#f7f8fa}
+    .sidebar{position:sticky; top:1rem}
+    .brand{font-weight:700; letter-spacing:.2px}
+    .air-logo{width:28px;height:28px;object-fit:contain;border-radius:4px;background:#fff}
+    .carrier-stack{display:flex; align-items:center; gap:.5rem}
+    .carrier-meta{display:flex; gap:.5rem; flex-wrap:wrap}
+    .flight-chip{background:var(--chip); color:#3949ab; border-radius:999px; padding:.1rem .5rem; font-weight:600; font-size:.75rem}
+    .badge-stop{background:#fff3cd;color:#856404;border:1px solid #ffe8a1}
+    .badge-nonstop{background:#d1e7dd;color:#0f5132;border:1px solid #badbcc}
+    .chip{background:var(--chip); color:#3949ab; border-radius:999px; padding:.15rem .5rem; font-weight:600; font-size:.8rem}
+    .price{font-weight:800; font-size:1.15rem}
+    .subtle{color:var(--muted); font-size:.875rem}
+    .table thead th{position:sticky; top:0; background:#fff; z-index:2}
+    .collapse-cell{background:#fff}
+    .leg{display:flex; gap:.75rem; align-items:flex-start}
+    .leg .dot{width:8px;height:8px;border-radius:50%;background:#0d6efd;margin-top:.5rem}
+    .leg .logo{width:20px;height:20px;object-fit:contain;border-radius:4px;background:#fff;margin-top:.2rem}
+    .timeline{display:flex; align-items:center; gap:.4rem}
+    .timeline .bar{height:4px; background:#0d6efd; border-radius:4px; flex:0 0 calc(var(--mins) * 1.2px);}
+    .table-hover>tbody>tr:hover>*{background-color:rgba(13,110,253,.03)}
+    tbody.result-item>tr:first-child{cursor:pointer}
+    .result-selected{outline:2px solid var(--ring); outline-offset:2px}
+  
+    html { scrollbar-gutter: stable; }
+    /* Keep column widths fixed so header/body do not shift */
+    .table.stable { table-layout: fixed; }
+    .table.stable th, .table.stable td { white-space: nowrap; }
+    /* Prevent collapse content from overflowing horizontally */
+    tr.collapse.collapse-cell > td { padding: 0; }
+    .collapse-body { padding: .75rem; }
+    .collapse-body .row { margin-left: 0 !important; margin-right: 0 !important; --bs-gutter-x: 1rem; }
+
+  
+    /* Smooth inner collapse only, avoid table reflow */
+    .collapse-body-wrap { overflow: hidden; transition: height .24s ease, opacity .24s ease; }
+    .collapse-body-wrap:not(.show) { opacity: 0; }
+    .collapse-body-wrap.show { opacity: 1; }
+    /* Remove flight chips under logos per request */
+    .carrier-meta { display: none !important; }
+
+  
+    /* Remove Bootstrap's tbody separators that create gaps between result groups */
+    .table.stable > :not(:first-child){ border-top: 0 !important; }
+    .table.stable > tbody + tbody{ border-top: 0 !important; }
+    /* Remove selection outlines (no blue lines on compare) */
+    .result-selected{ outline: none !important; outline-offset: 0 !important; }
+
+  
+    /* No borders on the hidden details row */
+    .table.stable tr.collapse-cell > td { border-bottom: 0 !important; }
+
+  </style>
+</head>
+<body>
+  <div class="container-fluid py-4 py-md-5">
+    <header class="mb-4">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h1 class="h4 brand mb-1">Flight Results v3</h1>
+          <p class="text-secondary mb-0">Hybrid carrier legs with logos and numbers. Table + per-row details.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-outline-primary btn-sm" id="resetFilters">Reset filters</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="row g-4">
+      <!-- Sidebar filters -->
+      <aside class="col-12 col-lg-3 col-xl-2">
+        <div class="sidebar">
+          <div class="p-3 rounded-4 border bg-white">
+            <div class="d-flex align-items-center justify-content-between">
+              <strong>Filters</strong>
+              <span class="text-secondary small" id="resultCount"></span>
+            </div>
+            <hr class="my-2">
+            <div class="mb-3">
+              <label class="form-label">Search</label>
+              <input id="fText" class="form-control form-control-sm" placeholder="Airline, route, number">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Cabin</label>
+              <select id="fCabin" class="form-select form-select-sm">
+                <option value="">Any</option>
+                <option>Economy</option>
+                <option>Premium Economy</option>
+                <option>Business</option>
+                <option>First</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Stops</label>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fNonstop" value="0">
+                <label class="form-check-label" for="fNonstop">Nonstop only</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fOneStop" value="1">
+                <label class="form-check-label" for="fOneStop">≤ 1 stop</label>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Amenities</label>
+              <div class="d-grid gap-2">
+                <div class="form-check"><input class="form-check-input amenity" id="aWifi" type="checkbox" value="wifi"><label class="form-check-label" for="aWifi"><i class="bi bi-wifi me-1"></i> Wi‑Fi</label></div>
+                <div class="form-check"><input class="form-check-input amenity" id="aPower" type="checkbox" value="power"><label class="form-check-label" for="aPower"><i class="bi bi-lightning-charge me-1"></i> Power</label></div>
+                <div class="form-check"><input class="form-check-input amenity" id="aUsb" type="checkbox" value="usb"><label class="form-check-label" for="aUsb"><i class="bi bi-usb-symbol me-1"></i> USB</label></div>
+                <div class="form-check"><input class="form-check-input amenity" id="aIfe" type="checkbox" value="ife"><label class="form-check-label" for="aIfe"><i class="bi bi-tv me-1"></i> IFE</label></div>
+                <div class="form-check"><input class="form-check-input amenity" id="aMeal" type="checkbox" value="meal"><label class="form-check-label" for="aMeal"><i class="bi bi-cup-hot me-1"></i> Meal</label></div>
+                <div class="form-check"><input class="form-check-input amenity" id="aLieflat" type="checkbox" value="lieflat"><label class="form-check-label" for="aLieflat"><i class="bi bi-moon-stars me-1"></i> Lie‑flat</label></div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Price (AUD)</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">$</span>
+                <input id="fMin" class="form-control" type="number" placeholder="Min">
+                <span class="input-group-text">$</span>
+                <input id="fMax" class="form-control" type="number" placeholder="Max">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Depart window</label>
+              <select id="fDepart" class="form-select form-select-sm">
+                <option value="">Any</option>
+                <option value="morning">Morning 05:00–11:59</option>
+                <option value="afternoon">Afternoon 12:00–17:59</option>
+                <option value="evening">Evening 18:00–23:59</option>
+                <option value="overnight">Overnight 00:00–04:59</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <section class="col-12 col-lg-9 col-xl-10">
+        <div class="table-responsive rounded-4 border bg-white results-scope">
+          <table class="table table-hover align-middle mb-0 stable">
+            <thead class="table-light">
+              <tr>
+                <th>Airline</th>
+                <th>Depart</th>
+                <th>Arrive</th>
+                <th>Duration</th>
+                <th>Stops</th>
+                <th>Cabin</th>
+                <th class="text-end">Price</th>
+                <th class="text-end" style="width:130px">Action</th>
+              </tr>
+            </thead>
+
+            <!-- Hybrid carrier sample: QF + SQ (SQ334) -->
+            <tbody class="result-item" data-airline="QF SQ" data-stops="1" data-cabin="Business" data-amenities="wifi power usb ife meal lieflat" data-price="5480" data-depart="20:55">
+              <tr>
+                <td>
+                  <div class="carrier-stack">
+                    <img class="air-logo" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/qf.webp" alt="Qantas">
+                    <img class="air-logo" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/sq.webp" alt="Singapore Airlines">
+                  </div>
+                  <div class="carrier-meta mt-1">
+                    <span class="flight-chip">QF1</span>
+                    <span class="flight-chip">SQ334</span>
+                                      </div>
+                  </div>
+                </td>
+                <td>20:55 SYD<br><span class="subtle">Mon 10 Nov</span></td>
+                <td>06:15 LHR<br><span class="subtle">Tue 11 Nov</span></td>
+                <td>24h 20m</td>
+                <td><span class="badge badge-stop">1 stop</span></td>
+                <td><span class="chip">Business</span></td>
+                <td class="text-end"><span class="price">$5,480</span> <span class="subtle">AUD</span></td>
+                <td class="text-end"><button class="btn btn-primary btn-sm select-btn">Select</button></td>
+              </tr>
+              <tr class="collapse-cell"><td></td><td colspan="7" class="p-0"><div id="d-qf1-sq334" class="collapse collapse-body-wrap"><div class="collapse-body">
+                    <div class="row g-4">
+                    <div class="col-12 col-lg-7">
+                      <!-- Leg 1: Qantas -->
+                      <div class="leg">
+                        <span class="dot"></span>
+                        <div>
+                          <div class="d-flex align-items-center gap-2">
+                            <img class="logo" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/qf.webp" alt="Qantas">
+                            <div class="fw-semibold">QF1 · SYD → SIN · 20:55 → 02:10 (+1) · 8h 15m</div>
+                          </div>
+                          <div class="subtle">A380 · Seat 1‑2‑1 · Wi‑Fi · Power · USB · IFE · Meal</div>
+                        </div>
+                      </div>
+
+                      <!-- Layover -->
+                      <div class="ms-4 my-2">
+                        <div class="timeline">
+                          <span class="subtle small">Layover SIN</span>
+                          <div class="bar" style="--mins: 75;"></div>
+                          <span class="subtle small">1h 15m</span>
+                        </div>
+                      </div>
+
+                      <!-- Leg 2: Singapore Airlines -->
+                      <div class="leg">
+                        <span class="dot"></span>
+                        <div>
+                          <div class="d-flex align-items-center gap-2">
+                            <img class="logo" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/sq.webp" alt="Singapore Airlines">
+                            <div class="fw-semibold">SQ334 · SIN → LHR · 03:25 → 06:15 · 13h 50m</div>
+                          </div>
+                          <div class="subtle">A380 · Seat 1‑2‑1 · Wi‑Fi · Power · USB · IFE · Meal</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-12 col-lg-5">
+                      <div class="row g-2">
+                        <div class="col-6"><div class="subtle">Baggage</div><div>2×32kg</div></div>
+                        <div class="col-6"><div class="subtle">Change</div><div>Flexible</div></div>
+                        <div class="col-6"><div class="subtle">Refund</div><div>Partial</div></div>
+                        <div class="col-6"><div class="subtle">Seats</div><div>Choose later</div></div>
+                        <div class="col-12"><div class="subtle">Inclusions</div>
+                          <div class="d-flex flex-wrap gap-2 mt-1 text-secondary">
+                            <span class="badge bg-light border"><i class="bi bi-wifi me-1"></i>Wi‑Fi</span>
+                            <span class="badge bg-light border"><i class="bi bi-lightning-charge me-1"></i>Power</span>
+                            <span class="badge bg-light border"><i class="bi bi-usb-symbol me-1"></i>USB</span>
+                            <span class="badge bg-light border"><i class="bi bi-tv me-1"></i>IFE</span>
+                            <span class="badge bg-light border"><i class="bi bi-cup-hot me-1"></i>Meal</span>
+                            <span class="badge bg-light border"><i class="bi bi-moon-stars me-1"></i>Lie‑flat</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                                      </div>
+                  </div></div></td></tr>
+            </tbody>
+
+            <!-- SQ example -->
+            <tbody class="result-item" data-airline="SQ" data-stops="0" data-cabin="Premium Economy" data-amenities="wifi power ife meal" data-price="1590" data-depart="09:20">
+              <tr>
+                <td>
+                  <div class="carrier-stack">
+                    <img class="air-logo" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/sq.webp" alt="Singapore Airlines">
+                  </div>
+                  <div class="carrier-meta mt-1">
+                    <span class="flight-chip">SQ232</span>
+                                      </div>
+                  </div>
+                </td>
+                <td>09:20 SYD<br><span class="subtle">Mon 10 Nov</span></td>
+                <td>15:05 SIN<br><span class="subtle">Mon 10 Nov</span></td>
+                <td>8h 45m</td>
+                <td><span class="badge badge-nonstop">Nonstop</span></td>
+                <td><span class="chip">Premium Economy</span></td>
+                <td class="text-end"><span class="price">$1,590</span> <span class="subtle">AUD</span></td>
+                <td class="text-end"><button class="btn btn-primary btn-sm select-btn">Select</button></td>
+              </tr>
+              <tr class="collapse-cell"><td></td><td colspan="7" class="p-0"><div id="d-sq232" class="collapse collapse-body-wrap"><div class="collapse-body">
+                    <div class="row g-4">
+                    <div class="col-12 col-lg-7">
+                      <div class="leg">
+                        <span class="dot"></span>
+                        <div>
+                          <div class="d-flex align-items-center gap-2">
+                            <img class="logo" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/sq.webp" alt="Singapore Airlines">
+                            <div class="fw-semibold">SQ232 · SYD → SIN · 09:20 → 15:05 · 8h 45m</div>
+                          </div>
+                          <div class="subtle">A350 · Seat 2‑4‑2 · Wi‑Fi · Power · IFE · Meal</div>
+                        </div>
+                      </div>
+                      <div class="ms-4 my-2 subtle">No layovers</div>
+                    </div>
+                    <div class="col-12 col-lg-5">
+                      <div class="row g-2">
+                        <div class="col-6"><div class="subtle">Baggage</div><div>2×23kg</div></div>
+                        <div class="col-6"><div class="subtle">Change</div><div>Fee applies</div></div>
+                        <div class="col-6"><div class="subtle">Refund</div><div>No</div></div>
+                        <div class="col-6"><div class="subtle">Seats</div><div>Preselect</div></div>
+                        <div class="col-12"><div class="subtle">Inclusions</div>
+                          <div class="d-flex flex-wrap gap-2 mt-1 text-secondary">
+                            <span class="badge bg-light border"><i class="bi bi-wifi me-1"></i>Wi‑Fi</span>
+                            <span class="badge bg-light border"><i class="bi bi-lightning-charge me-1"></i>Power</span>
+                            <span class="badge bg-light border"><i class="bi bi-tv me-1"></i>IFE</span>
+                            <span class="badge bg-light border"><i class="bi bi-cup-hot me-1"></i>Meal</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                                      </div>
+                  </div></div></td></tr>
+            </tbody>
+
+          </table>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex justify-content-end gap-2 mt-3">
+          <button class="btn btn-outline-secondary" id="compareBtn" disabled>Compare</button>
+          <button class="btn btn-primary" id="continueBtn" disabled>Continue with selected</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Row-click toggle. Click row to open/close. Only one open at a time.
+    document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style');
+      style.textContent = `.collapsing{transition:height .24s ease}`;
+      document.head.appendChild(style);
+
+      const items = document.querySelectorAll('tbody.result-item');
+      let openDetails = null;
+
+      items.forEach(tb => {
+        const row = tb.querySelector('tr');
+        const detailsRow = row ? row.nextElementSibling : null;
+        const details = detailsRow ? detailsRow.querySelector('.collapse-body-wrap') : null;
+        if (detailsRow) { detailsRow.style.display = 'none'; } // hide the spacer row when closed
+
+        if (!row || !details || !details.classList.contains('collapse')) return;
+        const collapse = bootstrap.Collapse.getOrCreateInstance(details, { toggle:false });
+
+        row.addEventListener('click', (ev) => {
+          if (ev.target.closest('button, a.btn, .btn')) return;
+          if (openDetails && openDetails !== details) {
+            bootstrap.Collapse.getInstance(openDetails)?.hide();
+          }
+          if (details.classList.contains('show')) { collapse.hide(); openDetails = null; }
+          else { collapse.show(); openDetails = details; }
+        });
+        
+        details.addEventListener('hidden.bs.collapse', () => {
+          if (openDetails === details) openDetails = null;
+          if (detailsRow) detailsRow.style.display = 'none';
+        });
+
+        
+        details.addEventListener('show.bs.collapse', () => { if (detailsRow) detailsRow.style.display = 'table-row'; });
+        details.addEventListener('shown.bs.collapse', () => { openDetails = details; });
+
+      });
+
+      // "Select" behavior
+      const selected = new Set();
+      const compareBtn = document.getElementById('compareBtn');
+      const continueBtn = document.getElementById('continueBtn');
+      function refreshSelection(){ compareBtn.disabled = selected.size < 2; continueBtn.disabled = selected.size < 1; }
+      document.querySelectorAll('.select-btn').forEach((b, idx) => {
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const item = b.closest('.result-item');
+          const id = item?.dataset.airline + '-' + (item?.querySelector('.flight-chip')?.textContent || idx);
+          if (item?.classList.contains('result-selected')) {
+            item.classList.remove('result-selected'); selected.delete(id);
+            b.textContent = 'Select'; b.classList.remove('btn-success'); b.classList.add('btn-primary');
+          } else {
+            item?.classList.add('result-selected'); selected.add(id);
+            b.textContent = 'Selected'; b.classList.remove('btn-primary'); b.classList.add('btn-success');
+          }
+          refreshSelection();
+        });
+      });
+
+      // Filters
+      const scope = document.querySelector('.results-scope');
+      const fText = document.getElementById('fText');
+      const fCabin = document.getElementById('fCabin');
+      const fNonstop = document.getElementById('fNonstop');
+      const fOneStop = document.getElementById('fOneStop');
+      const aChecks = document.querySelectorAll('.amenity');
+      const fMin = document.getElementById('fMin');
+      const fMax = document.getElementById('fMax');
+      const fDepart = document.getElementById('fDepart');
+      const resetBtn = document.getElementById('resetFilters');
+      const resultCount = document.getElementById('resultCount');
+
+      function departBucket(hhmm){ const [h,m]=hhmm.split(':').map(Number); const t=h*60+m; if(t<300)return'overnight'; if(t<720)return'morning'; if(t<1080)return'afternoon'; return'evening'; }
+
+      function applyFilters(){
+        let visible=0;
+        scope.querySelectorAll('.result-item').forEach(item=>{
+          const airline=(item.dataset.airline||'').toLowerCase();
+          const cabin=(item.dataset.cabin||'').toLowerCase();
+          const stops=parseInt(item.dataset.stops||'0',10);
+          const price=parseFloat(item.dataset.price||'0');
+          const ams=(item.dataset.amenities||'').toLowerCase().split(/\s+/);
+          const dep=item.dataset.depart||'';
+
+          const q=(fText.value||'').trim().toLowerCase();
+          const textOk=!q || airline.includes(q) || (item.textContent||'').toLowerCase().includes(q);
+          const cabinOk=!fCabin.value || cabin===fCabin.value.toLowerCase();
+          let stopsOk=true; if(fNonstop.checked)stopsOk=stops===0; else if(fOneStop.checked)stopsOk=stops<=1;
+          let amenOk=true; aChecks.forEach(ch=>{ if(ch.checked && !ams.includes(ch.value)) amenOk=false; });
+          const minOk=!fMin.value || price>=parseFloat(fMin.value);
+          const maxOk=!fMax.value || price<=parseFloat(fMax.value);
+          const depOk=!fDepart.value || departBucket(dep)===fDepart.value;
+          const ok=textOk&&cabinOk&&stopsOk&&amenOk&&minOk&&maxOk&&depOk;
+          item.style.display = ok ? 'table-row-group' : 'none';
+          if(ok) visible++;
+        });
+        resultCount.textContent = visible + ' shown';
+      }
+      [fText,fCabin,fNonstop,fOneStop,fMin,fMax,fDepart].forEach(el=>el?.addEventListener('input',applyFilters));
+      aChecks.forEach(ch=>ch.addEventListener('input',applyFilters));
+      document.addEventListener('DOMContentLoaded',applyFilters);
+      applyFilters();
+      resetBtn?.addEventListener('click',()=>{ fText.value=''; fCabin.value=''; fNonstop.checked=false; fOneStop.checked=false; aChecks.forEach(ch=>ch.checked=false); fMin.value=''; fMax.value=''; fDepart.value=''; applyFilters(); });
+    });
+  </script>
+</body>
+</html>

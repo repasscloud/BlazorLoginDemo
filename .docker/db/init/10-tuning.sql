@@ -1,0 +1,6 @@
+-- Basic memory tuning for 8GB Postgres container
+--ALTER SYSTEM SET shared_buffers        = '2GB';
+--ALTER SYSTEM SET effective_cache_size  = '6GB';
+--ALTER SYSTEM SET work_mem              = '32MB';
+--ALTER SYSTEM SET maintenance_work_mem  = '512MB';
+--ALTER SYSTEM SET max_connections       = 100;

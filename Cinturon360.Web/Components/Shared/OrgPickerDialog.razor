@@ -1,0 +1,112 @@
+@namespace Cinturon360.Web.Components.Shared
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@inject IAdminOrgServiceUnified Orgs
+
+@if (IsOpen)
+{
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title">Select organization</h6>
+          <button type="button" class="btn-close" @onclick="Cancel" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-2 mb-2">
+            <div class="col-sm-6">
+              <input class="form-control" placeholder="Search by org name"
+                     @bind="search" @bind:event="oninput" />
+            </div>
+            <div class="col-sm-6 text-sm-end small text-body-secondary">
+              <span>@_filtered.Count of @_all.Count</span>
+            </div>
+          </div>
+
+          <div class="list-group">
+            @foreach (var o in _filtered)
+            {
+              <button type="button"
+                      class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(o.Id==_selectedId ? "active" : "")"
+                      @onclick="() => _selectedId = o.Id">
+                <div class="me-3">
+                  <div class="fw-semibold">@o.Name</div>
+                  <div class="small text-body-secondary">@o.Id</div>
+                </div>
+                <i class="bi @(o.Id==_selectedId ? "bi-check2-circle" : "bi-circle")"></i>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" @onclick="Cancel">Cancel</button>
+          <button class="btn btn-primary" type="button" disabled="@(_selectedId is null)" @onclick="Assign">Assign</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@code {
+    // Public API
+    public bool IsOpen { get; private set; }
+    public async Task<IAdminOrgServiceUnified.OrganizationPickerDto?> ShowAsync(string? preselectId = null)
+    {
+        _tcs = new TaskCompletionSource<IAdminOrgServiceUnified.OrganizationPickerDto?>();
+        if (!_loaded)
+        {
+            _all = (await Orgs.GetAllForPickerAsync()).ToList(); // load all once
+            _loaded = true;
+        }
+        _selectedId = preselectId;
+        Filter();
+        IsOpen = true;
+        StateHasChanged();
+        return await _tcs.Task;
+    }
+
+    // Internal state
+    private List<IAdminOrgServiceUnified.OrganizationPickerDto> _all = new();
+    private List<IAdminOrgServiceUnified.OrganizationPickerDto> _filtered = new();
+    private bool _loaded;
+    private string? _selectedId;
+    private string search = string.Empty;
+    private TaskCompletionSource<IAdminOrgServiceUnified.OrganizationPickerDto?>? _tcs;
+
+    private void Filter()
+    {
+        string? s = (search ?? string.Empty).Trim().ToLowerInvariant();
+
+        // Show all when search empty. Else, Name-only filter.
+        _filtered = string.IsNullOrEmpty(s)
+        ? _all
+        : _all.Where(o => (o.Name ?? string.Empty).ToLowerInvariant().Contains(s))
+            .ToList();
+    }
+
+    private void Cancel() => Close(result: null);
+
+    private void Assign()
+    {
+        IAdminOrgServiceUnified.OrganizationPickerDto? chosen = _all.FirstOrDefault(x => x.Id == _selectedId);
+        Close(chosen);
+    }
+
+    private void Close(IAdminOrgServiceUnified.OrganizationPickerDto? result)
+    {
+        IsOpen = false;
+        _tcs?.TrySetResult(result);
+        StateHasChanged();
+    }
+
+    // Keep results live-updating as you type
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (IsOpen) Filter();
+    }
+
+// used on:
+//   - /Components/Pages/Platform/Finance/Discounts/NewDiscount.razor
+}

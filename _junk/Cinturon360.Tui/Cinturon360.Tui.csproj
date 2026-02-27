@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Choose one: osx-arm64 (Apple Silicon) or osx-x64 (Intel) -->
+    <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
+
+    <!-- Self-contained so the runtime is baked in -->
+    <SelfContained>true</SelfContained>
+
+    <!-- Single file output -->
+    <PublishSingleFile>true</PublishSingleFile>
+
+    <!-- Explicitly disable trimming -->
+    <PublishTrimmed>false</PublishTrimmed>
+
+    <!-- Optional: keep everything packed and self-extract at runtime -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageReference Include="Terminal.Gui" Version="1.19.0" />
+  </ItemGroup>
+
+  
+  <ItemGroup>
+    <ProjectReference Include="..\Cinturon360.Shared\Cinturon360.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

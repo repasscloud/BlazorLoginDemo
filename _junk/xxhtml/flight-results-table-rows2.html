@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flight Results · Table with Per‑Row Details</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root{
+      --ring:#0d6efd;
+      --muted:#6c757d;
+    }
+    body{background:#f6f7fb}
+    .brand{font-weight:700; letter-spacing:.2px}
+    .air-logo{width:28px;height:28px;object-fit:contain;border-radius:4px; background:#fff}
+    .result-selected{outline:2px solid var(--ring); outline-offset:2px}
+    .row-toggle{cursor:pointer}
+    .table-hover>tbody>tr:hover>*{background-color:rgba(13,110,253,.03)}
+    .detail-cell{background:#fff}
+    .leg{display:flex; gap:.75rem; align-items:flex-start}
+    .leg .dot{width:8px;height:8px;border-radius:50%;background:#0d6efd;margin-top:.5rem}
+    .timeline{display:flex; align-items:center; gap:.35rem}
+    .timeline .bar{height:4px; background:#0d6efd; flex:1; border-radius:4px}
+    .chip{border-radius:999px; padding:.15rem .5rem; font-weight:600; font-size:.8rem}
+    .price{font-weight:800; font-size:1.15rem}
+    .subtle{color:var(--muted); font-size:.875rem}
+    /* Stop pills with strong contrast */
+    .pill-nonstop{background:#198754; color:#fff}     /* green */
+    .pill-1stop{background:#ffc107; color:#000}       /* amber */
+    .pill-2stop{background:#fd7e14; color:#000}       /* orange */
+    .pill-3stop{background:#dc3545; color:#fff}       /* red */
+    /* Amenity badges with saturated backgrounds for readability */
+    .amen-badge{display:inline-flex; align-items:center; gap:.35rem; font-weight:600}
+    .amen-wifi{background:#0dcaf0; color:#000}        /* info */
+    .amen-power{background:#ffc107; color:#000}       /* warning */
+    .amen-usb{background:#6c757d; color:#fff}         /* secondary */
+    .amen-ife{background:#0d6efd; color:#fff}         /* primary */
+    .amen-meal{background:#198754; color:#fff}        /* success */
+    .amen-lieflat{background:#212529; color:#fff}     /* dark */
+    .amen-badge{border-radius:999px; padding:.2rem .6rem; font-size:.8rem}
+    .amen-badge i{font-size:.9rem}
+  </style>
+</head>
+<body>
+  <div class="container py-4 py-md-5">
+    <header class="mb-4">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h1 class="h4 brand mb-1">Table + Per‑Row Details</h1>
+          <p class="text-secondary mb-0">Four examples: Nonstop, 1 stop, 2 stops, 3 stops. Strong contrast badges. Click a row to expand. Click again to close. Only one open at a time.</p>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" id="themeToggle" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
+      </div>
+    </header>
+
+    <div class="table-responsive rounded-4 border bg-white">
+      <table class="table table-hover align-middle mb-0" id="resultsTable">
+        <thead class="table-light">
+          <tr>
+            <th style="width:44px"></th>
+            <th>Airline</th>
+            <th>Depart</th>
+            <th>Arrive</th>
+            <th>Duration</th>
+            <th>Stops</th>
+            <th>Cabin</th>
+            <th class="text-end">Price</th>
+            <th class="text-end" style="width:140px">Action</th>
+          </tr>
+        </thead>
+
+        <!-- 0 stops · Singapore SQ232 SYD→SIN Nonstop -->
+        <tbody class="result-item" data-stops="0">
+          <tr class="row-toggle" data-target="#d-sq232">
+            <td>
+              <i class="bi bi-caret-down-square text-secondary"></i>
+            </td>
+            <td>
+              <img class="air-logo me-2" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/sq.webp" alt="Singapore Airlines">
+              <div>Singapore <span class="text-secondary">SQ232</span></div>
+            </td>
+            <td>09:20 SYD<br><span class="subtle">Mon 10 Nov</span></td>
+            <td>15:05 SIN<br><span class="subtle">Mon 10 Nov</span></td>
+            <td>8h 45m</td>
+            <td><span class="badge pill-nonstop">Nonstop</span></td>
+            <td><span class="chip bg-primary text-white">Premium Economy</span></td>
+            <td class="text-end"><span class="price">$1,590</span> <span class="subtle">AUD</span></td>
+            <td class="text-end"><button class="btn btn-primary btn-sm select-btn">Select</button></td>
+          </tr>
+          <tr class="collapse detail-cell" id="d-sq232">
+            <td></td>
+            <td colspan="8">
+              <div class="row g-4">
+                <div class="col-12 col-lg-7">
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">SQ232 · SYD → SIN · 09:20 → 15:05 · 8h 45m</div>
+                      <div class="subtle">A350 · Seat 2-4-2</div>
+                    </div>
+                  </div>
+                  <div class="ms-4 my-2 subtle">No layovers</div>
+                </div>
+                <div class="col-12 col-lg-5">
+                  <div class="row g-2">
+                    <div class="col-6"><div class="subtle">Baggage</div><div>2×23kg</div></div>
+                    <div class="col-6"><div class="subtle">Change</div><div>Fee applies</div></div>
+                    <div class="col-6"><div class="subtle">Refund</div><div>No</div></div>
+                    <div class="col-6"><div class="subtle">Seats</div><div>Preselect</div></div>
+                    <div class="col-12"><div class="subtle mb-1">Inclusions</div>
+                      <div class="d-flex flex-wrap gap-2">
+                        <span class="amen-badge amen-wifi"><i class="bi bi-wifi"></i> Wi‑Fi</span>
+                        <span class="amen-badge amen-power"><i class="bi bi-lightning-charge"></i> Power</span>
+                        <span class="amen-badge amen-ife"><i class="bi bi-tv"></i> IFE</span>
+                        <span class="amen-badge amen-meal"><i class="bi bi-cup-hot"></i> Meal</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+
+        <!-- 1 stop · Qantas QF1 SYD→SIN→LHR -->
+        <tbody class="result-item" data-stops="1">
+          <tr class="row-toggle" data-target="#d-qf1">
+            <td><i class="bi bi-caret-down-square text-secondary"></i></td>
+            <td>
+              <img class="air-logo me-2" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/qf.webp" alt="Qantas">
+              <div>Qantas <span class="text-secondary">QF1</span></div>
+            </td>
+            <td>20:55 SYD<br><span class="subtle">Mon 10 Nov</span></td>
+            <td>06:15 LHR<br><span class="subtle">Tue 11 Nov</span></td>
+            <td>24h 20m</td>
+            <td><span class="badge pill-1stop">1 stop</span></td>
+            <td><span class="chip bg-danger text-white">Business</span></td>
+            <td class="text-end"><span class="price">$5,480</span> <span class="subtle">AUD</span></td>
+            <td class="text-end"><button class="btn btn-primary btn-sm select-btn">Select</button></td>
+          </tr>
+          <tr class="collapse detail-cell" id="d-qf1">
+            <td></td>
+            <td colspan="8">
+              <div class="row g-4">
+                <div class="col-12 col-lg-7">
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">QF1 · SYD → SIN · 20:55 → 02:10 (+1) · 8h 15m</div>
+                      <div class="subtle">A380 · Seat 1-2-1</div>
+                    </div>
+                  </div>
+                  <div class="ms-4 my-2">
+                    <div class="timeline">
+                      <span class="subtle small">Layover SIN</span>
+                      <div class="bar"></div>
+                      <span class="subtle small">1h 15m</span>
+                    </div>
+                  </div>
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">QF1 · SIN → LHR · 03:25 → 06:15 · 13h 50m</div>
+                      <div class="subtle">A380 · Seat 1-2-1</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-lg-5">
+                  <div class="row g-2">
+                    <div class="col-6"><div class="subtle">Baggage</div><div>2×32kg</div></div>
+                    <div class="col-6"><div class="subtle">Change</div><div>Flexible</div></div>
+                    <div class="col-6"><div class="subtle">Refund</div><div>Partial</div></div>
+                    <div class="col-6"><div class="subtle">Seats</div><div>Choose later</div></div>
+                    <div class="col-12"><div class="subtle mb-1">Inclusions</div>
+                      <div class="d-flex flex-wrap gap-2">
+                        <span class="amen-badge amen-wifi"><i class="bi bi-wifi"></i> Wi‑Fi</span>
+                        <span class="amen-badge amen-power"><i class="bi bi-lightning-charge"></i> Power</span>
+                        <span class="amen-badge amen-usb"><i class="bi bi-usb-symbol"></i> USB</span>
+                        <span class="amen-badge amen-ife"><i class="bi bi-tv"></i> IFE</span>
+                        <span class="amen-badge amen-meal"><i class="bi bi-cup-hot"></i> Meal</span>
+                        <span class="amen-badge amen-lieflat"><i class="bi bi-moon-stars"></i> Lie‑flat</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+
+        <!-- 2 stops · Air China CA176/CA937 SYD→PEK→WAW→LHR (example) -->
+        <tbody class="result-item" data-stops="2">
+          <tr class="row-toggle" data-target="#d-ca2">
+            <td><i class="bi bi-caret-down-square text-secondary"></i></td>
+            <td>
+              <img class="air-logo me-2" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/ca.webp" alt="Air China">
+              <div>Air China <span class="text-secondary">CA176 · CAxxx · CA937</span></div>
+            </td>
+            <td>08:10 SYD<br><span class="subtle">Mon 10 Nov</span></td>
+            <td>08:10 LHR (+1)<br><span class="subtle">Tue 11 Nov</span></td>
+            <td>30h 00m</td>
+            <td><span class="badge pill-2stop">2 stops</span></td>
+            <td><span class="chip bg-secondary text-white">Economy</span></td>
+            <td class="text-end"><span class="price">$1,090</span> <span class="subtle">AUD</span></td>
+            <td class="text-end"><button class="btn btn-primary btn-sm select-btn">Select</button></td>
+          </tr>
+          <tr class="collapse detail-cell" id="d-ca2">
+            <td></td>
+            <td colspan="8">
+              <div class="row g-4">
+                <div class="col-12 col-lg-7">
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">CA176 · SYD → PEK · 08:10 → 18:30 · 11h 20m</div>
+                      <div class="subtle">A330 · Seat 2-4-2</div>
+                    </div>
+                  </div>
+                  <div class="ms-4 my-2">
+                    <div class="timeline">
+                      <span class="subtle small">Layover PEK</span>
+                      <div class="bar"></div>
+                      <span class="subtle small">2h 10m</span>
+                    </div>
+                  </div>
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">CAxxx · PEK → WAW · 20:40 → 00:05 (+1) · 9h 25m</div>
+                      <div class="subtle">B777 · Seat 3-3-3</div>
+                    </div>
+                  </div>
+                  <div class="ms-4 my-2">
+                    <div class="timeline">
+                      <span class="subtle small">Layover WAW</span>
+                      <div class="bar"></div>
+                      <span class="subtle small">1h 05m</span>
+                    </div>
+                  </div>
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">CA937 · WAW → LHR · 01:10 → 08:10 · 2h 00m</div>
+                      <div class="subtle">A321 · Seat 3-3</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-lg-5">
+                  <div class="row g-2">
+                    <div class="col-6"><div class="subtle">Baggage</div><div>1×23kg</div></div>
+                    <div class="col-6"><div class="subtle">Change</div><div>No</div></div>
+                    <div class="col-6"><div class="subtle">Refund</div><div>No</div></div>
+                    <div class="col-6"><div class="subtle">Seats</div><div>Auto-assign</div></div>
+                    <div class="col-12"><div class="subtle mb-1">Inclusions</div>
+                      <div class="d-flex flex-wrap gap-2">
+                        <span class="amen-badge amen-ife"><i class="bi bi-tv"></i> IFE</span>
+                        <span class="amen-badge amen-meal"><i class="bi bi-cup-hot"></i> Meal</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+
+        <!-- 3 stops · Qantas-led multi‑segment (demo) -->
+        <tbody class="result-item" data-stops="3">
+          <tr class="row-toggle" data-target="#d-qf3">
+            <td><i class="bi bi-caret-down-square text-secondary"></i></td>
+            <td>
+              <img class="air-logo me-2" src="https://static.tripcdn.com/packages/flight/airline-logo/latest/airline_logo/3x/qf.webp" alt="Qantas">
+              <div>Qantas + partners <span class="text-secondary">QFxxx</span></div>
+            </td>
+            <td>06:30 SYD<br><span class="subtle">Mon 10 Nov</span></td>
+            <td>22:10 LHR (+1)<br><span class="subtle">Tue 11 Nov</span></td>
+            <td>40h 40m</td>
+            <td><span class="badge pill-3stop">3 stops</span></td>
+            <td><span class="chip bg-info text-dark">Economy</span></td>
+            <td class="text-end"><span class="price">$980</span> <span class="subtle">AUD</span></td>
+            <td class="text-end"><button class="btn btn-primary btn-sm select-btn">Select</button></td>
+          </tr>
+          <tr class="collapse detail-cell" id="d-qf3">
+            <td></td>
+            <td colspan="8">
+              <div class="row g-4">
+                <div class="col-12 col-lg-7">
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">QFxxx · SYD → PER · 06:30 → 09:00 · 4h 30m</div>
+                      <div class="subtle">B737 · Seat 3-3</div>
+                    </div>
+                  </div>
+                  <div class="ms-4 my-2">
+                    <div class="timeline">
+                      <span class="subtle small">Layover PER</span>
+                      <div class="bar"></div>
+                      <span class="subtle small">1h 20m</span>
+                    </div>
+                  </div>
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">QFxxx · PER → DOH · 10:20 → 18:10 · 10h 50m</div>
+                      <div class="subtle">A330 · Seat 2-4-2</div>
+                    </div>
+                  </div>
+                  <div class="ms-4 my-2">
+                    <div class="timeline">
+                      <span class="subtle small">Layover DOH</span>
+                      <div class="bar"></div>
+                      <span class="subtle small">3h 00m</span>
+                    </div>
+                  </div>
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">QFxxx · DOH → FRA · 21:10 → 02:45 (+1) · 7h 35m</div>
+                      <div class="subtle">A350 · Seat 3-3-3</div>
+                    </div>
+                  </div>
+                  <div class="ms-4 my-2">
+                    <div class="timeline">
+                      <span class="subtle small">Layover FRA</span>
+                      <div class="bar"></div>
+                      <span class="subtle small">2h 15m</span>
+                    </div>
+                  </div>
+                  <div class="leg">
+                    <span class="dot"></span>
+                    <div>
+                      <div class="fw-semibold">QFxxx · FRA → LHR · 05:00 → 06:20 · 1h 20m</div>
+                      <div class="subtle">A320 · Seat 3-3</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-lg-5">
+                  <div class="row g-2">
+                    <div class="col-6"><div class="subtle">Baggage</div><div>1×23kg</div></div>
+                    <div class="col-6"><div class="subtle">Change</div><div>No</div></div>
+                    <div class="col-6"><div class="subtle">Refund</div><div>No</div></div>
+                    <div class="col-6"><div class="subtle">Seats</div><div>Auto-assign</div></div>
+                    <div class="col-12"><div class="subtle mb-1">Inclusions</div>
+                      <div class="d-flex flex-wrap gap-2">
+                        <span class="amen-badge amen-ife"><i class="bi bi-tv"></i> IFE</span>
+                        <span class="amen-badge amen-meal"><i class="bi bi-cup-hot"></i> Meal</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+
+      </table>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex justify-content-end gap-2 mt-3">
+      <button class="btn btn-outline-secondary" id="compareBtn" disabled>Compare</button>
+      <button class="btn btn-primary" id="continueBtn" disabled>Continue with selected</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Theme toggle
+    document.getElementById('themeToggle')?.addEventListener('click', () => {
+      const html = document.documentElement;
+      const mode = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-bs-theme', mode);
+    });
+
+    // Select buttons
+    const selected = new Set();
+    const compareBtn = document.getElementById('compareBtn');
+    const continueBtn = document.getElementById('continueBtn');
+    function refreshSelectionButtons(){
+      const n = selected.size;
+      compareBtn.disabled = n < 2;
+      continueBtn.disabled = n < 1;
+    }
+    document.querySelectorAll('.select-btn').forEach((b, idx) => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = b.closest('.result-item');
+        const id = (item?.querySelector('td:nth-child(2)')?.innerText || 'item-' + idx).trim();
+        if(item?.classList.contains('result-selected')){
+          item.classList.remove('result-selected'); selected.delete(id);
+          b.textContent = 'Select'; b.classList.remove('btn-success'); b.classList.add('btn-primary');
+        } else {
+          item?.classList.add('result-selected'); selected.add(id);
+          b.textContent = 'Selected'; b.classList.remove('btn-primary'); b.classList.add('btn-success');
+        }
+        refreshSelectionButtons();
+      });
+    });
+
+    // Row expand/collapse behavior
+    // Click anywhere on the main row toggles its details.
+    // Only one open at a time; clicking the same row closes it.
+    const table = document.getElementById('resultsTable');
+    function allDetails(){ return table.querySelectorAll('tr.collapse'); }
+    function hideAll(exceptId){
+      allDetails().forEach(tr => {
+        if(!exceptId || ('#'+tr.id) !== exceptId){
+          const c = bootstrap.Collapse.getOrCreateInstance(tr, {toggle:false});
+          c.hide();
+        }
+      });
+    }
+    table.querySelectorAll('tr.row-toggle').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const targetSel = tr.getAttribute('data-target');
+        if(!targetSel) return;
+        const detail = document.querySelector(targetSel);
+        const inst = bootstrap.Collapse.getOrCreateInstance(detail, {toggle:false});
+        const isShown = detail.classList.contains('show');
+        if(isShown){
+          inst.hide();
+        } else {
+          hideAll(targetSel);
+          inst.show();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
