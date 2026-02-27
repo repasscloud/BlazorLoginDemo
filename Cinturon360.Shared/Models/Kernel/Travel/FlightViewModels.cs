@@ -1,15 +1,16 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using Cinturon360.Shared.Helpers;
 using Cinturon360.Shared.Models.ExternalLib.Amadeus.Flight;
-using NanoidDotNet;
 
 namespace Cinturon360.Shared.Models.Kernel.Travel;
 
 public sealed class FlightViewOption
 {
     [Key]
-    public string Id { get; set; } = Nanoid.Generate();
+    [MaxLength(18)]
+    public string Id { get; set; } = IDGeneratorHelper.GenerateId(IdGenType.FlightView);
 
     public bool InstantTicketingRequired { get; set; } = true;
     public bool NonHomogeneous { get; set; } = false;  // true is multi-booking potential (an issue)

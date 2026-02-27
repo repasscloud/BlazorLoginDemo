@@ -7,10 +7,10 @@
 @using Cinturon360.Shared.Models.ExternalLib.Amadeus
 @using Cinturon360.Shared.Models.Kernel.UI.Amadeus
 @using System.Security.Claims
+@using Cinturon360.Shared.Models.Static.System.SysVar
 @using Cinturon360.Shared.Services.Interfaces.External
 @using Cinturon360.Shared.Services.Interfaces.Kernel
 @using Cinturon360.Shared.Services.Interfaces.Platform
-@using Serilog
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAmadeusAccountService AmadeusSvc
@@ -137,7 +137,7 @@
 @code {
     [Parameter] public string OrgId { get; set; } = string.Empty;
 
-    private AmadeusAccountEditModel _vm = new AmadeusAccountEditModel();
+    private AmadeusAccountEditModel _vm = new AmadeusAccountEditModel() { TmcId = string.Empty };
     private bool _isSaving;
     private string? _error;
 
@@ -149,8 +149,8 @@
     // -----------------
     private ClaimsPrincipal? _user;
     private string? _userId;
-    private bool _isAuthChecked;
-    private bool _isAuthenticated;
+    //private bool _isAuthChecked;
+    //private bool _isAuthenticated;
 
     private void GoBack() => Nav.NavigateTo(uri: $"/platform/organizations/{OrgId}");
     private async Task SaveAsync(bool navigateOnSuccess = true)
@@ -221,8 +221,7 @@
         else
         {
             // new account
-            _vm = new AmadeusAccountEditModel();
-            _vm.TmcId = OrgId;
+            _vm = new AmadeusAccountEditModel() { TmcId = OrgId };
             _vm.DisplayName = tmc.Org.Name ?? string.Empty;
             _hasAmadeusAccount = false;
         }
@@ -239,9 +238,9 @@
     {
         string? pageRoute = $"/platform/organizations/plugins/amadeus/{orgId}/edit";
         await _log.InformationAsync(
-            evt: "UI_PAGE_OPEN",
-            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
-            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.View,
+            evt: SysLogEvtType.UI_PAGE_OPEN,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.View,
             message: "Plugin Amadeus Account page accessed",
             uid: userId,
             entId: orgId,
@@ -253,9 +252,9 @@
     {
         string? pageRoute = $"/platform/organizations/plugins/amadeus/{orgId}/edit";
         await _log.InformationAsync(
-            evt: "UI_PLUGIN_SAVED",
-            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
-            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Submit,
+            evt: SysLogEvtType.UI_SAVE_PRESSED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Submit,
             message: "Plugin Amadeus Account changes saved",
             uid: userId,
             entId: orgId,
@@ -267,9 +266,9 @@
     {
         string? pageRoute = $"/platform/organizations/plugins/amadeus/{orgId}/edit";
         await _log.ErrorAsync(
-            evt: "UI_PLUGIN_ERROR",
-            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
-            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.End,
+            evt: SysLogEvtType.DATA_SAVE_ERR,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.End,
             ex: ex,
             message: $"Plugin Amadeus Account error: {errorMessage}",
             uid: userId,

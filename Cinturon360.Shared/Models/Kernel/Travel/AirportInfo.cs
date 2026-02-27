@@ -1,13 +1,15 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using Cinturon360.Shared.Models.Static;
+using Cinturon360.Shared.Helpers;
+using Cinturon360.Shared.Models.Static.Geography;
 
 namespace Cinturon360.Shared.Models.Kernel.Travel;
 
 public class AirportInfo
 {
     [Key]
-    public int Id { get; set; }
+    [MaxLength(10)]
+    public string Id { get; set; } = IDGeneratorHelper.GenerateId(IdGenType.Airport);
 
     public string Ident { get; set; } = default!;
 
@@ -29,9 +31,5 @@ public class AirportInfo
     public string? IataCode { get; set; }
     public string? LocalCode { get; set; }   
 }
-
-
-
-
 
 // "id","ident","type","name","latitude_deg","longitude_deg","elevation_ft","continent","iso_country","iso_region","municipality","scheduled_service","gps_code","iata_code","local_code","home_link","wikipedia_link","keywords"

@@ -5,7 +5,10 @@
 @using Cinturon360.Shared.Auth
 @using Cinturon360.Shared.Models.Kernel.Billing
 @using Cinturon360.Shared.Models.Kernel.Platform
+@using Cinturon360.Shared.Models.Static.Geography
+@using Cinturon360.Shared.Models.Static.Identity
 @using Cinturon360.Shared.Models.Static.Platform
+@using Cinturon360.Shared.Models.Static.System.SysVar
 @using Cinturon360.Shared.Services.Interfaces.Kernel
 @using Cinturon360.Shared.Services.Interfaces.Platform
 @using Cinturon360.Web.Components.Shared
@@ -16,6 +19,7 @@
 @using System.Security.Claims;
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
+@using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAdminOrgServiceUnified OrgSvc
@@ -74,7 +78,7 @@
             <div class="col-md-3">
                 <label class="form-label">Id</label>
                 <div class="input-group">
-                    <InputText class="form-control bg-light" @bind-Value="_vm.Organization.Id" readonly />
+                    <InputText class="form-control bg-light" Value="_vm.Organization.Id" readonly />
                     <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(_vm.Organization.Id)">
                         <i class="bi bi-clipboard"></i>
                     </button>
@@ -170,9 +174,11 @@
                                     </span>
 
                                     <!-- Country: white on black -->
-                                    @if (!string.IsNullOrWhiteSpace(c.Country))
+                                    @if (Enum.IsDefined(typeof(PassportCountry), c.Country))
                                     {
-                                        <span class="badge rounded-pill text-bg-dark">@c.Country</span>
+                                        <span class="badge rounded-pill text-bg-dark">
+                                            @c.Country.GetDisplayName()
+                                        </span>
                                     }
 
                                     <!-- TaxId: show only if present, info color -->
@@ -848,7 +854,7 @@
     </div>
 </EditForm>
 
-<OrgPickerModal @ref="_orgPicker" />
+@* <OrgPickerModal @ref="_orgPicker" /> *@
 
 @code {
     // -----------------
@@ -913,9 +919,9 @@
     {
         string? pageRoute = $"/platform/organizations/{orgId}/edit";
         await _log.InformationAsync(
-            evt: "UI_PAGE_OPEN",
-            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
-            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.View,
+            evt: SysLogEvtType.UI_PAGE_OPEN,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.View,
             message: "Org Edit page accessed",
             uid: userId,
             org: orgId,
@@ -927,9 +933,9 @@
     {
         string? pageRoute = $"/platform/organizations/{orgId}/edit";
         await _log.InformationAsync(
-            evt: "UI_EDIT_MODE_ENABLED",
-            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
-            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Click,
+            evt: SysLogEvtType.UI_EDIT_MODE_ENABLED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Click,
             message: $"Org Edit section clicked: {sectionName}",
             uid: userId,
             org: orgId,
@@ -941,9 +947,9 @@
     {
         string? pageRoute = $"/platform/organizations/{orgId}/edit";
         await _log.InformationAsync(
-            evt: "UI_ORG_EDIT_SAVED",
-            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
-            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Submit,
+            evt: SysLogEvtType.UI_SAVE_PRESSED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Submit,
             message: "Org Edit changes saved",
             uid: userId,
             org: orgId,
@@ -1401,14 +1407,14 @@
     }
 
     // Modal reference
-    private OrgPickerModal? _orgPicker;
+    //private OrgPickerModal? _orgPicker;
 
     // Optional friendly display text (Name + Id)
-    private string? _parentOrgDisplay;
+    //private string? _parentOrgDisplay;
 
     private async Task OpenParentPickerAsync()
     {
-        var excludeId = _vm?.Organization?.Id;
+        @* var excludeId = _vm?.Organization?.Id;
 
         var picked = await _orgPicker!.OpenAsync(
             excludeOrgId: excludeId,
@@ -1427,7 +1433,7 @@
         _parentOrgDisplay = $"{picked.Name} ({picked.Id})";
 
         // Save but stay on this page even if it fails (error will show in the alert)
-        await SaveAsync(navigateOnSuccess: false);
+        await SaveAsync(navigateOnSuccess: false); *@
     }
 
     private static string BuildDomainConflictMessage(string serverMessage, string attemptedDomain)
@@ -1541,7 +1547,7 @@
         return;
     }
 
-    public async Task ValidateTaxIdAsync(string orgId, string taxIdType)
+    public async Task ValidateTaxIdAsync(string orgId, TaxIdType taxIdType)
     {
         if (string.IsNullOrWhiteSpace(_vm.Organization.TaxId))
             return;

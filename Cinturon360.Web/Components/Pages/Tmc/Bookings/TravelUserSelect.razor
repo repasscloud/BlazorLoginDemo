@@ -5,6 +5,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Cinturon360.Shared.Models.Static.Platform
 @using System.Text.Json;
+@using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes
 
 @attribute [Authorize(Policy = "Shared:BookingSelect")]
 
@@ -136,7 +137,7 @@ else
 
         if (IsSudo)
         {
-            Vendors = (await OrgSvc.SearchAsync(type: OrganizationType.Vendor))
+            Vendors = (await OrgSvc.SearchAsync(type: OrganizationType.MasterVendor))
                       .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
                       {
                           Id = a.Org.Id,

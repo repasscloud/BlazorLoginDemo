@@ -1,9 +1,7 @@
-using System.Net.Mime;
 using System.Text.Json;
 using Cinturon360.Shared.Models.Kernel.SysVar;
-using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Cinturon360.Api.Infrastructure.Middleware;
@@ -37,7 +35,7 @@ public sealed class ProblemDetailsExceptionMiddleware : IMiddleware
             var org = RequestContext.GetOrgId(context);
 
             await _log.ErrorAsync(
-                evt: "UNHANDLED_EXCEPTION",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Api,
                 act: SysLogActionType.Read,
                 ex: ex,

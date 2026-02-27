@@ -1,19 +1,19 @@
 // ApplicationDbContext.cs (overhauled)
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-
 using Cinturon360.Shared.Models.Auth;                       // RefreshToken
 using Cinturon360.Shared.Models.Kernel.Travel;              // TravelPolicy, Region, Continent, Country, etc.
 using Cinturon360.Shared.Models.ExternalLib.Amadeus;        // AmadeusOAuthToken
 using Cinturon360.Shared.Models.ExternalLib.Kernel.Flight;
-using Cinturon360.Shared.Models.Kernel.SysVar;              // AvaSystemLog
+using Cinturon360.Shared.Models.Kernel.SysVar;              // C360SystemLog
 using Cinturon360.Shared.Models.Kernel.Platform;            // OrganizationUnified, OrganizationDomainUnified
 using Cinturon360.Shared.Models.Kernel.Billing;             // LicenseAgreementUnified
 using Cinturon360.Shared.Models.Policies;                   // ExpensePolicy
 using Cinturon360.Shared.Models.User;
 using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.Kernel.FX;
-using Cinturon360.Shared.Models.Static.Travel;              // AvaUserLoyaltyAccount (legacy shape retained)
+using Cinturon360.Shared.Models.Static.Travel;
+using Cinturon360.Shared.Models.Geography;
 
 namespace Cinturon360.Shared.Data;
 
@@ -25,7 +25,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // Core / Logs
     // ---------------------------
     public DbSet<QueuedJob> QueuedJobs => Set<QueuedJob>();
-    public DbSet<AvaSystemLog> AvaSystemLogs => Set<AvaSystemLog>();
+    public DbSet<C360SystemLog> C360SystemLogs => Set<C360SystemLog>();
     public DbSet<ErrorCodeUnified> ErrorCodes => Set<ErrorCodeUnified>();
     public DbSet<ExchangeRateSnapshot> ExchangeRateSnapshots => Set<ExchangeRateSnapshot>();
 
@@ -89,19 +89,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<QueuedJob>(e =>
         {
-           e.ToTable("queued_jobs", "ava");
+           e.ToTable("queued_jobs", "c360_core");
            e.HasKey(x => x.Id); 
         });
 
-        builder.Entity<AvaSystemLog>(e =>
+        builder.Entity<C360SystemLog>(e =>
         {
-            e.ToTable("ava_system_logs", "avasyslog");
+            e.ToTable("c360_system_logs", "c360_syslog");
             e.HasKey(x => x.Id);
         });
 
         builder.Entity<ErrorCodeUnified>(e =>
         {
-            e.ToTable("ava_error_codes", "ava");
+            e.ToTable("c360_error_codes", "c360_core");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.ErrorCode)
                 .IsUnique();
@@ -141,7 +141,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<ExchangeRateSnapshot>(e =>
         {
-            e.ToTable("fx_rate_snapshots", "ava");
+            e.ToTable("fx_rate_snapshots", "c360_core");
             e.HasKey(x => x.Id);
 
             e.Property(x => x.Id).HasColumnName("id");
@@ -220,7 +220,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // RefreshToken -> ApplicationUser (shadow FK)
         builder.Entity<RefreshToken>(e =>
         {
-            e.ToTable("refresh_tokens", "ava");
+            e.ToTable("refresh_tokens", "c360_core");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Token).IsUnique();
 
@@ -237,7 +237,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<OrganizationUnified>(e =>
         {
-            e.ToTable("organizations", "ava");
+            e.ToTable("organizations", "c360_core");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.LicenseAgreementId).IsUnique();
 
@@ -260,7 +260,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<OrganizationDomainUnified>(e =>
         {
-            e.ToTable("organization_domains", "ava");
+            e.ToTable("organization_domains", "c360_core");
             e.HasKey(x => x.Id);
             e.Property(x => x.Domain).HasMaxLength(190).IsRequired();
             e.HasIndex(x => x.Domain).IsUnique();
@@ -306,7 +306,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasMaxLength(3)
                 .IsRequired();
 
-            // ✅ THIS IS THE FIX
+            // THIS IS THE FIX
             e.OwnsOne(x => x.Url, url =>
             {
                 url.Property(p => p.ApiEndpoint)
@@ -349,7 +349,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<LicenseAgreementUnified>(e =>
         {
-            e.ToTable("license_agreements", "ava");
+            e.ToTable("license_agreements", "c360_core");
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasMaxLength(14);
 
@@ -400,7 +400,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<ExpensePolicy>(e =>
         {
-            e.ToTable("expense_policies", "ava");
+            e.ToTable("expense_policies", "c360_core");
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(128).IsRequired();
             e.Property(x => x.DefaultCurrency).HasMaxLength(3);
@@ -416,7 +416,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<Discount>(e =>
         {
-            e.ToTable("subscription_discounts", "ava");
+            e.ToTable("subscription_discounts", "c360_core");
             e.HasKey(x => x.Id);
             e.Property(x => x.DiscountCode)
                 .IsRequired()
@@ -432,7 +432,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<TravelPolicy>(e =>
         {
-            e.ToTable("travel_policies", "ava");
+            e.ToTable("travel_policies", "c360_core");
             e.HasKey(x => x.Id);
 
             // Owner org 1..* TravelPolicies
@@ -533,7 +533,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<EphemeralTravelPolicy>(e =>
         {
-            e.ToTable("ephemeral_travel_policies", "ava");
+            e.ToTable("ephemeral_travel_policies", "c360_core");
             e.HasKey(x => x.Id);
             e.HasKey(x => x.OrganizationUnifiedId);
 
@@ -629,7 +629,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<FlightViewOption>(e =>
         {
-            e.ToTable("flight_view_options", "ava");
+            e.ToTable("flight_view_options", "c360_core");
             e.HasKey(x => x.Id);
 
             // columns
@@ -666,7 +666,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<Region>(e =>
         {
-            e.ToTable("regions", "ava");
+            e.ToTable("regions", "c360_core");
             e.HasKey(x => x.Id);
 
             e.HasIndex(x => x.Name).IsUnique();
@@ -675,7 +675,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         
         builder.Entity<Continent>(e =>
         {
-            e.ToTable("continents", "ava");
+            e.ToTable("continents", "c360_core");
             e.HasKey(x => x.Id);
 
             e.Property(x => x.Name).IsRequired().HasMaxLength(32);
@@ -688,7 +688,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<Country>(e =>
         {
-            e.ToTable("countries", "ava");
+            e.ToTable("countries", "c360_core");
             e.HasKey(x => x.Id);
 
             e.Property(x => x.Name).IsRequired().HasMaxLength(128);
@@ -702,7 +702,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<AirportInfo>(e =>
         {
-            e.ToTable("airport_infos", "ava");
+            e.ToTable("airport_infos", "c360_core");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Ident).IsUnique();
         });
@@ -712,7 +712,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<Airline>(e =>
         {
-            e.ToTable("airlines", "ava");
+            e.ToTable("airlines", "c360_core");
             e.HasKey(x => x.Id);
 
             e.HasIndex(x => x.Iata);
@@ -730,7 +730,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 
         builder.Entity<LoyaltyProgram>(e =>
         {
-            e.ToTable("loyalty_programs", "ava");
+            e.ToTable("loyalty_programs", "c360_core");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Code).IsUnique();
             e.HasIndex(x => x.AirlineId).IsUnique(); // 1:0..1
@@ -747,11 +747,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // Rehome AvaUserLoyaltyAccount to ApplicationUser (shadow FK) and ignore legacy nav
         builder.Entity<AvaUserLoyaltyAccount>(e =>
         {
-            e.ToTable("user_loyalty_accounts", "ava");
+            e.ToTable("user_loyalty_accounts", "c360_core");
             e.HasKey(x => x.Id);
 
             // Ignore legacy nav to AvaUser so we can attach to ApplicationUser immediately
-            e.Ignore(x => x.AvaUser);
+            e.Ignore(x => x.ApplicationUser);
             e.Ignore(x => x.AvaUserId);
 
             e.Property<string>("ApplicationUserId");
@@ -774,13 +774,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<FlightOfferSearchRequestDto>(e =>
         {
-            e.ToTable("flight_offer_search_request_dtos", "ava");
+            e.ToTable("flight_offer_search_request_dtos", "c360_core");
             e.HasKey(x => x.Id);
         });
 
         builder.Entity<FlightOfferSearchResultRecord>(e =>
         {
-            e.ToTable("flight_offer_search_result_records", "ava");
+            e.ToTable("flight_offer_search_result_records", "c360_core");
             e.HasKey(x => x.Id);
 
             e.Property(x => x.CreatedAt)
@@ -800,7 +800,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // ===========================
         builder.Entity<TravelQuote>(e =>
         {
-            e.ToTable("travel_quotes", "ava");
+            e.ToTable("travel_quotes", "c360_core");
             e.HasKey(x => x.Id);
 
             // client org
@@ -838,7 +838,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<TravelQuoteUser>(e =>
         {
-            e.ToTable("travel_quote_users", "ava");
+            e.ToTable("travel_quote_users", "c360_core");
             e.HasKey(x => x.Id);
 
             e.HasOne(x => x.TravelQuote)

@@ -1,23 +1,23 @@
-using Cinturon360.Shared.Services.Interfaces.External;
-using Microsoft.AspNetCore.Mvc;
+// using Cinturon360.Shared.Services.Interfaces.External;
+// using Microsoft.AspNetCore.Mvc;
 
-namespace Cinturon360.Api.Controllers.Amadeus;
+// namespace Cinturon360.Api.Controllers.Amadeus;
 
-[Route("api/amadeus/auth")]
-[ApiController]
-public class AmadeusAuthController : ControllerBase
-{
-    private readonly IAmadeusAuthService _authService;
+// [Route("api/amadeus/auth")]
+// [ApiController]
+// public class AmadeusAuthController : ControllerBase
+// {
+//     private readonly IAmadeusAuthService _authService;
 
-    public AmadeusAuthController(IAmadeusAuthService authService)
-    {
-        _authService = authService;
-    }
+//     public AmadeusAuthController(IAmadeusAuthService authService)
+//     {
+//         _authService = authService;
+//     }
 
-    [HttpPost("get-token")]
-    public async Task<IActionResult> GetToken([FromBody] string tmcId)
-    {
-        var token = await _authService.GetAccessTokenAsync(tmcId);
-        return Ok(token);
-    }
-}
+//     [HttpPost("get-token")]
+//     public async Task<IActionResult> GetToken([FromBody] string tmcId)
+//     {
+//         var token = await _authService.GetAccessTokenAsync(tmcId);
+//         return Ok(token);
+//     }
+// }

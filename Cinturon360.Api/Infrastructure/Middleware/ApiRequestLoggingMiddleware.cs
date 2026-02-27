@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using Cinturon360.Shared.Models.Kernel.SysVar;
-using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 
 namespace Cinturon360.Api.Infrastructure.Middleware;
@@ -36,7 +36,7 @@ public sealed class ApiRequestLoggingMiddleware : IMiddleware
             var client = RequestContext.GetClient(context);
             var note = client is null ? null : $"client={client}";
 
-            var evt = "HTTP_REQUEST";
+            var evt = SysLogEvtType.API_REQ_START;
             var cat = SysLogCatType.Api;
             var act = MapAction(method);
 

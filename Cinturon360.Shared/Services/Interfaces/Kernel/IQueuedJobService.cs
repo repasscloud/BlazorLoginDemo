@@ -1,6 +1,4 @@
-using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.Kernel.SysVar;
-using Cinturon360.Shared.Models.Kernel.Travel;
 
 namespace Cinturon360.Shared.Services.Interfaces.Kernel;
 

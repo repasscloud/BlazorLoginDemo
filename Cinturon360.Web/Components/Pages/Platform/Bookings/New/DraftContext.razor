@@ -3,6 +3,8 @@
 @attribute [Authorize(Policy = "Shared:BookingSelect")]
 
 @using System.Security.Claims
+@using Cinturon360.Shared.Models.Kernel.SysVar
+@using Cinturon360.Shared.Models.Static.System.SysVar
 @using Cinturon360.Shared.Services.Interfaces.Kernel
 @using Cinturon360.Web.Components.Pages.Platform.Orgs.Policies
 @using Microsoft.AspNetCore.Authorization
@@ -16,6 +18,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Mvc
 @using System.Globalization
+@using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAdminOrgServiceUnified OrgSvc
@@ -211,7 +214,7 @@ else
 
         if (IsSudo)
         {
-            Vendors = (await OrgSvc.SearchAsync(type: OrganizationType.Vendor))
+            Vendors = (await OrgSvc.SearchAsync(type: OrganizationType.MasterVendor))
                       .Select(a => new IAdminOrgServiceUnified.OrganizationPickerDto
                       {
                           Id = a.Org.Id,
@@ -408,9 +411,9 @@ else
                 ErrorEnvelope? err = await response.Content.ReadFromJsonAsync<ErrorEnvelope>(JsonOpts);
                 ErrorMessage = string.IsNullOrWhiteSpace(err?.Error) ? "Bad request." : err!.Error;
                 await LoggerSvc.WarningAsync(
-                    evt: "",
-                    cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Workflow,
-                    act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Exec,
+                    evt: SysLogEvtType.API_HTTP_400_BAD_REQUEST,
+                    cat: SysLogCatType.Workflow,
+                    act: SysLogActionType.Exec,
                     message: "v1/bookings/draft/new",
                     ent: "Platform/Bookings/New/DraftContext",
                     rid: this.rid,
@@ -421,7 +424,7 @@ else
                     http: "POST",
                     stat: ((int)response.StatusCode),
                     note: ErrorMessage,
-                    overrideOutcome: Cinturon360.Shared.Models.Kernel.SysVar.SysLogOutcome.ERR
+                    overrideOutcome: SysLogOutcome.ERR
                 );
             }
             catch
@@ -429,9 +432,9 @@ else
                 string raw = await response.Content.ReadAsStringAsync();
                 ErrorMessage = string.IsNullOrWhiteSpace(raw) ? "Bad request." : raw;
                 await LoggerSvc.WarningAsync(
-                    evt: "",
-                    cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Workflow,
-                    act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Exec,
+                    evt: SysLogEvtType.API_HTTP_400_BAD_REQUEST,
+                    cat: SysLogCatType.Workflow,
+                    act: SysLogActionType.Exec,
                     message: "v1/bookings/draft/new",
                     ent: "Platform/Bookings/New/DraftContext",
                     rid: this.rid,
@@ -442,7 +445,7 @@ else
                     http: "POST",
                     stat: ((int)response.StatusCode),
                     note: ErrorMessage,
-                    overrideOutcome: Cinturon360.Shared.Models.Kernel.SysVar.SysLogOutcome.ERR
+                    overrideOutcome: SysLogOutcome.ERR
                 );
             }
             return;
@@ -455,9 +458,9 @@ else
             ErrorMessage = $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}"
                         + (string.IsNullOrWhiteSpace(raw) ? "" : $": {raw}");
             await LoggerSvc.WarningAsync(
-                evt: "",
-                cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Workflow,
-                act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Exec,
+                evt: SysLogEvtType.API_HTTP_200_OK,
+                cat: SysLogCatType.Workflow,
+                act: SysLogActionType.Exec,
                 message: "v1/bookings/draft/new",
                 ent: "Platform/Bookings/New/DraftContext",
                 rid: this.rid,
@@ -468,7 +471,7 @@ else
                 http: "POST",
                 stat: ((int)response.StatusCode),
                 note: ErrorMessage,
-                overrideOutcome: Cinturon360.Shared.Models.Kernel.SysVar.SysLogOutcome.ERR
+                overrideOutcome: SysLogOutcome.ERR
             );
             return;
         }
@@ -478,9 +481,9 @@ else
         {
             ErrorMessage = "Missing ID.";
             await LoggerSvc.WarningAsync(
-                evt: "",
-                cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Workflow,
-                act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Exec,
+                evt: SysLogEvtType.API_HTTP_500_INTERNAL_SERVER_ERROR,
+                cat: SysLogCatType.Workflow,
+                act: SysLogActionType.Exec,
                 message: "v1/bookings/draft/new",
                 ent: "Platform/Bookings/New/DraftContext",
                 rid: this.rid,
@@ -491,7 +494,7 @@ else
                 http: "POST",
                 stat: ((int)response.StatusCode),
                 note: ErrorMessage,
-                overrideOutcome: Cinturon360.Shared.Models.Kernel.SysVar.SysLogOutcome.ERR
+                overrideOutcome: SysLogOutcome.ERR
             );
             return;
         }

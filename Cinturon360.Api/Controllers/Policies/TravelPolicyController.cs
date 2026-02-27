@@ -1,11 +1,12 @@
 using System.Diagnostics;
 using System.Security.Claims;
 using Cinturon360.Shared.Models.Policies;
-using Cinturon360.Shared.Models.Kernel.SysVar;
-using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Models.Static.Geography;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Policy;
 using Microsoft.AspNetCore.Mvc;
+using static Cinturon360.Shared.Contracts.Policies.TravelPolicyUnifiedDto;
 
 namespace Cinturon360.Api.Controllers;
 
@@ -52,7 +53,7 @@ public sealed class PoliciesController : ControllerBase
         catch (ArgumentException ex)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_LIST_BAD_REQUEST",
+                evt: SysLogEvtType.DATA_READ_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 message: "Bad request in ListTravelPolicies",
@@ -102,7 +103,7 @@ public sealed class PoliciesController : ControllerBase
             if (created is null)
             {
                 await _log.ErrorAsync(
-                    evt: "TRAVEL_POLICY_CREATE_RETRIEVE_FAILED",
+                    evt: SysLogEvtType.DATA_CREATE_ERR,
                     cat: SysLogCatType.Data,
                     act: SysLogActionType.Create,
                     ex: new InvalidOperationException("Policy was created but could not be retrieved."),
@@ -131,7 +132,7 @@ public sealed class PoliciesController : ControllerBase
         catch (ArgumentException ex)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_CREATE_VALIDATION_FAILED",
+                evt: SysLogEvtType.DATA_CREATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 message: "Validation failure in CreateTravelPolicy",
@@ -155,7 +156,7 @@ public sealed class PoliciesController : ControllerBase
             // Your service throws InvalidOperationException when organization or policy doesn't exist.
             // Map to 404 for "not found".
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_CREATE_NOT_FOUND",
+                evt: SysLogEvtType.DATA_CREATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 message: "Not found / invalid operation in CreateTravelPolicy",
@@ -181,10 +182,10 @@ public sealed class PoliciesController : ControllerBase
     /// </summary>
     [HttpPut("travel/{policyId}")]
     [Consumes("application/json")]
-    [ProducesResponseType(typeof(TravelPolicy), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(TravelPolicyNoResponseAggregate), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TravelPolicy>> UpdateTravelPolicy(
+    public async Task<ActionResult<TravelPolicyNoResponseAggregate>> UpdateTravelPolicyAsync(
         [FromRoute] string policyId,
         [FromBody] TravelPolicy policy,
         CancellationToken ct)
@@ -219,7 +220,7 @@ public sealed class PoliciesController : ControllerBase
         catch (ArgumentException ex)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_UPDATE_VALIDATION_FAILED",
+                evt: SysLogEvtType.DATA_UPDATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 message: "Validation failure in UpdateTravelPolicy",
@@ -241,7 +242,7 @@ public sealed class PoliciesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             await _log.WarningAsync(
-                evt: "TRAVEL_POLICY_UPDATE_NOT_FOUND",
+                evt: SysLogEvtType.DATA_UPDATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 message: "Not found / invalid operation in UpdateTravelPolicy",
@@ -318,9 +319,9 @@ public sealed class PoliciesController : ControllerBase
     }
 
     [HttpGet("travel/{policyId}/allowed-countries")]
-    [ProducesResponseType(typeof(IReadOnlyList<Country>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<PassportCountry>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IReadOnlyList<Country>>> ResolveAllowedCountries([FromRoute] string policyId, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<PassportCountry>>> ResolveAllowedCountries([FromRoute] string policyId, CancellationToken ct)
     {
         StampCorrelationId();
 
@@ -364,9 +365,22 @@ public sealed class PoliciesController : ControllerBase
         //=> Activity.Current?.Id ?? string.Empty;
 
     private string? GetUserId()
-        => User?.FindFirstValue(ClaimTypes.NameIdentifier)
-           ?? User?.FindFirstValue("sub")
-           ?? User?.FindFirstValue("uid");
+    {
+        // 1. Preferred: authenticated identity (future-proof, most secure)
+        var uid =
+            User?.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User?.FindFirstValue("sub")
+            ?? User?.FindFirstValue("uid");
+
+        if (!string.IsNullOrWhiteSpace(uid))
+            return uid;
+
+        // 2. Fallback: trusted internal header from Blazor Server
+        if (Request.Headers.TryGetValue("X-User-Id", out var header))
+            return header.FirstOrDefault();
+
+        return null;
+    }
 
     private ObjectResult ProblemEx(int status, string errorCode, string title, string? detail = null)
     {

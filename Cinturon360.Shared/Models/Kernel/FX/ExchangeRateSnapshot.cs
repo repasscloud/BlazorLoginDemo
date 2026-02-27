@@ -2,7 +2,7 @@ namespace Cinturon360.Shared.Models.Kernel.FX;
 public sealed class ExchangeRateSnapshot
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public string BaseCode { get; set; } = "USD";  // 3 letters
+    public string BaseCode { get; set; } = "AUD";  // 3 letters
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
     // entire rate map

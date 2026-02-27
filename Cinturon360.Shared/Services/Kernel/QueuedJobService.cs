@@ -1,8 +1,6 @@
 using System.Text.Json;
 using Cinturon360.Shared.Data;
-using Cinturon360.Shared.Models.DTOs;
 using Cinturon360.Shared.Models.Kernel.SysVar;
-using Cinturon360.Shared.Models.Kernel.Travel;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
 

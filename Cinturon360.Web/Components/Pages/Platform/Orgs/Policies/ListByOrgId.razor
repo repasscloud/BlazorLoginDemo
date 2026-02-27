@@ -1,4 +1,4 @@
-@page "/platform/travelpolicy/list/{OrganizationId}"
+@* @page "/platform/travelpolicy/list/{OrganizationId}"
 @rendermode InteractiveServer
 
 @using Cinturon360.Shared.Models.Kernel.Platform
@@ -136,4 +136,4 @@ else
    }
 
    private void ViewEditTravelPolicyById(string travelPolicyId) => Nav.NavigateTo(uri: $"/platform/travelpolicy/edit/{travelPolicyId}", forceLoad: true);
-}
+} *@

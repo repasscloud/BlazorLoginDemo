@@ -1,5 +1,5 @@
 using Cinturon360.Shared.Models.Kernel.Travel;
-using Cinturon360.Shared.Models.Static;
+using Cinturon360.Shared.Models.Static.Geography;
 
 namespace Cinturon360.Shared.Services.Interfaces.Kernel;
 
@@ -9,7 +9,7 @@ public interface IAirportInfoService
     Task<AirportInfo> CreateAsync(AirportInfo airport, CancellationToken ct = default);
 
     // READ (single)
-    Task<AirportInfo?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<AirportInfo?> GetByIdAsync(string id, CancellationToken ct = default);
     Task<AirportInfo?> GetByIdentAsync(string ident, CancellationToken ct = default);
     Task<AirportInfo?> GetByIataAsync(string iata, CancellationToken ct = default);
     Task<AirportInfo?> GetByGpsAsync(string gpsCode, CancellationToken ct = default);
@@ -46,10 +46,10 @@ public interface IAirportInfoService
     Task<AirportInfo> UpdateAsync(AirportInfo airport, CancellationToken ct = default);
 
     // DELETE
-    Task<bool> DeleteAsync(int id, CancellationToken ct = default);
+    Task<bool> DeleteAsync(string id, CancellationToken ct = default);
 
     // UTIL
-    Task<bool> ExistsAsync(int id, CancellationToken ct = default);
+    Task<bool> ExistsAsync(string id, CancellationToken ct = default);
 
     /// <summary>
     /// Upsert by Ident (case-insensitive). Returns number of rows affected (adds + updates).

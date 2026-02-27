@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Cinturon360.Shared.Data;
+using Cinturon360.Shared.Helpers;
 using Cinturon360.Shared.Models.Kernel.Platform;
 using Cinturon360.Shared.Models.Search;
 using Cinturon360.Shared.Models.Static.Travel;
@@ -10,8 +11,10 @@ namespace Cinturon360.Shared.Models.Kernel.Travel;
 
 public sealed class TravelQuote
 {
-    [Key, MaxLength(64)]
-    public string Id { get; set; } = NanoidDotNet.Nanoid.Generate();
+    private TravelQuote() { } // for EF
+
+    [Key, MaxLength(16)]
+    public string Id { get; private set; } = default!;
 
     public TravelQuoteType Type { get; set; } = TravelQuoteType.Unknown;
 
@@ -86,7 +89,46 @@ public sealed class TravelQuote
             ? Array.Empty<string>()
             : value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim().ToUpperInvariant()).Distinct().ToArray();
     }
+
+    public static TravelQuote CreateNew(
+        TravelQuoteType type,
+        string organizationId,
+        string createdByUserId,
+        string tmcAssignedId,
+        CoverageType coverageType)
+    {
+        if (type == TravelQuoteType.Unknown)
+            throw new ArgumentException("Type must be specified.", nameof(type));
+
+        return new TravelQuote
+        {
+            Type = type,
+            Id = TravelQuoteId.Generate(type),
+
+            OrganizationId = organizationId,
+            CreatedByUserId = createdByUserId,
+            TmcAssignedId = tmcAssignedId,
+
+            State = QuoteState.Draft,
+            CoverageType = coverageType,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+    }
+
+    public void TouchUpdatedUtc() => UpdatedAtUtc = DateTime.UtcNow;
 }
+
+// usage:
+// var quote = TravelQuote.Create(
+//     type: TravelQuoteType.flight,
+//     organizationId: dto.OrganizationId,
+//     createdByUserId: dto.CreatedByUserId,
+//     tmcAssignedId: dto.TmcAssignedId
+// );
+
+// already have quote.Id here, so you can create travellers immediately:
+// quote.Travellers.Add(new TravelQuoteUser { TravelQuoteId = quote.Id, UserId = someUserId });
 
 public sealed class TravelQuoteUser
 {

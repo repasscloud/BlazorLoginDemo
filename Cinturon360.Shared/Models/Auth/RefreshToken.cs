@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using Cinturon360.Shared.Models.User;
+using System.Text.Json.Serialization;
+using Cinturon360.Shared.Data;
 
 namespace Cinturon360.Shared.Models.Auth;
 
@@ -19,6 +20,7 @@ public class RefreshToken
     public string? ReasonRevoked { get; set; }
 
     // FK -> AvaUser (note: AvaUser.Id is string)
-    [Required] public string AvaUserId { get; set; } = default!;
-    public AvaUser AvaUser { get; set; } = default!;
+    [Required]  public string C360UserId { get; set; } = default!;
+    
+    [JsonIgnore]  public ApplicationUser C360User { get; set; } = default!;
 }

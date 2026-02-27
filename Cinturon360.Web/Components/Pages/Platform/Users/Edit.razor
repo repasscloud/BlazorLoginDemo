@@ -6,7 +6,11 @@
 @using Cinturon360.Shared.Data
 @using Cinturon360.Shared.Models.Kernel.Platform
 @using Cinturon360.Shared.Models.Static
+@using Cinturon360.Shared.Models.Static.Geography
+@using Cinturon360.Shared.Models.Static.Identity
 @using Cinturon360.Shared.Models.Static.Platform
+@using Cinturon360.Shared.Models.Static.System.SysVar
+@using Cinturon360.Shared.Models.Static.Travel
 @using Cinturon360.Shared.Services.Interfaces.Kernel
 @using Cinturon360.Shared.Services.Interfaces.Platform
 @using Cinturon360.Web.Components.Shared
@@ -260,7 +264,7 @@ else
                                 class="@($"form-select {(_isProfileReadOnly ? "bg-light" : "")}")"
                                 @bind-Value="U.PreferredCulture"
                                 disabled="@_isProfileReadOnly">
-                                @foreach (var c in CulturesType.Bcp47)
+                                @foreach ((string Tag, string Label) c in CulturesType.Bcp47)
                                 {
                                     <option value="@c.Tag">@c.Label</option>
                                 }
@@ -299,13 +303,13 @@ else
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Passport Country</label>
-                            <InputSelect
-                                class="@($"form-select {(_isPIITravelDocumentsReadOnly ? "bg-light" : "")}")"
-                                @bind-Value="U.CountryOfIssue"
-                                disabled="@_isPIITravelDocumentsReadOnly">
-                                @foreach (PassportCountry c in Enum.GetValues<PassportCountry>())
+                            <InputSelect class="@($"form-select {(_isPIITravelDocumentsReadOnly ? "bg-light" : "")}")"
+                                        @bind-Value="U.CountryOfIssue"
+                                        disabled="@_isPIITravelDocumentsReadOnly">
+
+                                @foreach (var c in PassportCountries.All)
                                 {
-                                    <option value="@c">@c.GetDisplayName()</option>
+                                    <option value="@c.Code">@c.Name</option>
                                 }
                             </InputSelect>
                         </div>
@@ -363,13 +367,14 @@ else
 
                         <div class="col-md-3">
                             <label class="form-label">Default Flight Seating</label>
-                            <InputSelect
+                           <InputSelect
                                 class="@($"form-select {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
                                 @bind-Value="U.DefaultFlightSeating"
                                 disabled="@_isFlightPreferencesReadOnly">
-                                @foreach (var c in FareType.BookingClassOptions)
+
+                                @foreach (var o in FareType.DropdownOptions)
                                 {
-                                    <option value="@c.code">@c.label</option>
+                                    <option value="@o.Code">@o.Label</option>
                                 }
                             </InputSelect>
                         </div>
@@ -380,9 +385,10 @@ else
                                 class="@($"form-select {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
                                 @bind-Value="U.MaxFlightSeating"
                                 disabled="@_isFlightPreferencesReadOnly">
-                                @foreach (var c in FareType.BookingClassOptions)
+
+                                @foreach (var o in FareType.DropdownOptions)
                                 {
-                                    <option value="@c.code">@c.label</option>
+                                    <option value="@o.Code">@o.Label</option>
                                 }
                             </InputSelect>
                         </div>
@@ -392,10 +398,11 @@ else
                             <InputSelect
                                 class="@($"form-select {(_isFlightPreferencesReadOnly ? "bg-light" : "")}")"
                                 @bind-Value="U.CabinClassCoverage"
-                                disabled="@_isFlightPreferencesReadOnly">
-                                @foreach (var c in CabinClassCoverages.CabinClassCoverageOptions)
+                                isabled="@_isFlightPreferencesReadOnly">
+
+                                @foreach (var o in FareType.DropdownOptions)
                                 {
-                                    <option value="@c.code">@c.label</option>
+                                    <option value="@o.Code">@o.Label</option>
                                 }
                             </InputSelect>
                         </div>
@@ -1159,9 +1166,9 @@ private async Task SaveAsync()
     {
         string? pageRoute = $"/platform/users/{userIdParam}";
         await _log.InformationAsync(
-            evt: "UI_PAGE_OPEN",
-            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
-            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.View,
+            evt: SysLogEvtType.UI_PAGE_OPEN,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.View,
             message: "User Edit page accessed",
             uid: userId,
             entId: userIdParam,
@@ -1173,9 +1180,9 @@ private async Task SaveAsync()
     {
         string? pageRoute = $"/platform/users/{userIdParam}";
         await _log.InformationAsync(
-            evt: "UI_EDIT_MODE_ENABLED",
-            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
-            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Click,
+            evt: SysLogEvtType.UI_EDIT_MODE_ENABLED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Click,
             message: $"User Edit section clicked: {sectionName}",
             uid: userId,
             entId: userIdParam,
@@ -1187,9 +1194,9 @@ private async Task SaveAsync()
     {
         string? pageRoute = $"/platform/users/{userIdParam}";
         await _log.InformationAsync(
-            evt: "UI_USER_EDIT_SAVED",
-            cat: Cinturon360.Shared.Models.Static.SysVar.SysLogCatType.Ui,
-            act: Cinturon360.Shared.Models.Static.SysVar.SysLogActionType.Submit,
+            evt: SysLogEvtType.UI_SAVE_PRESSED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Submit,
             message: "User Edit changes saved",
             uid: userId,
             entId: userIdParam,

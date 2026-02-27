@@ -90,13 +90,13 @@ else if (!string.IsNullOrWhiteSpace(error))
                     <div class="col-md-4">
                         <label class="form-label">Billing Type</label>
                         <InputSelect TValue="BillingType" class="form-select" @bind-Value="model.BillingType">
-                            @foreach (var v in EnumValues<BillingType>()) { <option value="@v">@v</option> }
+                            @foreach (var o in BillingTypes.DropdownOptions) { <option value="@o.Code">@o.Label</option> }
                         </InputSelect>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Billing Frequency</label>
                         <InputSelect TValue="BillingFrequency" class="form-select" @bind-Value="model.BillingFrequency">
-                            @foreach (var v in EnumValues<BillingFrequency>()) { <option value="@v">@v</option> }
+                            @foreach (var o in BillingFrequencies.DropdownOptions) { <option value="@o.Code">@o.Label</option> }
                         </InputSelect>
                     </div>
                     <div class="col-md-4">
@@ -552,11 +552,11 @@ else if (!string.IsNullOrWhiteSpace(error))
                 RenewalDate = today.AddYears(value: 1).AddDays(value: -30),
                 AutoRenew = false,
 
-                PaymentTerms = PaymentTerms.Net0,
-                PaymentMethod = PaymentMethod.Stripe,
-                BillingType = BillingType.Prepaid,
-                BillingFrequency = BillingFrequency.PayAsYouGo,
-                PaymentStatus = PaymentStatus.Pending,
+                PaymentTerms = PaymentTerms.NET_0,
+                PaymentMethod = PaymentMethod.STRIPE,
+                BillingType = BillingType.PREPAID,
+                BillingFrequency = BillingFrequency.PAYG,
+                PaymentStatus = PaymentStatus.PENDING,
 
                 CreatedAtUtc = DateTime.UtcNow,
                 LastUpdatedAtUtc = DateTime.UtcNow,

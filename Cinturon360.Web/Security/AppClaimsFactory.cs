@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
-using Cinturon360.Shared.Data;
 using Cinturon360.Shared.Auth; // AppClaimTypes
 
 namespace Cinturon360.Web.Security

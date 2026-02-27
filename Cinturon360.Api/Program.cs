@@ -6,11 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using Cinturon360.Shared.Data;
 using Cinturon360.Api.Auth;
 using Cinturon360.Shared.Models.Auth;
-using Cinturon360.Shared.Logging;
 using Cinturon360.Shared.Services;
 
 // using Serilog;
-using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using Cinturon360.Api.Infrastructure.Middleware;
 using Cinturon360.Shared.Security;
 
@@ -22,12 +20,6 @@ public class Program
         // Host + builder
         // --------------------------
         var builder = WebApplication.CreateBuilder(args);
-
-        // --------------------------
-        // Logging (Serilog first)
-        // --------------------------
-        // SerilogBootstrap.UseSerilogWithPostgres(builder.Configuration, appName: "Ava.API");
-        // builder.Host.UseSerilog();
 
         // --------------------------
         // Options (JWT)
