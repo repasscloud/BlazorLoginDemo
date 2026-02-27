@@ -2,6 +2,8 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Platform:Finance:Discounts:Create")]
 
+@using Cinturon360.Shared.Models.Static.Billing
+@using Cinturon360.Web.Components.Pages.Tmc.Reports
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @using System.ComponentModel.DataAnnotations
@@ -10,7 +12,7 @@
 @using Cinturon360.Shared.Services.Interfaces.Platform
 @using Cinturon360.Shared.Models.Static
 @using System.Reflection
-@using Cinturon360.Shared.Models.Static.SysVar;
+@using Cinturon360.Shared.Models.Static.System.SysVar;
 
 @inject IBillingService Billing
 @inject IAdminOrgServiceUnified Orgs
@@ -19,13 +21,33 @@
 
 <Cinturon360.Web.Components.Shared.OrgPickerDialog @ref="orgPicker" />
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <h2 class="mb-0">New Discount</h2>
-</div>
-
 <EditForm Model="_vm" OnValidSubmit="HandleCreateAsync">
     <DataAnnotationsValidator />
     <ValidationSummary />
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">New Discount</h2>
+        <div class="btn-group">
+            <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @onclick="OnCancel"
+                disabled="@_busy">
+                Cancel
+            </button>
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+                disabled="@_busy">
+                @if (_busy)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                Create
+            </button>
+        </div>
+    </div>
 
     <div class="card mb-3">
         <div class="card-body">
@@ -81,10 +103,10 @@
             <div class="row g-3 mb-3">
                 <div class="col-md-3">
                     <label class="form-label">Currency</label>
-                    <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Currency" disabled="@(_vm.Type == DiscountType.Percentage)">
-                        @foreach (UniversalData.CurrencyOption c in UniversalData._currencyOptions)
+                    <InputSelect class="form-select" @bind-Value="_vm.Currency" disabled="@(_vm.Type == DiscountType.Percentage)">
+                        @foreach ((string Code, string Name) c in Currencies.DropdownOptions)
                         {
-                            <option value="@c.Code">@c.Code @c.Flag</option>
+                            <option value="@c.Code">@c.Name</option>
                         }
                     </InputSelect>
                 </div>
@@ -130,12 +152,7 @@
                     <InputTextArea class="form-control" rows="2" @bind-Value="_vm.Notes" />
                 </div>
             </div>
-            <div class="d-flex gap-2 mt-4">
-                <button class="btn btn-primary" type="submit" disabled="@_busy">
-                    @(_busy ? "Creating..." : "Create")
-                </button>
-                <button class="btn btn-outline-secondary" type="button" @onclick="OnCancel">Cancel</button>
-            </div>
+            
             @if (!string.IsNullOrWhiteSpace(_error))
             {
                 <div class="alert alert-danger mt-3 mb-0">@_error</div>
@@ -153,7 +170,7 @@
         AuthenticationState? authState = await AuthStateTask;
         _user = authState.User;
         await _log.InformationAsync(
-            evt: "PAGE_VIEW",
+            evt: SysLogEvtType.UI_PAGE_OPEN,
             cat: SysLogCatType.Ui,
             act: SysLogActionType.View,
             message: "Accessed New Discount page",
@@ -193,7 +210,7 @@
 
             Discount? created = await Billing.CreateDiscountAsync(req);
             await _log.InformationAsync(
-                evt: "DISCOUNT_CREATE_OK",
+                evt: SysLogEvtType.DATA_CREATE,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 message: $"Created discount {created.Id} ({created.DisplayName})",
@@ -207,7 +224,7 @@
         catch (Exception ex)
         {
             await _log.ErrorAsync(
-                evt: "DISCOUNT_CREATE_EXCEPTION",
+                evt: SysLogEvtType.DATA_CREATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 ex: ex,
@@ -216,7 +233,7 @@
                 uid: _user?.FindFirstValue(ClaimTypes.NameIdentifier),
                 note: "exception_caught");
             await _log.ErrorAsync(
-                evt: "DISCOUNT_CREATE_FAIL",
+                evt: SysLogEvtType.DATA_CREATE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Create,
                 ex: new InvalidOperationException("Create discount failed"),

@@ -4,7 +4,7 @@ namespace Cinturon360.Shared.Services.Interfaces.External;
 
 public interface IAmadeusAuthService
 {
-    Task<AmadeusOAuthToken> GetTokenAsync();
+    Task<AmadeusOAuthToken> GetTokenAsync(string tmcId);
 
-    Task<string> GetTokenInformationAsync();  // returns the actual token as a string, do not call the line above
+    Task<string> GetAccessTokenAsync(string tmcId);
 }

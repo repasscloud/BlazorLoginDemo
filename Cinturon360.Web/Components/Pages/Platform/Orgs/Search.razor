@@ -6,13 +6,16 @@
 @attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 
 @using Cinturon360.Shared.Auth
+@using Cinturon360.Shared.Models.Static.Geography
 @using Cinturon360.Shared.Services.Interfaces.Platform
 @using Cinturon360.Shared.Models.Static.Platform
 @using Cinturon360.Shared.Models.Kernel.Platform
 @inject IAdminOrgServiceUnified Orgs
 @inject NavigationManager Nav
 
-<h3 class="mb-3">Find Organization</h3>
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Find Organization</h2>
+</div>
 
 <div class="card mb-3">
     <div class="card-body">
@@ -96,7 +99,7 @@ else
 
                                 <!-- Add this details block here -->
                                 <div class="small">
-                                    <span class="text-muted">Country:</span> @(!string.IsNullOrWhiteSpace(o.Country) ? o.Country : "-")
+                                    <span class="text-muted">Country:</span> @(o.Country.HasValue ? o.Country.Value.ToString() : "-")
                                     <span class="mx-2">·</span>
                                     <span class="text-muted">TaxId:</span> @(!string.IsNullOrWhiteSpace(o.TaxId) ? o.TaxId : "-")
                                     <span class="mx-2">·</span>
@@ -233,7 +236,7 @@ else
                 items = items.Where(i =>
                 (i.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (i.ParentName?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (i.Country?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (i.Country?.ToString().Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (i.TaxId?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (i.Domains?.Any(d => d.Contains(q, StringComparison.OrdinalIgnoreCase)) ?? false));
             }
@@ -249,7 +252,7 @@ else
         public bool IsActive { get; set; }
         public string? ParentName { get; set; }
         public string[]? Domains { get; set; }
-        public string? Country { get; set; }
+        public PassportCountry? Country { get; set; }
         public string? TaxId { get; set; }
         public DateTime? CreatedAt { get; set; } // or DateTime if non-nullable in your model
         public string? LicenseAgreementId { get; set; }

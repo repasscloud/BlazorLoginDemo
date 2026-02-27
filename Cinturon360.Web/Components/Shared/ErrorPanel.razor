@@ -1,0 +1,110 @@
+@using Microsoft.AspNetCore.Components
+
+<section class="alert alert-danger error-panel shadow-sm border border-danger"
+         role="alert">
+    <div class="d-flex align-items-start gap-3">
+
+        <!-- Icon -->
+        <div class="pt-1" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 width="26" height="26"
+                 fill="currentColor"
+                 class="bi bi-exclamation-triangle"
+                 viewBox="0 0 16 16">
+                <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.03.052.03.115 0 .167a.13.13 0 0 1-.125.066H1.206a.13.13 0 0 1-.125-.066.16.16 0 0 1 0-.167L7.938 2.016zM8 4.58c-.3 0-.55.24-.55.54v3.55c0 .3.25.54.55.54s.55-.24.55-.54V5.12c0-.3-.25-.54-.55-.54zm0 7.24a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5z" />
+            </svg>
+        </div>
+
+        <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <h2 class="h5 mb-1">@Title</h2>
+
+                    <p class="mb-1">
+                        <strong>Message:</strong> @Message
+                    </p>
+
+                    @if (!string.IsNullOrWhiteSpace(RequestId))
+                    {
+                        <p class="mb-0 text-danger-emphasis">
+                            <strong>RID:</strong> @RequestId
+                            <span class="text-muted ms-2">
+                                (include this in support tickets)
+                            </span>
+                        </p>
+                    }
+                </div>
+
+                <div class="btn-group">
+                    @if (OnLogSupport.HasDelegate)
+                    {
+                        <button class="btn btn-outline-danger"
+                                @onclick="OnLogSupport">
+                            Log support ticket
+                        </button>
+                    }
+
+                    @if (OnRetry.HasDelegate)
+                    {
+                        <button class="btn btn-outline-secondary"
+                                @onclick="OnRetry">
+                            Retry
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Details))
+            {
+                <hr class="my-3" />
+
+                <details>
+                    <summary class="text-decoration-underline cursor-pointer">
+                        Show technical details
+                    </summary>
+
+                    <pre class="mt-2 p-2 border rounded bg-light small mono">
+@Details
+                    </pre>
+                </details>
+            }
+        </div>
+    </div>
+</section>
+
+<style>
+    .error-panel {
+        border-left-width: 6px;
+    }
+
+    .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
+                     Consolas, "Liberation Mono", "Courier New", monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "Something went wrong";
+
+    [Parameter, EditorRequired]
+    public string Message { get; set; } = default!;
+
+    [Parameter]
+    public string? RequestId { get; set; }
+
+    [Parameter]
+    public string? Details { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    [Parameter]
+    public EventCallback OnLogSupport { get; set; }
+}

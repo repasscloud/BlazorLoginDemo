@@ -1,0 +1,29 @@
+Create new quote → Quoting (904)
+
+Get list of params for search screen (enable/disable features for this quote) → Ui (320) (or App (310) if you log it as “feature toggle/config evaluation” rather than a UI event)
+
+Submit the quote to the queue → Queue (750)
+
+Retrieve the quote from the queue → Queue (750)
+
+Process the search params in the quote to get results → Workflow (730) (use Search (540) if you’re logging the actual index/query operation rather than the orchestration step)
+
+User selects flights/cars/hotels → UserAction (330)
+
+User submits request to be approved → Workflow (730)
+
+Manager and/or financial approval → Workflow (730) (use Authorization (120) only for the RBAC/policy decision events, not the business approval itself)
+
+Quote converts to order → Workflow (730) (or Commerce (900) if you prefer “umbrella commercial milestone” events)
+
+System queues order → Queue (750)
+
+System processes order → Workflow (730) (or Job (740) if this is a discrete background unit with retries/attempts)
+
+Process payment → Payments (916)
+
+Confirm order → Workflow (730)
+
+Email everyone → Email (640)
+
+Create transactions in all ledgers etc → AccountingExport (938) (or Reconciliation (932) if this step is specifically matching/settling rather than posting/exporting)

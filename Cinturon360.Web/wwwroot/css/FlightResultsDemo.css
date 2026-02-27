@@ -31,6 +31,18 @@ tbody.result-item>tr:first-child{cursor:pointer}
 .table.stable { table-layout: fixed; }
 .table.stable th, .table.stable td { white-space: nowrap; }
 
+/* Lock the Select column and button width */
+th.select-col,
+td.select-col {
+  width: 9rem;            /* adjust if you want */
+}
+
+.flight-select-btn {
+  width: 9rem;            /* fixed, not min-width */
+  white-space: nowrap;    /* keep icon + text on one line */
+}
+
+
 /* Prevent collapse content from overflowing horizontally */
 .collapse-cell > td { padding: 0; }
 .collapse-body { padding: .75rem; }

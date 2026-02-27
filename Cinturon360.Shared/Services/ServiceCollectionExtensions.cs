@@ -1,23 +1,22 @@
 using System.Text.Json;
 using Cinturon360.Shared.Data;
-using Cinturon360.Shared.Models.ExternalLib.Amadeus;
 using Cinturon360.Shared.Models.Kernel.FX;
 using Cinturon360.Shared.Models.Kernel.Travel;
 using Cinturon360.Shared.Security;
+using Cinturon360.Shared.Services.API.Geography;
 using Cinturon360.Shared.Services.External;
+using Cinturon360.Shared.Services.Interfaces.API.Geography;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Cinturon360.Shared.Services.Interfaces.Persistence;
 using Cinturon360.Shared.Services.Interfaces.Platform;
-using Cinturon360.Shared.Services.Interfaces.Policies;
 using Cinturon360.Shared.Services.Interfaces.Policy;
-using Cinturon360.Shared.Services.Interfaces.Travel;
+// using Cinturon360.Shared.Services.Interfaces.Travel;
 using Cinturon360.Shared.Services.Kernel;
 using Cinturon360.Shared.Services.Persistence;
 using Cinturon360.Shared.Services.Platform;
-using Cinturon360.Shared.Services.Policies;
 using Cinturon360.Shared.Services.Policy;
-using Cinturon360.Shared.Services.Travel;
+// using Cinturon360.Shared.Services.Travel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,30 +26,6 @@ namespace Cinturon360.Shared.Services;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddAvaApiHttpClient(
-        this IServiceCollection services, IConfiguration config)
-    {
-        // Options for outbound header
-        services.AddOptions<OutboundApiKeyOptions>()
-            .Bind(config.GetSection("OutboundApiKeyAuth"))
-            .Validate(o => !string.IsNullOrWhiteSpace(o.HeaderName) &&
-                           !string.IsNullOrWhiteSpace(o.Key),
-                      "OutboundApiKeyAuth: HeaderName and Key must be set.")
-            .ValidateOnStart();
-
-        services.AddTransient<ApiKeyDelegatingHandler>();
-
-        services.AddHttpClient("AvaApi", c =>
-        {
-            var baseAddress = config["Api:BaseAddress"];
-            if (!string.IsNullOrWhiteSpace(baseAddress))
-                c.BaseAddress = new Uri(baseAddress);
-        })
-        .AddHttpMessageHandler<ApiKeyDelegatingHandler>();
-
-        return services;
-    }
-
     public static IServiceCollection PlatformServices(this IServiceCollection services)
     {
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
@@ -58,6 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
         services.AddScoped<IErrorCodeService, ErrorCodeService>();
         services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IAmadeusAccountService, AmadeusAccountService>();
         return services;
     }
     
@@ -88,14 +64,14 @@ public static class ServiceCollectionExtensions
         IConfiguration config)
     {
         // --- options ---
-        services.AddOptions<AmadeusOAuthClientSettings>()
-            .Bind(config.GetSection("Amadeus"))
-            .ValidateDataAnnotations()
-            .Validate(s =>
-                !string.IsNullOrWhiteSpace(s.ClientId) &&
-                !string.IsNullOrWhiteSpace(s.ClientSecret),
-                "Amadeus:ClientId and Amadeus:ClientSecret must be configured.")
-            .ValidateOnStart();
+        // services.AddOptions<AmadeusOAuthClientSettings>()
+        //     .Bind(config.GetSection("Amadeus"))
+        //     .ValidateDataAnnotations()
+        //     .Validate(s =>
+        //         !string.IsNullOrWhiteSpace(s.ClientId) &&
+        //         !string.IsNullOrWhiteSpace(s.ClientSecret),
+        //         "Amadeus:ClientId and Amadeus:ClientSecret must be configured.")
+        //     .ValidateOnStart();
 
         services.AddOptions<InboundApiKeyOptions>()
             .Bind(config.GetSection("InboundApiKeyAuth"))
@@ -106,16 +82,16 @@ public static class ServiceCollectionExtensions
                 "InboundAPiKeyAuth must specify HeaderName and at least one non-empty key.")
             .ValidateOnStart();
 
-            // ExchangeRate API options
-            services.AddOptions<ExchangeRateApiOptions>()
-                .Bind(config.GetSection("ExchangeRateApi"))
-                .Validate(o =>
-                    !string.IsNullOrWhiteSpace(o.BaseUrl) &&
-                    !string.IsNullOrWhiteSpace(o.ApiKey) &&
-                    !string.IsNullOrWhiteSpace(o.DefaultBaseCode) &&
-                    o.DefaultBaseCode.Length == 3,
-                    "ExchangeRateApi: BaseUrl, ApiKey, and 3-letter DefaultBaseCode are required.")
-                .ValidateOnStart();
+        // ExchangeRate API options
+        services.AddOptions<ExchangeRateApiOptions>()
+            .Bind(config.GetSection("ExchangeRateApi"))
+            .Validate(o =>
+                !string.IsNullOrWhiteSpace(o.BaseUrl) &&
+                !string.IsNullOrWhiteSpace(o.ApiKey) &&
+                !string.IsNullOrWhiteSpace(o.DefaultBaseCode) &&
+                o.DefaultBaseCode.Length == 3,
+                "ExchangeRateApi: BaseUrl, ApiKey, and 3-letter DefaultBaseCode are required.")
+            .ValidateOnStart();
 
         // --- infra ---
         services.AddHttpClient();
@@ -158,10 +134,16 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IAirlineService, AirlineService>();
 
+        // Amadeus Core Services
+        services.AddScoped<IAmadeusAccountService, AmadeusAccountService>();
+        services.AddScoped<IAmadeusAccountStore, AmadeusAccountStore>();
+        services.AddScoped<IAmadeusAuthService, AmadeusAuthService>();
+        services.AddScoped<IAmadeusConnectionTestService, AmadeusConnectionTestService>();
+        services.AddScoped<IAmadeusFlightSearchService, AmadeusFlightSearchService>();
+
         // --- shared services ---
         services.AddScoped<ILoggerService, LoggerService>();
-        services.AddScoped<IAmadeusAuthService, AmadeusAuthService>();
-        services.AddScoped<IAmadeusFlightSearchService, AmadeusFlightSearchService>();
+
         services.AddScoped<IAirportInfoService, AirportInfoService>();
         services.AddScoped<RequireApiKeyFilter>();
 
@@ -169,9 +151,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminOrgServiceUnified, AdminOrgServiceUnified>();
         services.AddScoped<IAdminUserServiceUnified, AdminUserServiceUnified>();
         services.AddScoped<ITravelPolicyService, TravelPolicyService>();
-        services.AddScoped<ITravelQuoteService, TravelQuoteService>();
+        // services.AddScoped<ITravelQuoteService, TravelQuoteService>();
         services.AddScoped<IErrorCodeService, ErrorCodeService>();
         services.AddScoped<IAdminLicenseAgreementServiceUnified, AdminLicenseAgreementServiceUnified>();
+        services.AddScoped<IQueuedJobService, QueuedJobService>();
 
         // --- fx services ---
         services.AddScoped<IFxRateStore, EfFxRateStore>();

@@ -77,6 +77,10 @@ case "$ACTION" in
     echo "🔧 Bumping build number (N) only…"
     N=$((N + 1))
     ;;
+  --build-only)
+    echo "🔧 Bumping build number (N) only…"
+    N=$((N + 1))
+    ;;
   --patch)
     echo "🩹 Bumping patch (Z) and resetting N…"
     Z=$((Z + 1)); N=0
@@ -217,18 +221,31 @@ echo "✅ API is healthy (container: $apiContainerName, port: $api_host_port)"
 # ── 🌱 10) Seed the DB with airport data ──────────────────────────────────
 echo
 echo "🌱 10) Seed the DB with airport data"
-curl -X 'POST' \
+curl -v -X POST \
   'http://localhost:8090/api/v1/admin/kerneldata/airport-info/bulk-upsert-from-csv?batchSize=1000' \
   -H 'accept: text/plain' \
   -H 'Content-Type: multipart/form-data' \
-  -F 'File=@.scripts/data/airports.csv;type=text/csv'
+  -H 'X-Ava-ApiKey: Shq6_nO2alwM4rzXJaPeVVIxdDPoTP7bbjBqGjajoWysImi-3UiMZua8WdMv2cmY' \
+  -F 'File=@.scripts/data/airports.csv;type=text/csv' \
+  2>&1 | sed -n '1,120p'
 
 # ── 📤 11) Commit & push version bump ──────────────────────────────────────────
-echo
-echo "📤 11) Commit & push version bump to Git"
-git add .
-git commit -m "bump v${NEW_VER}"
-git push
+case "$ACTION" in
+  --build-only)
+    echo
+    echo "📤 11) Commit & push version bump to Git - SKIPPED"
+    git add .
+    git commit -m "bump v${NEW_VER}"
+    git push
+    ;;
+  *)
+    echo
+    echo "📤 11) Commit & push version bump to Git"
+    git add .
+    git commit -m "bump v${NEW_VER}"
+    git push
+    ;;
+esac
 
 # ── 🌱 12) Seed the DB with additional data ──────────────────────────────────
 echo

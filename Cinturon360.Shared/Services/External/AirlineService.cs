@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Linq.Expressions;
 using Cinturon360.Shared.Data;
 using Cinturon360.Shared.Models.Kernel.Travel;
-using Cinturon360.Shared.Models.Static.SysVar;
+using Cinturon360.Shared.Models.Static.System.SysVar;
 using Cinturon360.Shared.Models.Static.Travel;
 using Cinturon360.Shared.Services.Interfaces.External;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
@@ -34,7 +34,7 @@ public sealed class AirlineService : IAirlineService
 
 
     // ----- Reads (NoTracking) -----
-    public async Task<Airline?> GetByIdAsync(int id, bool includeProgram = false, CancellationToken ct = default)
+    public async Task<Airline?> GetByIdAsync(string id, bool includeProgram = false, CancellationToken ct = default)
         => await BaseQuery(includeProgram)
               .FirstOrDefaultAsync(a => a.Id == id, ct);
 
@@ -86,7 +86,7 @@ public sealed class AirlineService : IAirlineService
 
 
     // ----- Writes -----
-    public async Task<int> AddAsync(Airline entity, CancellationToken ct = default)
+    public async Task<string> AddAsync(Airline entity, CancellationToken ct = default)
     {
         _db.Airlines.Add(entity);
         await _db.SaveChangesAsync(ct);
@@ -106,19 +106,10 @@ public sealed class AirlineService : IAirlineService
     public async Task<UpdateAllianceResult> UpdateAirlineAllianceAsync(
         string? iata_icao, AirlineAlliance alliance, CancellationToken ct = default)
     {
-        await _logger.InformationAsync(
-            evt: "AIRLINE_ALLIANCE_UPDATE_START",
-            cat: SysLogCatType.Data,
-            act: SysLogActionType.Start,
-            message: "Update airline alliance request",
-            ent: nameof(Airline),
-            entId: iata_icao ?? "",
-            note: $"alliance:{alliance}");
-
         if (string.IsNullOrWhiteSpace(iata_icao) || (iata_icao.Length != 2 && iata_icao.Length != 3))
         {
             await _logger.WarningAsync(
-                evt: "AIRLINE_ALLIANCE_UPDATE_BAD_CODE",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Validate,
                 message: "IATA/ICAO code must be either 2 or 3 characters",
@@ -139,7 +130,7 @@ public sealed class AirlineService : IAirlineService
         if (existing is null)
         {
             await _logger.WarningAsync(
-                evt: "AIRLINE_ALLIANCE_UPDATE_NOT_FOUND",
+                evt: SysLogEvtType.DATA_SAVE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Read,
                 message: "Airline not found for provided code",
@@ -155,7 +146,7 @@ public sealed class AirlineService : IAirlineService
             await _db.SaveChangesAsync(ct);
 
             await _logger.InformationAsync(
-                evt: "AIRLINE_ALLIANCE_UPDATE_OK",
+                evt: SysLogEvtType.DATA_SAVE_OK,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 message: $"Alliance updated to {alliance}",
@@ -167,7 +158,7 @@ public sealed class AirlineService : IAirlineService
         catch (Exception ex)
         {
             await _logger.ErrorAsync(
-                evt: "AIRLINE_ALLIANCE_UPDATE_ERR",
+                evt: SysLogEvtType.DATA_SAVE_ERR,
                 cat: SysLogCatType.Data,
                 act: SysLogActionType.Update,
                 ex: ex,
@@ -178,7 +169,7 @@ public sealed class AirlineService : IAirlineService
         }
     }
 
-    public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
+    public async Task<bool> DeleteAsync(string id, CancellationToken ct = default)
     {
         var existing = await _db.Airlines.FirstOrDefaultAsync(a => a.Id == id, ct);
         if (existing is null) return false;
@@ -186,7 +177,7 @@ public sealed class AirlineService : IAirlineService
         return await _db.SaveChangesAsync(ct) > 0;
     }
 
-    public async Task<int> UpsertByCodesAsync(Airline candidate, CancellationToken ct = default)
+    public async Task<string> UpsertByCodesAsync(Airline candidate, CancellationToken ct = default)
     {
         // Normalize keys
         var iata = string.IsNullOrWhiteSpace(candidate.Iata) ? null : candidate.Iata.Trim().ToUpperInvariant();
@@ -240,7 +231,7 @@ public sealed class AirlineService : IAirlineService
         {
             var ex = new InvalidOperationException("AirlineIngestion: SourceUrl is not configured.");
             await _logger.ErrorAsync(
-                evt: "AIRLINE_INGEST_SOURCE_URL_MISSING",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Automation,
                 act: SysLogActionType.Validate,
                 ex: ex,
@@ -254,7 +245,7 @@ public sealed class AirlineService : IAirlineService
         // START
         var runId = Guid.NewGuid().ToString("N");
         await _logger.InformationAsync(
-            evt: "AIRLINE_IATA_INGEST_START",
+            evt: SysLogEvtType.DATA_TX_BEGIN,
             cat: SysLogCatType.Automation,
             act: SysLogActionType.Start,
             message: $"Airline IATA ingest starting (source={_opts.SourceUrl})",
@@ -278,7 +269,7 @@ public sealed class AirlineService : IAirlineService
                 var body = await resp.Content.ReadAsStringAsync(ct);
                 var ex = new HttpRequestException($"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase}");
                 await _logger.ErrorAsync(
-                    evt: "AIRLINE_IATA_INGEST_HTTP_ERROR",
+                    evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                     cat: SysLogCatType.Integration,
                     act: SysLogActionType.Exec,
                     ex: ex,
@@ -293,7 +284,7 @@ public sealed class AirlineService : IAirlineService
         catch (Exception ex)
         {
             await _logger.ErrorAsync(
-                evt: "AIRLINE_IATA_INGEST_HTTP_EXCEPTION",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Integration,
                 act: SysLogActionType.Exec,
                 ex: ex,
@@ -401,7 +392,7 @@ public sealed class AirlineService : IAirlineService
             {
                 failed++;
                 await _logger.ErrorAsync(
-                    evt: "AIRLINE_IATA_INGEST_DB_ERROR",
+                    evt: SysLogEvtType.DATA_SAVE_ERR,
                     cat: SysLogCatType.Automation,
                     act: SysLogActionType.Update,
                     ex: ex,
@@ -415,7 +406,7 @@ public sealed class AirlineService : IAirlineService
             {
                 failed++;
                 await _logger.ErrorAsync(
-                    evt: "AIRLINE_IATA_INGEST_ROW_ERROR",
+                    evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                     cat: SysLogCatType.Automation,
                     act: SysLogActionType.Update,
                     ex: ex,
@@ -434,7 +425,7 @@ public sealed class AirlineService : IAirlineService
         catch (Exception ex)
         {
             await _logger.ErrorAsync(
-                evt: "AIRLINE_IATA_INGEST_FINALIZE_ERROR",
+                evt: SysLogEvtType.DATA_INTEGRITY_VIOLATION,
                 cat: SysLogCatType.Automation,
                 act: SysLogActionType.End,
                 ex: ex,
@@ -446,7 +437,7 @@ public sealed class AirlineService : IAirlineService
 
         // FINISH
         await _logger.InformationAsync(
-            evt: "AIRLINE_IATA_INGEST_FINISH",
+            evt: SysLogEvtType.DATA_TX_COMMIT,
             cat: SysLogCatType.Automation,
             act: SysLogActionType.End,
             message: $"Airline IATA ingest finished. created={created} updated={updated} skipped={skipped} failed={failed}",

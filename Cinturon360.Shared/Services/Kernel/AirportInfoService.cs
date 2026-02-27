@@ -1,6 +1,6 @@
 using Cinturon360.Shared.Data;
 using Cinturon360.Shared.Models.Kernel.Travel;
-using Cinturon360.Shared.Models.Static;
+using Cinturon360.Shared.Models.Static.Geography;
 using Cinturon360.Shared.Services.Interfaces.Kernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,7 +32,7 @@ public sealed class AirportInfoService : IAirportInfoService
     // -----------------------------
     // READ (single)
     // -----------------------------
-    public async Task<AirportInfo?> GetByIdAsync(int id, CancellationToken ct = default)
+    public async Task<AirportInfo?> GetByIdAsync(string id, CancellationToken ct = default)
         => await _db.Set<AirportInfo>().AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, ct);
 
     public async Task<AirportInfo?> GetByIdentAsync(string ident, CancellationToken ct = default)
@@ -160,7 +160,7 @@ public sealed class AirportInfoService : IAirportInfoService
     public async Task<AirportInfo> UpdateAsync(AirportInfo airport, CancellationToken ct = default)
     {
         if (airport is null) throw new ArgumentNullException(nameof(airport));
-        if (airport.Id <= 0) throw new ArgumentException("Id must be provided for update.", nameof(airport));
+        if (string.IsNullOrWhiteSpace(airport.Id)) throw new ArgumentException("Id must be provided for update.", nameof(airport));
 
         Normalize(airport);
         if (string.IsNullOrWhiteSpace(airport.Ident))
@@ -177,9 +177,9 @@ public sealed class AirportInfoService : IAirportInfoService
     // -----------------------------
     // DELETE
     // -----------------------------
-    public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
+    public async Task<bool> DeleteAsync(string id, CancellationToken ct = default)
     {
-        var existing = await _db.Set<AirportInfo>().FindAsync([id], ct);
+        var existing = await _db.Set<AirportInfo>().FindAsync(new object[] { id }, ct);
         if (existing is null) return false;
 
         _db.Set<AirportInfo>().Remove(existing);
@@ -190,7 +190,7 @@ public sealed class AirportInfoService : IAirportInfoService
     // -----------------------------
     // UTIL
     // -----------------------------
-    public async Task<bool> ExistsAsync(int id, CancellationToken ct = default)
+    public async Task<bool> ExistsAsync(string id, CancellationToken ct = default)
         => await _db.Set<AirportInfo>().AsNoTracking().AnyAsync(a => a.Id == id, ct);
 
     public async Task<int> BulkUpsertAsync(IEnumerable<AirportInfo> batch, CancellationToken ct = default)

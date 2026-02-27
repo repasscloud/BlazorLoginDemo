@@ -7,6 +7,5 @@ namespace Cinturon360.Shared.Services.Interfaces.External;
 public interface IAmadeusFlightSearchService
 {
     Task<AmadeusFlightOfferSearchResult> GetFlightOffersAsync(FlightOfferSearchRequestDto dto, CancellationToken ct = default);
-
-    Task<AmadeusFlightOfferSearchResult> GetFlightOffersFromAmadeusFlightOfferSearch(AmadeusFlightOfferSearch criteria, CancellationToken ct = default);
+    Task<AmadeusFlightOfferSearchResult> GetFlightOffersFromAmadeusFlightOfferSearch(AmadeusFlightOfferSearch criteria, string tmcId, CancellationToken ct = default);
 }

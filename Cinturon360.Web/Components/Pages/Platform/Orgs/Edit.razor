@@ -2,27 +2,35 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
 
+@using Cinturon360.Shared.Auth
+@using Cinturon360.Shared.Models.Kernel.Billing
+@using Cinturon360.Shared.Models.Kernel.Platform
+@using Cinturon360.Shared.Models.Static.Geography
+@using Cinturon360.Shared.Models.Static.Identity
+@using Cinturon360.Shared.Models.Static.Platform
+@using Cinturon360.Shared.Models.Static.System.SysVar
+@using Cinturon360.Shared.Services.Interfaces.Kernel
+@using Cinturon360.Shared.Services.Interfaces.Platform
+@using Cinturon360.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection;
+@using System.Security.Claims;
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
-@using Cinturon360.Shared.Auth
-@using Microsoft.AspNetCore.Components.Forms
-@using Cinturon360.Web.Components.Shared
-@using Cinturon360.Shared.Services.Interfaces.Platform
-@using Cinturon360.Shared.Models.Kernel.Platform
-@using Cinturon360.Shared.Models.Kernel.Billing
-@using Cinturon360.Shared.Models.Static.Platform
+@using static Cinturon360.Shared.Models.Static.Organization.OrganizationTypes
 
+@inject AuthenticationStateProvider AuthStateProvider
 @inject IAdminOrgServiceUnified OrgSvc
 @inject IAdminLicenseAgreementServiceUnified LicenseService
 @inject NavigationManager Nav
-@inject ILogger<Edit> Logger
+@inject ILoggerService _log
 @inject IJSRuntime JS
 
 <EditForm Model="_vm.Organization" OnValidSubmit="@(async () => await SaveAsync(true))">
     <DataAnnotationsValidator />
-    <ValidationSummary />
+    <Microsoft.AspNetCore.Components.Forms.ValidationSummary />
 
     @if (!string.IsNullOrWhiteSpace(_error))
     {
@@ -48,68 +56,95 @@
 
   <!-- Identity -->
     <div class="card mb-3">
-        <div class="card-header">Identity</div>
-            <div class="card-body row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Id</label>
-                    <div class="input-group">
-                        <InputText class="form-control bg-light" @bind-Value="_vm.Organization.Id" readonly />
-                        <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(_vm.Organization.Id)">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Name</label>
-                    <InputText class="form-control" @bind-Value="_vm.Organization.Name" />
-                </div>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Identity</span>
 
-                <div class="col-md-2">
-                    <label class="form-label">Type</label>
-                    <InputSelect class="form-select" @bind-Value="_vm.Organization.Type">
-                        @foreach (var t in Enum.GetValues<OrganizationType>())
-                        {
-                            <option value="@t">@t</option>
-                        }
-                    </InputSelect>
-                </div>
+            <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                @onclick="ToggleIdentityReadOnly">
+                @if (_isIdentityReadOnly)
+                {
+                    <span>Edit</span>
+                }
+                else
+                {
+                    <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                }
+            </button>
+        </div>
 
-                <div class="col-md-1">
-                    <label class="form-label">@(_vm.Organization.IsActive ? "Active" : "Inactive")</label>
-                    <div class="form-check form-switch mt-2">
-                        <InputCheckbox class="form-check-input" @bind-Value="_vm.Organization.IsActive" />
-                        <label class="form-check-label" title="@(_vm.Organization.IsActive ? "Active" : "Inactive")">
-                            <span aria-hidden="true">@(_vm.Organization.IsActive ? " ✅" : " ❌")</span>
-                        </label>
-                    </div>
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Id</label>
+                <div class="input-group">
+                    <InputText class="form-control bg-light" Value="_vm.Organization.Id" readonly />
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(_vm.Organization.Id)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                 </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Name</label>
+                <InputText
+                    class="@($"form-control {(_isIdentityReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.Name"
+                    readonly="@_isIdentityReadOnly">
+                </InputText>
+            </div>
 
-                <div class="col-md-3">
-                    <label class="form-label">Parent Organization Id</label>
-                    <div class="input-group">
-                        <InputText class="form-control bg-light" @bind-Value="_vm.Organization.ParentOrganizationId" placeholder="Select a parent organization…" readonly />
-                        <button type="button" class="btn btn-outline-secondary" title="Pick Parent Organization" @onclick="OpenParentPickerAsync">
-                            <i class="bi bi-card-list"></i>
-                        </button>
-                    </div>
-                    @* optional helper text showing the picked org name *@
-                    @* @if (!string.IsNullOrWhiteSpace(_parentOrgDisplay))
+            <div class="col-md-2">
+                <label class="form-label">Type</label>
+                <InputSelect
+                    class="@($"form-select {(_isIdentityReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.Type"
+                    disabled="@_isIdentityReadOnly">
+                    @foreach (OrganizationType t in Enum.GetValues<OrganizationType>())
                     {
-                        <small class="text-muted">Selected: @_parentOrgDisplay</small>
-                    } *@
+                        <option value="@t">@t</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-md-1">
+                <label class="form-label">@(_vm.Organization.IsActive ? "Active" : "Inactive")</label>
+                <div class="form-check form-switch mt-2">
+                    <InputCheckbox
+                        class="form-check-input"
+                        @bind-Value="_vm.Organization.IsActive"
+                        disabled="@_isIdentityReadOnly" />
+                    <label class="form-check-label" title="@(_vm.Organization.IsActive ? "Active" : "Inactive")">
+                        <span aria-hidden="true">@(_vm.Organization.IsActive ? " ✅" : " ❌")</span>
+                    </label>
                 </div>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Parent Organization Id</label>
+                <div class="input-group">
+                    <InputText class="form-control bg-light" @bind-Value="_vm.Organization.ParentOrganizationId" placeholder="Select a parent organization…" readonly />
+                    <button type="button" class="btn btn-outline-secondary" title="Pick Parent Organization" @onclick="OpenParentPickerAsync">
+                        <i class="bi bi-card-list"></i>
+                    </button>
+                </div>
+                @* optional helper text showing the picked org name *@
+                @* @if (!string.IsNullOrWhiteSpace(_parentOrgDisplay))
+                {
+                    <small class="text-muted">Selected: @_parentOrgDisplay</small>
+                } *@
+            </div>
 
 
-                <div class="col-md-6">
-                    <label class="form-label">Parent</label>
-                    <input class="form-control bg-light" value="@(parentOrgName ?? "(none)")" readonly />
-                </div>
+            <div class="col-md-6">
+                <label class="form-label">Parent</label>
+                <input class="form-control bg-light" value="@(parentOrgName ?? "(none)")" readonly />
+            </div>
 
-                <!-- TODO: Link fields in OrgEdit page #25 -->
-                <div class="col-md-2">
-                    <label class="form-label">Type</label>
-                    <input class="form-control bg-light" value="@(parentOrgType)" readonly />
-                </div>
+            <!-- TODO: Link fields in OrgEdit page #25 -->
+            <div class="col-md-2">
+                <label class="form-label">Type</label>
+                <input class="form-control bg-light" value="@(parentOrgType)" readonly />
+            </div>
 
             <!-- TODO: Link fields in OrgEdit page #25 -->
             <div class="col-md-1">
@@ -139,9 +174,11 @@
                                     </span>
 
                                     <!-- Country: white on black -->
-                                    @if (!string.IsNullOrWhiteSpace(c.Country))
+                                    @if (Enum.IsDefined(typeof(PassportCountry), c.Country))
                                     {
-                                        <span class="badge rounded-pill text-bg-dark">@c.Country</span>
+                                        <span class="badge rounded-pill text-bg-dark">
+                                            @c.Country.GetDisplayName()
+                                        </span>
                                     }
 
                                     <!-- TaxId: show only if present, info color -->
@@ -174,11 +211,31 @@
 
     <!-- Company Defaults -->
     <div class="card mb-3">
-        <div class="card-header">Company Defaults</div>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Company Defaults</span>
+
+            <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                @onclick="ToggleCompanyDefaultsReadOnly">
+                @if (_isCompanyDefaultsReadOnly)
+                {
+                    <span>Edit</span>
+                }
+                else
+                {
+                    <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                }
+            </button>
+        </div>
         <div class="card-body row g-3">
             <div class="col-md-2">
                 <label class="form-label" for="defaultCurrency">Billing Currency</label>
-                <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.DefaultCurrency">
+                <InputSelect
+                    id="defaultCurrency"
+                    class="@($"form-select {(_isCompanyDefaultsReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.DefaultCurrency"
+                    disabled="@_isCompanyDefaultsReadOnly">
                     @foreach (CurrencyOption c in _currencyOptions)
                     {
                         <option value="@c.Code">@c.Code @c.Flag</option>
@@ -187,8 +244,12 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label" for="taxIdType">Tax ID Type</label>
-                <InputSelect id="defaultCurrency" class="form-select" @bind-Value="_vm.Organization.TaxIdType">
-                    @foreach (var t in _taxIdOptions)
+                <InputSelect
+                    id="taxIdType"
+                    class="@($"form-select {(_isCompanyDefaultsReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.TaxIdType"
+                    disabled="@_isCompanyDefaultsReadOnly">
+                    @foreach (string t in _taxIdOptions)
                     {
                         <option value="@t">@t</option>
                     }
@@ -197,54 +258,114 @@
             <div class="col-md-3">
                 <label class="form-label">Tax Id</label>
                 <div class="input-group">
-                    <InputText class="form-control" @bind-Value="_vm.Organization.TaxId" />
-                    <button type="button" class="btn btn-outline-secondary" @onclick="() => ValidateTaxIdAsync(_vm.Organization.Id, _vm.Organization.TaxIdType)">
+                    <InputText
+                        class="@($"form-control {(_isCompanyDefaultsReadOnly ? "bg-light" : "")}")"
+                        @bind-Value="_vm.Organization.TaxId"
+                        readonly="@_isCompanyDefaultsReadOnly">
+                    </InputText>
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        disabled="@_isCompanyDefaultsReadOnly"
+                        @onclick="() => ValidateTaxIdAsync(_vm.Organization.Id, _vm.Organization.TaxIdType)">
                         <i class="bi bi-check-circle"></i>
                     </button>
                 </div>
             </div>
             <div class="col-md-2">
                 <label class="form-label">🌍 Last Validated (UTC)</label>
-                <input class="form-control" value="@FormatUtc(_vm.Organization.TaxLastValidated)" readonly />
+                <input class="form-control bg-light" value="@FormatUtc(_vm.Organization.TaxLastValidated)" readonly />
             </div>
             <div class="col-md-2">
                 <label class="form-label">🕒 Last Validated (Local)</label>
-                <input class="form-control" value="@FormatLocalBrowser(_vm.Organization.TaxLastValidated)" readonly />
+                <input class="form-control bg-light" value="@FormatLocalBrowser(_vm.Organization.TaxLastValidated)" readonly />
             </div>
         </div>
     </div>
 
     <!-- Physical Address -->
     <div class="card mb-3">
-        <div class="card-header">Physical Address</div>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Physical Address</span>
+
+            <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                @onclick="TogglePhysicalAddressReadOnly">
+                @if (_isPhysicalAddressReadOnly)
+                {
+                    <span>Edit</span>
+                }
+                else
+                {
+                    <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                }
+            </button>
+        </div>
+
         <div class="card-body row g-3">
             <div class="col-md-4">
                 <label class="form-label">Address Line 1</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine1" />
+                <InputText
+                    class="@($"form-control {(_isPhysicalAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.AddressLine1"
+                    readonly="@_isPhysicalAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-4">
                 <label class="form-label">Address Line 2</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine2" />
+                <InputText
+                    class="@($"form-control {(_isPhysicalAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.AddressLine2"
+                    readonly="@_isPhysicalAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-4">
                 <label class="form-label">Address Line 3</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.AddressLine3" />
+                <InputText
+                    class="@($"form-control {(_isPhysicalAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.AddressLine3"
+                    readonly="@_isPhysicalAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label">City</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.City" />
+                <InputText
+                    class="@($"form-control {(_isPhysicalAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.City"
+                    readonly="@_isPhysicalAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label">State/Province</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.State" />
+                <InputText
+                    class="@($"form-control {(_isPhysicalAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.State"
+                    readonly="@_isPhysicalAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label">Postal Code</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.PostalCode" />
+                <InputText
+                    class="@($"form-control {(_isPhysicalAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.PostalCode"
+                    readonly="@_isPhysicalAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label" for="addressCountry">Country</label>
-                <InputSelect id="addressCountry" class="form-select" @bind-Value="_vm.Organization.Country">
+                <InputSelect
+                    id="addressCountry"
+                    class="@($"form-select {(_isPhysicalAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.Country"
+                    disabled="@_isPhysicalAddressReadOnly">
                     @foreach (string c in _countryOptions)
                     {
                         <option value="@c">@c</option>
@@ -258,38 +379,94 @@
     <div class="card mb-3">
         <div class="card-header d-flex align-items-center justify-content-between">
             <span>Mailing Address</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyPhysicalToMailing">
-                Copy from Physical
-            </button>
+
+            <div class="btn-group">
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    disabled="@_isMailingAddressReadOnly"
+                    @onclick="CopyPhysicalToMailing">
+                    Copy from Physical
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @onclick="ToggleMailingAddressReadOnly">
+                    @if (_isMailingAddressReadOnly)
+                    {
+                        <span>Edit</span>
+                    }
+                    else
+                    {
+                        <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                    }
+                </button>
+            </div>
         </div>
+
         <div class="card-body row g-3">
             <div class="col-md-4">
                 <label class="form-label">Address Line 1</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine1" />
+                <InputText
+                    class="@($"form-control {(_isMailingAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.MailingAddressLine1"
+                    readonly="@_isMailingAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-4">
                 <label class="form-label">Address Line 2</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine2" />
+                <InputText
+                    class="@($"form-control {(_isMailingAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.MailingAddressLine2"
+                    readonly="@_isMailingAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-4">
                 <label class="form-label">Address Line 3</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.MailingAddressLine3" />
+                <InputText
+                    class="@($"form-control {(_isMailingAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.MailingAddressLine3"
+                    readonly="@_isMailingAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label">City</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.MailingCity" />
+                <InputText
+                    class="@($"form-control {(_isMailingAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.MailingCity"
+                    readonly="@_isMailingAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label">State/Province</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.MailingState" />
+                <InputText
+                    class="@($"form-control {(_isMailingAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.MailingState"
+                    readonly="@_isMailingAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label">Postal Code</label>
-                <InputText class="form-control" @bind-Value="_vm.Organization.MailingPostalCode" />
+                <InputText
+                    class="@($"form-control {(_isMailingAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.MailingPostalCode"
+                    readonly="@_isMailingAddressReadOnly">
+                </InputText>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label" for="mailingCountry">Country</label>
-                <InputSelect id="mailingCountry" class="form-select" @bind-Value="_vm.Organization.MailingCountry">
+                <InputSelect
+                    id="mailingCountry"
+                    class="@($"form-select {(_isMailingAddressReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.Organization.MailingCountry"
+                    disabled="@_isMailingAddressReadOnly">
                     @foreach (string c in _countryOptions)
                     {
                         <option value="@c">@c</option>
@@ -301,86 +478,239 @@
 
     <!-- Contacts -->
     <div class="row">
+        <!-- General / Commercial -->
         <div class="col-lg-4">
             <div class="card mb-3">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <span>General / Commercial Contact</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => CopyGeneralContactDownAsync())">Copy Down</button>
+
+                    <div class="btn-group">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            disabled="@_isContactsReadOnly"
+                            @onclick="CopyGeneralContactDownAsync">
+                            Copy Down
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @onclick="ToggleContactsReadOnly">
+                            @if (_isContactsReadOnly)
+                            {
+                                <span>Edit</span>
+                            }
+                            else
+                            {
+                                <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
                 </div>
+
                 <div class="card-body row g-3">
-                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonFirstName" /></div>
-                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonLastName" /></div>
-                    <div class="col-md-4"><label class="form-label">CC</label>
-                        <InputSelect id="ccPerson" class="form-select" @bind-Value="_vm.Organization.ContactPersonCountryCode">
+                    <div class="col-md-6">
+                        <label class="form-label">First Name</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.ContactPersonFirstName"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Last Name</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.ContactPersonLastName"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">CC</label>
+                        <InputSelect class="@($"form-select {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                    @bind-Value="_vm.Organization.ContactPersonCountryCode"
+                                    disabled="@_isContactsReadOnly">
                             @foreach (string i in _iddOptions)
                             {
                                 <option value="@i">@i</option>
                             }
                         </InputSelect>
                     </div>
-                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonPhone" /></div>
-                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonEmail" /></div>
-                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.ContactPersonJobTitle" /></div>
+
+                    <div class="col-md-8">
+                        <label class="form-label">Phone</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.ContactPersonPhone"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Email</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.ContactPersonEmail"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Job Title</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.ContactPersonJobTitle"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Billing -->
         <div class="col-lg-4">
             <div class="card mb-3">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <span>Billing Contact</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => CopyFromGeneralContactToBillingAsync())">Copy from General</button>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            disabled="@_isContactsReadOnly"
+                            @onclick="CopyFromGeneralContactToBillingAsync">
+                        Copy from General
+                    </button>
                 </div>
+
                 <div class="card-body row g-3">
-                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonFirstName" /></div>
-                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonLastName" /></div>
+                    <div class="col-md-6"><label class="form-label">First Name</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.BillingPersonFirstName"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-md-6"><label class="form-label">Last Name</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.BillingPersonLastName"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
                     <div class="col-md-4"><label class="form-label">CC</label>
-                        <InputSelect id="ccBilling" class="form-select" @bind-Value="_vm.Organization.BillingPersonCountryCode">
+                        <InputSelect class="@($"form-select {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                    @bind-Value="_vm.Organization.BillingPersonCountryCode"
+                                    disabled="@_isContactsReadOnly">
                             @foreach (string i in _iddOptions)
                             {
                                 <option value="@i">@i</option>
                             }
                         </InputSelect>
                     </div>
-                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonPhone" /></div>
-                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonEmail" /></div>
-                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.BillingPersonJobTitle" /></div>
+
+                    <div class="col-md-8"><label class="form-label">Phone</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.BillingPersonPhone"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-12"><label class="form-label">Email</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.BillingPersonEmail"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-12"><label class="form-label">Job Title</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.BillingPersonJobTitle"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Admin / Technical -->
         <div class="col-lg-4">
             <div class="card mb-3">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <span>Admin / Technical Contact</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="@(() => CopyFromGeneralContactToAdminAsync())">Copy from General</button>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            disabled="@_isContactsReadOnly"
+                            @onclick="CopyFromGeneralContactToAdminAsync">
+                        Copy from General
+                    </button>
                 </div>
+
                 <div class="card-body row g-3">
-                    <div class="col-md-6"><label class="form-label">First Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonFirstName" /></div>
-                    <div class="col-md-6"><label class="form-label">Last Name</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonLastName" /></div>
+                    <div class="col-md-6"><label class="form-label">First Name</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.AdminPersonFirstName"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-md-6"><label class="form-label">Last Name</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.AdminPersonLastName"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
                     <div class="col-md-4"><label class="form-label">CC</label>
-                        <InputSelect id="ccAdmin" class="form-select" @bind-Value="_vm.Organization.AdminPersonCountryCode">
+                        <InputSelect class="@($"form-select {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                    @bind-Value="_vm.Organization.AdminPersonCountryCode"
+                                    disabled="@_isContactsReadOnly">
                             @foreach (string i in _iddOptions)
                             {
                                 <option value="@i">@i</option>
                             }
                         </InputSelect>
                     </div>
-                    <div class="col-md-8"><label class="form-label">Phone</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonPhone" /></div>
-                    <div class="col-12"><label class="form-label">Email</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonEmail" /></div>
-                    <div class="col-12"><label class="form-label">Job Title</label><InputText class="form-control" @bind-Value="_vm.Organization.AdminPersonJobTitle" /></div>
+
+                    <div class="col-md-8"><label class="form-label">Phone</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.AdminPersonPhone"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-12"><label class="form-label">Email</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.AdminPersonEmail"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
+
+                    <div class="col-12"><label class="form-label">Job Title</label>
+                        <InputText class="@($"form-control {(_isContactsReadOnly ? "bg-light" : "")}")"
+                                @bind-Value="_vm.Organization.AdminPersonJobTitle"
+                                readonly="@_isContactsReadOnly" />
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+
     <!-- Domains -->
     <div class="card mb-3">
-        <div class="card-header">Tenant Domains</div>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Tenant Domains</span>
+
+            <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                @onclick="ToggleDomainsReadOnly">
+                @if (_isDomainsReadOnly)
+                {
+                    <span>Edit</span>
+                }
+                else
+                {
+                    <span>Lock <i class="bi bi-lock-fill ms-1"></i></span>
+                }
+            </button>
+        </div>
+
         <div class="card-body">
             <div class="input-group mb-2">
-                <InputText class="form-control" @bind-Value="_vm.NewDomain" placeholder="example.com" />
-                <button type="button" class="btn btn-outline-primary" @onclick="AddDomainAsync" disabled="@_isSaving">
+                <InputText
+                    class="@($"form-control {(_isDomainsReadOnly ? "bg-light" : "")}")"
+                    @bind-Value="_vm.NewDomain"
+                    placeholder="example.com"
+                    readonly="@_isDomainsReadOnly" />
+
+                <button
+                    type="button"
+                    class="btn btn-outline-primary"
+                    @onclick="AddDomainAsync"
+                    disabled="@(_isDomainsReadOnly || _isSaving)">
                     Add
                 </button>
             </div>
@@ -401,11 +731,13 @@
                     {
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span>@d</span>
-                            <button type="button"
-                                    class="btn btn-sm btn-outline-danger"
-                                    title="Remove"
-                                    @onclick="async () => await RemoveDomainAsync(d)"
-                                    disabled="@(_isSaving)">
+
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-danger"
+                                title="Remove"
+                                disabled="@(_isDomainsReadOnly || _isSaving)"
+                                @onclick="async () => await RemoveDomainAsync(d)">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </li>
@@ -503,7 +835,7 @@
             <div class="col-md-3">
                 <label class="form-label">🌍 Last Updated (UTC)</label>
                 <div class="input-group">
-                    <input class="form-control" value="@FormatUtc(_vm.Organization.LastUpdatedUtc)" readonly />
+                    <input class="form-control bg-light" value="@FormatUtc(_vm.Organization.LastUpdatedUtc)" readonly />
                     <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(FormatUtc(_vm.Organization.LastUpdatedUtc))">
                         <i class="bi bi-clipboard"></i>
                     </button>
@@ -512,17 +844,17 @@
             <div class="col-md-3">
                 <label class="form-label">🕒 Last Updated (Local)</label>
                 <div class="input-group">
-                    <input class="form-control" value="@FormatLocalBrowser(_vm.Organization.LastUpdatedUtc)" readonly />
+                    <input class="form-control bg-light" value="@FormatLocalBrowser(_vm.Organization.LastUpdatedUtc)" readonly />
                     <button type="button" class="btn btn-outline-secondary" @onclick="() => CopyToClipboardAsync(FormatLocalBrowser(_vm.Organization.LastUpdatedUtc))">
                         <i class="bi bi-clipboard"></i>
                     </button>
                 </div>
-            </div>    
+            </div>
         </div>
     </div>
 </EditForm>
 
-<OrgPickerModal @ref="_orgPicker" />
+@* <OrgPickerModal @ref="_orgPicker" /> *@
 
 @code {
     // -----------------
@@ -530,14 +862,14 @@
     // -----------------
     [Parameter] public string? OrgId { get; set; }
 
-    private OrgEditVm _vm = new();
+    private OrgEditVm _vm = new OrgEditVm();
     private bool _isSaving;
     private string? _error;
 
     // holds the browser time zone (IANA id like "Australia/Sydney", "Europe/London", etc.)
     private TimeZoneInfo? _browserTz; 
     private string? _tzId;
-    
+
     // holds parent org info
     private string? parentOrgName;
     private string? parentOrgType;
@@ -545,7 +877,7 @@
 
     // license, billing
     private LicenseAgreementUnified? _licenseVM;
-    
+
     private record CurrencyOption(string Code, string Flag);
     private readonly List<string> _taxIdOptions = new List<string>
     {
@@ -576,6 +908,113 @@
         "+1"
     };
 
+    // -----------------
+    // Logging
+    // -----------------
+    // EVT = UI_^x_^y
+    // CAT = UI
+    // ACT = Click/View/Edit/Delete/Create
+    // PATH = /platform/organizations/{OrgId}/edit
+    private async Task LogOrgEditPageOpenAsync(string userId, string orgId)
+    {
+        string? pageRoute = $"/platform/organizations/{orgId}/edit";
+        await _log.InformationAsync(
+            evt: SysLogEvtType.UI_PAGE_OPEN,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.View,
+            message: "Org Edit page accessed",
+            uid: userId,
+            org: orgId,
+            path: pageRoute
+        );
+    }
+
+    private async Task LogOrgEditSectionClickedAsync(string userId, string orgId, string sectionName)
+    {
+        string? pageRoute = $"/platform/organizations/{orgId}/edit";
+        await _log.InformationAsync(
+            evt: SysLogEvtType.UI_EDIT_MODE_ENABLED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Click,
+            message: $"Org Edit section clicked: {sectionName}",
+            uid: userId,
+            org: orgId,
+            path: pageRoute
+        );
+    }
+
+    private async Task SaveOrgEditLogAsync(string userId, string orgId)
+    {
+        string? pageRoute = $"/platform/organizations/{orgId}/edit";
+        await _log.InformationAsync(
+            evt: SysLogEvtType.UI_SAVE_PRESSED,
+            cat: SysLogCatType.Ui,
+            act: SysLogActionType.Submit,
+            message: "Org Edit changes saved",
+            uid: userId,
+            org: orgId,
+            path: pageRoute
+        );
+    }
+
+    // -----------------
+    // Authenticated user
+    // -----------------
+    private ClaimsPrincipal? _user;
+    private string? _userId;
+
+
+    // -----------------
+    // Enable Edit Flags
+    // -----------------
+    private bool _isIdentityReadOnly = true;
+    private bool _isCompanyDefaultsReadOnly = true;
+    private bool _isPhysicalAddressReadOnly = true;
+    private bool _isMailingAddressReadOnly = true;
+    private bool _isContactsReadOnly = true;
+    private bool _isDomainsReadOnly = true;
+
+    // Generic toggle method
+    private static void Toggle(ref bool value) => value = !value;
+
+    // Specific toggle methods
+    private async Task ToggleIdentityReadOnly()
+    {
+       Toggle(ref _isIdentityReadOnly);
+       await LogOrgEditSectionClickedAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID", sectionName: "Identity");
+    }
+    
+    private async Task ToggleCompanyDefaultsReadOnly()
+    {
+        Toggle(ref _isCompanyDefaultsReadOnly);
+        await LogOrgEditSectionClickedAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID", sectionName: "Company Defaults");
+    }
+
+    private async Task TogglePhysicalAddressReadOnly()
+    {
+        Toggle(ref _isPhysicalAddressReadOnly);
+        await LogOrgEditSectionClickedAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID", sectionName: "Physical Address");
+    }
+
+    private async Task ToggleMailingAddressReadOnly()
+    {
+        Toggle(ref _isMailingAddressReadOnly);
+        await LogOrgEditSectionClickedAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID", sectionName: "Mailing Address");
+    }
+
+    private async Task ToggleContactsReadOnly()
+    {
+        Toggle(ref _isContactsReadOnly);
+        await LogOrgEditSectionClickedAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID", sectionName: "Contacts");
+    }
+
+    private async Task ToggleDomainsReadOnly()
+    {
+        Toggle(ref _isDomainsReadOnly);
+        await LogOrgEditSectionClickedAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID", sectionName: "Domains");
+    }
+
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
@@ -602,6 +1041,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        AuthenticationState? state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _user = state.User;
+
+        _userId = _user?.FindFirstValue(ClaimTypes.NameIdentifier);
+        
         // Load (plug into your existing service)
         if (!string.IsNullOrWhiteSpace(OrgId))
         {
@@ -634,6 +1078,8 @@
 
             StateHasChanged();
         }
+
+        await LogOrgEditPageOpenAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID");
     }
 
     private async Task SaveAsync(bool navigateOnSuccess = true)
@@ -681,7 +1127,10 @@
             _vm.OriginalSignature = ComputeSignature(_vm.Organization, _vm.Domains);
 
             if (navigateOnSuccess)
+            {
+                await SaveOrgEditLogAsync(_userId ?? "UNKNOWN_USER_ID", OrgId ?? "UNKNOWN_ORG_ID");
                 Nav.NavigateTo("/platform/organizations");
+            }
         }
         catch (Exception ex)
         {
@@ -940,7 +1389,7 @@
         // Lazy-load if user clicks before first render finished
         _clipboard ??= await JS.InvokeAsync<IJSObjectReference>("import", "/js/clipboard.js");
 
-        var ok = await _clipboard.InvokeAsync<bool>("copyText", value ?? string.Empty);
+        bool ok = await _clipboard.InvokeAsync<bool>("copyText", value ?? string.Empty);
     }
 
     private async Task LoadParentOrgInfo(string? pOrgId)
@@ -958,14 +1407,14 @@
     }
 
     // Modal reference
-    private OrgPickerModal? _orgPicker;
+    //private OrgPickerModal? _orgPicker;
 
     // Optional friendly display text (Name + Id)
-    private string? _parentOrgDisplay;
+    //private string? _parentOrgDisplay;
 
     private async Task OpenParentPickerAsync()
     {
-        var excludeId = _vm?.Organization?.Id;
+        @* var excludeId = _vm?.Organization?.Id;
 
         var picked = await _orgPicker!.OpenAsync(
             excludeOrgId: excludeId,
@@ -984,7 +1433,7 @@
         _parentOrgDisplay = $"{picked.Name} ({picked.Id})";
 
         // Save but stay on this page even if it fails (error will show in the alert)
-        await SaveAsync(navigateOnSuccess: false);
+        await SaveAsync(navigateOnSuccess: false); *@
     }
 
     private static string BuildDomainConflictMessage(string serverMessage, string attemptedDomain)
@@ -1098,7 +1547,7 @@
         return;
     }
 
-    public async Task ValidateTaxIdAsync(string orgId, string taxIdType)
+    public async Task ValidateTaxIdAsync(string orgId, TaxIdType taxIdType)
     {
         if (string.IsNullOrWhiteSpace(_vm.Organization.TaxId))
             return;
