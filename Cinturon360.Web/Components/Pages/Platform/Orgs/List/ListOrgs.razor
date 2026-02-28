@@ -1,0 +1,168 @@
+@page "/platform/orgs"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = AppPolicies.PlatformPolicy.AdminArea)]
+
+@using System.Security.Claims
+@using Cinturon360.Shared.Auth
+@using Cinturon360.Web.Exceptions
+@using Cinturon360.Web.Infrastructure.Http
+@using Cinturon360.Web.ViewModels.Orgs
+@using static Cinturon360.Shared.Contracts.Organizations.OrganizationUnifiedDto
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject C360ApiClient Api
+@inject NavigationManager Navigation
+
+<PageTitle>Orgs</PageTitle>
+
+@if (_vm is null || _vm.IsLoading)
+{
+    <Cinturon360.Web.Components.Shared.LoadingOverlay
+        Message="Loading organizations…"
+        RequestId="_vm?.Rid" />
+}
+else if (_vm.Error is not null)
+{
+    <Cinturon360.Web.Components.Shared.ErrorPanel
+        Message="_vm.Error"
+        RequestId="_vm.Rid"
+        OnRetry="ReloadAsync"
+        OnLogSupport="LogSupportAsync" />
+}
+else
+{
+    <div class="d-flex align-items-center justify-content-between mb-3">
+
+        <h2 class="mb-0">Organizations</h2>
+
+        <button class="btn btn-primary"
+                @onclick="NewOrganization">
+            New Organization
+        </button>
+
+    </div>
+
+    @if (_vm.Orgs.Count == 0)
+    {
+        <div class="alert alert-info">
+            No organizations exist.
+        </div>
+    }
+    else
+    {
+        <table class="table table-hover">
+
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Sector</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (OrgListItemVm o in _vm.Orgs)
+                {
+                    <tr>
+                        <td>@o.OrgName</td>
+                        <td>@o.OrgType</td>
+                        <td>@o.OrgSector</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary"
+                                    @onclick="() => ViewOrganization(o.Id)">
+                                View
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+
+    [Parameter, EditorRequired]
+    public string OrgId { get; set; } = default!;
+
+    private ListOrgsVm? _vm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        string? rid = RequestIdFactory.Create();
+
+        _vm = ListOrgsVm.Loading(rid);
+
+        StateHasChanged();
+
+        try
+        {
+            // Optional: access authenticated user (for logging / debugging only)
+            AuthenticationState auth =
+                await AuthStateProvider.GetAuthenticationStateAsync();
+
+            ClaimsPrincipal user = auth.User;
+
+            string userId =
+                user.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new InvalidOperationException("UserId missing");
+
+            // call API
+            ListOrganizationItemsAggregate? response = 
+                await Api.Organization.GetOrganizationsAsync(rid: rid);
+                
+            if (response is null)
+            {
+                _vm = 
+                    ListOrgsVm.Failed(
+                        error: "No response from server",
+                        rid);
+            }
+            else
+            {
+                // correct mapper usage
+                _vm = 
+                    ListOrgsMapper.ToVm(
+                        response,
+                        rid);
+            }
+        }
+        catch (ApiException ex)
+        {
+            _vm =
+                ListOrgsVm.Failed(
+                    ex.Message,
+                    rid);
+        }
+        catch (Exception ex)
+        {
+            _vm =
+                ListOrgsVm.Failed(
+                    error: $"An unexpected error occurred: {ex.Message}",
+                    rid: rid);
+        }
+
+        StateHasChanged();
+    }
+
+    private void NewOrganization()
+    {
+        Navigation.NavigateTo(
+            uri: $"/platform/org/new");
+    }
+
+    private void ViewOrganization(string organizationId)
+    {
+        Navigation.NavigateTo(
+            uri: $"/platform/org/{organizationId}/view");
+    }
+
+    private Task LogSupportAsync() 
+        => Task.CompletedTask;
+}
