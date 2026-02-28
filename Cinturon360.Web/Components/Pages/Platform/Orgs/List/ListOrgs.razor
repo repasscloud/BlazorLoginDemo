@@ -32,26 +32,35 @@ else if (_vm.Error is not null)
 else
 {
     <div class="d-flex align-items-center justify-content-between mb-3">
-
         <h2 class="mb-0">Organizations</h2>
 
         <button class="btn btn-primary"
                 @onclick="NewOrganization">
             New Organization
         </button>
-
     </div>
 
-    @if (_vm.Orgs.Count == 0)
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <input class="form-control"
+                   placeholder="Search organizations..."
+                   @oninput="OnSearchChanged" />
+        </div>
+    </div>
+
+    <div class="small text-muted mb-2">
+        Showing @FilteredOrgs.Count() of @_vm.Orgs.Count
+    </div>
+
+    @if (!FilteredOrgs.Any())
     {
         <div class="alert alert-info">
-            No organizations exist.
+            No organizations match your search.
         </div>
     }
     else
     {
         <table class="table table-hover">
-
             <thead>
                 <tr>
                     <th>Name</th>
@@ -62,7 +71,7 @@ else
             </thead>
 
             <tbody>
-                @foreach (OrgListItemVm o in _vm.Orgs)
+                @foreach (OrgListItemVm o in FilteredOrgs)
                 {
                     <tr>
                         <td>@o.OrgName</td>
@@ -88,6 +97,9 @@ else
 
     private ListOrgsVm? _vm;
 
+    private string _search = string.Empty;
+    private CancellationTokenSource? _searchCts;
+
     protected override async Task OnInitializedAsync()
     {
         await ReloadAsync();
@@ -103,7 +115,6 @@ else
 
         try
         {
-            // Optional: access authenticated user (for logging / debugging only)
             AuthenticationState auth =
                 await AuthStateProvider.GetAuthenticationStateAsync();
 
@@ -111,58 +122,101 @@ else
 
             string userId =
                 user.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new InvalidOperationException("UserId missing");
+                ?? throw new InvalidOperationException(message: "UserId missing");
 
-            // call API
-            ListOrganizationItemsAggregate? response = 
+            ListOrganizationItemsAggregate? response =
                 await Api.Organization.GetOrganizationsAsync(rid: rid);
-                
+
             if (response is null)
             {
-                _vm = 
-                    ListOrgsVm.Failed(
-                        error: "No response from server",
-                        rid);
+                _vm = ListOrgsVm.Failed(
+                    error: "No response from server",
+                    rid);
             }
             else
             {
-                // correct mapper usage
-                _vm = 
-                    ListOrgsMapper.ToVm(
-                        response,
-                        rid);
+                _vm = ListOrgsMapper.ToVm(
+                    response,
+                    rid);
             }
         }
         catch (ApiException ex)
         {
-            _vm =
-                ListOrgsVm.Failed(
-                    ex.Message,
-                    rid);
+            _vm = ListOrgsVm.Failed(
+                ex.Message,
+                rid);
         }
         catch (Exception ex)
         {
-            _vm =
-                ListOrgsVm.Failed(
-                    error: $"An unexpected error occurred: {ex.Message}",
-                    rid: rid);
+            _vm = ListOrgsVm.Failed(
+                error: $"An unexpected error occurred: {ex.Message}",
+                rid: rid);
         }
 
         StateHasChanged();
     }
 
-    private void NewOrganization()
+    private async Task OnSearchChanged(ChangeEventArgs e)
     {
-        Navigation.NavigateTo(
-            uri: $"/platform/org/new");
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+
+        CancellationToken token = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1), token);
+
+            _search = e.Value?.ToString() ?? string.Empty;
+
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // expected when user continues typing
+        }
     }
+
+    private IEnumerable<OrgListItemVm> FilteredOrgs =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _vm?.Orgs ?? Enumerable.Empty<OrgListItemVm>()
+            : (_vm?.Orgs ?? Enumerable.Empty<OrgListItemVm>())
+                .Where(o => MatchesSearch(o, _search));
+
+    private static bool MatchesSearch(OrgListItemVm o, string search)
+    {
+        var s = search.Trim();
+
+        return
+            Contains(o.OrgName, s) ||
+            Contains(o.TaxRegistrationNumber, s) ||
+            Contains(o.AddressLine1, s) ||
+            Contains(o.City, s) ||
+            Contains(o.MailingAddressLine1, s) ||
+            Contains(o.MailingCity, s) ||
+            Contains(o.ContactPersonLastName, s) ||
+            Contains(o.ContactPersonPhone, s) ||
+            Contains(o.ContactPersonEmail, s) ||
+            Contains(o.BillingPersonLastName, s) ||
+            Contains(o.BillingPersonPhone, s) ||
+            Contains(o.BillingPersonEmail, s) ||
+            Contains(o.AdminPersonLastName, s) ||
+            Contains(o.AdminPersonPhone, s) ||
+            Contains(o.AdminPersonEmail, s) ||
+            Contains(o.OrgType.ToString(), s) ||
+            Contains(o.OrgSector.ToString(), s);
+    }
+
+    private static bool Contains(string? source, string value) =>
+        !string.IsNullOrWhiteSpace(source) &&
+        source.Contains(value, StringComparison.OrdinalIgnoreCase);
+
+    private void NewOrganization()
+        => Navigation.NavigateTo("/platform/org/new");
 
     private void ViewOrganization(string organizationId)
-    {
-        Navigation.NavigateTo(
-            uri: $"/platform/org/{organizationId}/view");
-    }
+        => Navigation.NavigateTo($"/platform/org/{organizationId}/view");
 
-    private Task LogSupportAsync() 
+    private Task LogSupportAsync()
         => Task.CompletedTask;
 }

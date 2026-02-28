@@ -1,3 +1,5 @@
+using Cinturon360.Shared.Models.Organizations;
+
 namespace Cinturon360.Shared.Contracts.Organizations;
 
 // ===============================
@@ -26,8 +28,8 @@ public class OrganizationUnifiedDto
         CommandMetadata Metadata
     );
 
-    // public sealed record ListOrganizationItemsAggregate(
-    //     IReadOnlyList<Models.Organizations.OrganizationListItem> OrganizationItems,
-    //     CommandMetadata Metadata
-    // );
+    public sealed record ListOrganizationItemsAggregate(
+        IReadOnlyList<OrganizationListItem> OrganizationItems,
+        CommandMetadata Metadata
+    );
 }

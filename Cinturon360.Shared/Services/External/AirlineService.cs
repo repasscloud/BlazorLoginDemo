@@ -62,7 +62,7 @@ public sealed class AirlineService : IAirlineService
         if (!string.IsNullOrWhiteSpace(country))
         {
             var c = country.Trim();
-            q = q.Where(a => EF.Functions.ILike(a.Country, c));
+            q = q.Where(a => EF.Functions.ILike(a.Country!, c));
         }
 
         return await q

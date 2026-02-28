@@ -1,3 +1,5 @@
+using Cinturon360.Shared.Models.Policies;
+
 namespace Cinturon360.Shared.Contracts.Policies;
 
 // ===============================
@@ -7,7 +9,7 @@ public class TravelPolicyUnifiedDto
 {
     // convenience aggregates
     public sealed record TravelPolicyAggregate(
-        IReadOnlyList<Models.Policies.TravelPolicy> TravelPolicies,
+        IReadOnlyList<TravelPolicy> TravelPolicies,
         CommandMetadata Metadata
     );
 
@@ -27,7 +29,7 @@ public class TravelPolicyUnifiedDto
     );
 
     public sealed record ListTravelPolicyItemsAggregate(
-        IReadOnlyList<Models.Policies.TravelPolicyListItem> TravelPolicyItems,
+        IReadOnlyList<TravelPolicyListItem> TravelPolicyItems,
         CommandMetadata Metadata
     );
 }

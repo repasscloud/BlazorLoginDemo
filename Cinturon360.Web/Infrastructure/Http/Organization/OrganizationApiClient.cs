@@ -76,30 +76,29 @@ public sealed class OrganizationApiClient
     //             "Failed to deserialize TravelPolicyNoResponseAggregate.");
     // }
 
-    // public async Task<ListTravelPolicyItemsAggregate> GetPoliciesAsync(
-    //     string rid,
-    //     string orgId,
-    //     CancellationToken ct = default)
-    // {
-    //     using var request = new HttpRequestMessage(
-    //         HttpMethod.Get,
-    //         $"/v1/orgs/{orgId}/policies/travel");
+    public async Task<ListOrganizationItemsAggregate> GetOrganizationsAsync(
+        string rid,
+        CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/v1/organizations");
 
-    //     request.Headers.Add("X-Correlation-Id", rid);
+        request.Headers.Add("X-Correlation-Id", rid);
 
-    //     var response = await _http.SendAsync(request, ct);
+        var response = await _http.SendAsync(request, ct);
 
-    //     if (!response.IsSuccessStatusCode)
-    //     {
-    //         var problem = await response.Content
-    //             .ReadFromJsonAsync<ProblemDetails>(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var problem = await response.Content
+                .ReadFromJsonAsync<ProblemDetails>(ct);
 
-    //         throw new ApiException(problem, response.StatusCode, rid);
-    //     }
+            throw new ApiException(problem, response.StatusCode, rid);
+        }
 
-    //     return await response.Content
-    //         .ReadFromJsonAsync<ListTravelPolicyItemsAggregate>(ct)
-    //         ?? throw new InvalidOperationException(
-    //             "Failed to deserialize ListTravelPolicyItemsAggregate.");
-    // }
+        return await response.Content
+            .ReadFromJsonAsync<ListOrganizationItemsAggregate>(ct)
+            ?? throw new InvalidOperationException(
+                "Failed to deserialize ListOrganizationItemsAggregate.");
+    }
 }
