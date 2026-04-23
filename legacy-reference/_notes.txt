@@ -1,0 +1,3844 @@
+I have cloned the 'dev' branch of the cinturon360 project.
+
+There is a lot of edits and information in the history, but we are looking to re-engineer this from the ground up.
+
+I need you help to generate a series of questions around the v5 build of Cinturon360.
+
+Currently it's designed to have 3 main project components:
+- api
+- shared
+- web
+
+At the moment it's a bit of a mess and a complete mess.
+
+You can see the original code at the repo (public - but only look at dev branch) here: https://github.com/repasscloud/Cinturon360/tree/dev
+
+What we are doing, is removing the migrator docker, as now I know there is a way to produce SQL files that can be applied to the pgsql instance that will perform the migrations after we deploy the software.
+
+It will still need to be designed to work from docker containers, that has not changed. However, I was looking into redis caching, and was informed this might not be necessary with pgsql, we can do away with redis cache? The front-end may have 1-3x instance spun up, and the API may be 1-2x instance spun up, depending on how many users and load using docker via azure. So that needs to be kept in mind, and we would like a way to do staged upgrades on our prod environment to minimise downtime. So if redis is needed for that, it needs to be factored in so users do not lose their access to the system.
+
+The application will need to have all authentication handled in the API, so out of hte box, the blazor front-end can not have the authentication enabled.
+
+Cinturon360 v5 — Authentication, Provisioning, and Authorization Design Brief
+
+Core platform assumptions
+
+Cinturon360 v5 is a multi-tenant, multi-level SaaS platform.
+
+The platform must support:
+
+* multiple client organizations
+* multiple authentication methods per platform
+* optional SSO per tenant
+* optional provisioning models per tenant
+* all fine-grained authorization managed inside the application
+* support for both human users and non-human/service identities
+
+This document defines the intended boundary between authentication, provisioning, and authorization so the system can be designed cleanly from the beginning.
+
+⸻
+
+Core design rule
+
+For Cinturon360 v5, the intended architectural boundary is:
+
+* authentication = external via SSO where enabled, or internal where explicitly allowed
+* provisioning = optional via JIT, SCIM, CSV import, or other controlled onboarding mechanisms
+* authorization = fully owned and enforced inside Cinturon360
+* API/service tokens = issued and controlled by Cinturon360
+
+This is deliberate.
+
+The client identity provider should generally answer:
+
+* who the user is
+* which organization/tenant they belong to
+* whether they are allowed into the application at all
+
+Cinturon360 should answer:
+
+* what the user can do
+* what permissions they hold
+* what features they can access
+* what internal workflows and data they are allowed to act on
+
+The platform must not depend on external directory groups for detailed role design, because the application has too many internal roles and permission combinations for tenants to manage cleanly in Entra, Okta, or similar systems.
+
+⸻
+
+Standards and terminology
+
+The planner should treat these as separate concerns:
+
+OAuth 2.0
+
+Used for delegated API access and token-based authorization flows.
+Not a standalone login protocol by itself.
+
+OIDC / OpenID Connect
+
+Used for authentication and user identity.
+Built on top of OAuth 2.0.
+Primary modern standard for web/mobile sign-in and modern SaaS SSO.
+
+SAML 2.0
+
+Used for authentication and enterprise SSO.
+Common in enterprise/customer environments, especially older or more traditional ones.
+
+SCIM
+
+Used for user and group provisioning only.
+Not a login protocol.
+
+Important: OIDC and SAML are different protocols, but the same application can support both.
+Cinturon360 v5 should be designed so the app can support both in the same product, with configuration per tenant.
+
+⸻
+
+Tenant SSO model
+
+A tenant may be configured for one or more of the following:
+
+* no SSO
+* OIDC SSO
+* SAML 2.0 SSO
+
+The application itself may support both OIDC and SAML globally, but a given tenant will usually use one primary SSO method.
+
+This means:
+
+* the platform must support multiple auth providers
+* auth configuration must be tenant-aware
+* sign-in flow selection may depend on tenant, email domain, login choice, or tenant settings
+
+⸻
+
+Supported tenant onboarding / identity tiers
+
+The platform should support the following operational tiers.
+
+⸻
+
+Tier 1 — SSO only
+
+Used when a client wants users to sign in with enterprise SSO, but the platform does not pre-provision them.
+
+Characteristics:
+
+* OIDC preferred first
+* SAML supported second
+* JIT user creation on first successful login
+* default/basic internal role assigned on initial creation
+* all higher permissions managed inside Cinturon360
+
+Use case:
+
+* client wants employees to access the platform via SSO
+* user records are created only when users first sign in
+
+Trade:
+
+* simplest enterprise onboarding
+* no SCIM required
+* no pre-created users required
+* lifecycle is weaker unless additional rules are applied
+
+⸻
+
+Tier 2 — SSO + claims-based coarse authorization
+
+Used when a client wants SSO and wants some broad entitlement hints to come from their identity provider.
+
+Characteristics:
+
+* OIDC or SAML for sign-in
+* optional mapping of external claims/groups/app roles into coarse internal buckets
+* all detailed permissions still remain internal to Cinturon360
+
+Important:
+
+* external claims may decide broad access class
+* external claims should not be treated as the full permission model
+* internal role and permission model remains authoritative
+
+Use case:
+
+* client wants to manage broad access centrally
+* application still owns fine-grained role logic
+
+Trade:
+
+* useful for coarse entitlements
+* avoids forcing clients to manage every internal role externally
+* still requires claim/group mapping logic
+
+⸻
+
+Tier 3 — SSO + SCIM
+
+Used when a client wants both enterprise SSO and user lifecycle synchronization.
+
+Characteristics:
+
+* OIDC or SAML for login
+* SCIM for user lifecycle sync
+* optional group sync if needed
+* Cinturon360 still owns final authorization decisions
+
+SCIM may be used to:
+
+* create users
+* update users
+* disable users
+* optionally synchronize groups or profile attributes
+
+Important:
+SCIM is for provisioning only.
+It does not replace sign-in.
+
+Recommended rule:
+Even if SCIM is enabled, all fine-grained permissions should still be controlled in Cinturon360.
+
+Use case:
+
+* larger enterprise clients
+* joiner/mover/leaver lifecycle requirements
+* desire to pre-create and centrally manage users
+
+Trade:
+
+* strongest enterprise lifecycle model
+* highest implementation complexity
+* best fit for mature B2B customers
+
+⸻
+
+Tier 4 — Batch import / legacy provisioning
+
+Used when a client cannot support SCIM and wants user/account updates pushed by file.
+
+Characteristics:
+
+* CSV / FTP / SFTP import
+* scheduled ingestion
+* create/update/disable based on import data
+* may be combined with SSO or local login
+* still lower fidelity than SCIM
+
+Use case:
+
+* legacy customer environments
+* HR/data-feed-driven onboarding
+* no direct identity integration capability
+
+Trade:
+
+* works, but updates are delayed
+* higher reconciliation burden
+* should be documented as legacy/lower-fidelity provisioning
+
+⸻
+
+Authorization model
+
+This is explicit:
+
+All authorization is inside the application.
+
+The platform must own:
+
+* roles
+* permission sets
+* entitlement logic
+* workflow access
+* admin capabilities
+* data visibility
+* tenant-level constraints
+* multi-level access rules
+
+External identity systems may help with:
+
+* authenticating the user
+* asserting tenant membership
+* optionally passing coarse entitlement indicators
+
+But the external identity system must not be treated as the system of record for the platform’s detailed permission model.
+
+This is a hard design decision and should guide all auth and provisioning work.
+
+⸻
+
+Human users vs non-human identities
+
+The platform must explicitly distinguish between:
+
+* human users
+* service accounts / non-human identities
+
+These are not the same thing and must not be modeled as though they are interchangeable.
+
+Recommended separate identity types:
+
+* HumanUser
+* ServiceAccount
+
+or equivalent domain concepts.
+
+The planner must not treat service accounts as ordinary users with special flags.
+They should be first-class internal principals with separate behavior and restrictions.
+
+⸻
+
+Human user authentication rules
+
+Human users may authenticate via:
+
+* local username/password, where allowed
+* local username/password + MFA, where enabled
+* email-based login, where supported
+* OIDC SSO
+* SAML 2.0 SSO
+* social login
+* mobile login
+* QR-based device linking/login flow
+
+Human users may have interactive access to:
+
+* web application
+* API, where permitted
+* mobile application, where permitted
+
+⸻
+
+Service account model
+
+A tenant may be SSO-enabled and still have non-SSO service accounts that exist only inside Cinturon360.
+
+This is allowed and intended.
+
+A service account:
+
+* belongs to a tenant/org
+* is created and managed inside Cinturon360
+* does not need to exist in the client’s Azure AD / Entra ID / Okta / external IdP
+* may authenticate using PAT-only or other app-issued tokens
+* must not require interactive SSO
+* must not be treated as a human workforce identity
+
+Recommended hard boundaries for service accounts:
+
+* no browser login
+* no mobile login
+* no password login
+* no password reset flow
+* no MFA flow
+* API-only access
+* token-based auth only
+
+This keeps service identities clearly separated from workforce identities.
+
+⸻
+
+Personal access tokens / user-generated API tokens
+
+Users may be allowed to generate tokens for automation, subject to tenant policy.
+
+Requirements:
+
+* an org admin may enable/disable token generation for the tenant
+* token generation may be further controlled per user if required
+* token must have an expiry date
+* token must support permission scoping
+* token ownership must be tracked
+* token revocation must be supported
+* audit history must be retained
+
+These are best treated as:
+
+* user-owned API tokens
+* or tenant service account tokens, depending on identity type
+
+Avoid using the term “service account” for a token that is actually acting directly as a human user unless the domain model clearly distinguishes the two.
+
+⸻
+
+Direct API login for short-lived user tokens
+
+The platform may support non-SSO direct API login for specific users, but only when explicitly allowed by tenant/org policy.
+
+Requirements:
+
+* org admin can enable/disable non-SSO login at org level
+* user-level exception may be supported
+* login returns a short-lived access token
+* token lifetime target may be around 30 minutes
+* no refresh token required
+* user must re-authenticate after expiry
+
+This is valid, but must be treated carefully to avoid becoming an unintended bypass around SSO or MFA requirements.
+
+Recommended rule:
+If an organization is SSO-enabled, direct API login for human users should be an explicit exception, not the default.
+
+⸻
+
+Mobile app login model
+
+The mobile application (MAUI) must support login regardless of the user’s standard login method.
+
+This means the mobile app should support:
+
+* OIDC-based login where tenant uses SSO
+* local/internal login where tenant/user is allowed local login
+* application-issued session/token handling after successful authentication
+
+The mobile app must be treated as a first-class client in the auth design.
+
+⸻
+
+QR-based mobile sign-in / device linking
+
+Users should be able to link or sign in to the mobile app using a QR code from their authenticated profile.
+
+This should be designed as a secure device-linking / session-approval flow, not as a static bearer token exchange.
+
+Requirements:
+
+* QR code must be short-lived
+* QR must be one-time use
+* QR must be tied to an existing authenticated session
+* backend should validate and approve the link
+* mobile session should be server-managed and revocable
+
+Default target:
+
+* mobile login/session duration of 90 days, unless revoked or policy changes
+
+Recommended:
+Treat this as a “trusted device” or “device linking” feature rather than raw token transfer.
+
+⸻
+
+Session and token expectations
+
+The planner should separate these concepts:
+
+Interactive web session
+
+Used by normal browser users.
+
+Mobile session
+
+Longer-lived, device-scoped, revocable, default 90 days.
+
+Short-lived API access token
+
+Used for direct user API access, default around 30 minutes.
+
+PAT / automation token
+
+User-created or service-account-created token with explicit expiry and scoped permissions.
+
+Each of these has different behavior and risk profile and should not be collapsed into one generic token model.
+
+⸻
+
+Recommended tenant identity combinations
+
+The system should support combinations like:
+
+Example A
+
+* tenant uses SSO for human users
+* users created JIT
+* all permissions internal
+
+Example B
+
+* tenant uses SSO
+* coarse external claims determine broad access bucket
+* all fine-grained permissions internal
+
+Example C
+
+* tenant uses SSO + SCIM
+* users synced from client IdP
+* internal roles still managed in app
+
+Example D
+
+* tenant uses SSO for humans
+* tenant also creates PAT-only service accounts inside the app
+* service accounts do not exist in client IdP
+
+Example E
+
+* tenant does not use SSO
+* tenant uses local login and/or batch-import provisioning
+
+All of these should be considered valid target states.
+
+⸻
+
+Hard design principles
+
+The planner should preserve these principles:
+
+1. Authentication and authorization are separate concerns
+2. SSO does not own the platform’s detailed permission model
+3. SCIM is provisioning, not login
+4. OIDC and SAML can both exist in the same app
+5. Human users and service accounts must be separate identity types
+6. PAT-only service accounts are allowed even for SSO-enabled tenants
+7. Alternate login methods must not accidentally bypass tenant security policy
+8. All roles and permissions remain authoritative inside Cinturon360
+9. Every auth/provisioning feature must be tenant-aware
+10. Token lifetimes, revocation, and auditability must be first-class concerns
+
+⸻
+
+Practical planning outcome
+
+When designing Cinturon360 v5, the planner should assume the platform needs:
+
+* tenant-aware auth provider configuration
+* support for both OIDC and SAML
+* optional SCIM support
+* optional CSV/FTP/SFTP batch provisioning
+* JIT user creation
+* internal role and permission engine
+* separate service account model
+* PAT issuance and management
+* short-lived API login tokens
+* mobile auth/session support
+* QR-based device linking/login flow
+* robust audit trail for identity and token operations
+
+⸻
+
+Final intended architecture statement
+
+Cinturon360 v5 should be designed as a multi-tenant SaaS platform where external identity systems handle authentication and optional provisioning, while Cinturon360 remains the authoritative source for all fine-grained authorization, internal roles, permissions, service accounts, API tokens, and application behavior.
+
+⸻
+
+In addition to this, there must be support for Stripe out of the box. There is going to be a single stripe account that will be used for all billing.
+
+When a client org is onboarded, they will need to go through the stripe onboarding process (if they are enabled for Stripe payments) where their payment details are captured and used for all billing, and they should be able to access the stripe dashboard that shows them their card on file, payments, invoices, etc. This is for their accounts payable team. How they login/manage that is up to them internally.
+
+Some clients may be onboarded as using a different payment system, so we need a way to facilitate the reconciliation of their accounts when they make payments to the system too.
+
+⸻
+
+There will also need to be a cronjob that runs scheduled tasks. So a container would need to be added to the compose that supports a custom Docker image with supercronic. This way with Supercronic, you can run jobs on:
+
+* monthly
+* fortnightly
+* weekly
+* daily
+* every 12 hours
+* every 6 hours
+* hourly
+* every 15 minutes
+* every 1 minute
+* every 30 seconds
+* every 15 seconds
+* every 5 seconds
+* every 1 second
+
+Jobs can be loaded into the system to a dedicated table as either JSONB or using the crontab api endpoint or the webUI (for users with access to that screen for their org, or TMCs to run against bookings for their clients as such). This can also be used to setup jobs to run reconciilation reports and things, or even generate and email reports. This would be designed into the API structure to enable different types of crontab jobs, and load them in, then the system will trigger them based on the schedule they are assigned to (the queue, that is).
+
+⸻
+
+Use this for your planning notes.
+
+⸻
+
+Cinturon360 v5 — Org Membership, Role Assignment, and Hierarchical Access
+
+Core rule
+
+For standard tenant users in Cinturon360 v5:
+
+* a user belongs to one home org only
+* a user is assigned roles only in their own home org
+* those roles determine whether the user can:
+    * act only within their own org, or
+    * traverse downward into descendant orgs
+* access is never granted upward
+* access is never granted sideways
+* broader access comes from org hierarchy + role scope, not from multi-org membership
+
+This is an intentional design decision.
+
+⸻
+
+Why this model is required
+
+Cinturon360 is a multi-tenant, multi-level platform with hierarchical organizations.
+
+Example hierarchy:
+
+* Vendor → Avanoa Technology
+    * TMC → Avanoa Travel
+        * Client → Coca-Cola
+
+In this structure, access should naturally flow downward through the hierarchy when a user’s role allows it.
+
+Because of that:
+
+* a Vendor user may be able to access Vendor data and descendant TMC/Client data
+* a TMC user may be able to access TMC data and descendant Client data
+* a Client user may only access Client data
+
+This means a user does not need to belong to multiple orgs in order to work across the hierarchy.
+
+Multi-org membership would muddy the model because the hierarchy already defines the access path.
+
+⸻
+
+Membership rule
+
+A standard tenant user should have:
+
+* exactly one home org
+
+Examples:
+
+* danijel@avanoa.technology → home org = Avanoa Technology
+* warren@avanoa.travel → home org = Avanoa Travel
+* bob@coca-cola.com → home org = Coca-Cola
+
+This home org is the org the user belongs to for identity and authorization purposes.
+
+⸻
+
+Role assignment rule
+
+A standard tenant user should be provisioned:
+
+* roles only in their own home org
+
+The role itself then determines:
+
+* what the user can do
+* whether the user can access only their own org
+* whether the user can access descendant orgs below their own org
+
+This means role assignment is performed once, at the user’s own org, and the role definition controls traversal behavior.
+
+⸻
+
+Scope rule
+
+Access should be evaluated using:
+
+* the user’s home org
+* the target org/resource org
+* the user’s role(s)
+* the role scope
+
+Recommended scope concepts:
+
+* Self
+* SelfAndDescendants
+
+Optional later if needed:
+
+* DescendantsOnly
+
+But the core model should be:
+
+* Self = can act only within own org
+* SelfAndDescendants = can act within own org and all child orgs beneath it
+
+⸻
+
+Access direction rules
+
+Allowed
+
+* own org
+* descendant orgs, if role permits
+
+Not allowed
+
+* parent orgs
+* sibling orgs
+* unrelated orgs
+
+This keeps the hierarchy strict and predictable.
+
+⸻
+
+Example
+
+Bob — Coca-Cola
+
+* home org = Coca-Cola
+* role assigned in Coca-Cola
+* scope = Self
+* result:
+    * can access Coca-Cola
+    * cannot access Avanoa Travel
+    * cannot access Avanoa Technology
+
+Warren — Avanoa Travel
+
+* home org = Avanoa Travel
+* role assigned in Avanoa Travel
+* scope = SelfAndDescendants
+* result:
+    * can access Avanoa Travel
+    * can access Coca-Cola
+    * cannot access Avanoa Technology
+
+Danijel — Avanoa Technology
+
+* home org = Avanoa Technology
+* role assigned in Avanoa Technology
+* scope = SelfAndDescendants
+* result:
+    * can access Avanoa Technology
+    * can access Avanoa Travel
+    * can access Coca-Cola
+
+⸻
+
+Ticket escalation example
+
+Example hierarchy:
+
+* Avanoa Technology
+    * Avanoa Travel
+        * Coca-Cola
+
+Flow:
+
+1. Bob from Coca-Cola raises a ticket
+2. the ticket appears in Avanoa Travel scope because Coca-Cola is a descendant of Avanoa Travel
+3. Warren at Avanoa Travel reviews the ticket
+4. Warren escalates the ticket
+5. the ticket becomes visible in Avanoa Technology scope because Avanoa Travel is a descendant of Avanoa Technology
+6. Danijel at Avanoa Technology can access the ticket, related org settings, and related booking data because his role grants descendant traversal
+7. Danijel resolves the issue without needing membership in Avanoa Travel or Coca-Cola
+
+This is the intended behavior.
+
+⸻
+
+Important principle
+
+A user’s access to lower orgs must come from:
+
+* their role in their own home org
+* the hierarchy beneath that org
+
+It must not come from:
+
+* adding the user to multiple orgs
+* duplicating roles across child orgs
+* switching org identity dynamically
+* fake memberships to simulate inheritance
+
+⸻
+
+Sudo exception
+
+The sudo account is different.
+
+The sudo account:
+
+* does not need a home org
+* does not need org membership
+* is controlled by PlatformRole
+* bypasses the org hierarchy entirely
+
+So:
+
+* standard tenant users = one home org, roles assigned there
+* sudo/platform users = platform-scoped access, no org required
+
+⸻
+
+Recommended domain concepts
+
+User
+
+Represents the authenticated human identity.
+
+HomeOrgId
+
+The single org the user belongs to.
+
+RoleAssignment
+
+Assigned only in the user’s home org.
+
+Role
+
+Defines what actions are allowed.
+
+Scope
+
+Defines where actions are allowed:
+
+* Self
+* SelfAndDescendants
+
+Organization
+
+Represents Vendor, TMC, or Client nodes in the hierarchy.
+
+PlatformRole
+
+Used only for platform-level access such as Sudo.
+
+⸻
+
+Hard rules for planning
+
+1. A standard tenant user has exactly one home org
+2. A standard tenant user is assigned roles only in that home org
+3. Roles determine both permission and traversal scope
+4. Descendant access is allowed only if the role permits it
+5. Upward access is never allowed through org roles
+6. Sideways access is never allowed through org roles
+7. Multi-org membership for standard tenant users is not part of the model
+8. Sudo/platform access is outside org hierarchy and handled separately via PlatformRole
+
+⸻
+
+Final planning statement
+
+Cinturon360 v5 should use a single-home-org model for standard tenant users.
+Users are assigned roles only in their own org, and those roles determine whether access is limited to that org or may traverse downward into descendant orgs.
+Hierarchical access must come from role scope plus org inheritance, not from multi-org membership.
+
+⸻
+
+If you want, I can turn this into a tighter implementation spec next with sections like:
+
+* must
+* must not
+* recommended data model
+* access evaluation rules
+
+⸻
+
+
+Cinturon360 v5 — Identity and Access Management Implementation Spec
+
+1. Purpose
+
+This specification defines the required identity, authentication, provisioning, authorization, and token-management model for Cinturon360 v5.
+
+Cinturon360 v5 is a multi-tenant, multi-level SaaS platform.
+
+The platform must support:
+
+* tenant-specific authentication configuration
+* multiple identity models across different tenants
+* external SSO where required
+* optional provisioning models
+* application-owned authorization
+* support for both human and non-human identities
+* web, API, and mobile access patterns
+
+This specification is intended to guide architecture, domain modeling, security boundaries, and implementation planning.
+
+⸻
+
+2. Architectural principles
+
+2.1 Core boundary
+
+Cinturon360 v5 must follow this boundary:
+
+* authentication = external via SSO where enabled, or internal where explicitly allowed
+* provisioning = optional via JIT, SCIM, batch import, or controlled platform onboarding
+* authorization = fully owned and enforced inside Cinturon360
+* API/service tokens = issued, scoped, audited, and revoked by Cinturon360
+
+2.2 Authority boundaries
+
+External identity providers may determine:
+
+* who the user is
+* whether the user has authenticated successfully
+* which tenant the user belongs to, where derivable
+* optional coarse entitlement indicators
+* optional provisioning data
+
+Cinturon360 must determine:
+
+* whether the identity is allowed into the platform
+* which internal principal record the identity maps to
+* what roles and permissions the principal has
+* what data and features the principal may access
+* what API scopes/tokens may be issued
+* whether the principal is active, suspended, or disabled within the platform
+
+2.3 Authorization ownership
+
+All fine-grained authorization must remain inside Cinturon360.
+
+External groups, claims, or app roles may be used only for:
+
+* tenant admission
+* coarse access tier mapping
+* initial or broad entitlement mapping
+
+External identity systems must not be treated as the authoritative source for the application’s detailed permission model.
+
+⸻
+
+3. Standards model
+
+3.1 OAuth 2.0
+
+Must be treated as an authorization/token framework for delegated access and token issuance patterns.
+Must not be treated as the platform’s standalone user login model.
+
+3.2 OIDC / OpenID Connect
+
+Must be treated as a supported authentication and user identity protocol.
+Should be the preferred modern protocol for SSO integrations.
+
+3.3 SAML 2.0
+
+Must be treated as a supported authentication and enterprise SSO protocol.
+Should be supported for customers requiring enterprise/federated SSO patterns.
+
+3.4 SCIM
+
+Must be treated as a provisioning-only protocol.
+Must not be treated as a login protocol.
+
+3.5 Protocol coexistence
+
+The platform must be designed so that OIDC and SAML 2.0 can both be supported by the same application.
+Tenant configuration determines which method is active for a specific tenant.
+
+⸻
+
+4. Identity types
+
+The platform must explicitly support at least two identity/principal types.
+
+4.1 Human users
+
+Human users are interactive principals.
+
+They may have access to:
+
+* web application
+* mobile application
+* API access, where permitted
+
+They may authenticate through:
+
+* external SSO
+* internal login, where allowed
+* other approved human login mechanisms
+
+4.2 Service accounts
+
+Service accounts are non-human principals.
+
+They must:
+
+* belong to a tenant
+* exist only within Cinturon360 unless explicitly modeled otherwise
+* be API-only
+* use token-based authentication only
+* not require presence in client Entra ID / Azure AD / Okta / external IdP
+
+They must not support:
+
+* browser sign-in
+* mobile sign-in
+* password reset
+* MFA prompt flows intended for human users
+* interactive session-based login
+
+4.3 Identity-type separation
+
+Human users and service accounts must be modeled as distinct domain concepts.
+They must not be treated as the same identity type with a weak flag-based distinction.
+
+⸻
+
+5. Tenant authentication model
+
+5.1 Tenant awareness
+
+All authentication behavior must be tenant-aware.
+
+At minimum, authentication configuration must support:
+
+* tenant-level auth mode
+* tenant-level SSO provider details
+* tenant-level login restrictions
+* tenant-level token policies
+* tenant-level local-login policy
+* tenant-level service-account policy
+
+5.2 Supported tenant auth modes
+
+A tenant should be able to operate in one or more of these modes:
+
+* local login only
+* SSO via OIDC
+* SSO via SAML 2.0
+* hybrid modes where explicitly allowed
+
+5.3 Preferred tenant pattern
+
+A tenant will usually have one primary interactive login method for human users, but the platform must support exceptions such as:
+
+* SSO for workforce users
+* PAT-only service accounts
+* approved local/API login exceptions
+
+⸻
+
+6. Supported onboarding and provisioning tiers
+
+6.1 Tier 1 — SSO only
+
+Must support:
+
+* OIDC and/or SAML sign-in
+* JIT creation of user records on first successful authentication
+* default/basic internal role assignment on initial creation
+* internal authorization after creation
+
+Should support:
+
+* tenant admission checks
+* domain/issuer/tenant validation
+* rejection of users outside tenant policy
+
+6.2 Tier 2 — SSO + coarse external claims
+
+Must support:
+
+* SSO authentication via OIDC or SAML
+* optional ingestion of external claims/groups/app roles
+* mapping of external values into coarse internal entitlement categories
+
+Must not require tenants to mirror the platform’s full role model externally.
+
+6.3 Tier 3 — SSO + SCIM
+
+Must support, where enabled:
+
+* SSO login via OIDC and/or SAML
+* SCIM-based user lifecycle synchronization
+* create/update/disable flows
+* optional group/profile synchronization
+
+SCIM-synchronized identities must still be subject to internal authorization rules.
+
+6.4 Tier 4 — Batch import / legacy provisioning
+
+Should support, where required:
+
+* CSV import
+* FTP/SFTP-driven identity data ingestion
+* scheduled create/update/disable processing
+
+This must be treated as a lower-fidelity provisioning mechanism than SCIM.
+
+⸻
+
+7. Human user authentication requirements
+
+7.1 Supported human login methods
+
+The platform should support the following human login methods, subject to tenant policy:
+
+* local username/password
+* local username/password + MFA
+* OIDC SSO
+* SAML SSO
+* social login, where enabled
+* mobile login
+* QR-based mobile device linking/sign-in flow
+
+7.2 SSO-enabled tenant exceptions
+
+If a tenant is SSO-enabled, alternate non-SSO human login paths must be explicitly controlled.
+
+The platform must allow:
+
+* org-level enable/disable of local login
+* org-level enable/disable of direct API login
+* optional user-level exceptions where permitted by policy
+
+The platform must not silently allow alternate login paths that bypass tenant SSO policy.
+
+⸻
+
+8. Authorization requirements
+
+8.1 Internal ownership
+
+All roles, permission sets, feature access, workflow access, and internal business access rules must be owned by Cinturon360.
+
+8.2 External mapping limitation
+
+External claims/groups may only map into:
+
+* coarse internal access tiers
+* entry eligibility
+* broad persona assignment
+* optional defaults
+
+They must not replace the application’s internal authorization engine.
+
+8.3 Multi-level authorization
+
+The authorization model must be designed to support:
+
+* tenant-level boundaries
+* org/unit/sub-entity hierarchy where applicable
+* role-based permissions
+* permission overrides where required
+* feature-based gating
+* data-level access constraints
+* service-account-specific permissions
+
+⸻
+
+9. Service account requirements
+
+9.1 General
+
+A tenant must be allowed to create and manage service accounts inside the platform, including when that tenant uses SSO for human users.
+
+9.2 External IdP dependency
+
+Service accounts must not require linkage to the tenant’s external identity provider.
+
+9.3 Authentication method
+
+Service accounts must authenticate using platform-issued tokens only.
+
+9.4 Operational restrictions
+
+Service accounts must be:
+
+* tenant-scoped
+* API-only
+* revocable
+* auditable
+* permission-scoped
+
+9.5 Governance requirements
+
+The platform should support:
+
+* creation by authorized tenant admins
+* naming/description
+* explicit permission assignment
+* expiry policy
+* token rotation
+* token revocation
+* created-by / updated-by / last-used auditing
+
+⸻
+
+10. Personal access tokens and API tokens
+
+10.1 User-generated tokens
+
+The platform must support user-generated API tokens, subject to tenant policy.
+
+10.2 Policy controls
+
+The platform must support:
+
+* org-level enable/disable of user-generated tokens
+* optional per-user restrictions
+* expiry dates
+* permission scoping
+* revocation
+* audit history
+* last-used tracking
+
+10.3 Token ownership
+
+Every token must be associated with:
+
+* a principal type
+* a principal id
+* a tenant id
+* issuance metadata
+* expiry metadata
+* scope/permission metadata
+
+10.4 Terminology
+
+The planner should distinguish:
+
+* user-owned automation/API tokens
+* service-account tokens
+
+These should not be conflated unless the domain model intentionally unifies them.
+
+⸻
+
+11. Direct API login for human users
+
+11.1 Support model
+
+The platform may support direct API login for human users if explicitly allowed by tenant policy.
+
+11.2 Token behavior
+
+This login flow must issue:
+
+* a short-lived access token
+* no refresh token by default
+
+Default target lifetime may be approximately 30 minutes.
+
+11.3 Security boundary
+
+For SSO-enabled tenants, direct API login for human users must be treated as an explicit exception.
+
+11.4 Prohibited assumption
+
+The existence of SSO for a tenant must not automatically imply that API login is permitted.
+
+⸻
+
+12. Mobile authentication model
+
+12.1 Mobile client status
+
+The mobile application must be treated as a first-class application client.
+
+12.2 Supported mobile login modes
+
+The mobile application must support login according to the user’s allowed auth path, including:
+
+* OIDC-based login where tenant uses SSO
+* internal login where allowed by policy
+
+12.3 Session model
+
+The mobile client should support a longer-lived device-scoped session model than short-lived API access tokens.
+
+Default target session policy:
+
+* 90-day device login/session, unless revoked or policy changes
+
+⸻
+
+13. QR-based mobile linking/login
+
+13.1 Supported pattern
+
+The platform should support QR-based linking/sign-in from an authenticated user profile to the mobile app.
+
+13.2 Security model
+
+This must be implemented as a secure device-linking or session-approval flow.
+
+It must:
+
+* be short-lived
+* be one-time-use
+* be tied to an authenticated user session
+* be validated server-side
+* be revocable
+
+13.3 Prohibited pattern
+
+The QR code must not contain a reusable long-lived bearer token that directly grants ongoing access.
+
+⸻
+
+14. Session and token classes
+
+The design must distinguish between these classes:
+
+14.1 Interactive web session
+
+For browser-based human access.
+
+14.2 Mobile device session
+
+For longer-lived app/device access.
+
+14.3 Short-lived API login token
+
+For direct human API access.
+
+14.4 User-generated automation token / PAT
+
+For user-authorized automation.
+
+14.5 Service-account token
+
+For non-human API access.
+
+Each class must have separate policy handling for:
+
+* issuance
+* lifetime
+* revocation
+* auditing
+* storage expectations
+* permission scope
+
+⸻
+
+15. Audit and governance requirements
+
+The platform must support auditability for identity and token operations.
+
+At minimum, audit coverage should include:
+
+* user creation
+* user disablement
+* user provisioning source
+* SSO link events
+* service-account creation/update/delete
+* token issuance
+* token revocation
+* token expiry
+* last-used tracking
+* login method used
+* tenant policy changes related to auth
+
+⸻
+
+16. Must support
+
+The planner should assume the platform must support:
+
+* multi-tenant auth configuration
+* OIDC support
+* SAML 2.0 support
+* JIT user creation
+* internal authorization ownership
+* tenant-scoped service accounts
+* PAT/token issuance and revocation
+* short-lived API login tokens
+* mobile login support
+* QR-based device linking/sign-in flow
+* audit trail for identities and tokens
+
+⸻
+
+17. Should support
+
+The planner should assume the platform should support:
+
+* SCIM provisioning
+* coarse external claim/group mapping
+* CSV/FTP/SFTP batch provisioning
+* tenant-level login policy exceptions
+* per-user exceptions for direct API login
+* token scoping policies
+* device/session management
+* service-account lifecycle controls
+* import/provisioning reconciliation workflows
+
+⸻
+
+18. Must not do
+
+The planner must avoid these designs:
+
+* external IdP as the source of truth for detailed platform authorization
+* service accounts modeled as ordinary human users
+* reusable long-lived QR login tokens
+* silent bypasses around SSO through alternate login endpoints
+* assuming SCIM implies login
+* assuming SSO implies provisioning
+* assuming OAuth 2.0 alone is the user login protocol
+* collapsing all token/session types into one generic token model
+
+⸻
+
+19. Recommended defaults
+
+19.1 Protocol preference
+
+* prefer OIDC first
+* support SAML second
+
+19.2 Authorization ownership
+
+* keep all detailed roles and permissions inside Cinturon360
+
+19.3 Initial provisioning preference
+
+* prefer JIT for simple SSO tenants
+* support SCIM for mature enterprise tenants
+* support batch import for legacy customers only
+
+19.4 Human API token behavior
+
+* short-lived token
+* no refresh token by default
+
+19.5 Mobile behavior
+
+* 90-day revocable device session by default
+
+19.6 Service-account behavior
+
+* PAT/token-only
+* no interactive login
+* tenant-scoped
+* explicit permission assignment
+
+⸻
+
+20. Tenant configuration rules
+
+The planner should assume tenant configuration needs to control at least:
+
+* primary login mode
+* OIDC/SAML provider configuration
+* whether local login is allowed
+* whether direct API login is allowed
+* whether user-generated PATs are allowed
+* whether service accounts are allowed
+* whether JIT provisioning is allowed
+* whether SCIM is enabled
+* whether batch import is enabled
+* token expiry policies
+* mobile session policy
+* QR/device-linking policy
+
+⸻
+
+21. Example valid tenant patterns
+
+The following must be considered valid and supported scenarios.
+
+21.1 SSO + JIT + internal auth
+
+* workforce users sign in with SSO
+* first login creates user
+* internal roles managed in app
+
+21.2 SSO + coarse claims + internal auth
+
+* SSO for login
+* external claim maps to broad access bucket
+* all detailed permissions in app
+
+21.3 SSO + SCIM + internal auth
+
+* users provisioned by SCIM
+* users log in by SSO
+* all detailed permissions in app
+
+21.4 SSO humans + PAT-only service accounts
+
+* human users use SSO
+* service accounts exist only in app
+* service accounts do not exist in client Entra/IdP
+
+21.5 Legacy import onboarding
+
+* users managed by CSV/FTP/SFTP feed
+* internal roles assigned from app rules or import mapping
+* optional SSO or local login for humans
+
+⸻
+
+22. Final design directive
+
+Cinturon360 v5 must be designed as a tenant-aware SaaS identity system where:
+
+* external providers handle authentication
+* optional provisioning may come from SCIM, JIT, or import pipelines
+* the platform remains authoritative for all fine-grained authorization
+* service accounts are first-class internal non-human identities
+* tokens and sessions are explicitly modeled by use case
+* security policy is enforced consistently across web, API, and mobile clients
+
+⸻
+
+Payments should also be able to be applied as split payments to orders. Orders can be put into a defer payment status, even if a credit card is on file (eg - the TMC makes the booking, but doesn't commit it yet). Then the client can come back and say "Charge $1000 to the card on file, and we'll pay the rest via bank transfer". This means that different payment amounts and methods can be applied to an invoice for a travel booking. Or multiple payments can be made until the invoice is paid in full.
+
+There should also be the option to markup different transaction types, and add fees based on the payment type (calculated) per org (eg - a TMC might set $5 per booking for ClientA and $2 per booking with 3% markup on final quoted fee for Client B) - this exists in the existing cinturon360 already and is applied via a "License"
+
+License should also have a provision for how many user accounts can be added to an org. It's up to them if they charge per user account or not, this is configured on the license and is then billed. Billing date per month is configured on the license. License can be configured to bill annual, bi-annual, quarterly, monthly, or PAYG - and can be configured to $0 for annual. Up to the TMC/Client agreement).
+
+LIcense fees (for access, users, etc.) can be configured with a bool flag to issue an invoice or charge directly.
+
+Clients can also have a prepaid balance added to their account, this is an amount that is charged to their billing method, then once paid sits on their account and can be drawn upon for all travel etc. This can also be refunded by creating a CR note on the org. Remember, all transactions ARE linked to an org, but can be attributed to a user (or not! - for system transactions). You can also "can not spend outside of prepaid balance" by setting the billing type flag to "Prepaid". If the option "Postpaid" is enabled, it will draw upon the prepaid balance first then the remainder charged to the account on file.
+
+Charges can be delegated to approvals too, there is up to 3 levels of manual approval (manager, L1, L2). The rest of the approval will come directly from the travel policy that is applied to hte user, and the travel policy will be VERY robust to contain a lot of policy management.
+
+the pattern will be:
+
+* 0 approvals for in-policy / auto-approved
+* 1 approval for normal manager approval
+* 2 approvals for exceptions or higher spend
+* 3 approvals only for stricter enterprise or regulated cases
+
+Current travel/T&E guidance keeps pushing toward automating routine, in-policy travel and only sending exceptions or threshold breaches into manual approval flows. Navan’s current guidance specifically recommends automated approvals for routine cases, with direct manager, finance, or senior sign-off for threshold-based exceptions, and supports layered approval hierarchies for higher-value or ambiguous cases.
+
+Eg:
+  - included/excluded: hotels, airlines, etc
+  - can/cannot travel international
+  - can/cannot travel to specific destinations (countries)
+  - can/cannot book certain types (eSim, Flight, Hotel, etc)
+  - auto approve up to certain amount
+  - must have cost code [bool]
+  - must have preauth code [bool] + the preauth code (provided by someone in the client org, or generated by TMC who spoke to someone at client org to generate)
+  - must have project code [bool] + the project code
+  - cost centre/preauth code/project code - can be generated in the UI by someone with the right authorization for the org level
+  - can configure a cost centre, preauth code, project code to only allow up to a maximum spend amount (total) or per booking too
+  - specify lead days booking can be made for (can override with preauth code on booking selection screen if a prebooking auth is provided with that override/setting generated)
+  - can/cannot travel on certain days (eg, bookings can be generated M-F only, but can cover Sat/Sun if travel booked from Wed-Mon following week)
+  - can search for certain cabin types, hotel room types, etc
+
+If travel is out of policy, the policy can specify who to get approval from, and which levels etc (eg - L1 + L2 + L3, or L2 + L3, or just L3)
+
+Users that use the pubilc interface, are assigned a default travel policy that will be generated after the system is brought online, and assigned to all "public users" that is UNRESTRICTED in all areas.
+
+Expense policy cannot be applied to public user - only org users that are onboarded (see earlier, we have public and onboarded users).
+
+Expense policy can be designed to be VERY robust.
+
+User can also be flagged as VIP on the user account level - but more on that later.
+
+⸻
+
+Use this as a user planning baseline.
+
+Do not try to put literally everything into one physical table just because it is “one user.”
+Use one core User record per person, then hang related tables off it.
+
+That gives you:
+
+* one identity per user
+* one place for core profile data
+* separate auth/security records
+* separate org/role records
+* separate travel-specific records
+* separate tokens/sessions/audit records
+
+That is the cleanest model.
+
+⸻
+
+Core principle
+
+A User is:
+
+* the authenticated human identity
+* the person/account in the system
+* the anchor for auth, org membership, profile, preferences, and travel capability
+
+A user may be:
+
+* public user
+* client user
+* TMC user
+* vendor user
+* platform sudo user
+
+But they are still all a User.
+
+So I would design it as:
+
+* User
+* UserAuthMethod
+* UserSecurity
+* UserMfaMethod
+* Organization
+* RoleAssignment
+* PermissionAssignment if needed
+* TravellerProfile
+* EmergencyContact
+* UserSession
+* UserApiToken
+* UserApiLoginPolicy
+* UserAudit
+
+⸻
+
+1. Core User table
+
+This should be the central record.
+
+User
+
+Suggested fields:
+
+Identity
+
+* UserId
+* PublicId / Guid
+* FirstName
+* MiddleName
+* LastName
+* DisplayName
+* PreferredName
+* FullNameNormalized
+* Email
+* EmailNormalized
+* Phone
+* PhoneNormalized
+* Username if you want one
+* ProfilePhotoUrl
+* DateOfBirth if you truly need it here, otherwise keep it in traveller profile
+* Gender only if needed and only if appropriate for your product/legal handling
+
+Status
+
+* IsActive
+* IsDeleted
+* IsLocked
+* IsSuspended
+* RequiresPasswordReset
+* MustCompleteProfile
+* MustAcceptTerms
+* LastLoginUtc
+* LastSeenUtc
+
+Classification
+
+* UserCategory
+    * Public
+    * Client
+    * Tmc
+    * Vendor
+    * Platform
+* PlatformRole
+    * None
+    * Sudo
+    * PlatformOps
+    * PlatformAudit
+* HomeOrgId nullable for platform users only
+
+Locale / profile defaults
+
+* LanguageCode
+* TimeZone
+* CurrencyCode
+* CountryCode
+* DateFormat
+* TimeFormat
+* MarketingOptIn
+* TermsAcceptedUtc
+* PrivacyAcceptedUtc
+
+Operational
+
+* CreatedUtc
+* CreatedByUserId
+* UpdatedUtc
+* UpdatedByUserId
+
+⸻
+
+2. Auth method model
+
+Do not shove all auth columns into User.
+
+A user may have multiple auth methods.
+
+Examples:
+
+* email/password
+* Google
+* Microsoft
+* Apple
+* Facebook
+* OIDC
+* SAML-backed link
+* magic link
+* QR/device link
+* API login enabled
+
+UserAuthMethod
+
+Suggested fields:
+
+* UserAuthMethodId
+* UserId
+* AuthType
+    * Password
+    * Google
+    * Microsoft
+    * Apple
+    * Facebook
+    * Oidc
+    * Saml
+    * MagicLink
+    * QrDeviceLink
+* ProviderName
+* ProviderUserId
+* ProviderEmail
+* Issuer
+* Subject
+* IsPrimary
+* IsEnabled
+* LinkedUtc
+* LastUsedUtc
+
+This allows:
+
+* one public user with Google login
+* one client user with SSO login
+* one TMC user with password + MFA
+* one vendor user with Microsoft social login
+* later linking multiple methods to same user
+
+⸻
+
+3. Password/security table
+
+Keep password/security internals separate.
+
+UserSecurity
+
+Suggested fields:
+
+* UserId
+* PasswordHash
+* PasswordHashAlgorithm
+* PasswordChangedUtc
+* PasswordFailedAttemptCount
+* PasswordLastFailedUtc
+* LockedUntilUtc
+* SecurityStamp
+* ConcurrencyStamp
+* LastPasswordResetRequestUtc
+* PasswordResetRequired
+* AllowDirectLogin
+* AllowApiLogin
+* AllowPatCreation
+
+For SSO-only users:
+
+* password fields can be null
+* AllowDirectLogin = false
+
+⸻
+
+4. MFA model
+
+Do not use one boolean only.
+
+You need both:
+
+* MFA requirement state
+* MFA methods
+
+UserSecurity
+
+You can keep some summary fields here:
+
+* MfaEnabled
+* MfaRequired
+* MfaEnforcedByOrg
+* PreferredMfaMethod
+
+UserMfaMethod
+
+Suggested fields:
+
+* UserMfaMethodId
+* UserId
+* MfaType
+    * Totp
+    * Sms
+    * EmailOtp
+    * AuthenticatorPush
+    * RecoveryCode
+* IsEnabled
+* IsPrimary
+* SecretEncrypted for TOTP if used
+* PhoneNumber
+* Email
+* CreatedUtc
+* LastUsedUtc
+
+UserRecoveryCode
+
+* UserRecoveryCodeId
+* UserId
+* CodeHash
+* UsedUtc
+* CreatedUtc
+
+⸻
+
+5. Org assignment and role model
+
+Keep this separate.
+
+A standard tenant user has:
+
+* one home org
+* roles assigned in that org only
+
+In User
+
+* HomeOrgId
+
+UserRoleAssignment
+
+Suggested fields:
+
+* UserRoleAssignmentId
+* UserId
+* OrgId
+* RoleId
+* ScopeMode
+    * Self
+    * SelfAndDescendants
+* IsActive
+* AssignedUtc
+* AssignedByUserId
+
+If you want to enforce your rule strongly:
+
+* OrgId here must equal User.HomeOrgId for standard users
+* except maybe platform users if needed
+
+⸻
+
+6. Permission model
+
+Prefer roles over lots of per-user flags.
+
+Role
+
+* RoleId
+* OrgType
+* Name
+* Description
+* IsSystemRole
+
+RolePermission
+
+* RoleId
+* PermissionCode
+
+Example permission codes
+
+* bookings.read
+* bookings.manage
+* reports.finance.read
+* travellers.manage
+* tickets.manage
+* users.manage
+* org.settings.manage
+* approvals.manage
+* policy.manage
+
+Use permissions, not booleans like:
+
+* IsFinanceUser
+* IsSupportUser
+
+⸻
+
+7. Traveller profile
+
+This is not the same as user identity, but for your model, each user can have one traveller profile.
+
+TravellerProfile
+
+Suggested fields:
+
+* TravellerProfileId
+* UserId nullable if traveller exists without login
+* FirstName
+* MiddleName
+* LastName
+* PreferredName
+* DateOfBirth
+* Gender if truly needed
+* Phone
+* Email
+* NationalityCountryCode
+* CountryOfResidenceCode
+* PreferredLanguageCode
+
+Travel details
+
+* PassportNumber
+* PassportCountryCode
+* PassportExpiryDate
+* KnownTravellerNumber
+* FrequentFlyerNotes
+* SeatPreference
+* MealPreference
+* HotelPreference
+* SpecialAssistanceNotes
+* TravelNotes
+
+Compliance / identity
+
+* GovernmentIdNumber only if required and handled securely
+* VisaDetails
+* RedressNumber if relevant
+
+Operational
+
+* IsChildTraveller
+* HasNoEmail
+* ManagedByUserId nullable
+* CreatedUtc
+* UpdatedUtc
+
+This is where the travel person data goes.
+
+VIP status
+
+VIP is usually not an authentication concept and not really a pure org-role concept either. It is a travel servicing/profile attribute.
+
+So I would store it in one of these ways:
+
+Simple
+
+On TravellerProfile:
+
+* IsVip
+* VipLevel
+* VipNotes
+
+Better
+
+Use a separate table if VIP logic gets richer:
+
+TravellerServicingProfile
+
+* TravellerProfileId
+* IsVip
+* VipLevel
+* ServiceTier
+* RequiresManualReview
+* AfterHoursPriority
+* DedicatedConsultantUserId
+* Notes
+
+That is cleaner if VIP affects:
+
+* approval handling
+* servicing priority
+* queue routing
+* policy exceptions
+* after-hours treatment
+
+Servicing / status
+
+* IsVip
+* VipLevel
+* VipNotes
+
+and add a new table:
+
+TravellerLoyaltyProgram
+
+* airline / hotel / car / etc loyalty memberships linked to the traveller profile
+
+Frequent flyer / reward programs
+
+These should definitely not be columns on User, because a person can have many.
+
+Examples:
+
+* Qantas Frequent Flyer
+* Velocity
+* KrisFlyer
+* Marriott Bonvoy
+* Hilton Honors
+* Accor Live Limitless
+* Hertz Gold Plus Rewards
+
+So this should be a child table off TravellerProfile.
+
+TravellerLoyaltyProgram
+
+Suggested fields:
+
+* TravellerLoyaltyProgramId
+* TravellerProfileId
+* ProgramType
+    * Airline
+    * Hotel
+    * Car
+    * Rail
+    * Other
+* ProviderCode or ProviderName
+* ProgramName
+* MembershipNumber
+* TierLevel
+* StatusExpiryDate
+* IsPrimary
+* Notes
+* CreatedUtc
+* UpdatedUtc
+
+⸻
+
+8. Emergency contact
+
+This should be separate, not flattened into user.
+
+UserEmergencyContact
+
+Suggested fields:
+
+* UserEmergencyContactId
+* UserId
+* ContactName
+* Relationship
+* Phone
+* AlternatePhone
+* Email
+* CountryCode
+* IsPrimary
+* Notes
+* CreatedUtc
+* UpdatedUtc
+
+Allow more than one.
+
+⸻
+
+9. Address and contact details
+
+Separate if you need structured address data.
+
+UserAddress
+
+* UserAddressId
+* UserId
+* AddressType
+    * Home
+    * Billing
+    * Mailing
+* Line1
+* Line2
+* City
+* StateRegion
+* PostalCode
+* CountryCode
+* IsPrimary
+
+⸻
+
+10. Preferences
+
+Keep user preferences separate if they will grow.
+
+UserPreference
+
+Either as rows or JSON.
+
+Examples:
+
+* preferred airport
+* preferred airline
+* preferred hotel chain
+* preferred seat type
+* accessibility options
+* email notification preferences
+* SMS notification preferences
+* push notification preferences
+* dashboard defaults
+
+If these will get large, use:
+
+* UserPreference table
+    or
+* UserSettingsJson
+
+⸻
+
+11. Public user specific handling
+
+Public users are still just User.
+
+You do not need a separate public user table.
+
+What distinguishes them is:
+
+* UserCategory = Public
+* HomeOrgId = TMC Public Client org
+* usually fewer roles
+* traveller/self-service permissions only
+* possibly social login or local password login
+
+So public users fit naturally in the same model.
+
+⸻
+
+12. SSO linkage
+
+For SSO users, keep both summary and detailed linkage.
+
+In User
+
+* IsSsoUser
+* SsoOrgPolicyApplied maybe derived not stored
+
+Better in auth tables
+
+In UserAuthMethod:
+
+* AuthType = Oidc or Saml
+* Issuer
+* Subject
+* ProviderName
+* ExternalObjectId
+* LastSsoLoginUtc
+
+Also useful:
+
+UserProvisioningSource
+
+* ProvisioningSourceType
+    * Jit
+    * Scim
+    * CsvImport
+    * Manual
+    * PublicSignup
+* ProvisioningReference
+* ProvisionedUtc
+
+⸻
+
+13. PATs / API tokens
+
+Do not store actual PAT values in plain text after creation.
+
+UserApiToken
+
+Suggested fields:
+
+* UserApiTokenId
+* UserId
+* TokenName
+* TokenType
+    * Pat
+    * ApiLoginToken
+    * DeviceToken
+* TokenHash
+* TokenPrefix
+* ExpiresUtc
+* RevokedUtc
+* LastUsedUtc
+* CreatedUtc
+* CreatedByUserId
+* ScopeJson or normalized scope table
+* IsActive
+
+For display:
+
+* show prefix only
+* never show full token again after creation
+
+⸻
+
+14. Short-lived API login tokens / JWT handling
+
+JWTs themselves usually do not belong as rows unless you need revocation/session tracking.
+
+You have two models:
+
+Stateless JWT only
+
+Store minimal/no DB rows, rely on expiry.
+Good for performance, weaker for revocation.
+
+Session-backed token issuance
+
+Recommended for your platform.
+
+UserSession
+
+Suggested fields:
+
+* UserSessionId
+* UserId
+* SessionType
+    * Web
+    * Api
+    * Mobile
+    * QrLinkedMobile
+* JwtId / Jti
+* RefreshTokenHash nullable if ever used
+* CreatedUtc
+* ExpiresUtc
+* RevokedUtc
+* LastSeenUtc
+* IpAddress
+* UserAgent
+* DeviceName
+* DeviceId
+* IsTrustedDevice
+
+For your model:
+
+* 30-minute API login token can map to an Api session
+* 90-day mobile login can map to a Mobile session
+
+⸻
+
+15. API login policy
+
+Since you want per-org and maybe per-user control:
+
+UserAccessPolicySummary or on UserSecurity
+
+* AllowApiLogin
+* AllowPatCreation
+* AllowMobileLogin
+* AllowQrLinkLogin
+* AllowPasswordLogin
+
+These may be:
+
+* inherited from org policy
+* overridden per user
+
+Better yet:
+
+UserAccessOverride
+
+* UserId
+* PolicyCode
+* OverrideValue
+* Reason
+* ExpiresUtc
+
+This avoids adding 50 columns later.
+
+⸻
+
+16. Audit and compliance
+
+You will want auditing separate from the user row.
+
+UserAuditEvent
+
+Examples:
+
+* user created
+* email changed
+* password changed
+* MFA enabled
+* PAT created
+* PAT revoked
+* org changed
+* role changed
+* last login
+* SSO linked
+* direct login enabled
+* API login disabled
+
+Fields:
+
+* UserAuditEventId
+* UserId
+* EventType
+* PerformedByUserId
+* OccurredUtc
+* IpAddress
+* MetadataJson
+
+⸻
+
+17. Suggested minimum single-user view
+
+If someone says “show me the user account/profile”, the aggregate view should include:
+
+Profile
+
+* name
+* email
+* phone
+* photo
+* language/timezone/country
+* active/suspended/locked state
+
+Org
+
+* home org
+* org type
+* public/client/tmc/vendor classification
+* platform role if any
+
+Auth
+
+* login methods linked
+* direct login allowed?
+* SSO linked?
+* password login enabled?
+* MFA enabled and methods configured
+
+Authorization
+
+* roles assigned
+* scope mode
+* effective permissions summary
+
+Travel
+
+* traveller profile summary
+* passport/loyalty/preferences status
+* emergency contact summary
+
+Tokens / sessions
+
+* active PAT count
+* active API session count
+* active mobile sessions
+* last login / last token use
+
+Provisioning
+
+* created manually / JIT / SCIM / CSV / public signup
+
+⸻
+
+18. My recommended physical structure
+
+If you want the cleanest practical layout:
+
+Core
+
+* Users
+
+Auth/security
+
+* UserAuthMethods
+* UserSecurity
+* UserMfaMethods
+* UserRecoveryCodes
+* UserSessions
+
+Org/access
+
+* Organizations
+* UserRoleAssignments
+* Roles
+* RolePermissions
+
+Travel/person
+
+* TravellerProfiles
+* UserEmergencyContacts
+* UserAddresses
+* UserPreferences
+
+API/tokens
+
+* UserApiTokens
+
+Audit
+
+* UserAuditEvents
+
+⸻
+
+19. What should NOT be in the base Users table
+
+Avoid stuffing these directly into Users if possible:
+
+* multiple MFA records
+* full token history
+* session history
+* permission flags
+* role lists
+* frequent flyer lists
+* passport history
+* multiple emergency contacts
+* auth provider linkage
+* audit events
+
+That turns Users into garbage over time.
+
+⸻
+
+20. Direct answer for “anything and everything”
+
+For the user themselves, I would include these categories:
+
+* identity details
+* status and lifecycle
+* home org and category
+* platform role
+* auth methods
+* password/direct login policy
+* MFA configuration
+* role assignments
+* permission summary
+* traveller profile
+* emergency contacts
+* addresses
+* preferences
+* PATs/API tokens
+* active sessions/JWT session tracking
+* provisioning source
+* audit metadata
+
+But I would not put them all in one table.
+
+⸻
+
+21. Final recommendation
+
+Use:
+
+* one User row per human
+* one optional TravellerProfile linked to that user
+* one home org
+* roles assigned in that home org only
+* separate auth/security/session/token tables
+* separate emergency contact and preference tables
+* separate audit and provisioning metadata
+
+That gives you one coherent user account model for:
+
+* public users
+* client users
+* TMC users
+* vendor users
+* platform sudo users
+
+without the schema becoming a disaster.
+
+
+⸻
+
+Use this for your planning notes.
+
+⸻
+
+Cinturon360 v5 — System Separation, Shared Layer, Data Contracts, Logging, Jobs, Storage, and Project Structure
+
+Core architectural issue
+
+The current platform has too much overlap between:
+
+* Web
+* API
+* shared models and helpers
+* data access
+* cross-cutting business rules
+
+This causes:
+
+* duplicated logic
+* leakage of web concerns into API concerns
+* leakage of API concerns into UI concerns
+* bloated DbContext and entity surface
+* poor ownership of contracts and validation
+* unclear boundaries between transport models, business models, and persistence models
+* difficulty evolving the API without breaking the UI
+* difficulty reasoning about logging, jobs, tokens, security, and external integrations
+
+Cinturon360 v5 must be designed with a clear layer between the API and the Web UI.
+
+That middle layer is the translation / application boundary and must be treated as a first-class part of the system.
+
+⸻
+
+Core design goal
+
+The platform should be split into clear concerns:
+
+* Web UI
+* API surface
+* shared contracts and application models
+* domain/business services
+* data access and persistence
+* external integrations
+* background jobs
+* storage/document generation
+* security and authorization
+* logging and audit
+
+The purpose is to ensure:
+
+* the UI does not directly shape the database
+* the API does not become a giant transport-and-business-logic blob
+* the DbContext does not become a dumping ground
+* enums, static data, validation, precision rules, and mapping rules live in clearly defined places
+* external API integrations are separate from internal contracts
+* jobs and storage workflows are first-class subsystems
+* robust structured logging exists across all layers
+
+⸻
+
+Required architectural separation
+
+1. Web layer
+
+The Web project is responsible for:
+
+* rendering UI
+* handling user interaction
+* session-aware presentation behavior
+* calling the API or application boundary
+* client-facing view composition
+* view-specific state and orchestration
+
+The Web layer must not own:
+
+* persistence logic
+* domain entity rules
+* database models
+* direct business workflow rules
+* core validation rules that belong to the system
+* transport contracts that should be shared
+* external provider integration logic
+
+The Web layer should consume:
+
+* stable API contracts
+* UI-facing view models
+* application-facing DTOs where appropriate
+
+⸻
+
+2. API layer
+
+The API project is responsible for:
+
+* public and internal HTTP interfaces
+* authentication endpoints
+* data feed endpoints
+* controller/endpoint routing
+* request/response orchestration
+* request security enforcement
+* returning contracts to callers
+* invoking application services
+
+The API layer must not become:
+
+* the domain model
+* the storage model
+* the validation dumping ground
+* a giant helper/mapping graveyard
+* the home of all enums, static data, and cross-layer types
+
+The API should be a surface, not the system itself.
+
+⸻
+
+3. Application boundary / translator layer
+
+This is the critical missing layer.
+
+This layer sits between:
+
+* Web and API
+* API and domain logic
+* transport contracts and domain models
+* external data and internal models
+* database entities and unified business-facing models
+
+This layer is responsible for:
+
+* request handling orchestration
+* use-case flows
+* mapping contracts to internal models
+* mapping entities to DTOs/contracts
+* enforcing business workflow sequencing
+* handling validation beyond simple transport validation
+* normalizing values
+* coordinating services
+* composing results for the API/UI
+
+This is where the translator exists.
+
+It should contain:
+
+* application services
+* command/query handlers if you use that style
+* mappers
+* contract translators
+* use-case orchestration
+* business validation
+* policy evaluation
+* permission evaluation helpers
+* cross-entity workflow logic
+
+This is the layer that prevents:
+
+* Web from knowing too much
+* API from doing too much
+* Data from leaking everywhere
+
+⸻
+
+4. Data layer
+
+The Data project is responsible for:
+
+* DbContext
+* entity configuration
+* persistence entities
+* migrations
+* repositories/query services if used
+* database-specific access logic
+* persistence-level constraints
+* storage-related persistence workflows
+
+The Data layer must not become:
+
+* the location of every system rule
+* the location of transport DTOs
+* the location of UI models
+* the location of API contracts
+* the dumping ground for helpers and enums unrelated to persistence
+
+The DbContext must be kept under control.
+
+It must not turn into:
+
+* a 1000+ DbSet monolith with every concept exposed blindly
+
+Large systems should be broken up using:
+
+* entity type configuration by folder/module
+* extension methods for model builder registration
+* modular mapping registration
+* domain-based persistence grouping
+* separate query services where needed
+
+⸻
+
+Recommended logical modules
+
+The planner should separate the solution into modules like the following.
+
+⸻
+
+Contracts
+
+Purpose:
+
+* request/response models
+* stable API-facing contracts
+* shared transport-safe shapes
+* versionable payload definitions
+
+Examples:
+
+* auth contracts
+* policy contracts
+* contract management DTOs
+* geography DTOs
+* feed DTOs
+* public API DTOs
+
+This should contain:
+
+* DTOs
+* API contracts
+* request/response shapes
+* version-safe models
+
+This should not contain:
+
+* EF entities
+* controller logic
+* UI components
+* persistence mapping logic
+
+⸻
+
+Geography
+
+Purpose:
+
+* airports
+* cities
+* countries
+* states/regions
+* location hierarchy
+* travel geography reference models
+* geo normalization helpers
+
+This should be its own area because geography becomes large and cross-cutting.
+
+⸻
+
+Policies
+
+Purpose:
+
+* travel policy rules
+* approval thresholds
+* policy condition models
+* policy evaluation services
+* rule outcomes
+* policy applicability logic
+
+This should be an application/domain module, not scattered between Web, API, and Data.
+
+⸻
+
+Contracts.Common
+
+Purpose:
+
+* common primitives shared across contracts
+* pagination results
+* error/result wrappers
+* money/date ranges/common list items
+* common response metadata
+
+This avoids duplication across contract packages.
+
+⸻
+
+Mappers
+
+Purpose:
+
+* entity to contract mapping
+* contract to command mapping
+* domain to DTO translation
+* external API models to internal models
+* normalization/transformation rules
+
+Mappers belong in the application boundary, not randomly scattered.
+
+⸻
+
+Models
+
+This term needs to be split more clearly.
+
+Use separate concepts such as:
+
+* Contracts
+* Domain Models
+* Persistence Entities
+* View Models
+* External Provider Models
+
+Do not use one giant generic “Models” bucket if possible.
+
+If you keep “Models”, then organize it by purpose.
+
+⸻
+
+Helpers
+
+This is usually where systems rot.
+
+Do not create a giant generic Helpers bucket.
+
+Instead, break helpers into focused areas:
+
+* formatting
+* normalization
+* ids
+* date/time
+* precision
+* serialization
+* value parsing
+* policy evaluation support
+* claim/security helpers
+
+If something is important enough to be reused broadly, it may deserve a real service or utility namespace, not a “helper”.
+
+⸻
+
+Security
+
+Purpose:
+
+* auth abstractions
+* claims
+* policy evaluation
+* app roles
+* org roles
+* org role requirements
+* token issuance
+* token validation
+* session rules
+* permission evaluation
+
+Examples:
+
+* AppClaim
+* AppPolicies
+* AppRoles
+* OrgRoles
+* OrgRoleRequirements
+
+This needs to be a clear first-class module.
+
+⸻
+
+Services
+
+This should usually mean:
+
+* application services
+* orchestration services
+* integration services
+* storage services
+* PDF generation services
+* job scheduling services
+
+Avoid putting business logic everywhere under a vague “Services” bucket. Split by domain.
+
+⸻
+
+Validation
+
+Purpose:
+
+* transport validation
+* business validation
+* validation attributes
+* reusable rule validators
+* invariant checks
+
+Validation should be split into:
+
+* simple input validation
+* business rule validation
+* persistence constraint enforcement
+
+ValidationAttribute support can exist, but the whole platform should not depend only on attribute-based validation.
+
+⸻
+
+Precision
+
+Purpose:
+
+* decimal precision policies
+* rounding rules
+* currency precision
+* rate precision
+* tax precision
+* quantity precision
+* database precision conventions
+
+This is important enough to be explicit in a travel/financial system.
+
+⸻
+
+Static data
+
+Purpose:
+
+* enums
+* lookup definitions
+* constants
+* code lists
+* controlled value types
+
+Examples:
+
+* status enums
+* log category enums
+* action types
+* system types
+* provider types
+
+Be careful:
+
+* not all enums belong in the same place
+* many “enums” should eventually become database-backed lookup/reference data if they change by environment or business growth
+
+⸻
+
+External API connectivity
+
+Purpose:
+
+* clients for external suppliers/providers
+* request builders
+* response handlers
+* rate handling
+* retries
+* provider auth
+* provider model translation
+
+This must be isolated from your own API contracts.
+
+You need a clear separation between:
+
+* external provider contract
+* internal unified model
+* API response contract
+
+⸻
+
+API public interface
+
+Purpose:
+
+* public endpoints
+* public booking/search flows
+* public auth surface
+* public user management flows
+* public read/write boundaries
+
+This should be a deliberate module, not mixed randomly with internal admin APIs.
+
+⸻
+
+API auth
+
+Purpose:
+
+* login
+* SSO callbacks
+* token issuance
+* MFA verification
+* PAT creation/revocation
+* mobile auth
+* QR linking
+* password flows
+
+This is a dedicated area.
+
+⸻
+
+API data feeds / scheduled ingestion
+
+Purpose:
+
+* cron-driven import/update jobs
+* external reference data refresh
+* feed polling
+* feed transformations
+* ingestion and reconciliation
+* update-on-hand local data
+
+This should not be mixed into the normal public API surface.
+
+It is an operational subsystem.
+
+⸻
+
+GitHub-backed ticketing system
+
+Purpose:
+
+* ticket creation
+* ticket synchronization
+* ticket state visibility
+* log of system issues to GitHub repo
+* operational incident management integration
+
+This should be treated as a dedicated integration module/subsystem.
+
+It must not be implemented as “just more clutter in ApplicationDbContext”.
+
+Create a separate integration/service boundary for it.
+
+⸻
+
+DTOs
+
+DTOs must be explicitly separated from:
+
+* EF entities
+* domain models
+* external provider models
+* UI models
+
+This is a key rule.
+
+⸻
+
+Unified models
+
+These are useful when you need a normalized internal representation between:
+
+* external provider responses
+* internal services
+* API contracts
+
+Examples:
+
+* unified flight search result
+* unified hotel offer
+* unified tax/fee summary
+* unified policy evaluation result
+
+These belong in the application/domain boundary.
+
+⸻
+
+Id generation
+
+This should be a dedicated utility/service area.
+
+The IdGeneratorHelper and IdGenType approach is valid in principle and should become an explicit subsystem.
+
+Purpose:
+
+* stable readable IDs
+* prefixed domain identifiers
+* random code generation
+* safe ID alphabets
+* quote ID generation by type
+* domain-specific ID rules
+
+This must be centralized so IDs are not invented ad hoc across the system.
+
+⸻
+
+SysLog
+
+Logging should be a first-class platform subsystem.
+
+You already have good structure direction with:
+
+* LogLevelType
+* SysLogActionType
+* SysLogCatType
+* SysLogEvtType
+* outcome/state fields
+* correlation id
+* transaction id
+* user/org correlation
+* timing/http metadata
+* entity targeting
+
+This should be expanded, not reduced.
+
+⸻
+
+Project structure recommendation
+
+Your current projects are:
+
+* Api
+* Web
+* Shared
+* Application
+* Data
+
+That structure is workable, but Shared is usually too vague and Application must be made more explicit.
+
+Recommended conceptual structure:
+
+⸻
+
+Api
+
+Responsibility:
+
+* controllers/endpoints
+* auth endpoints
+* public/private HTTP surface
+* request/response wiring
+* API filters/middleware
+* API-specific serialization behavior
+
+⸻
+
+Web
+
+Responsibility:
+
+* Blazor UI
+* pages/components
+* client-side presentation
+* UI composition and interaction logic
+* portal-specific concerns
+
+⸻
+
+Application
+
+Responsibility:
+
+* use cases
+* orchestration
+* translators
+* mappers
+* policy evaluation
+* command/query handling
+* unified models
+* validation services
+* workflow logic
+* permission evaluation
+* service abstractions
+
+This is the most important project to strengthen.
+
+This is the layer between Web/API and Data.
+
+⸻
+
+Data
+
+Responsibility:
+
+* EF entities
+* DbContext
+* configurations
+* migrations
+* persistence query implementations
+* database providers
+* storage persistence
+* audit persistence
+* log persistence
+
+⸻
+
+Shared
+
+This should be kept small and deliberate.
+
+Only put in Shared what is genuinely cross-project and stable, for example:
+
+* contract primitives
+* common value objects
+* enum primitives that truly belong everywhere
+* id generation types
+* common results/errors
+
+Do not let Shared become the new junk drawer.
+
+If needed, split it later into:
+
+* Contracts
+* Common
+* Domain.Abstractions
+
+That is often cleaner than one giant Shared.
+
+⸻
+
+Recommended refined structure
+
+A stronger long-term layout would look more like:
+
+* Cinturon360.Api
+* Cinturon360.Web
+* Cinturon360.Application
+* Cinturon360.Domain
+* Cinturon360.Contracts
+* Cinturon360.Data
+* Cinturon360.Integrations
+* Cinturon360.Infrastructure if needed
+* Cinturon360.Common
+
+If you do not want that many projects, then at minimum:
+
+* keep Application strong
+* keep Data persistence-only
+* keep Api thin
+* keep Web presentation-only
+* keep Shared narrow
+
+⸻
+
+Logging requirements
+
+Cinturon360 v5 requires very robust structured logging.
+
+Logging must support:
+
+* application flow tracing
+* API request/response correlation
+* UI-triggered action logging where relevant
+* business event tracking
+* auth/security events
+* token lifecycle events
+* policy evaluation events
+* background job execution logs
+* external integration call logs
+* PDF generation/storage logs
+* ticketing/integration logs
+* storage lifecycle logs
+* failure/retry/timeout tracking
+
+The logging model must include at minimum:
+
+* timestamp UTC
+* level
+* event type
+* category
+* action
+* outcome
+* entity type
+* entity id
+* request id / correlation id
+* transaction id
+* user id
+* org id
+* duration
+* HTTP method/status/path where relevant
+* note/message
+* retry/cancel/timeout/fail states
+
+Your old C360SystemLog design is directionally good and should be modernized into:
+
+* structured application log events
+* audit events
+* security events
+* job events
+* integration events
+
+These may share a common foundation, but should not all become one undifferentiated blob.
+
+⸻
+
+Logging design recommendation
+
+Use multiple layers of logging:
+
+1. Operational structured logs
+
+For runtime behavior:
+
+* request logs
+* job logs
+* integration logs
+* service logs
+* error logs
+
+2. Audit logs
+
+For user/system actions:
+
+* permission changes
+* policy changes
+* token creation/revocation
+* login/logout
+* role changes
+* booking updates
+* financial changes
+
+3. Security logs
+
+For:
+
+* login failures
+* SSO events
+* MFA events
+* PAT events
+* token misuse
+* suspicious activity
+
+4. Domain event logs
+
+For:
+
+* ticket escalations
+* booking lifecycle events
+* approval events
+* synchronization events
+
+Do not rely on one log table alone for every use case.
+
+⸻
+
+Background jobs and queues
+
+The platform must support:
+
+* queued jobs
+* scheduled jobs
+* recurring feed ingestion
+* document generation
+* cleanup jobs
+* storage lifecycle jobs
+* retryable external sync jobs
+
+Examples:
+
+* refresh reference data
+* sync supplier data
+* generate PDF
+* upload PDF to S3
+* create DB record for stored file
+* delete expired/generated files later
+* clean storage records by cron/scheduler
+* sync GitHub tickets
+* recompute policy materialization if needed
+
+This must be designed as an explicit subsystem, not ad hoc background tasks scattered across controllers.
+
+⸻
+
+PDF generation and storage
+
+The platform must support:
+
+* generating PDFs
+* storing PDFs in S3
+* creating a DB record for stored artifacts
+* making them downloadable later
+* cleaning them up through scheduled jobs
+
+Required concerns:
+
+* document metadata
+* storage key/path
+* source entity relation
+* who generated it
+* when it expires
+* deletion status
+* cleanup scheduling
+* audit trail
+
+This should be a dedicated document/storage module.
+
+⸻
+
+DbContext and persistence management
+
+The system must avoid a bloated single ApplicationDbContext with thousands of DbSets and rules.
+
+Recommended approach:
+
+* modular entity folders by domain
+* entity configurations split by module
+* model builder registration by assembly or module
+* queries separated from entities where useful
+* operational/integration data isolated from core transactional data where practical
+
+The goal is:
+
+* manageable persistence structure
+* reduced cognitive load
+* clear domain ownership
+* less risk of a single giant persistence god-object
+
+⸻
+
+Clear model separation rules
+
+The planner must preserve these distinctions.
+
+Persistence entities
+
+Represent database storage.
+
+Domain models
+
+Represent business concepts and rules.
+
+Application/unified models
+
+Represent normalized internal shapes for use cases and translation.
+
+API contracts / DTOs
+
+Represent external request/response payloads.
+
+View models
+
+Represent UI-facing composition for pages/components.
+
+External provider models
+
+Represent third-party API schemas.
+
+These must not be collapsed into one giant “model” category.
+
+⸻
+
+Security and role model
+
+The system must explicitly define:
+
+* AppClaim
+* AppPolicies
+* AppRoles
+* OrgRoles
+* OrgRoleRequirements
+
+These belong in the security/application boundary, not spread randomly.
+
+Authorization must remain:
+
+* internal
+* explicit
+* role and permission driven
+* org hierarchy aware
+* policy aware
+
+⸻
+
+Validation model
+
+Validation must exist at multiple levels:
+
+Contract validation
+
+Basic request shape validation.
+
+Application validation
+
+Business rule validation.
+
+Domain validation
+
+Invariant enforcement.
+
+Persistence validation
+
+Database constraints and precision rules.
+
+ValidationAttribute is allowed, but should not be the whole strategy.
+
+⸻
+
+Precision model
+
+Number precision must be centrally controlled for:
+
+* money
+* exchange rates
+* taxes
+* percentages
+* quantities
+* supplier/provider values
+* storage precision in EF mappings
+
+Precision should be a deliberate subsystem or conventions set, not random column-by-column decisions.
+
+⸻
+
+External integration boundary
+
+Every external API integration must have:
+
+* its own client/service layer
+* provider-specific request/response models
+* mapper to internal unified models
+* retry/timeout/error handling
+* log correlation
+* provider auth handling
+* operational monitoring
+
+External provider models must never directly become your API contracts.
+
+⸻
+
+Planning directive
+
+Cinturon360 v5 must be rebuilt with a clear separation between:
+
+* presentation
+* API surface
+* application orchestration/translation
+* domain concepts
+* persistence
+* integrations
+* jobs
+* storage
+* logging
+* security
+
+The most important missing piece is the application translation layer between Web/UI and API/Data.
+
+This layer must become the place where:
+
+* contracts are translated
+* unified models are shaped
+* business use cases are orchestrated
+* validation is coordinated
+* mappings are controlled
+* policies and permissions are evaluated
+* external/internal data is normalized
+
+Without that boundary, the new system will drift back into the same overlap problem.
+
+⸻
+
+Final planning statement
+
+Cinturon360 v5 should be designed as a modular platform where the Web and API are intentionally thin, the Application layer acts as the translation and orchestration boundary, the Data layer remains persistence-focused, external integrations are isolated, logging is structured and robust, jobs and storage are first-class subsystems, and models/contracts/entities are explicitly separated by purpose rather than mixed into a single shared blob.
+
+⸻
+
+suggested org structure
+
+Cinturon360/
+├─ Cinturon360.sln
+├─ Directory.Build.props
+├─ Directory.Packages.props
+├─ global.json
+├─ .editorconfig
+├─ .gitignore
+├─ build/
+│  ├─ versioning/
+│  ├─ scripts/
+│  └─ pipelines/
+├─ docs/
+│  ├─ architecture/
+│  ├─ policies/
+│  ├─ api/
+│  └─ runbooks/
+├─ deploy/
+│  ├─ docker/
+│  ├─ compose/
+│  ├─ caddy/
+│  ├─ kubernetes/
+│  └─ aws/
+├─ tools/
+│  ├─ db/
+│  ├─ codegen/
+│  └─ maintenance/
+├─ src/
+│  ├─ Cinturon360.Api/
+│  │  ├─ Abstractions/
+│  │  ├─ Configuration/
+│  │  ├─ Constants/
+│  │  ├─ Endpoints/
+│  │  │  ├─ Auth/
+│  │  │  ├─ Public/
+│  │  │  ├─ Vendor/
+│  │  │  ├─ Tmc/
+│  │  │  ├─ Client/
+│  │  │  ├─ Travel/
+│  │  │  ├─ Booking/
+│  │  │  ├─ Policy/
+│  │  │  ├─ Ticketing/
+│  │  │  ├─ Reports/
+│  │  │  ├─ Storage/
+│  │  │  ├─ Admin/
+│  │  │  └─ Feeds/
+│  │  ├─ Filters/
+│  │  ├─ Middleware/
+│  │  ├─ OpenApi/
+│  │  ├─ Serialization/
+│  │  ├─ DependencyInjection/
+│  │  ├─ Extensions/
+│  │  └─ Program.cs
+│  │
+│  ├─ Cinturon360.Web/
+│  │  ├─ Components/
+│  │  │  ├─ Layout/
+│  │  │  ├─ Navigation/
+│  │  │  ├─ Forms/
+│  │  │  ├─ Tables/
+│  │  │  └─ Shared/
+│  │  ├─ Pages/
+│  │  │  ├─ Public/
+│  │  │  ├─ Auth/
+│  │  │  ├─ Dashboard/
+│  │  │  ├─ Vendor/
+│  │  │  ├─ Tmc/
+│  │  │  ├─ Client/
+│  │  │  ├─ Travel/
+│  │  │  ├─ Booking/
+│  │  │  ├─ Policy/
+│  │  │  ├─ Reports/
+│  │  │  ├─ Ticketing/
+│  │  │  ├─ Settings/
+│  │  │  └─ Sudo/
+│  │  ├─ ViewModels/
+│  │  │  ├─ Auth/
+│  │  │  ├─ Public/
+│  │  │  ├─ Booking/
+│  │  │  ├─ Policy/
+│  │  │  ├─ Reports/
+│  │  │  └─ Shared/
+│  │  ├─ Services/
+│  │  │  ├─ ApiClients/
+│  │  │  ├─ State/
+│  │  │  ├─ Session/
+│  │  │  └─ Navigation/
+│  │  ├─ Security/
+│  │  ├─ DependencyInjection/
+│  │  ├─ wwwroot/
+│  │  │  ├─ css/
+│  │  │  ├─ js/
+│  │  │  ├─ img/
+│  │  │  └─ lib/
+│  │  ├─ App.razor
+│  │  ├─ Routes.razor
+│  │  └─ Program.cs
+│  │
+│  ├─ Cinturon360.Application/
+│  │  ├─ Abstractions/
+│  │  │  ├─ Persistence/
+│  │  │  ├─ Integrations/
+│  │  │  ├─ Storage/
+│  │  │  ├─ Jobs/
+│  │  │  ├─ Logging/
+│  │  │  └─ Security/
+│  │  ├─ DependencyInjection/
+│  │  ├─ Behaviors/
+│  │  │  ├─ Validation/
+│  │  │  ├─ Logging/
+│  │  │  ├─ Authorization/
+│  │  │  └─ Transactions/
+│  │  ├─ Common/
+│  │  │  ├─ Results/
+│  │  │  ├─ Exceptions/
+│  │  │  ├─ Paging/
+│  │  │  ├─ Precision/
+│  │  │  ├─ Dates/
+│  │  │  └─ Mapping/
+│  │  ├─ Security/
+│  │  │  ├─ AppClaims/
+│  │  │  ├─ AppPolicies/
+│  │  │  ├─ AppRoles/
+│  │  │  ├─ OrgRoles/
+│  │  │  ├─ OrgRoleRequirements/
+│  │  │  ├─ PermissionEvaluation/
+│  │  │  └─ TokenIssuance/
+│  │  ├─ SysLog/
+│  │  │  ├─ Models/
+│  │  │  ├─ Writers/
+│  │  │  ├─ Enrichers/
+│  │  │  └─ Events/
+│  │  ├─ IdGeneration/
+│  │  │  ├─ Models/
+│  │  │  ├─ Services/
+│  │  │  └─ Helpers/
+│  │  ├─ Validation/
+│  │  │  ├─ Attributes/
+│  │  │  ├─ Rules/
+│  │  │  └─ Validators/
+│  │  ├─ Mappers/
+│  │  │  ├─ Contracts/
+│  │  │  ├─ Entities/
+│  │  │  ├─ Unified/
+│  │  │  └─ External/
+│  │  ├─ UnifiedModels/
+│  │  │  ├─ Travel/
+│  │  │  ├─ Geography/
+│  │  │  ├─ Contracts/
+│  │  │  ├─ Policies/
+│  │  │  └─ Pricing/
+│  │  ├─ Features/
+│  │  │  ├─ Auth/
+│  │  │  │  ├─ Commands/
+│  │  │  │  ├─ Queries/
+│  │  │  │  ├─ Models/
+│  │  │  │  ├─ Validators/
+│  │  │  │  └─ Services/
+│  │  │  ├─ Users/
+│  │  │  ├─ Organizations/
+│  │  │  ├─ Roles/
+│  │  │  ├─ Travel/
+│  │  │  ├─ Bookings/
+│  │  │  ├─ Quotes/
+│  │  │  ├─ Geography/
+│  │  │  ├─ Policies/
+│  │  │  ├─ Approvals/
+│  │  │  ├─ Contracts/
+│  │  │  ├─ ContractsCommon/
+│  │  │  ├─ Reporting/
+│  │  │  ├─ Ticketing/
+│  │  │  ├─ Storage/
+│  │  │  ├─ Pdf/
+│  │  │  ├─ Jobs/
+│  │  │  ├─ DataFeeds/
+│  │  │  └─ ExternalSync/
+│  │  └─ Services/
+│  │     ├─ Travel/
+│  │     ├─ Booking/
+│  │     ├─ Policy/
+│  │     ├─ Pricing/
+│  │     ├─ Notifications/
+│  │     ├─ Ticketing/
+│  │     └─ Documents/
+│  │
+│  ├─ Cinturon360.Domain/
+│  │  ├─ Common/
+│  │  │  ├─ Base/
+│  │  │  ├─ Interfaces/
+│  │  │  ├─ ValueObjects/
+│  │  │  └─ Exceptions/
+│  │  ├─ Entities/
+│  │  │  ├─ Identity/
+│  │  │  ├─ Organization/
+│  │  │  ├─ Travel/
+│  │  │  ├─ Booking/
+│  │  │  ├─ Policy/
+│  │  │  ├─ Pricing/
+│  │  │  ├─ Ticketing/
+│  │  │  ├─ Storage/
+│  │  │  └─ Logging/
+│  │  ├─ Enums/
+│  │  │  ├─ Security/
+│  │  │  ├─ Travel/
+│  │  │  ├─ Policy/
+│  │  │  ├─ Booking/
+│  │  │  ├─ Ticketing/
+│  │  │  └─ System/
+│  │  ├─ Events/
+│  │  ├─ Services/
+│  │  └─ Specifications/
+│  │
+│  ├─ Cinturon360.Contracts/
+│  │  ├─ Common/
+│  │  │  ├─ Paging/
+│  │  │  ├─ Results/
+│  │  │  ├─ Errors/
+│  │  │  ├─ Precision/
+│  │  │  └─ Metadata/
+│  │  ├─ Auth/
+│  │  ├─ Users/
+│  │  ├─ Organizations/
+│  │  ├─ Roles/
+│  │  ├─ Travel/
+│  │  ├─ Bookings/
+│  │  ├─ Quotes/
+│  │  ├─ Geography/
+│  │  ├─ Policies/
+│  │  ├─ Approvals/
+│  │  ├─ Contracts/
+│  │  ├─ ContractsCommon/
+│  │  ├─ Reports/
+│  │  ├─ Ticketing/
+│  │  ├─ Storage/
+│  │  ├─ Public/
+│  │  ├─ Feeds/
+│  │  └─ SysLog/
+│  │
+│  ├─ Cinturon360.Common/
+│  │  ├─ Constants/
+│  │  ├─ Extensions/
+│  │  ├─ Precision/
+│  │  ├─ Serialization/
+│  │  ├─ Dates/
+│  │  ├─ IdGeneration/
+│  │  ├─ Helpers/
+│  │  ├─ Results/
+│  │  └─ StaticData/
+│  │     ├─ Enums/
+│  │     ├─ Codes/
+│  │     └─ Lookups/
+│  │
+│  ├─ Cinturon360.Data/
+│  │  ├─ Context/
+│  │  │  ├─ ApplicationDbContext.cs
+│  │  │  ├─ ModelBuilderExtensions.cs
+│  │  │  └─ DbContextFactory.cs
+│  │  ├─ Entities/
+│  │  │  ├─ Identity/
+│  │  │  ├─ Organization/
+│  │  │  ├─ Travel/
+│  │  │  ├─ Booking/
+│  │  │  ├─ Policy/
+│  │  │  ├─ Pricing/
+│  │  │  ├─ Ticketing/
+│  │  │  ├─ Storage/
+│  │  │  ├─ Jobs/
+│  │  │  ├─ Logging/
+│  │  │  └─ Integrations/
+│  │  ├─ Configurations/
+│  │  │  ├─ Identity/
+│  │  │  ├─ Organization/
+│  │  │  ├─ Travel/
+│  │  │  ├─ Booking/
+│  │  │  ├─ Policy/
+│  │  │  ├─ Pricing/
+│  │  │  ├─ Ticketing/
+│  │  │  ├─ Storage/
+│  │  │  ├─ Jobs/
+│  │  │  ├─ Logging/
+│  │  │  └─ Integrations/
+│  │  ├─ Repositories/
+│  │  ├─ Queries/
+│  │  ├─ Migrations/
+│  │  ├─ Seeds/
+│  │  ├─ Precision/
+│  │  ├─ DependencyInjection/
+│  │  └─ Interceptors/
+│  │
+│  ├─ Cinturon360.Integrations/
+│  │  ├─ Common/
+│  │  │  ├─ Http/
+│  │  │  ├─ Auth/
+│  │  │  ├─ Resilience/
+│  │  │  ├─ Mapping/
+│  │  │  └─ Logging/
+│  │  ├─ Geography/
+│  │  ├─ Flights/
+│  │  ├─ Hotels/
+│  │  ├─ Cars/
+│  │  ├─ Rail/
+│  │  ├─ Payments/
+│  │  ├─ ExchangeRates/
+│  │  ├─ GitHub/
+│  │  │  ├─ Ticketing/
+│  │  │  ├─ Models/
+│  │  │  ├─ Services/
+│  │  │  └─ Mapping/
+│  │  ├─ Aws/
+│  │  │  ├─ S3/
+│  │  │  └─ Models/
+│  │  └─ IdentityProviders/
+│  │     ├─ Oidc/
+│  │     ├─ Saml/
+│  │     ├─ Scim/
+│  │     ├─ Google/
+│  │     ├─ Microsoft/
+│  │     ├─ Apple/
+│  │     └─ Facebook/
+│  │
+│  ├─ Cinturon360.Infrastructure/
+│  │  ├─ Jobs/
+│  │  │  ├─ Queue/
+│  │  │  ├─ Recurring/
+│  │  │  ├─ Workers/
+│  │  │  ├─ Cron/
+│  │  │  └─ Scheduling/
+│  │  ├─ Storage/
+│  │  │  ├─ Documents/
+│  │  │  ├─ Pdf/
+│  │  │  ├─ S3/
+│  │  │  └─ Cleanup/
+│  │  ├─ Logging/
+│  │  │  ├─ Sinks/
+│  │  │  ├─ Enrichers/
+│  │  │  ├─ Formatters/
+│  │  │  └─ Correlation/
+│  │  ├─ Email/
+│  │  ├─ Sms/
+│  │  ├─ Caching/
+│  │  ├─ Security/
+│  │  └─ DependencyInjection/
+│  │
+│  └─ Cinturon360.Jobs/
+│     ├─ HostedServices/
+│     ├─ Recurring/
+│     │  ├─ DataFeeds/
+│     │  ├─ StorageCleanup/
+│     │  ├─ PdfCleanup/
+│     │  ├─ TicketSync/
+│     │  └─ ReferenceDataRefresh/
+│     ├─ QueueProcessors/
+│     ├─ DependencyInjection/
+│     └─ Program.cs
+│
+├─ tests/
+│  ├─ Cinturon360.Api.Tests/
+│  ├─ Cinturon360.Application.Tests/
+│  ├─ Cinturon360.Domain.Tests/
+│  ├─ Cinturon360.Data.Tests/
+│  ├─ Cinturon360.Integration.Tests/
+│  ├─ Cinturon360.Web.Tests/
+│  └─ Cinturon360.Architecture.Tests/
+│
+└─ samples/
+   ├─ api/
+   ├─ contracts/
+   └─ integration-payloads/

@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Cinturon360.Api/Cinturon360.Api.csproj" />
+    <Project Path="src/Cinturon360.Application/Cinturon360.Application.csproj" />
+    <Project Path="src/Cinturon360.Common/Cinturon360.Common.csproj" />
+    <Project Path="src/Cinturon360.Contracts/Cinturon360.Contracts.csproj" />
+    <Project Path="src/Cinturon360.Data/Cinturon360.Data.csproj" />
+    <Project Path="src/Cinturon360.Domain/Cinturon360.Domain.csproj" />
+    <Project Path="src/Cinturon360.Infrastructure/Cinturon360.Infrastructure.csproj" />
+    <Project Path="src/Cinturon360.Integrations/Cinturon360.Integrations.csproj" />
+    <Project Path="src/Cinturon360.Jobs/Cinturon360.Jobs.csproj" />
+    <Project Path="src/Cinturon360.Web/Cinturon360.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cinturon360.Api.Tests/Cinturon360.Api.Tests.csproj" />
+    <Project Path="tests/Cinturon360.Application.Tests/Cinturon360.Application.Tests.csproj" />
+    <Project Path="tests/Cinturon360.Architecture.Tests/Cinturon360.Architecture.Tests.csproj" />
+    <Project Path="tests/Cinturon360.Data.Tests/Cinturon360.Data.Tests.csproj" />
+    <Project Path="tests/Cinturon360.Domain.Tests/Cinturon360.Domain.Tests.csproj" />
+    <Project Path="tests/Cinturon360.Integration.Tests/Cinturon360.Integration.Tests.csproj" />
+    <Project Path="tests/Cinturon360.Web.Tests/Cinturon360.Web.Tests.csproj" />
+  </Folder>
+</Solution>

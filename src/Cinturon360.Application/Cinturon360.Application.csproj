@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cinturon360.Common\Cinturon360.Common.csproj" />
+    <ProjectReference Include="..\Cinturon360.Contracts\Cinturon360.Contracts.csproj" />
+    <ProjectReference Include="..\Cinturon360.Domain\Cinturon360.Domain.csproj" />
+    <ProjectReference Include="..\Cinturon360.Integrations\Cinturon360.Integrations.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Mapster" />
+    <PackageReference Include="MediatR" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

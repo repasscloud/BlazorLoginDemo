@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="OpenIddict.AspNetCore" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="FluentValidation.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cinturon360.Contracts\Cinturon360.Contracts.csproj" />
+    <ProjectReference Include="..\Cinturon360.Application\Cinturon360.Application.csproj" />
+    <ProjectReference Include="..\Cinturon360.Data\Cinturon360.Data.csproj" />
+    <ProjectReference Include="..\Cinturon360.Infrastructure\Cinturon360.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

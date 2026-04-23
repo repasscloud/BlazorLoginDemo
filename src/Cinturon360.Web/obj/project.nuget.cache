@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "4m33m0cFOs8=",
+  "success": true,
+  "projectFilePath": "/Users/danijeljw/Developer/cinturon360.dev/src/Cinturon360.Web/Cinturon360.Web.csproj",
+  "expectedPackageFiles": [
+    "/Users/danijeljw/.nuget/packages/microsoft.aspnetcore.app.internal.assets/10.0.5/microsoft.aspnetcore.app.internal.assets.10.0.5.nupkg.sha512"
+  ],
+  "logs": []
+}

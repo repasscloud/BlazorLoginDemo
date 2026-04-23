@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY Cinturon360.slnx .
+COPY Directory.Build.props .
+COPY Directory.Packages.props .
+COPY src/Cinturon360.Common/Cinturon360.Common.csproj src/Cinturon360.Common/
+COPY src/Cinturon360.Domain/Cinturon360.Domain.csproj src/Cinturon360.Domain/
+COPY src/Cinturon360.Contracts/Cinturon360.Contracts.csproj src/Cinturon360.Contracts/
+COPY src/Cinturon360.Application/Cinturon360.Application.csproj src/Cinturon360.Application/
+COPY src/Cinturon360.Data/Cinturon360.Data.csproj src/Cinturon360.Data/
+COPY src/Cinturon360.Integrations/Cinturon360.Integrations.csproj src/Cinturon360.Integrations/
+COPY src/Cinturon360.Infrastructure/Cinturon360.Infrastructure.csproj src/Cinturon360.Infrastructure/
+COPY src/Cinturon360.Jobs/Cinturon360.Jobs.csproj src/Cinturon360.Jobs/
+
+RUN dotnet restore src/Cinturon360.Jobs/Cinturon360.Jobs.csproj
+
+COPY src/ src/
+RUN dotnet publish src/Cinturon360.Jobs/Cinturon360.Jobs.csproj \
+    --no-restore \
+    -c Release \
+    -o /app/publish
+
+# Jobs image: alpine-based with supercronic
+# QUESTION: confirm base image — see QUESTIONS.md Q7
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+
+# Install supercronic (adjust version as needed)
+ARG SUPERCRONIC_VERSION=v0.2.33
+ARG SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-amd64
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+    && curl -fsSLo /usr/local/bin/supercronic "${SUPERCRONIC_URL}" \
+    && chmod +x /usr/local/bin/supercronic \
+    && apt-get remove -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
+COPY --from=build /app/publish .
+
+# Supercronic reads a crontab file. Mount or embed your crontab at /app/crontab
+ENTRYPOINT ["dotnet", "Cinturon360.Jobs.dll"]

@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy solution and project files for layer-cached restore
+COPY Cinturon360.slnx .
+COPY Directory.Build.props .
+COPY Directory.Packages.props .
+COPY src/Cinturon360.Common/Cinturon360.Common.csproj src/Cinturon360.Common/
+COPY src/Cinturon360.Domain/Cinturon360.Domain.csproj src/Cinturon360.Domain/
+COPY src/Cinturon360.Contracts/Cinturon360.Contracts.csproj src/Cinturon360.Contracts/
+COPY src/Cinturon360.Application/Cinturon360.Application.csproj src/Cinturon360.Application/
+COPY src/Cinturon360.Data/Cinturon360.Data.csproj src/Cinturon360.Data/
+COPY src/Cinturon360.Integrations/Cinturon360.Integrations.csproj src/Cinturon360.Integrations/
+COPY src/Cinturon360.Infrastructure/Cinturon360.Infrastructure.csproj src/Cinturon360.Infrastructure/
+COPY src/Cinturon360.Api/Cinturon360.Api.csproj src/Cinturon360.Api/
+
+RUN dotnet restore src/Cinturon360.Api/Cinturon360.Api.csproj
+
+# Copy full source and publish
+COPY src/ src/
+RUN dotnet publish src/Cinturon360.Api/Cinturon360.Api.csproj \
+    --no-restore \
+    -c Release \
+    -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+
+# Drop to non-root user for security
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
+COPY --from=build /app/publish .
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "Cinturon360.Api.dll"]
