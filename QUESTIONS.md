@@ -18,6 +18,8 @@ OpenIddict was chosen because it is MIT-licensed, has no per-deployment fee, and
 
 **Decision needed:** Confirm (a) or specify alternative.
 
+**Answer:** Confirming (a) is to be used. Also already scaffolded.
+
 ---
 
 ## Q2 — Blazor Render Mode
@@ -33,6 +35,8 @@ This means all UI state and rendering runs on the server over a SignalR connecti
 
 **Decision needed:** Confirm (a) or specify alternative.
 
+**Answer:** Confirming (a) - simplest, no WASM download
+
 ---
 
 ## Q3 — System.Drawing.Common CVE (Critical)
@@ -47,6 +51,8 @@ This means all UI state and rendering runs on the server over a SignalR connecti
 - (c) Defer — if SAML/SSO login is not in Phase 1 scope, remove ITfoxtec temporarily and add it back when needed
 
 **Decision needed:** Which option? If (a), what is the acceptable patched version?
+
+**Answer:** I have considered this carefully, and reviewed that ITfoxtec.Identity.Saml2.MvcCore or ITfoxtec.Identity.Saml2 v4.17.0 would be more beneficial as it explicitly states it supports dotnet 10. This is being built with dotnet 10 as the underlying framework.
 
 ---
 
@@ -64,6 +70,8 @@ This is a transitive dependency from `AWSSDK.S3`.
 
 **Decision needed:** Accept (a/b) or switch to Azure Blob (c)?
 
+**Answer:** Stay with S3-compatible storage, but do not accept AWSSDK.Core 4.0.0. Upgrade AWSSDK.S3 so that the transitive AWSSDK.Core version resolves to at least 4.0.3.3 or later.
+
 ---
 
 ## Q5 — ArchUnitNET Version
@@ -79,6 +87,8 @@ This is a transitive dependency from `AWSSDK.S3`.
 
 **Decision needed:** Which option?
 
+**Answer:** Keep option (a), architecture tests are build/test-only. They do not ship into the Linux container. A stable test dependency is safer than a draft pre-release.If it fails under .NET 10 test execution, remove or upgrade it later.
+
 ---
 
 ## Q6 — Social Login Providers at Launch
@@ -89,6 +99,18 @@ The following providers are scaffolded in `src/Cinturon360.Integrations/Identity
 **Decision needed:**  
 Which of these should be **active at launch** vs. **deferred to a later phase**?  
 Suggested minimum: Google + Microsoft (most common for B2B travel).
+
+**Answer:**
+Active at launch:
+- Microsoft, primary B2B identity provider.
+- Google, common business login provider
+- OIDC, generic enterprise login foundation (Microsoft Entra ID, Google Workspace, Okta, Auth0, OneLogin, Ping Identity)
+
+Deferred:
+- SAML, enable with SSO phase (unless this is in early phases, enable immediately)
+- SCIM, enable at later stage
+- Apple, enable with mobile application (MAUI)
+- Facebook, enable with Apple at later stage for consumer login/account creation
 
 ---
 
@@ -103,6 +125,8 @@ The `deploy/docker/Dockerfile.jobs` currently uses `mcr.microsoft.com/dotnet/asp
 
 **Decision needed:** Preferred base image for the jobs container?
 
+**Answer:** (a) Keep Debian-based mcr.microsoft.com/dotnet/aspnet:10.0 - for a jobs container, reliability matters more than image size
+
 ---
 
 ## Q8 — PostgreSQL: Self-Hosted vs. Managed
@@ -114,6 +138,12 @@ The `deploy/docker/Dockerfile.jobs` currently uses `mcr.microsoft.com/dotnet/asp
 - (c) AWS RDS PostgreSQL — if AWS is preferred cloud
 
 **Decision needed:** What is the production Postgres strategy? This affects connection string config and secrets management.
+
+**Answer:**
+- Dev: PostgreSQL 17 in Docker Compose
+- Prod: Managed PostgreSQL
+- Preferred prod provider: PlanetScale Postgres
+- Fallback: Azure Database for PostgreSQL Flexible Server
 
 ---
 
@@ -127,6 +157,10 @@ The `deploy/docker/Dockerfile.jobs` currently uses `mcr.microsoft.com/dotnet/asp
 
 **Decision needed:** Which deployment target for production?
 
+**Answer:** Option A — Azure Container Apps.
+
+Reason: The production application should be deployed as containerized .NET 10 services. ACA is the best fit because it supports independent API, web, jobs, and worker containers with managed ingress, secrets, scaling, revisions, and lower operational overhead than AKS. ACI is too limited for production SaaS hosting, AKS is unnecessary operational complexity at this stage, and App Service + Web Jobs is less flexible for a multi-service container-based architecture.
+
 ---
 
 ## Q10 — MAUI Mobile App Scope
@@ -136,6 +170,9 @@ The v5-plan.md includes a `src/Cinturon360.Maui/` project in the long-term plan.
 **Decision needed:**  
 Is the MAUI mobile app in scope for the **initial v5 build** or a **Phase 5+ deliverable** to be tackled later?
 
+**Answer:**
+The MAUI mobile app is for a **Phase 5+ deliverable** to be tackled later.
+
 ---
 
 ## Q11 — Email Provider
@@ -144,6 +181,9 @@ Is the MAUI mobile app in scope for the **initial v5 build** or a **Phase 5+ del
 
 **Decision needed:**  
 Is MailerSend confirmed for v5? If yes, the `Cinturon360.Infrastructure/Email/` folder should be wired with the MailerSend SDK. If switching providers (Postmark, SendGrid, Resend), specify preference.
+
+**Answer:**
+We will proceed using MailerSend, this is the preferred partner for Cinturon360 for transactional email.
 
 ---
 
@@ -156,6 +196,8 @@ Is MailerSend confirmed for v5? If yes, the `Cinturon360.Infrastructure/Email/` 
 - (b) Switch to Azure Blob Storage (`Azure.Storage.Blobs`) — aligns with Azure deployment target if Q9 = ACA
 
 **Decision needed:** AWS S3 or Azure Blob Storage?
+
+**Answer:** Per Q4, we will continue with AWS S3, a compatible service (eg Cloudflare R2) will be used in-place of AWS services for cost effectiveness.
 
 ---
 
@@ -170,6 +212,14 @@ Is MailerSend confirmed for v5? If yes, the `Cinturon360.Infrastructure/Email/` 
 
 **Decision needed:** Where should structured Serilog logs be persisted in production?
 
+**Answer:**
+
+Option C — log to stdout using Serilog Console sink and aggregate logs through the container platform.
+
+Reason: Production logs should not be written into the application PostgreSQL database by default. In a containerized deployment, each service should emit structured logs to stdout/stderr and let Azure Container Apps collect them into Azure Monitor / Log Analytics, or another observability platform such as Datadog. This avoids coupling app database performance and retention to log volume.
+
+The PostgreSQL sink will remain available for development or temporary diagnostics, but it should not be the default production logging target.
+
 ---
 
 ## Q14 — Legacy v4 Code Reference
@@ -181,6 +231,13 @@ How long should `legacy-reference/` be retained? Options:
 - (a) Keep indefinitely as a reference
 - (b) Delete once v5 reaches feature parity
 - (c) Move to a separate git branch and remove from main
+
+**Answer:**
+Decision: Option C — move the v4 legacy reference code to a separate git branch and remove `legacy-reference/` from `main`.
+
+Reason: The v4 code should remain available for reference during the v5 rebuild, but it should not live indefinitely in the active v5 codebase. Keeping it in `main` adds repository noise, pollutes search results, and increases the risk of copying obsolete patterns. A dedicated legacy branch preserves the code while keeping the v5 branch clean.
+
+Once v5 reaches full feature parity and the legacy branch has not been needed for a defined period, the branch can be archived or deleted later if required.
 
 ---
 
