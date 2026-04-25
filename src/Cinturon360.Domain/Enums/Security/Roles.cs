@@ -1,13 +1,19 @@
 namespace Cinturon360.Domain.Enums.Security;
 
-public enum AppRole
+/// <summary>
+/// Platform-level roles for sudo / ops accounts that have no home org.
+/// Standard tenant users do NOT use this — they use OrgRole via UserRoleAssignment.
+/// </summary>
+public enum PlatformRole
 {
-    GlobalAdmin  = 1,
-    Support      = 2,
-    Finance      = 3,
-    Integrations = 4
+    Sudo          = 1,
+    PlatformOps   = 2,
+    PlatformAudit = 3
 }
 
+/// <summary>
+/// Organisation-scoped roles assigned via UserRoleAssignment.
+/// </summary>
 public enum OrgRole
 {
     OrgAdmin   = 1,

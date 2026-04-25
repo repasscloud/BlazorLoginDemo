@@ -32,13 +32,14 @@
     <!-- Auth -->
     <PackageVersion Include="OpenIddict.AspNetCore" Version="5.4.0" />
     <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="5.4.0" />
-    <PackageVersion Include="ITfoxtec.Identity.Saml2" Version="4.7.0" />
+    <PackageVersion Include="ITfoxtec.Identity.Saml2" Version="4.17.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0" />
     <!-- Stripe -->
     <PackageVersion Include="Stripe.net" Version="47.3.0" />
     <!-- AWS -->
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.0" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.4" />
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.4" />
     <!-- PDF -->
     <PackageVersion Include="QuestPDF" Version="2025.4.0" />
     <!-- Testing -->

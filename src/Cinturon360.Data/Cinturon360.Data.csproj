@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Cinturon360.Common\Cinturon360.Common.csproj" />
     <ProjectReference Include="..\Cinturon360.Domain\Cinturon360.Domain.csproj" />
+    <ProjectReference Include="..\Cinturon360.Application\Cinturon360.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

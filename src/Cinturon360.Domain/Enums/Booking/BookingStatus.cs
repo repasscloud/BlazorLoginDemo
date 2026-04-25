@@ -9,5 +9,8 @@ public enum BookingStatus
     Confirmed    = 5,
     Ticketed     = 6,
     Cancelled    = 7,
-    Expired      = 8
+    Expired      = 8,
+    OnHold       = 9,
+    Refunded     = 10,
+    Completed    = 11
 }

@@ -9,6 +9,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="OpenIddict.AspNetCore" />
     <PackageReference Include="OpenIddict.EntityFrameworkCore" />
     <PackageReference Include="Serilog.AspNetCore" />
@@ -20,6 +24,7 @@
     <ProjectReference Include="..\Cinturon360.Application\Cinturon360.Application.csproj" />
     <ProjectReference Include="..\Cinturon360.Data\Cinturon360.Data.csproj" />
     <ProjectReference Include="..\Cinturon360.Infrastructure\Cinturon360.Infrastructure.csproj" />
+    <ProjectReference Include="..\Cinturon360.Domain\Cinturon360.Domain.csproj" />
   </ItemGroup>
 
 </Project>
