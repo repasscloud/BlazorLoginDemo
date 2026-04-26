@@ -2,7 +2,7 @@ name: cinturon360-dev
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine3.22
     restart: unless-stopped
     environment:
       POSTGRES_USER: cinturon
