@@ -1,0 +1,102 @@
+@page "/client/travel/search"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject NavigationManager Nav
+
+<PageTitle>Search flights — Cinturon360</PageTitle>
+
+<PageHeader Title="Search Flights" Subtitle="Find the best fares for your next trip." />
+
+<div class="c-card p-6 max-w-2xl">
+    <EditForm Model="_model" OnValidSubmit="HandleSearchAsync" FormName="flight-search">
+        <DataAnnotationsValidator />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="c-field">
+                <label class="c-label" for="origin">From</label>
+                <InputText id="origin" class="c-input uppercase" placeholder="SYD" maxlength="3"
+                           @bind-Value="_model.OriginCode" />
+                <ValidationMessage For="() => _model.OriginCode" class="c-field-error" />
+            </div>
+
+            <div class="c-field">
+                <label class="c-label" for="dest">To</label>
+                <InputText id="dest" class="c-input uppercase" placeholder="MEL" maxlength="3"
+                           @bind-Value="_model.DestinationCode" />
+                <ValidationMessage For="() => _model.DestinationCode" class="c-field-error" />
+            </div>
+
+            <div class="c-field">
+                <label class="c-label" for="depart">Departure date</label>
+                <InputDate id="depart" class="c-input" @bind-Value="_model.DepartureDate" />
+                <ValidationMessage For="() => _model.DepartureDate" class="c-field-error" />
+            </div>
+
+            <div class="c-field">
+                <label class="c-label" for="return">Return date <span class="text-muted text-xs">(optional)</span></label>
+                <InputDate id="return" class="c-input" @bind-Value="_model.ReturnDate" />
+            </div>
+
+            <div class="c-field">
+                <label class="c-label" for="cabin">Cabin class</label>
+                <InputSelect id="cabin" class="c-input" @bind-Value="_model.CabinClass">
+                    <option value="economy">Economy</option>
+                    <option value="premium_economy">Premium Economy</option>
+                    <option value="business">Business</option>
+                    <option value="first">First Class</option>
+                </InputSelect>
+            </div>
+
+            <div class="c-field">
+                <label class="c-label" for="pax">Passengers</label>
+                <InputNumber id="pax" class="c-input" min="1" max="9"
+                             @bind-Value="_model.PassengerCount" />
+            </div>
+        </div>
+
+        <div class="flex gap-3 mt-6">
+            <button type="submit" class="c-btn c-btn-primary" disabled="@_busy">
+                @if (_busy) { <LoadingSpinner Size="sm" Label="" /> }
+                Search flights
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private readonly FlightSearchModel _model = new();
+    private bool _busy;
+
+    private void HandleSearchAsync()
+    {
+        _busy = true;
+        var qs = $"?origin={_model.OriginCode}" +
+                 $"&dest={_model.DestinationCode}" +
+                 $"&date={_model.DepartureDate:yyyy-MM-dd}" +
+                 $"&cabin={_model.CabinClass}" +
+                 $"&adults={_model.PassengerCount}" +
+                 (_model.ReturnDate.HasValue ? $"&ret={_model.ReturnDate:yyyy-MM-dd}" : "");
+        Nav.NavigateTo($"/client/travel/results{qs}");
+    }
+
+    private sealed class FlightSearchModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Origin airport is required.")]
+        [System.ComponentModel.DataAnnotations.StringLength(3, MinimumLength = 3, ErrorMessage = "Enter a 3-letter IATA code.")]
+        public string OriginCode { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Destination airport is required.")]
+        [System.ComponentModel.DataAnnotations.StringLength(3, MinimumLength = 3, ErrorMessage = "Enter a 3-letter IATA code.")]
+        public string DestinationCode { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Departure date is required.")]
+        public DateOnly DepartureDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(7));
+
+        public DateOnly? ReturnDate { get; set; }
+
+        public string CabinClass { get; set; } = "economy";
+
+        [System.ComponentModel.DataAnnotations.Range(1, 9)]
+        public int PassengerCount { get; set; } = 1;
+    }
+}

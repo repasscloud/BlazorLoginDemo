@@ -1,0 +1,121 @@
+@page "/client/bookings/{BookingId}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject BookingApiClient BookingApi
+@inject ToastService Toast
+@inject NavigationManager Nav
+
+<PageTitle>Booking — Cinturon360</PageTitle>
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading booking…" />
+}
+else if (_booking is null)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-danger)">Booking not found.</p>
+        <a href="/client/bookings" class="c-btn c-btn-secondary mt-4">Back to bookings</a>
+    </div>
+}
+else
+{
+    <PageHeader Title="@($"Booking {_booking.Id}")"
+                Subtitle="@($"Created {_booking.CreatedAt:d MMM yyyy}")">
+        <Actions>
+            @if (_booking.Status is "confirmed" or "pending")
+            {
+                <button class="c-btn c-btn-danger" @onclick="() => _confirm.Show()">
+                    Cancel booking
+                </button>
+            }
+        </Actions>
+    </PageHeader>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+        <div class="c-card p-5">
+            <p class="text-xs uppercase tracking-wide font-medium mb-3" style="color:var(--c-text-muted)">
+                Booking details
+            </p>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Status</dt>
+                    <dd><StatusBadge Status="@_booking.Status" /></dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Total</dt>
+                    <dd class="font-medium" style="color:var(--c-text-primary)">
+                        @_booking.TotalAmountGross.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-AU")) @_booking.CurrencyCode
+                    </dd>
+                </div>
+                @if (!string.IsNullOrEmpty(_booking.PnrCode))
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">PNR</dt>
+                        <dd class="font-mono">@_booking.PnrCode</dd>
+                    </div>
+                }
+            </dl>
+        </div>
+
+        <div class="c-card p-5">
+            <p class="text-xs uppercase tracking-wide font-medium mb-3" style="color:var(--c-text-muted)">
+                Trip dates
+            </p>
+            <dl class="space-y-2 text-sm">
+                @if (_booking.TripStartDate.HasValue)
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Departure</dt>
+                        <dd style="color:var(--c-text-primary)">@_booking.TripStartDate.Value.ToString("d MMM yyyy")</dd>
+                    </div>
+                }
+                @if (_booking.TripEndDate.HasValue)
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Return</dt>
+                        <dd style="color:var(--c-text-primary)">@_booking.TripEndDate.Value.ToString("d MMM yyyy")</dd>
+                    </div>
+                }
+            </dl>
+        </div>
+    </div>
+
+    <ConfirmDialog @ref="_confirm"
+                   Title="Cancel booking"
+                   Message="Are you sure you want to cancel this booking? This action cannot be undone."
+                   ConfirmLabel="Cancel booking"
+                   Dangerous
+                   OnConfirm="HandleCancelAsync" />
+}
+
+@code {
+    [Parameter] public string BookingId { get; set; } = "";
+
+    private bool _loading = true;
+    private Cinturon360.Contracts.Bookings.BookingResponse? _booking;
+    private ConfirmDialog _confirm = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var result = await BookingApi.GetBookingAsync(BookingId);
+        if (result.IsSuccess) _booking = result.Value;
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleCancelAsync()
+    {
+        var result = await BookingApi.CancelBookingAsync(BookingId);
+        if (result.IsSuccess)
+        {
+            Toast.Success("Booking cancelled.");
+            Nav.NavigateTo("/client/bookings");
+        }
+        else
+        {
+            Toast.Error(result.Error ?? "Failed to cancel booking.");
+        }
+    }
+}

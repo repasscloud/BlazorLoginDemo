@@ -1,0 +1,104 @@
+@page "/auth/mfa"
+@layout EmptyLayout
+@rendermode InteractiveServer
+@attribute [AllowAnonymous]
+@inject IdentityApiClient IdentityApi
+@inject UserSessionService SessionService
+@inject NavigationManager Nav
+
+<PageTitle>Verify identity — Cinturon360</PageTitle>
+
+<div class="min-h-screen flex items-center justify-center bg-surface-muted px-4">
+    <div class="w-full max-w-sm">
+        <div class="text-center mb-8">
+            <span class="c-wordmark text-2xl"><span class="c360">Cinturon</span><span class="c360-num">360</span></span>
+            <p class="mt-1 text-sm" style="color:var(--c-text-muted)">Two-factor verification</p>
+        </div>
+
+        <div class="c-card p-8">
+            <p class="text-sm mb-6" style="color:var(--c-text-secondary)">
+                Enter the 6-digit code from your authenticator app or the code sent to your email.
+            </p>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="mb-4 rounded-xl p-3 text-sm border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20"
+                     style="color:var(--c-danger)" role="alert">
+                    @_errorMessage
+                </div>
+            }
+
+            <EditForm Model="_model" OnValidSubmit="HandleVerifyAsync" FormName="mfa">
+                <DataAnnotationsValidator />
+
+                <div class="c-field">
+                    <label class="c-label" for="code">Verification code</label>
+                    <InputText id="code" class="c-input tracking-[0.5em] text-center text-xl font-mono"
+                               @bind-Value="_model.Code"
+                               maxlength="6"
+                               placeholder="000000"
+                               autocomplete="one-time-code"
+                               inputmode="numeric" />
+                    <ValidationMessage For="() => _model.Code" class="c-field-error" />
+                </div>
+
+                <button type="submit" class="c-btn c-btn-primary w-full mt-4" disabled="@_busy">
+                    @if (_busy) { <LoadingSpinner Size="sm" Label="" /> }
+                    Verify
+                </button>
+            </EditForm>
+
+            <div class="mt-4 text-center">
+                <a href="/auth/login" class="text-xs font-medium text-brand-sky hover:underline">
+                    Back to sign in
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Session { get; set; }
+
+    private readonly MfaModel _model = new();
+    private string? _errorMessage;
+    private bool _busy;
+
+    private async Task HandleVerifyAsync()
+    {
+        _busy = true;
+        _errorMessage = null;
+
+        var result = await IdentityApi.VerifyMfaAsync(new Cinturon360.Contracts.Auth.MfaChallengeRequest(
+            SessionId: Session ?? "",
+            MfaCode: _model.Code,
+            MfaMethod: "totp"));
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _errorMessage = result.Error ?? "Verification failed. Please try again.";
+            _busy = false;
+            return;
+        }
+
+        var mfaResp = result.Value;
+
+        if (!mfaResp.Succeeded || mfaResp.AccessToken is null)
+        {
+            _errorMessage = mfaResp.ErrorMessage ?? "Code incorrect or expired.";
+            _busy = false;
+            return;
+        }
+
+        // We don't have the full user info here — navigate to a lightweight profile load page
+        // For now navigate to root and let the session hydration handle it
+        Nav.NavigateTo("/");
+    }
+
+    private sealed class MfaModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Code is required.")]
+        [System.ComponentModel.DataAnnotations.StringLength(6, MinimumLength = 6, ErrorMessage = "Enter all 6 digits.")]
+        public string Code { get; set; } = "";
+    }
+}

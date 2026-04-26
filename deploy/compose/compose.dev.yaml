@@ -27,7 +27,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=cinturon360;Username=cinturon;Password=cinturon_dev_password"
     ports:
-      - "5000:8080"
+      - "5100:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,8 +40,11 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ApiSettings__BaseUrl: "http://api:8080"
+      DP_KEYS_PATH: "/app/dp-keys"
     ports:
       - "5001:8080"
+    volumes:
+      - web_dp_keys:/app/dp-keys
     depends_on:
       - api
 
@@ -59,3 +62,4 @@ services:
 
 volumes:
   postgres_data:
+  web_dp_keys:

@@ -1,0 +1,59 @@
+@* Confirmation dialog modal *@
+@if (_visible)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog"
+         aria-modal="true" aria-labelledby="confirm-title" @onclick="OnBackdropClick">
+        <div class="c-card w-full max-w-sm p-6 shadow-2xl" @onclick:stopPropagation>
+            <div class="mb-4">
+                <h3 id="confirm-title" class="text-base font-heading font-semibold"
+                    style="color:var(--c-text-primary)">@Title</h3>
+                <p class="text-sm mt-1" style="color:var(--c-text-muted)">@Message</p>
+            </div>
+            <div class="flex gap-3 justify-end">
+                <button class="c-btn c-btn-secondary" @onclick="OnCancelAsync" disabled="@_busy">
+                    @CancelLabel
+                </button>
+                <button class="c-btn @(Dangerous ? "c-btn-danger" : "c-btn-primary")"
+                        @onclick="OnConfirmAsync" disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <LoadingSpinner Size="sm" Label="" />
+                    }
+                    @ConfirmLabel
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "Are you sure?";
+    [Parameter] public string Message { get; set; } = "This action cannot be undone.";
+    [Parameter] public string ConfirmLabel { get; set; } = "Confirm";
+    [Parameter] public string CancelLabel { get; set; } = "Cancel";
+    [Parameter] public bool Dangerous { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool _visible;
+    private bool _busy;
+
+    public void Show() { _visible = true; StateHasChanged(); }
+    public void Hide() { _visible = false; StateHasChanged(); }
+
+    private async Task OnConfirmAsync()
+    {
+        _busy = true;
+        await OnConfirm.InvokeAsync();
+        _busy = false;
+        _visible = false;
+    }
+
+    private async Task OnCancelAsync()
+    {
+        await OnCancel.InvokeAsync();
+        _visible = false;
+    }
+
+    private void OnBackdropClick() => Hide();
+}

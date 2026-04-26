@@ -1,0 +1,69 @@
+@page "/vendor/organisations"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject OrgApiClient OrgApi
+
+<PageTitle>Organisations — Cinturon360</PageTitle>
+
+<PageHeader Title="Organisations" />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading organisations…" />
+}
+else if (_orgs.Count == 0)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-text-muted)">No organisations found.</p>
+    </div>
+}
+else
+{
+    <div class="c-card overflow-hidden">
+        <table class="c-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var org in _orgs)
+                {
+                    <tr>
+                        <td class="font-medium" style="color:var(--c-text-primary)">@org.Name</td>
+                        <td><StatusBadge Status="@org.OrgType" /></td>
+                        <td><StatusBadge Status="@(org.IsActive ? "active" : "inactive")" /></td>
+                        <td class="text-xs" style="color:var(--c-text-muted)">
+                            @org.CreatedAt.ToString("d MMM yyyy")
+                        </td>
+                        <td class="text-right">
+                            <a href="/vendor/organisations/@org.OrgId"
+                               class="text-xs text-brand-sky hover:underline font-medium">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<Cinturon360.Contracts.Organizations.OrganisationSummary> _orgs = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var result = await OrgApi.ListOrgsAsync();
+        if (result.IsSuccess && result.Value is not null)
+            _orgs = result.Value.Items.ToList();
+        _loading = false;
+        StateHasChanged();
+    }
+}

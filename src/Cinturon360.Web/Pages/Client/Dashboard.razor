@@ -1,0 +1,123 @@
+@page "/client"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject BookingApiClient BookingApi
+@inject ApprovalApiClient ApprovalApi
+
+<PageTitle>Dashboard — Cinturon360</PageTitle>
+
+<PageHeader Title="Dashboard" Subtitle="Welcome back! Here's your travel overview." />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading your dashboard…" />
+}
+else
+{
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <!-- Upcoming trips card -->
+        <div class="c-card p-5">
+            <p class="text-xs font-medium uppercase tracking-wide mb-1" style="color:var(--c-text-muted)">
+                Upcoming Trips
+            </p>
+            <p class="text-3xl font-heading font-bold" style="color:var(--c-text-primary)">
+                @_upcomingCount
+            </p>
+        </div>
+
+        <!-- Pending approvals card -->
+        <div class="c-card p-5">
+            <p class="text-xs font-medium uppercase tracking-wide mb-1" style="color:var(--c-text-muted)">
+                Pending Approvals
+            </p>
+            <p class="text-3xl font-heading font-bold" style="color:var(--c-text-primary)">
+                @_pendingApprovals
+            </p>
+        </div>
+
+        <!-- Trips this year -->
+        <div class="c-card p-5">
+            <p class="text-xs font-medium uppercase tracking-wide mb-1" style="color:var(--c-text-muted)">
+                Trips This Year
+            </p>
+            <p class="text-3xl font-heading font-bold" style="color:var(--c-text-primary)">
+                @_tripsThisYear
+            </p>
+        </div>
+    </div>
+
+    <!-- Upcoming bookings -->
+    <div class="c-section">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-heading font-semibold" style="color:var(--c-text-primary)">
+                Upcoming Bookings
+            </h2>
+            <a href="/client/bookings" class="text-xs text-brand-sky hover:underline font-medium">
+                View all
+            </a>
+        </div>
+
+        @if (_upcomingBookings.Count == 0)
+        {
+            <div class="c-empty-state py-8">
+                <p class="text-sm" style="color:var(--c-text-muted)">No upcoming bookings.</p>
+                <a href="/client/travel/search" class="c-btn c-btn-primary mt-4">Book a flight</a>
+            </div>
+        }
+        else
+        {
+            <div class="divide-y" style="border-color:var(--c-border)">
+                @foreach (var booking in _upcomingBookings)
+                {
+                    <div class="flex items-center justify-between py-3">
+                        <div>
+                            <p class="text-sm font-medium" style="color:var(--c-text-primary)">
+                                @booking.Reference
+                            </p>
+                            <p class="text-xs" style="color:var(--c-text-muted)">
+                                @booking.DepartureDate.ToString("d MMM yyyy")
+                            </p>
+                        </div>
+                        <StatusBadge Status="@booking.Status" />
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private int _upcomingCount;
+    private int _pendingApprovals;
+    private int _tripsThisYear;
+    private List<BookingSummary> _upcomingBookings = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var bookingsTask  = BookingApi.ListBookingsAsync(page: 1, pageSize: 5);
+        var approvalsTask = ApprovalApi.ListPendingAsync();
+
+        await Task.WhenAll(bookingsTask, approvalsTask);
+
+        var bookingsResult = await bookingsTask;
+        if (bookingsResult.IsSuccess && bookingsResult.Value is not null)
+        {
+            _upcomingBookings = bookingsResult.Value.Items
+                .Select(b => new BookingSummary(b.Id, b.Status, b.TripStartDate ?? b.CreatedAt))
+                .ToList();
+            _upcomingCount = bookingsResult.Value.Total;
+        }
+
+        var approvalsResult = await approvalsTask;
+        if (approvalsResult.IsSuccess && approvalsResult.Value is not null)
+            _pendingApprovals = approvalsResult.Value.Items.Count;
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private sealed record BookingSummary(string Reference, string Status, DateTimeOffset DepartureDate);
+}

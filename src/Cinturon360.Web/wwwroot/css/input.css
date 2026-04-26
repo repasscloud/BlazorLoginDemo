@@ -1,0 +1,381 @@
+/* =============================================================
+   Cinturon360 — Design System Input
+   Tailwind CSS directives + CSS custom properties for theming
+   ============================================================= */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Light theme (default) ─────────────────────────────────── */
+:root {
+  --c-bg:            #f8fafc;
+  --c-surface:       #ffffff;
+  --c-surface-muted: #f1f5f9;
+  --c-surface-hover: #e2e8f0;
+
+  --c-border-subtle: rgba(15, 23, 42, 0.08);
+  --c-border-strong: rgba(15, 23, 42, 0.14);
+
+  --c-text-primary:   #0f172a;
+  --c-text-secondary: #334155;
+  --c-text-muted:     #64748b;
+  --c-text-disabled:  #94a3b8;
+
+  --c-brand-sky:    #38bdf8;
+  --c-brand-orange: #f97316;
+
+  --c-success: #22c55e;
+  --c-warning: #f59e0b;
+  --c-danger:  #ef4444;
+  --c-info:    #38bdf8;
+  --c-purple:  #a855f7;
+
+  --c-shadow-sm: 0 1px 2px rgba(15,23,42,0.06);
+  --c-shadow-md: 0 4px 12px rgba(15,23,42,0.08);
+  --c-shadow-lg: 0 8px 24px rgba(15,23,42,0.10);
+
+  --c-radius-card: 1rem;
+  --c-radius-pill: 9999px;
+}
+
+/* ─── Dark theme ─────────────────────────────────────────────── */
+.dark {
+  --c-bg:            #05080f;
+  --c-surface:       #0d1424;
+  --c-surface-muted: #111827;
+  --c-surface-hover: #1e2a3a;
+
+  --c-border-subtle: rgba(255, 255, 255, 0.07);
+  --c-border-strong: rgba(255, 255, 255, 0.12);
+
+  --c-text-primary:   #f8fafc;
+  --c-text-secondary: #cbd5e1;
+  --c-text-muted:     #94a3b8;
+  --c-text-disabled:  #64748b;
+
+  --c-shadow-sm: 0 1px 2px rgba(0,0,0,0.30);
+  --c-shadow-md: 0 4px 12px rgba(0,0,0,0.40);
+  --c-shadow-lg: 0 8px 24px rgba(0,0,0,0.50);
+}
+
+/* ─── Base ───────────────────────────────────────────────────── */
+@layer base {
+  html {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--c-bg);
+    color: var(--c-text-primary);
+  }
+
+  body {
+    background-color: var(--c-bg);
+    color: var(--c-text-primary);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    color: var(--c-text-primary);
+  }
+
+  a {
+    color: var(--c-brand-sky);
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--c-brand-sky);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* ─── Component layer ────────────────────────────────────────── */
+@layer components {
+
+  /* Card */
+  .c-card {
+    @apply rounded-2xl;
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border-subtle);
+    box-shadow: var(--c-shadow-sm);
+  }
+
+  /* Card hover */
+  .c-card-hover:hover {
+    background-color: var(--c-surface-hover);
+    box-shadow: var(--c-shadow-md);
+  }
+
+  /* Primary button */
+  .c-btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all duration-150 focus-visible:outline-none;
+  }
+
+  .c-btn-primary {
+    @apply c-btn text-white;
+    background-color: var(--c-brand-sky);
+  }
+
+  .c-btn-primary:hover {
+    filter: brightness(1.08);
+  }
+
+  .c-btn-secondary {
+    @apply c-btn;
+    background-color: var(--c-surface-muted);
+    color: var(--c-text-primary);
+    border: 1px solid var(--c-border-strong);
+  }
+
+  .c-btn-secondary:hover {
+    background-color: var(--c-surface-hover);
+  }
+
+  .c-btn-danger {
+    @apply c-btn text-white;
+    background-color: var(--c-danger);
+  }
+
+  .c-btn-danger:hover {
+    filter: brightness(0.92);
+  }
+
+  .c-btn-ghost {
+    @apply c-btn;
+    color: var(--c-text-secondary);
+  }
+
+  .c-btn-ghost:hover {
+    background-color: var(--c-surface-muted);
+    color: var(--c-text-primary);
+  }
+
+  /* Input */
+  .c-input {
+    @apply block w-full rounded-xl px-3 py-2 text-sm transition-all duration-150;
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border-strong);
+    color: var(--c-text-primary);
+  }
+
+  .c-input::placeholder {
+    color: var(--c-text-muted);
+  }
+
+  .c-input:focus {
+    outline: none;
+    border-color: var(--c-brand-sky);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+  }
+
+  .c-input-error {
+    border-color: var(--c-danger);
+  }
+
+  .c-input-error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  }
+
+  /* Label */
+  .c-label {
+    @apply block text-sm font-medium mb-1;
+    color: var(--c-text-secondary);
+  }
+
+  /* Field error message */
+  .c-field-error {
+    @apply text-xs mt-1;
+    color: var(--c-danger);
+  }
+
+  /* Badge — base */
+  .c-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .c-badge-sky     { background: rgba(56,189,248,0.12); color: #0ea5e9; }
+  .c-badge-orange  { background: rgba(249,115,22,0.12); color: #ea580c; }
+  .c-badge-success { background: rgba(34,197,94,0.12);  color: #16a34a; }
+  .c-badge-warning { background: rgba(245,158,11,0.12); color: #d97706; }
+  .c-badge-danger  { background: rgba(239,68,68,0.12);  color: #dc2626; }
+  .c-badge-muted   { background: var(--c-surface-muted); color: var(--c-text-muted); }
+  .c-badge-purple  { background: rgba(168,85,247,0.12); color: #9333ea; }
+
+  /* Page header */
+  .c-page-header {
+    @apply flex items-start justify-between mb-6;
+  }
+
+  .c-page-title {
+    @apply text-2xl font-heading font-bold;
+    color: var(--c-text-primary);
+  }
+
+  .c-page-subtitle {
+    @apply text-sm mt-1;
+    color: var(--c-text-muted);
+  }
+
+  /* Section */
+  .c-section {
+    @apply c-card p-6 mb-6;
+  }
+
+  .c-section-title {
+    @apply text-base font-heading font-semibold mb-4;
+    color: var(--c-text-primary);
+  }
+
+  /* Table */
+  .c-table {
+    @apply w-full text-sm border-collapse;
+  }
+
+  .c-table th {
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide;
+    background-color: var(--c-surface-muted);
+    color: var(--c-text-muted);
+    border-bottom: 1px solid var(--c-border-subtle);
+  }
+
+  .c-table td {
+    @apply px-4 py-3;
+    border-bottom: 1px solid var(--c-border-subtle);
+    color: var(--c-text-primary);
+  }
+
+  .c-table tr:hover td {
+    background-color: var(--c-surface-hover);
+  }
+
+  /* Sidebar */
+  .c-sidebar {
+    @apply flex flex-col h-full;
+    background-color: var(--c-surface);
+    border-right: 1px solid var(--c-border-subtle);
+    width: 16rem;
+  }
+
+  /* Sidebar nav item */
+  .c-nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl mx-2 text-sm font-medium transition-all duration-150 cursor-pointer;
+    color: var(--c-text-secondary);
+  }
+
+  .c-nav-item:hover {
+    background-color: var(--c-surface-muted);
+    color: var(--c-text-primary);
+  }
+
+  .c-nav-item.active {
+    background-color: rgba(56, 189, 248, 0.1);
+    color: var(--c-brand-sky);
+  }
+
+  .c-nav-group-label {
+    @apply px-5 py-2 text-xs font-semibold uppercase tracking-widest;
+    color: var(--c-text-disabled);
+  }
+
+  /* Divider */
+  .c-divider {
+    @apply my-4;
+    border-color: var(--c-border-subtle);
+  }
+
+  /* Toast */
+  .c-toast {
+    @apply flex items-start gap-3 p-4 rounded-2xl shadow-lg text-sm max-w-sm w-full pointer-events-auto;
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border-subtle);
+    box-shadow: var(--c-shadow-lg);
+  }
+
+  /* Spinner */
+  .c-spinner {
+    @apply animate-spin rounded-full border-2;
+    border-color: var(--c-brand-sky) transparent transparent transparent;
+  }
+
+  /* Wordmark */
+  .c-wordmark {
+    @apply font-heading font-extrabold tracking-tight text-xl select-none;
+  }
+
+  .c-wordmark .c360 {
+    color: var(--c-brand-sky);
+  }
+
+  .c-wordmark .c360-num {
+    color: var(--c-brand-orange);
+  }
+
+  /* Empty state */
+  .c-empty-state {
+    @apply flex flex-col items-center justify-center py-16 text-center;
+  }
+
+  .c-empty-state-title {
+    @apply text-base font-semibold mt-4;
+    color: var(--c-text-primary);
+  }
+
+  .c-empty-state-desc {
+    @apply text-sm mt-2;
+    color: var(--c-text-muted);
+  }
+}
+
+/* ─── Utility layer ──────────────────────────────────────────── */
+@layer utilities {
+  .text-brand-sky    { color: var(--c-brand-sky); }
+  .text-brand-orange { color: var(--c-brand-orange); }
+  .bg-surface        { background-color: var(--c-surface); }
+  .bg-surface-muted  { background-color: var(--c-surface-muted); }
+  .bg-app            { background-color: var(--c-bg); }
+  .border-subtle     { border-color: var(--c-border-subtle); }
+  .border-strong     { border-color: var(--c-border-strong); }
+  .text-primary      { color: var(--c-text-primary); }
+  .text-secondary    { color: var(--c-text-secondary); }
+  .text-muted        { color: var(--c-text-muted); }
+  .text-disabled     { color: var(--c-text-disabled); }
+  .shadow-card       { box-shadow: var(--c-shadow-md); }
+}
+
+/* ─── Blazor reconnect & error overlays ──────────────────────── */
+#blazor-error-ui {
+  display: none;
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  background-color: var(--c-danger);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  box-shadow: var(--c-shadow-lg);
+}
+
+#blazor-error-ui.show {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#components-reconnect-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+}

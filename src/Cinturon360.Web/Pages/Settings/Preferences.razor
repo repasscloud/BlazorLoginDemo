@@ -1,0 +1,144 @@
+@page "/settings/preferences"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject TravellerApiClient TravellerApi
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toast
+
+<PageTitle>Travel Preferences — Cinturon360</PageTitle>
+
+<PageHeader Title="Travel Preferences" Subtitle="Default seat, meal, and notification preferences." />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading preferences…" />
+}
+else
+{
+    <div class="c-card p-6 max-w-lg">
+        <EditForm Model="_model" OnValidSubmit="HandleSaveAsync" FormName="preferences">
+            <div class="space-y-4">
+                <div class="c-field">
+                    <label class="c-label" for="seat">Preferred seat type</label>
+                    <InputSelect id="seat" class="c-input" @bind-Value="_model.PreferredSeatType">
+                        <option value="">No preference</option>
+                        <option value="window">Window</option>
+                        <option value="aisle">Aisle</option>
+                        <option value="middle">Middle</option>
+                    </InputSelect>
+                </div>
+
+                <div class="c-field">
+                    <label class="c-label" for="meal">Preferred meal</label>
+                    <InputSelect id="meal" class="c-input" @bind-Value="_model.PreferredMealType">
+                        <option value="">Standard</option>
+                        <option value="VGML">Vegetarian</option>
+                        <option value="GFML">Gluten-Free</option>
+                        <option value="KSML">Kosher</option>
+                        <option value="HNML">Hindu</option>
+                        <option value="MOML">Muslim</option>
+                    </InputSelect>
+                </div>
+
+                <div class="c-field">
+                    <label class="c-label" for="airport">Home airport (IATA)</label>
+                    <InputText id="airport" class="c-input uppercase" maxlength="3"
+                               @bind-Value="_model.PreferredAirportCode"
+                               placeholder="SYD" />
+                </div>
+
+                <hr style="border-color:var(--c-border)" />
+
+                <p class="text-xs font-medium uppercase tracking-wide" style="color:var(--c-text-muted)">
+                    Notifications
+                </p>
+
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <InputCheckbox @bind-Value="_model.NotifyBookingConfirmation" class="rounded" />
+                    Booking confirmations
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <InputCheckbox @bind-Value="_model.NotifyApprovalRequired" class="rounded" />
+                    Approval required
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <InputCheckbox @bind-Value="_model.NotifyApprovalDecision" class="rounded" />
+                    Approval decision
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <InputCheckbox @bind-Value="_model.NotifyTripReminders" class="rounded" />
+                    Trip reminders
+                </label>
+            </div>
+
+            <div class="mt-6">
+                <button type="submit" class="c-btn c-btn-primary" disabled="@_busy">
+                    @if (_busy) { <LoadingSpinner Size="sm" Label="" /> }
+                    Save preferences
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _busy;
+    private string _userId = "";
+    private readonly PrefsModel _model = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _userId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
+
+        if (!string.IsNullOrEmpty(_userId))
+        {
+            var result = await TravellerApi.GetProfileAsync(_userId);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                _model.PreferredSeatType        = result.Value.PreferredSeatType ?? "";
+                _model.PreferredMealType        = result.Value.PreferredMealType ?? "";
+            }
+        }
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleSaveAsync()
+    {
+        _busy = true;
+        var result = await TravellerApi.UpdateProfileAsync(_userId,
+            new Cinturon360.Contracts.Travellers.UpdateTravellerProfileRequest(
+                PassportNumber:   null,
+                PassportCountry:  null,
+                PassportExpiry:   null,
+                Nationality:      null,
+                DateOfBirth:      null,
+                Gender:           null,
+                TsaPreCheckNumber: null,
+                GlobalEntryNumber: null,
+                RedressNumber:     null,
+                PreferredSeatType: _model.PreferredSeatType,
+                PreferredMealType: _model.PreferredMealType));
+
+        if (result.IsSuccess)
+            Toast.Success("Preferences saved.");
+        else
+            Toast.Error(result.Error ?? "Failed to save preferences.");
+
+        _busy = false;
+    }
+
+    private sealed class PrefsModel
+    {
+        public string? PreferredSeatType { get; set; }
+        public string? PreferredMealType { get; set; }
+        public string? PreferredAirportCode { get; set; }
+        public bool NotifyBookingConfirmation { get; set; }
+        public bool NotifyApprovalRequired { get; set; }
+        public bool NotifyApprovalDecision { get; set; }
+        public bool NotifyTripReminders { get; set; }
+    }
+}

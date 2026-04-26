@@ -1,0 +1,49 @@
+@inject IJSRuntime JS
+@inject Cinturon360.Web.Services.State.AppState AppState
+@implements IDisposable
+
+<button class="c-btn-ghost p-2 rounded-xl" @onclick="ToggleTheme"
+        title="Toggle theme" aria-label="Toggle light/dark theme">
+    @if (_isDark)
+    {
+        <!-- Sun icon (switch to light) -->
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+    }
+    else
+    {
+        <!-- Moon icon (switch to dark) -->
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+    }
+</button>
+
+@code {
+    private bool _isDark;
+
+    protected override void OnInitialized()
+    {
+        _isDark = AppState.Theme == "dark";
+        AppState.OnChange += OnAppStateChanged;
+    }
+
+    private async Task ToggleTheme()
+    {
+        var newTheme = _isDark ? "light" : "dark";
+        AppState.SetTheme(newTheme);
+        _isDark = newTheme == "dark";
+        await JS.InvokeVoidAsync("c360.setTheme", newTheme);
+    }
+
+    private void OnAppStateChanged()
+    {
+        _isDark = AppState.Theme == "dark";
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => AppState.OnChange -= OnAppStateChanged;
+}

@@ -10,6 +10,7 @@
     <!-- EF Core -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.4" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4" />
+    <PackageVersion Include="Npgsql" Version="10.0.1" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
     <!-- MediatR -->
     <PackageVersion Include="MediatR" Version="12.4.1" />
@@ -55,6 +56,11 @@
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <!-- Hosting -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+    <!-- Fluent UI Blazor -->
+    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.11.2" />
+    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.11.2" />
+    <!-- Data Protection -->
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.0" />
     <!-- Misc utilities -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageVersion Include="System.Text.Json" Version="10.0.0" />

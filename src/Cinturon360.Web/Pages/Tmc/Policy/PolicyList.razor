@@ -1,0 +1,87 @@
+@page "/tmc/policy"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject PolicyApiClient PolicyApi
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Travel Policies — Cinturon360</PageTitle>
+
+<PageHeader Title="Travel Policies">
+    <Actions>
+        <a href="/tmc/policy/new" class="c-btn c-btn-primary">New policy</a>
+    </Actions>
+</PageHeader>
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading policies…" />
+}
+else if (_policies.Count == 0)
+{
+    <div class="c-empty-state">
+        <p class="text-sm mb-4" style="color:var(--c-text-muted)">No policies configured yet.</p>
+        <a href="/tmc/policy/new" class="c-btn c-btn-primary">Create first policy</a>
+    </div>
+}
+else
+{
+    <div class="c-card overflow-hidden">
+        <table class="c-table">
+            <thead>
+                <tr>
+                    <th>Policy name</th>
+                    <th>Default</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var policy in _policies)
+                {
+                    <tr>
+                        <td class="font-medium" style="color:var(--c-text-primary)">@policy.Name</td>
+                        <td>
+                            @if (policy.IsDefault)
+                            {
+                                <span class="c-badge c-badge-sky">Default</span>
+                            }
+                        </td>
+                        <td><StatusBadge Status="@(policy.IsActive ? "active" : "inactive")" /></td>
+                        <td class="text-xs" style="color:var(--c-text-muted)">
+                            @policy.CreatedAt.ToString("d MMM yyyy")
+                        </td>
+                        <td class="text-right">
+                            <a href="/tmc/policy/@policy.Id" class="text-xs text-brand-sky hover:underline font-medium">
+                                Edit
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<Cinturon360.Contracts.Policies.TravelPolicyResponse> _policies = new();
+    private string _orgId = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _orgId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.OrgId)?.Value ?? "";
+
+        if (!string.IsNullOrEmpty(_orgId))
+        {
+            var result = await PolicyApi.ListPoliciesAsync(_orgId);
+            if (result.IsSuccess && result.Value is not null)
+                _policies = result.Value.Items.ToList();
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,109 @@
+@page "/tmc/policy/new"
+@page "/tmc/policy/{PolicyId}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject PolicyApiClient PolicyApi
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toast
+@inject NavigationManager Nav
+
+<PageTitle>@(IsNew ? "New Policy" : "Edit Policy") — Cinturon360</PageTitle>
+
+<PageHeader Title="@(IsNew ? "Create Travel Policy" : "Edit Travel Policy")" />
+
+<div class="c-card p-6 max-w-lg">
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="mb-4 rounded-xl p-3 text-sm border-l-4 border-red-500"
+             style="color:var(--c-danger)" role="alert">
+            @_errorMessage
+        </div>
+    }
+
+    <EditForm Model="_model" OnValidSubmit="HandleSubmitAsync" FormName="policy-editor">
+        <DataAnnotationsValidator />
+
+        <div class="c-field">
+            <label class="c-label" for="name">Policy name</label>
+            <InputText id="name" class="c-input" @bind-Value="_model.Name" />
+            <ValidationMessage For="() => _model.Name" class="c-field-error" />
+        </div>
+
+        <div class="c-field">
+            <label class="c-label" for="desc">Description</label>
+            <InputTextArea id="desc" class="c-input" rows="3" @bind-Value="_model.Description" />
+        </div>
+
+        <div class="flex items-center gap-2 mb-4">
+            <InputCheckbox id="default" @bind-Value="_model.IsDefault" class="rounded" />
+            <label class="c-label !mb-0" for="default">Set as default policy</label>
+        </div>
+
+        <div class="flex gap-3">
+            <button type="submit" class="c-btn c-btn-primary" disabled="@_busy">
+                @if (_busy) { <LoadingSpinner Size="sm" Label="" /> }
+                @(IsNew ? "Create policy" : "Save changes")
+            </button>
+            <a href="/tmc/policy" class="c-btn c-btn-secondary">Cancel</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public string? PolicyId { get; set; }
+
+    private bool IsNew => string.IsNullOrEmpty(PolicyId);
+    private readonly PolicyEditorModel _model = new();
+    private string? _errorMessage;
+    private bool _busy;
+    private string _orgId = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _orgId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.OrgId)?.Value ?? "";
+
+        if (!IsNew && !string.IsNullOrEmpty(_orgId))
+        {
+            var result = await PolicyApi.GetPolicyAsync(_orgId, PolicyId!);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                _model.Name = result.Value.Name;
+                _model.Description = result.Value.Description ?? "";
+                _model.IsDefault = result.Value.IsDefault;
+            }
+        }
+        StateHasChanged();
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        _busy = true;
+        _errorMessage = null;
+
+        if (IsNew)
+        {
+            var result = await PolicyApi.CreatePolicyAsync(_orgId,
+                new Cinturon360.Contracts.Policies.CreateTravelPolicyRequest(
+                    _model.Name, _model.Description, _model.IsDefault));
+            if (result.IsSuccess)
+            {
+                Toast.Success("Policy created.");
+                Nav.NavigateTo("/tmc/policy");
+                return;
+            }
+            _errorMessage = result.Error ?? "Failed to create policy.";
+        }
+
+        _busy = false;
+    }
+
+    private sealed class PolicyEditorModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Policy name is required.")]
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public bool IsDefault { get; set; }
+    }
+}

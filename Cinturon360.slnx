@@ -20,4 +20,7 @@
     <Project Path="tests/Cinturon360.Integration.Tests/Cinturon360.Integration.Tests.csproj" />
     <Project Path="tests/Cinturon360.Web.Tests/Cinturon360.Web.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/db/system-account/Cinturon360.SystemAccountTool.csproj" />
+  </Folder>
 </Solution>

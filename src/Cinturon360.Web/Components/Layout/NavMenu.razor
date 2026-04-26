@@ -1,30 +1,75 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Cinturon360.Web</a>
+﻿@inject NavigationManager Nav
+@inject Cinturon360.Web.Services.State.AppState AppState
+
+<div class="flex flex-col h-full overflow-hidden">
+    <!-- Wordmark -->
+    <div class="px-5 py-5 flex-shrink-0 border-b border-subtle">
+        <a href="/" class="c-wordmark block">
+            <span class="c360">Cinturon</span><span class="c360-num">360</span>
+        </a>
     </div>
-</div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+    <!-- Nav content -->
+    <nav class="flex-1 overflow-y-auto py-4 space-y-1" role="navigation" aria-label="Main navigation">
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+        <AuthorizeView>
+            <Authorized>
+                @{
+                    var cat = context.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserCategory)?.Value;
+                }
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
+                <!-- Client section (all authenticated users) -->
+                <p class="c-nav-group-label">My Travel</p>
+                <NavItem Href="/client" Icon="home" Label="Dashboard" />
+                <NavItem Href="/client/travel/search" Icon="search" Label="Book a Trip" />
+                <NavItem Href="/client/bookings" Icon="calendar" Label="My Bookings" />
+                <NavItem Href="/client/approvals" Icon="check-circle" Label="Approvals" />
+                <NavItem Href="/client/profile" Icon="user" Label="Traveller Profile" />
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
+                <!-- TMC section -->
+                @if (cat is "Tmc" or "Vendor" or "Platform")
+                {
+                    <hr class="c-divider" />
+                    <p class="c-nav-group-label">Agency</p>
+                    <NavItem Href="/tmc" Icon="briefcase" Label="TMC Dashboard" />
+                    <NavItem Href="/tmc/bookings" Icon="list" Label="Booking Queue" />
+                    <NavItem Href="/tmc/clients" Icon="users" Label="Clients" />
+                    <NavItem Href="/tmc/policy" Icon="shield" Label="Travel Policies" />
+                }
+
+                <!-- Vendor section -->
+                @if (cat is "Vendor" or "Platform")
+                {
+                    <hr class="c-divider" />
+                    <p class="c-nav-group-label">Vendor</p>
+                    <NavItem Href="/vendor" Icon="building" Label="Vendor Dashboard" />
+                    <NavItem Href="/vendor/organisations" Icon="sitemap" Label="Organisations" />
+                    <NavItem Href="/vendor/billing" Icon="credit-card" Label="Billing Overview" />
+                }
+
+                <!-- Sudo section -->
+                @if (cat == "Platform")
+                {
+                    <hr class="c-divider" />
+                    <p class="c-nav-group-label">Platform</p>
+                    <NavItem Href="/sudo" Icon="terminal" Label="Sudo Dashboard" />
+                    <NavItem Href="/sudo/users" Icon="users" Label="Users" />
+                    <NavItem Href="/sudo/jobs" Icon="cpu" Label="Job Queue" />
+                    <NavItem Href="/sudo/audit" Icon="eye" Label="Audit Log" />
+                }
+
+            </Authorized>
+        </AuthorizeView>
     </nav>
+
+    <!-- Bottom: settings + sign out -->
+    <div class="flex-shrink-0 border-t border-subtle py-3">
+        <AuthorizeView>
+            <Authorized>
+                <NavItem Href="/settings/preferences" Icon="settings" Label="Settings" />
+                <NavItem Href="/auth/logout" Icon="log-out" Label="Sign Out" />
+            </Authorized>
+        </AuthorizeView>
+    </div>
 </div>
 

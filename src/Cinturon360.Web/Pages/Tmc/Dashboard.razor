@@ -1,0 +1,65 @@
+@page "/tmc"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject BookingApiClient BookingApi
+@inject ApprovalApiClient ApprovalApi
+
+<PageTitle>TMC Dashboard — Cinturon360</PageTitle>
+
+<PageHeader Title="Agency Dashboard" Subtitle="Overview of active bookings and pending work." />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading dashboard…" />
+}
+else
+{
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div class="c-card p-5">
+            <p class="text-xs font-medium uppercase tracking-wide mb-1" style="color:var(--c-text-muted)">
+                Total Bookings
+            </p>
+            <p class="text-3xl font-heading font-bold" style="color:var(--c-text-primary)">@_totalBookings</p>
+        </div>
+        <div class="c-card p-5">
+            <p class="text-xs font-medium uppercase tracking-wide mb-1" style="color:var(--c-text-muted)">
+                Pending Approvals
+            </p>
+            <p class="text-3xl font-heading font-bold" style="color:var(--c-text-primary)">@_pendingApprovals</p>
+        </div>
+        <div class="c-card p-5">
+            <p class="text-xs font-medium uppercase tracking-wide mb-1" style="color:var(--c-text-muted)">
+                Booking Queue
+            </p>
+            <a href="/tmc/bookings" class="text-brand-sky text-sm font-medium hover:underline">
+                View queue →
+            </a>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private int _totalBookings;
+    private int _pendingApprovals;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var bTask = BookingApi.ListBookingsAsync(page: 1, pageSize: 1);
+        var aTask = ApprovalApi.ListPendingAsync();
+        await Task.WhenAll(bTask, aTask);
+
+        var bResult = await bTask;
+        if (bResult.IsSuccess && bResult.Value is not null)
+            _totalBookings = bResult.Value.Total;
+
+        var aResult = await aTask;
+        if (aResult.IsSuccess && aResult.Value is not null)
+            _pendingApprovals = aResult.Value.Items.Count;
+
+        _loading = false;
+        StateHasChanged();
+    }
+}

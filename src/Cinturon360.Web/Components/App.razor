@@ -6,18 +6,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <ResourcePreloader />
-    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
-    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <!-- Fonts: Inter + Plus Jakarta Sans via Bunny Fonts (privacy-friendly) -->
+    <link rel="preconnect" href="https://fonts.bunny.net" />
+    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|plus-jakarta-sans:600,700,800&display=swap"
+          rel="stylesheet" />
+    <!-- Tailwind design system -->
+    <link rel="stylesheet" href="css/tailwind.css" />
     <link rel="stylesheet" href="@Assets["Cinturon360.Web.styles.css"]" />
-    <ImportMap />
+    <!-- Fluent UI Blazor -->
+    <link rel="stylesheet" href="_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet />
+    <!-- Theme initialiser: apply saved theme before first paint to prevent flash -->
+    <script>
+        (function () {
+            var t = localStorage.getItem('c360-theme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
 </head>
 
 <body>
     <Routes />
     <ReconnectModal />
+    <script type="module" src="_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.lib.module.js"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        window.c360 = {
+            setTheme: function (theme) {
+                var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.classList.toggle('dark', isDark);
+                localStorage.setItem('c360-theme', theme);
+            }
+        };
+    </script>
 </body>
 
 </html>
+

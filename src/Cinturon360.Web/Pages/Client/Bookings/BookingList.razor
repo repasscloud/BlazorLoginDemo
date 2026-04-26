@@ -1,0 +1,84 @@
+@page "/client/bookings"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject BookingApiClient BookingApi
+
+<PageTitle>My Bookings — Cinturon360</PageTitle>
+
+<PageHeader Title="My Bookings">
+    <Actions>
+        <a href="/client/travel/search" class="c-btn c-btn-primary">Book a flight</a>
+    </Actions>
+</PageHeader>
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading bookings…" />
+}
+else if (_bookings.Count == 0)
+{
+    <div class="c-empty-state">
+        <p class="text-sm mb-4" style="color:var(--c-text-muted)">No bookings yet.</p>
+        <a href="/client/travel/search" class="c-btn c-btn-primary">Book a flight</a>
+    </div>
+}
+else
+{
+    <div class="c-card overflow-hidden">
+        <table class="c-table">
+            <thead>
+                <tr>
+                    <th>Booking ID</th>
+                    <th>Trip dates</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in _bookings)
+                {
+                    <tr>
+                        <td class="font-mono text-xs">@b.Id</td>
+                        <td>
+                            @if (b.TripStartDate.HasValue)
+                            {
+                                <span>@b.TripStartDate.Value.ToString("d MMM yyyy")</span>
+                                @if (b.TripEndDate.HasValue)
+                                {
+                                    <span class="text-muted"> → @b.TripEndDate.Value.ToString("d MMM yyyy")</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>@b.TotalAmountGross.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-AU")) @b.CurrencyCode</td>
+                        <td><StatusBadge Status="@b.Status" /></td>
+                        <td class="text-right">
+                            <a href="/client/bookings/@b.Id" class="text-xs text-brand-sky hover:underline font-medium">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<Cinturon360.Contracts.Bookings.BookingResponse> _bookings = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var result = await BookingApi.ListBookingsAsync(page: 1, pageSize: 50);
+        if (result.IsSuccess && result.Value is not null)
+            _bookings = result.Value.Items.ToList();
+        _loading = false;
+        StateHasChanged();
+    }
+}

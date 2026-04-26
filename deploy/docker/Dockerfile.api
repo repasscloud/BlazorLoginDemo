@@ -20,7 +20,6 @@ RUN dotnet restore src/Cinturon360.Api/Cinturon360.Api.csproj
 # Copy full source and publish
 COPY src/ src/
 RUN dotnet publish src/Cinturon360.Api/Cinturon360.Api.csproj \
-    --no-restore \
     -c Release \
     -o /app/publish
 
@@ -28,7 +27,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
 # Drop to non-root user for security
-RUN adduser --disabled-password --gecos "" appuser
+RUN useradd --no-create-home --shell /bin/false appuser
 USER appuser
 
 COPY --from=build /app/publish .

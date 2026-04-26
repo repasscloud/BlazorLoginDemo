@@ -1,0 +1,105 @@
+@page "/settings/profile"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AppState AppState
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toast
+
+<PageTitle>Profile Settings — Cinturon360</PageTitle>
+
+<PageHeader Title="Profile Settings" Subtitle="Display preferences and account information." />
+
+<div class="c-card p-6 max-w-lg">
+    <div class="mb-6">
+        <h2 class="text-sm font-heading font-semibold mb-4" style="color:var(--c-text-primary)">
+            Account
+        </h2>
+        <dl class="space-y-2 text-sm">
+            <div class="flex justify-between">
+                <dt style="color:var(--c-text-muted)">Email</dt>
+                <dd style="color:var(--c-text-primary)">@_email</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt style="color:var(--c-text-muted)">Display name</dt>
+                <dd style="color:var(--c-text-primary)">@_displayName</dd>
+            </div>
+        </dl>
+    </div>
+
+    <hr style="border-color:var(--c-border)" class="my-4" />
+
+    <h2 class="text-sm font-heading font-semibold mb-4" style="color:var(--c-text-primary)">
+        Appearance & Locale
+    </h2>
+
+    <div class="space-y-4">
+        <div class="c-field">
+            <label class="c-label" for="theme">Theme</label>
+            <select id="theme" class="c-input" value="@AppState.Theme"
+                    @onchange="OnThemeChange">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+            </select>
+        </div>
+
+        <div class="c-field">
+            <label class="c-label" for="lang">Language</label>
+            <select id="lang" class="c-input" value="@AppState.Language"
+                    @onchange="OnLanguageChange">
+                <option value="en-AU">English (Australia)</option>
+                <option value="en-NZ">English (New Zealand)</option>
+                <option value="en-US">English (United States)</option>
+                <option value="en-GB">English (United Kingdom)</option>
+            </select>
+        </div>
+
+        <div class="c-field">
+            <label class="c-label" for="tz">Timezone</label>
+            <select id="tz" class="c-input" value="@AppState.TimeZone"
+                    @onchange="OnTimezoneChange">
+                <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                <option value="Australia/Melbourne">Melbourne (AEST/AEDT)</option>
+                <option value="Australia/Brisbane">Brisbane (AEST)</option>
+                <option value="Australia/Perth">Perth (AWST)</option>
+                <option value="Pacific/Auckland">Auckland (NZST/NZDT)</option>
+                <option value="UTC">UTC</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _email = "";
+    private string _displayName = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _email = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.Email)?.Value ?? "";
+        _displayName = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.DisplayName)?.Value ?? "";
+        StateHasChanged();
+    }
+
+    private void OnThemeChange(ChangeEventArgs e)
+    {
+        var theme = e.Value?.ToString() ?? "system";
+        AppState.SetTheme(theme);
+        Toast.Success("Theme updated.");
+    }
+
+    private void OnLanguageChange(ChangeEventArgs e)
+    {
+        var lang = e.Value?.ToString() ?? "en-AU";
+        AppState.SetLanguage(lang);
+        Toast.Success("Language updated.");
+    }
+
+    private void OnTimezoneChange(ChangeEventArgs e)
+    {
+        var tz = e.Value?.ToString() ?? "Australia/Sydney";
+        AppState.SetTimeZone(tz);
+        Toast.Success("Timezone updated.");
+    }
+}

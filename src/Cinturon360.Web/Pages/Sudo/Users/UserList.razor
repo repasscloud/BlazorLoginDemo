@@ -1,0 +1,14 @@
+@page "/sudo/users"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject OrgApiClient OrgApi
+
+<PageTitle>Users — Cinturon360</PageTitle>
+
+<PageHeader Title="Platform Users" Subtitle="All users across all organisations." />
+
+<div class="c-card p-6 text-center">
+    <p class="text-sm" style="color:var(--c-text-muted)">
+        User management is available via the Identity API. Direct user search UI is planned for a future sprint.
+    </p>
+</div>

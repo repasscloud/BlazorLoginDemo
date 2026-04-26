@@ -1,0 +1,47 @@
+@page "/tmc/bookings"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject BookingApiClient BookingApi
+
+<PageTitle>Booking Queue — Cinturon360</PageTitle>
+
+<PageHeader Title="Booking Queue" Subtitle="All bookings across your managed accounts." />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading queue…" />
+}
+else
+{
+    <FluentDataGrid Items="@_bookings.AsQueryable()" TGridItem="Cinturon360.Contracts.Bookings.BookingResponse"
+                    Pagination="@_pagination" Style="width:100%">
+        <PropertyColumn Title="ID" Property="@(b => b.Id)" Class="font-mono text-xs" />
+        <PropertyColumn Title="Traveller" Property="@(b => b.TravellerUserId)" />
+        <PropertyColumn Title="Status" Property="@(b => b.Status)" />
+        <PropertyColumn Title="Trip Start" Property="@(b => b.TripStartDate)" Format="d MMM yyyy" />
+        <PropertyColumn Title="Amount" Property="@(b => b.TotalAmountGross)" Format="C2" />
+        <TemplateColumn Title="Actions" Context="booking">
+            <a href="/client/bookings/@booking.Id" class="text-xs text-brand-sky hover:underline font-medium">
+                View
+            </a>
+        </TemplateColumn>
+    </FluentDataGrid>
+    <FluentPaginator State="@_pagination" />
+}
+
+@code {
+    private bool _loading = true;
+    private List<Cinturon360.Contracts.Bookings.BookingResponse> _bookings = new();
+    private readonly PaginationState _pagination = new() { ItemsPerPage = 25 };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var result = await BookingApi.ListBookingsAsync(page: 1, pageSize: 100);
+        if (result.IsSuccess && result.Value is not null)
+            _bookings = result.Value.Items.ToList();
+        _loading = false;
+        StateHasChanged();
+    }
+}

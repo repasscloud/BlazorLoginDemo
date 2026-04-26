@@ -1,0 +1,78 @@
+@page "/sudo/jobs"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject SystemApiClient SystemApi
+
+<PageTitle>Job Queue — Cinturon360</PageTitle>
+
+<PageHeader Title="Job Queue" Subtitle="Background job execution status." />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading jobs…" />
+}
+else if (_jobs.Count == 0)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-text-muted)">No jobs found.</p>
+    </div>
+}
+else
+{
+    <div class="c-card overflow-hidden">
+        <table class="c-table">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Attempts</th>
+                    <th>Started</th>
+                    <th>Completed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var job in _jobs)
+                {
+                    <tr>
+                        <td class="font-mono text-xs">@job.Id[..8]…</td>
+                        <td class="text-xs">@job.JobType</td>
+                        <td><StatusBadge Status="@JobStatusLabel(job.Status)" /></td>
+                        <td class="text-xs">@job.Attempts / @job.MaxAttempts</td>
+                        <td class="text-xs" style="color:var(--c-text-muted)">
+                            @(job.StartedAt?.ToString("dd MMM HH:mm") ?? "—")
+                        </td>
+                        <td class="text-xs" style="color:var(--c-text-muted)">
+                            @(job.CompletedAt?.ToString("dd MMM HH:mm") ?? "—")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<Cinturon360.Contracts.System.JobResponse> _jobs = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var result = await SystemApi.ListJobsAsync(page: 1, pageSize: 50);
+        if (result.IsSuccess && result.Value is not null)
+            _jobs = result.Value.Items.ToList();
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private static string JobStatusLabel(int status) => status switch
+    {
+        0 => "pending",
+        1 => "running",
+        2 => "success",
+        3 => "failed",
+        4 => "cancelled",
+        _ => "unknown",
+    };
+}

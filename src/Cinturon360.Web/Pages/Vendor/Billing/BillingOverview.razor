@@ -1,0 +1,118 @@
+@page "/vendor/billing"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject BillingApiClient BillingApi
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Billing Overview — Cinturon360</PageTitle>
+
+<PageHeader Title="Billing Overview" />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading billing data…" />
+}
+else
+{
+    @if (_license is not null)
+    {
+        <div class="c-card p-6 mb-4 max-w-lg">
+            <h2 class="text-sm font-heading font-semibold mb-4" style="color:var(--c-text-primary)">
+                Current License
+            </h2>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Status</dt>
+                    <dd><StatusBadge Status="@(_license.IsActive ? "active" : "inactive")" /></dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Max users</dt>
+                    <dd>@_license.MaxUsers</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Max bookings/month</dt>
+                    <dd>@_license.MaxBookingsPerMonth</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Valid from</dt>
+                    <dd>@_license.StartsOn.ToString("d MMM yyyy")</dd>
+                </div>
+                @if (_license.ExpiresOn.HasValue)
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Expires</dt>
+                        <dd>@_license.ExpiresOn.Value.ToString("d MMM yyyy")</dd>
+                    </div>
+                }
+            </dl>
+        </div>
+    }
+
+    <div class="c-section">
+        <h2 class="text-sm font-heading font-semibold mb-4" style="color:var(--c-text-primary)">
+            Invoices
+        </h2>
+        @if (_invoices.Count == 0)
+        {
+            <p class="text-sm" style="color:var(--c-text-muted)">No invoices found.</p>
+        }
+        else
+        {
+            <div class="c-card overflow-hidden">
+                <table class="c-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Issued</th>
+                            <th>Due</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in _invoices)
+                        {
+                            <tr>
+                                <td class="font-mono text-xs">@inv.InvoiceNumber</td>
+                                <td class="text-xs">@inv.IssuedOn.ToString("d MMM yyyy")</td>
+                                <td class="text-xs">@inv.DueOn.ToString("d MMM yyyy")</td>
+                                <td>@inv.TotalAmount.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-AU")) @inv.CurrencyCode</td>
+                                <td><StatusBadge Status="@inv.Status.ToString()" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private Cinturon360.Contracts.Billing.OrgLicenseResponse? _license;
+    private List<Cinturon360.Contracts.Billing.InvoiceResponse> _invoices = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var orgId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.OrgId)?.Value ?? "";
+
+        if (!string.IsNullOrEmpty(orgId))
+        {
+            var licTask = BillingApi.GetLicenseAsync(orgId);
+            var invTask = BillingApi.ListInvoicesAsync(orgId);
+            await Task.WhenAll(licTask, invTask);
+
+            var lr = await licTask;
+            if (lr.IsSuccess) _license = lr.Value;
+
+            var ir = await invTask;
+            if (ir.IsSuccess && ir.Value is not null)
+                _invoices = ir.Value.Items.ToList();
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+}

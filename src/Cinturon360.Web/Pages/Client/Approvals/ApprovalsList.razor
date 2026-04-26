@@ -1,0 +1,93 @@
+@page "/client/approvals"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+@inject ApprovalApiClient ApprovalApi
+@inject ToastService Toast
+
+<PageTitle>Approvals — Cinturon360</PageTitle>
+
+<PageHeader Title="My Approvals" Subtitle="Review travel requests pending your approval." />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading approvals…" />
+}
+else if (_items.Count == 0)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-text-muted)">No pending approvals.</p>
+    </div>
+}
+else
+{
+    <div class="flex flex-col gap-4">
+        @foreach (var item in _items)
+        {
+            <div class="c-card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div class="flex-1">
+                    <p class="text-sm font-medium" style="color:var(--c-text-primary)">
+                        Booking: @item.SubjectId
+                    </p>
+                    <p class="text-xs" style="color:var(--c-text-muted)">
+                        Requested @item.CreatedAt.ToString("d MMM yyyy")
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="c-btn c-btn-primary text-sm"
+                            @onclick="() => HandleApproveAsync(item.Id)">
+                        Approve
+                    </button>
+                    <button class="c-btn c-btn-danger text-sm"
+                            @onclick="() => HandleRejectAsync(item.Id)">
+                        Reject
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<Cinturon360.Contracts.Approvals.ApprovalRequestResponse> _items = new();
+    private string _userId = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _userId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
+        var result = await ApprovalApi.ListPendingAsync();
+        if (result.IsSuccess && result.Value is not null)
+            _items = result.Value.Items.ToList();
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleApproveAsync(string approvalId)
+    {
+        var result = await ApprovalApi.ApproveAsync(approvalId,
+            new Cinturon360.Contracts.Approvals.ApproveRequest(_userId));
+        if (result.IsSuccess)
+        {
+            Toast.Success("Request approved.");
+            _items.RemoveAll(i => i.Id == approvalId);
+            StateHasChanged();
+        }
+        else Toast.Error(result.Error ?? "Failed to approve.");
+    }
+
+    private async Task HandleRejectAsync(string approvalId)
+    {
+        var result = await ApprovalApi.RejectAsync(approvalId,
+            new Cinturon360.Contracts.Approvals.RejectRequest(_userId));
+        if (result.IsSuccess)
+        {
+            Toast.Warning("Request rejected.");
+            _items.RemoveAll(i => i.Id == approvalId);
+            StateHasChanged();
+        }
+        else Toast.Error(result.Error ?? "Failed to reject.");
+    }
+}

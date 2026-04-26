@@ -1,7 +1,16 @@
 ﻿@page "/"
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthState
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var route = NavigationPermissionService.GetDefaultRouteForUser(auth.User);
+        NavigationManager.NavigateTo(route, replace: true);
+    }
 
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+}

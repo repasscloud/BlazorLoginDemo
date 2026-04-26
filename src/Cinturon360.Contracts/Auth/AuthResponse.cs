@@ -15,5 +15,7 @@ public sealed record UserInfoResponse(
     string Email,
     string FullName,
     string? OrgId,
+    string? UserCategory,
+    string? PlatformRole,
     IReadOnlyList<string> Permissions
 );

@@ -1,0 +1,45 @@
+@page "/settings/security"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Security Settings — Cinturon360</PageTitle>
+
+<PageHeader Title="Security" Subtitle="Password, MFA, and active sessions." />
+
+<div class="c-card p-6 max-w-lg">
+    <div class="mb-6">
+        <h2 class="text-sm font-heading font-semibold mb-2" style="color:var(--c-text-primary)">
+            Password
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--c-text-muted)">
+            Use a strong, unique password for your account.
+        </p>
+        <a href="/auth/forgot-password" class="c-btn c-btn-secondary">
+            Change password
+        </a>
+    </div>
+
+    <hr style="border-color:var(--c-border)" class="my-4" />
+
+    <div class="mb-6">
+        <h2 class="text-sm font-heading font-semibold mb-2" style="color:var(--c-text-primary)">
+            Two-Factor Authentication
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--c-text-muted)">
+            Protect your account with a TOTP authenticator app.
+        </p>
+        <button class="c-btn c-btn-secondary">Set up 2FA</button>
+    </div>
+
+    <hr style="border-color:var(--c-border)" class="my-4" />
+
+    <div>
+        <h2 class="text-sm font-heading font-semibold mb-2" style="color:var(--c-text-primary)">
+            Sign out everywhere
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--c-text-muted)">
+            This will invalidate all active sessions on all devices.
+        </p>
+        <a href="/auth/logout" class="c-btn c-btn-danger">Sign out all sessions</a>
+    </div>
+</div>

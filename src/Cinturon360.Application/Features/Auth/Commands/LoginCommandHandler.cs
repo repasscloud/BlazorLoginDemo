@@ -94,6 +94,8 @@ public sealed class LoginCommandHandler(
                 Email: user.Email,
                 FullName: user.FullName,
                 OrgId: user.HomeOrgId,
+                UserCategory: null,
+                PlatformRole: null,
                 Permissions: permissions));
 
         return Result.Success(response);

@@ -1,0 +1,19 @@
+@* Status badge — maps a string status to the right colour *@
+<span class="c-badge @BadgeClass" title="@Status">@Label</span>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = "";
+    [Parameter] public string? OverrideLabel { get; set; }
+
+    private string Label => OverrideLabel ?? Status;
+
+    private string BadgeClass => Status.ToLowerInvariant() switch
+    {
+        "confirmed" or "active" or "approved" or "success" or "paid"     => "c-badge-success",
+        "pending" or "awaiting" or "inreview" or "in_review" or "draft"  => "c-badge-warning",
+        "cancelled" or "rejected" or "failed" or "expired" or "overdue"  => "c-badge-danger",
+        "info" or "open" or "submitted"                                   => "c-badge-sky",
+        "premium" or "vip"                                               => "c-badge-purple",
+        _ => "c-badge-muted",
+    };
+}

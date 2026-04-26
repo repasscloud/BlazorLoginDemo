@@ -1,23 +1,102 @@
 ﻿@inherits LayoutComponentBase
+@inject Cinturon360.Web.Services.State.AppState AppState
+@implements IDisposable
 
-<div class="page">
-    <div class="sidebar">
+<PageTitle>Cinturon360</PageTitle>
+
+<div class="flex h-screen overflow-hidden bg-app @(AppState.Theme == "dark" ? "dark" : "")">
+    <!-- Sidebar -->
+    <aside class="c-sidebar hidden md:flex flex-shrink-0">
         <NavMenu />
+    </aside>
+
+    <!-- Main content area -->
+    <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <!-- Top navigation bar -->
+        <header class="flex items-center justify-between px-6 py-3 border-b border-subtle bg-surface flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <!-- Mobile menu button -->
+                <button class="c-btn-ghost md:hidden p-2 rounded-lg" @onclick="ToggleMobileMenu"
+                        aria-label="Open navigation">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <!-- Wordmark (mobile only) -->
+                <span class="c-wordmark md:hidden">
+                    <span class="c360">Cinturon</span><span class="c360-num">360</span>
+                </span>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Theme switcher -->
+                <Cinturon360.Web.Components.Shared.ThemeSwitcher />
+                <!-- User menu -->
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-orange-500
+                                        flex items-center justify-center text-white text-xs font-bold select-none">
+                                @GetInitials(context.User.FindFirst(Security.ClaimTypes.DisplayName)?.Value)
+                            </div>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/auth/login" class="c-btn c-btn-primary text-xs px-3 py-1.5">Sign in</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <!-- Mobile sidebar overlay -->
+        @if (_mobileMenuOpen)
+        {
+            <div class="fixed inset-0 z-40 flex md:hidden">
+                <div class="fixed inset-0 bg-black/50" @onclick="ToggleMobileMenu"></div>
+                <aside class="c-sidebar relative z-50 w-64">
+                    <NavMenu />
+                </aside>
+            </div>
+        }
+
+        <!-- Page content -->
+        <main class="flex-1 overflow-y-auto p-6">
+            <Cinturon360.Web.Components.Shared.ErrorBoundaryWrapper>
+                @Body
+            </Cinturon360.Web.Components.Shared.ErrorBoundaryWrapper>
+        </main>
     </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
 </div>
 
+<!-- Toast container -->
+<Cinturon360.Web.Components.Shared.ToastContainer />
+
+<!-- Blazor error UI (overridden by CSS) -->
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <a href="." class="underline">Reload</a>
 </div>
+
+@code {
+    private bool _mobileMenuOpen;
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += StateHasChanged;
+    }
+
+    private void ToggleMobileMenu() => _mobileMenuOpen = !_mobileMenuOpen;
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][..1].ToUpperInvariant()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    public void Dispose() => AppState.OnChange -= StateHasChanged;
+}
+

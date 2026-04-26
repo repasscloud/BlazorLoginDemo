@@ -1,0 +1,23 @@
+@* Loading spinner *@
+<div class="flex items-center justify-center @ContainerClass" role="status" aria-label="@Label">
+    <div class="c-spinner @SizeClass"></div>
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="sr-only">@Label</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Loading…";
+    [Parameter] public bool FullPage { get; set; }
+    [Parameter] public string Size { get; set; } = "md"; // sm | md | lg
+
+    private string ContainerClass => FullPage ? "min-h-64" : "";
+
+    private string SizeClass => Size switch
+    {
+        "sm" => "w-4 h-4",
+        "lg" => "w-10 h-10",
+        _    => "w-6 h-6",
+    };
+}

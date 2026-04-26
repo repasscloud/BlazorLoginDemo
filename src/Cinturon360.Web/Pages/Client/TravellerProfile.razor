@@ -1,0 +1,155 @@
+@page "/client/profile"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject TravellerApiClient TravellerApi
+@inject AuthenticationStateProvider AuthState
+@inject ToastService Toast
+
+<PageTitle>My Travel Profile — Cinturon360</PageTitle>
+
+<PageHeader Title="My Travel Profile" Subtitle="Passport, loyalty programs and emergency contacts." />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading profile…" />
+}
+else
+{
+    <div class="max-w-xl">
+        <!-- Passport section -->
+        <div class="c-card p-6 mb-4">
+            <h2 class="text-sm font-heading font-semibold mb-4" style="color:var(--c-text-primary)">
+                Passport Information
+            </h2>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Passport number</dt>
+                    <dd style="color:var(--c-text-primary)">@(_profile?.PassportNumber ?? "—")</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Country</dt>
+                    <dd style="color:var(--c-text-primary)">@(_profile?.PassportCountry ?? "—")</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Expiry</dt>
+                    <dd style="color:var(--c-text-primary)">
+                        @(_profile?.PassportExpiry?.ToString("d MMM yyyy") ?? "—")
+                    </dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Nationality</dt>
+                    <dd style="color:var(--c-text-primary)">@(_profile?.Nationality ?? "—")</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Date of birth</dt>
+                    <dd style="color:var(--c-text-primary)">
+                        @(_profile?.DateOfBirth?.ToString("d MMM yyyy") ?? "—")
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Loyalty programs -->
+        <div class="c-card p-6 mb-4">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-sm font-heading font-semibold" style="color:var(--c-text-primary)">
+                    Loyalty Programs
+                </h2>
+            </div>
+            @if (_loyaltyPrograms.Count == 0)
+            {
+                <p class="text-sm" style="color:var(--c-text-muted)">No loyalty programs added.</p>
+            }
+            else
+            {
+                <div class="divide-y" style="border-color:var(--c-border)">
+                    @foreach (var lp in _loyaltyPrograms)
+                    {
+                        <div class="py-3 flex justify-between text-sm">
+                            <div>
+                                <p class="font-medium" style="color:var(--c-text-primary)">
+                                    @lp.ProgramName
+                                </p>
+                                <p style="color:var(--c-text-muted)">
+                                    @lp.MembershipNumber
+                                    @if (!string.IsNullOrEmpty(lp.TierName))
+                                    {
+                                        <span class="ml-2 c-badge c-badge-sky">@lp.TierName</span>
+                                    }
+                                </p>
+                            </div>
+                            @if (lp.ExpiryDate.HasValue)
+                            {
+                                <p style="color:var(--c-text-muted)">
+                                    Exp. @lp.ExpiryDate.Value.ToString("MMM yyyy")
+                                </p>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Emergency contacts -->
+        <div class="c-card p-6">
+            <h2 class="text-sm font-heading font-semibold mb-4" style="color:var(--c-text-primary)">
+                Emergency Contacts
+            </h2>
+            @if (_emergencyContacts.Count == 0)
+            {
+                <p class="text-sm" style="color:var(--c-text-muted)">No emergency contacts on file.</p>
+            }
+            else
+            {
+                <div class="divide-y" style="border-color:var(--c-border)">
+                    @foreach (var ec in _emergencyContacts)
+                    {
+                        <div class="py-3 text-sm">
+                            <p class="font-medium" style="color:var(--c-text-primary)">
+                                @ec.Name
+                                @if (ec.IsPrimary)
+                                {
+                                    <span class="ml-2 c-badge c-badge-sky text-xs">Primary</span>
+                                }
+                            </p>
+                            <p style="color:var(--c-text-muted)">@ec.Relationship · @ec.Phone</p>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private Cinturon360.Contracts.Travellers.TravellerProfileResponse? _profile;
+    private List<Cinturon360.Contracts.Travellers.LoyaltyProgramResponse> _loyaltyPrograms = new();
+    private List<Cinturon360.Contracts.Travellers.EmergencyContactResponse> _emergencyContacts = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var userId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
+
+        var profileTask  = TravellerApi.GetProfileAsync(userId);
+        var loyaltyTask  = TravellerApi.GetLoyaltyProgramsAsync(userId);
+        var contactsTask = TravellerApi.GetEmergencyContactsAsync(userId);
+        await Task.WhenAll(profileTask, loyaltyTask, contactsTask);
+
+        var pr = await profileTask;
+        if (pr.IsSuccess) _profile = pr.Value;
+
+        var lr = await loyaltyTask;
+        if (lr.IsSuccess && lr.Value is not null)
+            _loyaltyPrograms = lr.Value.Items.ToList();
+
+        var cr = await contactsTask;
+        if (cr.IsSuccess && cr.Value is not null)
+            _emergencyContacts = cr.Value.Items.ToList();
+
+        _loading = false;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,23 @@
+@* Toast notification service + container *@
+@inject Cinturon360.Web.Services.State.ToastService ToastSvc
+@implements IDisposable
+
+<div class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 pointer-events-none" aria-live="polite">
+    @foreach (var toast in ToastSvc.ActiveToasts)
+    {
+        <Toast Message="@toast.Message"
+               Title="@toast.Title"
+               Type="@toast.Type"
+               ActionLabel="@toast.ActionLabel"
+               OnAction="toast.OnAction"
+               OnDismiss="@(() => ToastSvc.Dismiss(toast.Id))" />
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+        => ToastSvc.OnChange += StateHasChanged;
+
+    public void Dispose()
+        => ToastSvc.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,139 @@
+@page "/client/travel/results"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject FlightApiClient FlightApi
+
+<PageTitle>Flight results — Cinturon360</PageTitle>
+
+<PageHeader Title="@($"Flights: {Origin} → {Dest}")"
+            Subtitle="@($"{DepartureDate} · {Pax} passenger{(Pax > 1 ? "s" : "")} · {CabinClass}")" />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Searching for flights…" />
+}
+else if (_error is not null)
+{
+    <div class="c-card p-6 text-center">
+        <p class="text-sm" style="color:var(--c-danger)">@_error</p>
+        <a href="/client/travel/search" class="c-btn c-btn-secondary mt-4">Back to search</a>
+    </div>
+}
+else if (_results.Count == 0)
+{
+    <div class="c-empty-state">
+        <p class="text-sm mb-4" style="color:var(--c-text-muted)">No flights found for your search.</p>
+        <a href="/client/travel/search" class="c-btn c-btn-primary">Modify search</a>
+    </div>
+}
+else
+{
+    <div class="flex flex-col gap-4">
+        @foreach (var offer in _results)
+        {
+            <div class="c-card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-heading font-semibold text-base"
+                              style="color:var(--c-text-primary)">
+                            @offer.CarrierCode @offer.FlightNumber
+                        </span>
+                        <PolicyBadge IsCompliant="@offer.IsCompliant"
+                                     ViolationReason="@offer.ViolationReason" />
+                    </div>
+                    <p class="text-sm" style="color:var(--c-text-muted)">
+                        @offer.DepartureTime → @offer.ArrivalTime · @offer.Duration
+                        @if (offer.Stops > 0)
+                        {
+                            <span class="ml-2">@offer.Stops stop@(offer.Stops > 1 ? "s" : "")</span>
+                        }
+                    </p>
+                </div>
+                <div class="text-right">
+                    <p class="font-heading font-bold text-xl" style="color:var(--c-text-primary)">
+                        @offer.TotalPrice.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-AU"))
+                    </p>
+                    <p class="text-xs mb-2" style="color:var(--c-text-muted)">@offer.FareClass</p>
+                    <button class="c-btn c-btn-primary text-sm">Select</button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "origin")]  public string? Origin { get; set; }
+    [SupplyParameterFromQuery(Name = "dest")]    public string? Dest { get; set; }
+    [SupplyParameterFromQuery(Name = "date")]    public string? DepartureDate { get; set; }
+    [SupplyParameterFromQuery(Name = "cabin")]   public string? CabinClass { get; set; }
+    [SupplyParameterFromQuery(Name = "adults")]  public int Pax { get; set; } = 1;
+
+    private bool _loading = true;
+    private string? _error;
+    private List<FlightOfferRow> _results = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (string.IsNullOrEmpty(Origin) || string.IsNullOrEmpty(Dest) || string.IsNullOrEmpty(DepartureDate))
+        {
+            _error = "Invalid search parameters.";
+            _loading = false;
+            StateHasChanged();
+            return;
+        }
+
+        var request = new Cinturon360.Contracts.Travel.FlightSearchRequest(
+            Origin:        Origin,
+            Destination:   Dest,
+            DepartureDate: DateOnly.Parse(DepartureDate),
+            ReturnDate:    null,
+            Adults:        Pax,
+            CabinClass:    CabinClass ?? "economy",
+            CurrencyCode:  "AUD");
+
+        var result = await FlightApi.SearchAsync(request);
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _error = result.Error ?? "Search failed. Please try again.";
+            _loading = false;
+            StateHasChanged();
+            return;
+        }
+
+        _results = result.Value.Offers.Select(o =>
+        {
+            var firstSeg = o.OutboundSegments.FirstOrDefault();
+            var lastSeg  = o.OutboundSegments.LastOrDefault();
+            var durationMins = o.OutboundSegments.Sum(s => s.DurationMinutes);
+            return new FlightOfferRow(
+                CarrierCode:     firstSeg?.MarketingCarrierCode ?? "",
+                FlightNumber:    firstSeg?.FlightNumber ?? "",
+                DepartureTime:   firstSeg?.DepartsAt.ToString("HH:mm") ?? "",
+                ArrivalTime:     lastSeg?.ArrivesAt.ToString("HH:mm") ?? "",
+                Duration:        $"{durationMins / 60}h {durationMins % 60}m",
+                Stops:           o.OutboundSegments.Count - 1,
+                TotalPrice:      o.TotalPrice,
+                FareClass:       o.CabinClass,
+                IsCompliant:     o.PolicyCompliance?.IsCompliant ?? true,
+                ViolationReason: o.PolicyCompliance?.ViolationReason);
+        }).ToList();
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private sealed record FlightOfferRow(
+        string CarrierCode,
+        string FlightNumber,
+        string DepartureTime,
+        string ArrivalTime,
+        string Duration,
+        int Stops,
+        decimal TotalPrice,
+        string FareClass,
+        bool IsCompliant,
+        string? ViolationReason);
+}
