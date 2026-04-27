@@ -1,0 +1,301 @@
+@page "/vendor/organisations/new"
+@page "/vendor/organisations/{OrgId}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject OrgApiClient OrgApi
+@inject ToastService Toast
+@inject NavigationManager Nav
+
+<PageTitle>@(IsNew ? "New Organisation" : "Organisation") — Cinturon360</PageTitle>
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading organisation…" />
+}
+else
+{
+    <PageHeader Title="@(IsNew ? "Create Organisation" : (_org?.Name ?? "Organisation"))"
+                Subtitle="@(IsNew ? "Add a new organisation to the platform." : $"Created {_org?.CreatedAt:d MMM yyyy}")">
+        @if (!IsNew)
+        {
+            <Actions>
+                @if (!_editing)
+                {
+                    <button class="c-btn c-btn-secondary" @onclick="BeginEdit">Edit</button>
+                }
+            </Actions>
+        }
+    </PageHeader>
+
+    @if (!IsNew && _org is not null && !_editing)
+    {
+        <!-- Read view -->
+        <div class="c-card p-6 max-w-lg mb-4">
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Name</dt>
+                    <dd class="font-medium" style="color:var(--c-text-primary)">@_org.Name</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Slug</dt>
+                    <dd class="font-mono text-xs">@_org.Slug</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Type</dt>
+                    <dd><StatusBadge Status="@_org.OrgType" /></dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Status</dt>
+                    <dd><StatusBadge Status="@(_org.IsActive ? "active" : "inactive")" /></dd>
+                </div>
+                @if (!string.IsNullOrEmpty(_org.PrimaryEmail))
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Email</dt>
+                        <dd>@_org.PrimaryEmail</dd>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_org.PrimaryPhone))
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Phone</dt>
+                        <dd>@_org.PrimaryPhone</dd>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_org.Website))
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Website</dt>
+                        <dd><a href="@_org.Website" target="_blank" class="text-brand-sky hover:underline">@_org.Website</a></dd>
+                    </div>
+                }
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Language</dt>
+                    <dd>@_org.LanguageCode</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Timezone</dt>
+                    <dd>@_org.TimeZone</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Currency</dt>
+                    <dd>@_org.CurrencyCode</dd>
+                </div>
+            </dl>
+        </div>
+    }
+
+    @if (_editing || IsNew)
+    {
+        <div class="c-card p-6 max-w-lg">
+            @if (_errorMessage is not null)
+            {
+                <div class="mb-4 rounded-xl p-3 text-sm border-l-4 border-red-500"
+                     style="color:var(--c-danger)" role="alert">
+                    @_errorMessage
+                </div>
+            }
+
+            <EditForm Model="_model" OnValidSubmit="HandleSubmitAsync" FormName="org-editor">
+                <DataAnnotationsValidator />
+
+                <div class="c-field">
+                    <label class="c-label" for="name">Organisation name</label>
+                    <InputText id="name" class="c-input" @bind-Value="_model.Name" />
+                    <ValidationMessage For="() => _model.Name" class="c-field-error" />
+                </div>
+
+                @if (IsNew)
+                {
+                    <div class="c-field">
+                        <label class="c-label" for="slug">Slug</label>
+                        <InputText id="slug" class="c-input lowercase" placeholder="my-org" @bind-Value="_model.Slug" />
+                        <ValidationMessage For="() => _model.Slug" class="c-field-error" />
+                    </div>
+
+                    <div class="c-field">
+                        <label class="c-label" for="orgtype">Type</label>
+                        <InputSelect id="orgtype" class="c-input" @bind-Value="_model.OrgType">
+                            <option value="corporate">Corporate</option>
+                            <option value="tmc">Travel Management Company</option>
+                            <option value="vendor">Vendor</option>
+                            <option value="partner">Partner</option>
+                        </InputSelect>
+                    </div>
+                }
+
+                <div class="c-field">
+                    <label class="c-label" for="email">Primary email <span class="text-xs text-muted">(optional)</span></label>
+                    <InputText id="email" class="c-input" type="email" @bind-Value="_model.PrimaryEmail" />
+                </div>
+
+                <div class="c-field">
+                    <label class="c-label" for="phone">Phone <span class="text-xs text-muted">(optional)</span></label>
+                    <InputText id="phone" class="c-input" type="tel" @bind-Value="_model.PrimaryPhone" />
+                </div>
+
+                <div class="c-field">
+                    <label class="c-label" for="website">Website <span class="text-xs text-muted">(optional)</span></label>
+                    <InputText id="website" class="c-input" type="url" placeholder="https://" @bind-Value="_model.Website" />
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="c-field">
+                        <label class="c-label" for="lang">Language</label>
+                        <InputSelect id="lang" class="c-input" @bind-Value="_model.LanguageCode">
+                            <option value="en">English</option>
+                            <option value="en-AU">English (AU)</option>
+                            <option value="en-US">English (US)</option>
+                        </InputSelect>
+                    </div>
+                    <div class="c-field">
+                        <label class="c-label" for="tz">Timezone</label>
+                        <InputSelect id="tz" class="c-input" @bind-Value="_model.TimeZone">
+                            <option value="UTC">UTC</option>
+                            <option value="Australia/Sydney">Sydney</option>
+                            <option value="Australia/Melbourne">Melbourne</option>
+                            <option value="Australia/Perth">Perth</option>
+                            <option value="Pacific/Auckland">Auckland</option>
+                        </InputSelect>
+                    </div>
+                    <div class="c-field">
+                        <label class="c-label" for="currency">Currency</label>
+                        <InputSelect id="currency" class="c-input" @bind-Value="_model.CurrencyCode">
+                            <option value="AUD">AUD</option>
+                            <option value="NZD">NZD</option>
+                            <option value="USD">USD</option>
+                            <option value="GBP">GBP</option>
+                            <option value="EUR">EUR</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-4">
+                    <button type="submit" class="c-btn c-btn-primary" disabled="@_busy">
+                        @if (_busy) { <LoadingSpinner Size="sm" Label="" /> }
+                        @(IsNew ? "Create organisation" : "Save changes")
+                    </button>
+                    @if (IsNew)
+                    {
+                        <a href="/vendor/organisations" class="c-btn c-btn-secondary">Cancel</a>
+                    }
+                    else
+                    {
+                        <button type="button" class="c-btn c-btn-secondary"
+                                @onclick="() => { _editing = false; _errorMessage = null; }">
+                            Cancel
+                        </button>
+                    }
+                </div>
+            </EditForm>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public string? OrgId { get; set; }
+    private bool IsNew => string.IsNullOrEmpty(OrgId) || OrgId == "new";
+
+    private bool _loading = true;
+    private bool _editing;
+    private bool _busy;
+    private string? _errorMessage;
+    private Cinturon360.Contracts.Organizations.OrganisationResponse? _org;
+    private readonly OrgModel _model = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (!IsNew)
+        {
+            var result = await OrgApi.GetOrgAsync(OrgId!);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                _org = result.Value;
+                _model.Name         = _org.Name;
+                _model.Slug         = _org.Slug;
+                _model.OrgType      = _org.OrgType;
+                _model.PrimaryEmail = _org.PrimaryEmail;
+                _model.PrimaryPhone = _org.PrimaryPhone;
+                _model.Website      = _org.Website;
+                _model.LanguageCode = _org.LanguageCode;
+                _model.TimeZone     = _org.TimeZone;
+                _model.CurrencyCode = _org.CurrencyCode;
+            }
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private void BeginEdit()
+    {
+        _editing = true;
+        _errorMessage = null;
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        _busy = true;
+        _errorMessage = null;
+
+        if (IsNew)
+        {
+            var result = await OrgApi.CreateOrgAsync(new Cinturon360.Contracts.Organizations.CreateOrganisationRequest(
+                Name:         _model.Name ?? "",
+                Slug:         _model.Slug ?? "",
+                OrgType:      _model.OrgType ?? "corporate",
+                PrimaryEmail: _model.PrimaryEmail,
+                LanguageCode: _model.LanguageCode ?? "en",
+                TimeZone:     _model.TimeZone ?? "UTC",
+                CurrencyCode: _model.CurrencyCode ?? "AUD"));
+
+            if (result.IsSuccess)
+            {
+                Toast.Success("Organisation created.");
+                Nav.NavigateTo("/vendor/organisations");
+                return;
+            }
+            _errorMessage = result.Error ?? "Failed to create organisation.";
+        }
+        else
+        {
+            var result = await OrgApi.UpdateOrgAsync(OrgId!, new Cinturon360.Contracts.Organizations.UpdateOrganisationRequest(
+                Name:         _model.Name ?? "",
+                PrimaryEmail: _model.PrimaryEmail,
+                PrimaryPhone: _model.PrimaryPhone,
+                Website:      _model.Website,
+                LanguageCode: _model.LanguageCode ?? "en",
+                TimeZone:     _model.TimeZone ?? "UTC",
+                CurrencyCode: _model.CurrencyCode ?? "AUD"));
+
+            if (result.IsSuccess)
+            {
+                _org = result.Value;
+                _editing = false;
+                Toast.Success("Organisation updated.");
+                StateHasChanged();
+                return;
+            }
+            _errorMessage = result.Error ?? "Failed to update organisation.";
+        }
+
+        _busy = false;
+    }
+
+    private sealed class OrgModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? Name         { get; set; }
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? Slug         { get; set; }
+        public string? OrgType      { get; set; } = "corporate";
+        public string? PrimaryEmail { get; set; }
+        public string? PrimaryPhone { get; set; }
+        public string? Website      { get; set; }
+        public string? LanguageCode { get; set; } = "en";
+        public string? TimeZone     { get; set; } = "UTC";
+        public string? CurrencyCode { get; set; } = "AUD";
+    }
+}

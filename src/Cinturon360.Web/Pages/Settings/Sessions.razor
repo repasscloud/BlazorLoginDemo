@@ -1,0 +1,64 @@
+@page "/settings/sessions"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Active Sessions — Cinturon360</PageTitle>
+
+<PageHeader Title="Active Sessions" Subtitle="Manage where you are signed in." />
+
+<div class="max-w-lg">
+    @if (_sessionId is not null)
+    {
+        <div class="c-card p-6 mb-4">
+            <h2 class="text-sm font-heading font-semibold mb-4" style="color:var(--c-text-primary)">
+                Current Session
+            </h2>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Session ID</dt>
+                    <dd class="font-mono text-xs">@(_sessionId.Length > 8 ? _sessionId[..8] + "…" : _sessionId)</dd>
+                </div>
+                @if (_tokenExpiry is not null)
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Expires</dt>
+                        <dd style="color:var(--c-text-primary)">@_tokenExpiry</dd>
+                    </div>
+                }
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">This device</dt>
+                    <dd><StatusBadge Status="active" /></dd>
+                </div>
+            </dl>
+        </div>
+    }
+
+    <div class="c-card p-6">
+        <h2 class="text-sm font-heading font-semibold mb-2" style="color:var(--c-text-primary)">
+            Sign out all devices
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--c-text-muted)">
+            This will end your current session immediately. You will need to sign in again.
+        </p>
+        <a href="/auth/logout-handler" class="c-btn c-btn-danger">
+            Sign out all devices
+        </a>
+    </div>
+</div>
+
+@code {
+    private string? _sessionId;
+    private string? _tokenExpiry;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _sessionId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.SessionId)?.Value;
+        var exp = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.TokenExpiry)?.Value;
+        if (exp is not null && DateTimeOffset.TryParse(exp, out var expiry))
+            _tokenExpiry = expiry.ToLocalTime().ToString("d MMM yyyy HH:mm");
+        StateHasChanged();
+    }
+}

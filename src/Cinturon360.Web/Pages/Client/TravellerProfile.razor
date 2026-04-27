@@ -18,35 +18,172 @@ else
     <div class="max-w-xl">
         <!-- Passport section -->
         <div class="c-card p-6 mb-4">
-            <h2 class="text-sm font-heading font-semibold mb-4" style="color:var(--c-text-primary)">
-                Passport Information
-            </h2>
-            <dl class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <dt style="color:var(--c-text-muted)">Passport number</dt>
-                    <dd style="color:var(--c-text-primary)">@(_profile?.PassportNumber ?? "—")</dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt style="color:var(--c-text-muted)">Country</dt>
-                    <dd style="color:var(--c-text-primary)">@(_profile?.PassportCountry ?? "—")</dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt style="color:var(--c-text-muted)">Expiry</dt>
-                    <dd style="color:var(--c-text-primary)">
-                        @(_profile?.PassportExpiry?.ToString("d MMM yyyy") ?? "—")
-                    </dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt style="color:var(--c-text-muted)">Nationality</dt>
-                    <dd style="color:var(--c-text-primary)">@(_profile?.Nationality ?? "—")</dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt style="color:var(--c-text-muted)">Date of birth</dt>
-                    <dd style="color:var(--c-text-primary)">
-                        @(_profile?.DateOfBirth?.ToString("d MMM yyyy") ?? "—")
-                    </dd>
-                </div>
-            </dl>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-sm font-heading font-semibold" style="color:var(--c-text-primary)">
+                    Passport Information
+                </h2>
+                @if (!_editingPassport)
+                {
+                    <button class="c-btn c-btn-secondary text-xs" @onclick="() => _editingPassport = true">
+                        Edit
+                    </button>
+                }
+            </div>
+
+            @if (_editingPassport)
+            {
+                <EditForm Model="_passportModel" OnValidSubmit="HandleSavePassportAsync" FormName="passport-edit">
+                    <DataAnnotationsValidator />
+                    @if (_passportError is not null)
+                    {
+                        <div class="mb-3 text-sm p-3 rounded-xl border-l-4 border-red-500" style="color:var(--c-danger)">@_passportError</div>
+                    }
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="c-field col-span-2">
+                            <label class="c-label" for="ppNum">Passport number</label>
+                            <InputText id="ppNum" class="c-input" @bind-Value="_passportModel.PassportNumber" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="ppCountry">Country</label>
+                            <InputText id="ppCountry" class="c-input uppercase" maxlength="2" placeholder="AU" @bind-Value="_passportModel.PassportCountry" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="ppExpiry">Expiry date</label>
+                            <InputDate id="ppExpiry" class="c-input" @bind-Value="_passportModel.PassportExpiry" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="ppNat">Nationality</label>
+                            <InputText id="ppNat" class="c-input" @bind-Value="_passportModel.Nationality" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="ppDob">Date of birth</label>
+                            <InputDate id="ppDob" class="c-input" @bind-Value="_passportModel.DateOfBirth" />
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-4">
+                        <button type="submit" class="c-btn c-btn-primary text-sm" disabled="@_savingPassport">
+                            @if (_savingPassport) { <LoadingSpinner Size="sm" Label="" /> }
+                            Save
+                        </button>
+                        <button type="button" class="c-btn c-btn-secondary text-sm"
+                                @onclick="() => { _editingPassport = false; _passportError = null; }">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            }
+            else
+            {
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Passport number</dt>
+                        <dd style="color:var(--c-text-primary)">@(_profile?.PassportNumber ?? "—")</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Country</dt>
+                        <dd style="color:var(--c-text-primary)">@(_profile?.PassportCountry ?? "—")</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Expiry</dt>
+                        <dd style="color:var(--c-text-primary)">
+                            @(_profile?.PassportExpiry?.ToString("d MMM yyyy") ?? "—")
+                        </dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Nationality</dt>
+                        <dd style="color:var(--c-text-primary)">@(_profile?.Nationality ?? "—")</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Date of birth</dt>
+                        <dd style="color:var(--c-text-primary)">
+                            @(_profile?.DateOfBirth?.ToString("d MMM yyyy") ?? "—")
+                        </dd>
+                    </div>
+                </dl>
+            }
+        </div>
+
+        <!-- Travel preferences -->
+        <div class="c-card p-6 mb-4">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-sm font-heading font-semibold" style="color:var(--c-text-primary)">
+                    Travel Preferences
+                </h2>
+                @if (!_editingPrefs)
+                {
+                    <button class="c-btn c-btn-secondary text-xs" @onclick="BeginEditPrefs">Edit</button>
+                }
+            </div>
+
+            @if (_editingPrefs)
+            {
+                <EditForm Model="_prefsModel" OnValidSubmit="HandleSavePrefsAsync" FormName="prefs-edit">
+                    @if (_prefsError is not null)
+                    {
+                        <div class="mb-3 text-sm p-3 rounded-xl border-l-4 border-red-500" style="color:var(--c-danger)">@_prefsError</div>
+                    }
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="c-field">
+                            <label class="c-label" for="prefAirport">Home airport</label>
+                            <InputText id="prefAirport" class="c-input uppercase" maxlength="3" placeholder="SYD" @bind-Value="_prefsModel.PreferredAirportCode" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="prefAirline">Preferred airline</label>
+                            <InputText id="prefAirline" class="c-input uppercase" maxlength="2" placeholder="QF" @bind-Value="_prefsModel.PreferredAirlineCode" />
+                        </div>
+                    </div>
+                    <p class="text-xs font-medium mb-2" style="color:var(--c-text-muted)">Notifications</p>
+                    <div class="space-y-2 mb-4">
+                        <label class="flex items-center gap-2 text-sm">
+                            <InputCheckbox @bind-Value="_prefsModel.NotifyByEmail" class="rounded" />
+                            Email notifications
+                        </label>
+                        <label class="flex items-center gap-2 text-sm">
+                            <InputCheckbox @bind-Value="_prefsModel.NotifyBookingConfirmation" class="rounded" />
+                            Booking confirmations
+                        </label>
+                        <label class="flex items-center gap-2 text-sm">
+                            <InputCheckbox @bind-Value="_prefsModel.NotifyApprovalRequired" class="rounded" />
+                            Approval required
+                        </label>
+                        <label class="flex items-center gap-2 text-sm">
+                            <InputCheckbox @bind-Value="_prefsModel.NotifyApprovalDecision" class="rounded" />
+                            Approval decisions
+                        </label>
+                        <label class="flex items-center gap-2 text-sm">
+                            <InputCheckbox @bind-Value="_prefsModel.NotifyTripReminders" class="rounded" />
+                            Trip reminders
+                        </label>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="c-btn c-btn-primary text-sm" disabled="@_savingPrefs">
+                            @if (_savingPrefs) { <LoadingSpinner Size="sm" Label="" /> }
+                            Save
+                        </button>
+                        <button type="button" class="c-btn c-btn-secondary text-sm"
+                                @onclick="() => { _editingPrefs = false; _prefsError = null; }">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            }
+            else
+            {
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Home airport</dt>
+                        <dd style="color:var(--c-text-primary)">@(_prefs?.PreferredAirportCode ?? "—")</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Preferred airline</dt>
+                        <dd style="color:var(--c-text-primary)">@(_prefs?.PreferredAirlineCode ?? "—")</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Email notifications</dt>
+                        <dd style="color:var(--c-text-primary)">@(_prefs?.NotifyByEmail == true ? "On" : "Off")</dd>
+                    </div>
+                </dl>
+            }
         </div>
 
         <!-- Loyalty programs -->
@@ -55,12 +192,65 @@ else
                 <h2 class="text-sm font-heading font-semibold" style="color:var(--c-text-primary)">
                     Loyalty Programs
                 </h2>
+                @if (!_addingLoyalty)
+                {
+                    <button class="c-btn c-btn-secondary text-xs" @onclick="() => _addingLoyalty = true">
+                        Add program
+                    </button>
+                }
             </div>
-            @if (_loyaltyPrograms.Count == 0)
+
+            @if (_addingLoyalty)
+            {
+                <EditForm Model="_loyaltyModel" OnValidSubmit="HandleAddLoyaltyAsync" FormName="loyalty-add">
+                    <DataAnnotationsValidator />
+                    @if (_loyaltyError is not null)
+                    {
+                        <div class="mb-3 text-sm p-3 rounded-xl border-l-4 border-red-500" style="color:var(--c-danger)">@_loyaltyError</div>
+                    }
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="c-field">
+                            <label class="c-label" for="lpCode">Program code</label>
+                            <InputText id="lpCode" class="c-input uppercase" placeholder="QF" @bind-Value="_loyaltyModel.ProgramCode" />
+                            <ValidationMessage For="() => _loyaltyModel.ProgramCode" class="c-field-error" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="lpName">Program name</label>
+                            <InputText id="lpName" class="c-input" placeholder="Qantas Frequent Flyer" @bind-Value="_loyaltyModel.ProgramName" />
+                            <ValidationMessage For="() => _loyaltyModel.ProgramName" class="c-field-error" />
+                        </div>
+                        <div class="c-field col-span-2">
+                            <label class="c-label" for="lpMember">Membership number</label>
+                            <InputText id="lpMember" class="c-input" @bind-Value="_loyaltyModel.MembershipNumber" />
+                            <ValidationMessage For="() => _loyaltyModel.MembershipNumber" class="c-field-error" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="lpTier">Tier <span class="text-xs text-muted">(optional)</span></label>
+                            <InputText id="lpTier" class="c-input" placeholder="Gold" @bind-Value="_loyaltyModel.TierName" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="lpExpiry">Expiry <span class="text-xs text-muted">(optional)</span></label>
+                            <InputDate id="lpExpiry" class="c-input" @bind-Value="_loyaltyModel.ExpiryDate" />
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="c-btn c-btn-primary text-sm" disabled="@_savingLoyalty">
+                            @if (_savingLoyalty) { <LoadingSpinner Size="sm" Label="" /> }
+                            Add
+                        </button>
+                        <button type="button" class="c-btn c-btn-secondary text-sm"
+                                @onclick="() => { _addingLoyalty = false; _loyaltyError = null; }">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            }
+
+            @if (_loyaltyPrograms.Count == 0 && !_addingLoyalty)
             {
                 <p class="text-sm" style="color:var(--c-text-muted)">No loyalty programs added.</p>
             }
-            else
+            else if (_loyaltyPrograms.Count > 0)
             {
                 <div class="divide-y" style="border-color:var(--c-border)">
                     @foreach (var lp in _loyaltyPrograms)
@@ -69,6 +259,7 @@ else
                             <div>
                                 <p class="font-medium" style="color:var(--c-text-primary)">
                                     @lp.ProgramName
+                                    <span class="text-xs font-mono ml-1" style="color:var(--c-text-muted)">(@lp.ProgramCode)</span>
                                 </p>
                                 <p style="color:var(--c-text-muted)">
                                     @lp.MembershipNumber
@@ -92,14 +283,69 @@ else
 
         <!-- Emergency contacts -->
         <div class="c-card p-6">
-            <h2 class="text-sm font-heading font-semibold mb-4" style="color:var(--c-text-primary)">
-                Emergency Contacts
-            </h2>
-            @if (_emergencyContacts.Count == 0)
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-sm font-heading font-semibold" style="color:var(--c-text-primary)">
+                    Emergency Contacts
+                </h2>
+                @if (!_addingContact)
+                {
+                    <button class="c-btn c-btn-secondary text-xs" @onclick="() => _addingContact = true">
+                        Add contact
+                    </button>
+                }
+            </div>
+
+            @if (_addingContact)
+            {
+                <EditForm Model="_contactModel" OnValidSubmit="HandleAddContactAsync" FormName="contact-add">
+                    <DataAnnotationsValidator />
+                    @if (_contactError is not null)
+                    {
+                        <div class="mb-3 text-sm p-3 rounded-xl border-l-4 border-red-500" style="color:var(--c-danger)">@_contactError</div>
+                    }
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="c-field col-span-2">
+                            <label class="c-label" for="ecName">Full name</label>
+                            <InputText id="ecName" class="c-input" @bind-Value="_contactModel.Name" />
+                            <ValidationMessage For="() => _contactModel.Name" class="c-field-error" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="ecRel">Relationship</label>
+                            <InputText id="ecRel" class="c-input" placeholder="Spouse" @bind-Value="_contactModel.Relationship" />
+                            <ValidationMessage For="() => _contactModel.Relationship" class="c-field-error" />
+                        </div>
+                        <div class="c-field">
+                            <label class="c-label" for="ecPhone">Phone</label>
+                            <InputText id="ecPhone" class="c-input" type="tel" @bind-Value="_contactModel.Phone" />
+                            <ValidationMessage For="() => _contactModel.Phone" class="c-field-error" />
+                        </div>
+                        <div class="c-field col-span-2">
+                            <label class="c-label" for="ecEmail">Email <span class="text-xs text-muted">(optional)</span></label>
+                            <InputText id="ecEmail" class="c-input" type="email" @bind-Value="_contactModel.Email" />
+                        </div>
+                        <div class="c-field col-span-2 flex items-center gap-2">
+                            <InputCheckbox id="ecPrimary" @bind-Value="_contactModel.IsPrimary" class="rounded" />
+                            <label class="c-label !mb-0" for="ecPrimary">Set as primary contact</label>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="c-btn c-btn-primary text-sm" disabled="@_savingContact">
+                            @if (_savingContact) { <LoadingSpinner Size="sm" Label="" /> }
+                            Add
+                        </button>
+                        <button type="button" class="c-btn c-btn-secondary text-sm"
+                                @onclick="() => { _addingContact = false; _contactError = null; }">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            }
+
+            @if (_emergencyContacts.Count == 0 && !_addingContact)
             {
                 <p class="text-sm" style="color:var(--c-text-muted)">No emergency contacts on file.</p>
             }
-            else
+            else if (_emergencyContacts.Count > 0)
             {
                 <div class="divide-y" style="border-color:var(--c-border)">
                     @foreach (var ec in _emergencyContacts)
@@ -113,6 +359,10 @@ else
                                 }
                             </p>
                             <p style="color:var(--c-text-muted)">@ec.Relationship · @ec.Phone</p>
+                            @if (!string.IsNullOrEmpty(ec.Email))
+                            {
+                                <p class="text-xs" style="color:var(--c-text-muted)">@ec.Email</p>
+                            }
                         </div>
                     }
                 </div>
@@ -123,23 +373,58 @@ else
 
 @code {
     private bool _loading = true;
+    private string _userId = "";
     private Cinturon360.Contracts.Travellers.TravellerProfileResponse? _profile;
+    private Cinturon360.Contracts.Travellers.TravelPreferencesResponse? _prefs;
     private List<Cinturon360.Contracts.Travellers.LoyaltyProgramResponse> _loyaltyPrograms = new();
     private List<Cinturon360.Contracts.Travellers.EmergencyContactResponse> _emergencyContacts = new();
+
+    // Passport edit state
+    private bool _editingPassport;
+    private bool _savingPassport;
+    private string? _passportError;
+    private readonly PassportModel _passportModel = new();
+
+    // Prefs edit state
+    private bool _editingPrefs;
+    private bool _savingPrefs;
+    private string? _prefsError;
+    private readonly PrefsModel _prefsModel = new();
+
+    // Loyalty add state
+    private bool _addingLoyalty;
+    private bool _savingLoyalty;
+    private string? _loyaltyError;
+    private readonly LoyaltyModel _loyaltyModel = new();
+
+    // Contact add state
+    private bool _addingContact;
+    private bool _savingContact;
+    private string? _contactError;
+    private readonly ContactModel _contactModel = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
         var auth = await AuthState.GetAuthenticationStateAsync();
-        var userId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
+        _userId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
 
-        var profileTask  = TravellerApi.GetProfileAsync(userId);
-        var loyaltyTask  = TravellerApi.GetLoyaltyProgramsAsync(userId);
-        var contactsTask = TravellerApi.GetEmergencyContactsAsync(userId);
-        await Task.WhenAll(profileTask, loyaltyTask, contactsTask);
+        var profileTask  = TravellerApi.GetProfileAsync(_userId);
+        var loyaltyTask  = TravellerApi.GetLoyaltyProgramsAsync(_userId);
+        var contactsTask = TravellerApi.GetEmergencyContactsAsync(_userId);
+        var prefsTask    = TravellerApi.GetPreferencesAsync(_userId);
+        await Task.WhenAll(profileTask, loyaltyTask, contactsTask, prefsTask);
 
         var pr = await profileTask;
-        if (pr.IsSuccess) _profile = pr.Value;
+        if (pr.IsSuccess && pr.Value is not null)
+        {
+            _profile = pr.Value;
+            _passportModel.PassportNumber  = _profile.PassportNumber;
+            _passportModel.PassportCountry = _profile.PassportCountry;
+            _passportModel.PassportExpiry  = _profile.PassportExpiry;
+            _passportModel.Nationality     = _profile.Nationality;
+            _passportModel.DateOfBirth     = _profile.DateOfBirth;
+        }
 
         var lr = await loyaltyTask;
         if (lr.IsSuccess && lr.Value is not null)
@@ -149,7 +434,188 @@ else
         if (cr.IsSuccess && cr.Value is not null)
             _emergencyContacts = cr.Value.Items.ToList();
 
+        var pfr = await prefsTask;
+        if (pfr.IsSuccess) _prefs = pfr.Value;
+
         _loading = false;
         StateHasChanged();
+    }
+
+    private void BeginEditPrefs()
+    {
+        if (_prefs is not null)
+        {
+            _prefsModel.PreferredAirportCode     = _prefs.PreferredAirportCode;
+            _prefsModel.PreferredAirlineCode     = _prefs.PreferredAirlineCode;
+            _prefsModel.NotifyByEmail            = _prefs.NotifyByEmail;
+            _prefsModel.NotifyBookingConfirmation = _prefs.NotifyBookingConfirmation;
+            _prefsModel.NotifyApprovalRequired   = _prefs.NotifyApprovalRequired;
+            _prefsModel.NotifyApprovalDecision   = _prefs.NotifyApprovalDecision;
+            _prefsModel.NotifyTripReminders      = _prefs.NotifyTripReminders;
+        }
+        _editingPrefs = true;
+    }
+
+    private async Task HandleSavePassportAsync()
+    {
+        _savingPassport = true;
+        _passportError = null;
+        var request = new Cinturon360.Contracts.Travellers.UpdateTravellerProfileRequest(
+            PassportNumber:  _passportModel.PassportNumber,
+            PassportCountry: _passportModel.PassportCountry,
+            PassportExpiry:  _passportModel.PassportExpiry,
+            Nationality:     _passportModel.Nationality,
+            DateOfBirth:     _passportModel.DateOfBirth,
+            Gender: null, TsaPreCheckNumber: null,
+            GlobalEntryNumber: null, RedressNumber: null,
+            PreferredSeatType: null, PreferredMealType: null);
+
+        var result = await TravellerApi.UpdateProfileAsync(_userId, request);
+        if (result.IsSuccess)
+        {
+            _profile = result.Value;
+            _editingPassport = false;
+            Toast.Success("Passport information saved.");
+        }
+        else
+        {
+            _passportError = result.Error ?? "Failed to save passport information.";
+        }
+        _savingPassport = false;
+    }
+
+    private async Task HandleSavePrefsAsync()
+    {
+        _savingPrefs = true;
+        _prefsError = null;
+        var request = new Cinturon360.Contracts.Travellers.UpdateTravelPreferencesRequest(
+            PreferredAirportCode:       _prefsModel.PreferredAirportCode,
+            PreferredAirlineCode:       _prefsModel.PreferredAirlineCode,
+            PreferredHotelChain:        null,
+            PreferredCarRentalCompany:  null,
+            NotifyByEmail:              _prefsModel.NotifyByEmail,
+            NotifyBySms:                false,
+            NotifyBookingConfirmation:  _prefsModel.NotifyBookingConfirmation,
+            NotifyApprovalRequired:     _prefsModel.NotifyApprovalRequired,
+            NotifyApprovalDecision:     _prefsModel.NotifyApprovalDecision,
+            NotifyTripReminders:        _prefsModel.NotifyTripReminders);
+
+        var result = await TravellerApi.UpdatePreferencesAsync(_userId, request);
+        if (result.IsSuccess)
+        {
+            _prefs = result.Value;
+            _editingPrefs = false;
+            Toast.Success("Travel preferences saved.");
+        }
+        else
+        {
+            _prefsError = result.Error ?? "Failed to save preferences.";
+        }
+        _savingPrefs = false;
+    }
+
+    private async Task HandleAddLoyaltyAsync()
+    {
+        _savingLoyalty = true;
+        _loyaltyError = null;
+        var request = new Cinturon360.Contracts.Travellers.AddLoyaltyProgramRequest(
+            ProgramCode:      _loyaltyModel.ProgramCode ?? "",
+            ProgramName:      _loyaltyModel.ProgramName ?? "",
+            MembershipNumber: _loyaltyModel.MembershipNumber ?? "",
+            TierName:         _loyaltyModel.TierName,
+            ExpiryDate:       _loyaltyModel.ExpiryDate);
+
+        var result = await TravellerApi.AddLoyaltyProgramAsync(_userId, request);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _loyaltyPrograms = result.Value.Items.ToList();
+            _addingLoyalty = false;
+            _loyaltyModel.ProgramCode = null;
+            _loyaltyModel.ProgramName = null;
+            _loyaltyModel.MembershipNumber = null;
+            _loyaltyModel.TierName = null;
+            _loyaltyModel.ExpiryDate = null;
+            Toast.Success("Loyalty program added.");
+        }
+        else
+        {
+            _loyaltyError = result.Error ?? "Failed to add loyalty program.";
+        }
+        _savingLoyalty = false;
+    }
+
+    private async Task HandleAddContactAsync()
+    {
+        _savingContact = true;
+        _contactError = null;
+        var request = new Cinturon360.Contracts.Travellers.AddEmergencyContactRequest(
+            Name:         _contactModel.Name ?? "",
+            Relationship: _contactModel.Relationship ?? "",
+            Phone:        _contactModel.Phone ?? "",
+            Email:        _contactModel.Email,
+            IsPrimary:    _contactModel.IsPrimary);
+
+        var result = await TravellerApi.AddEmergencyContactAsync(_userId, request);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _emergencyContacts = result.Value.Items.ToList();
+            _addingContact = false;
+            _contactModel.Name = null;
+            _contactModel.Relationship = null;
+            _contactModel.Phone = null;
+            _contactModel.Email = null;
+            _contactModel.IsPrimary = false;
+            Toast.Success("Emergency contact added.");
+        }
+        else
+        {
+            _contactError = result.Error ?? "Failed to add emergency contact.";
+        }
+        _savingContact = false;
+    }
+
+    // ── Inner models ──────────────────────────────────────────────────────
+    private sealed class PassportModel
+    {
+        public string? PassportNumber  { get; set; }
+        public string? PassportCountry { get; set; }
+        public DateOnly? PassportExpiry { get; set; }
+        public string? Nationality     { get; set; }
+        public DateOnly? DateOfBirth   { get; set; }
+    }
+
+    private sealed class PrefsModel
+    {
+        public string? PreferredAirportCode { get; set; }
+        public string? PreferredAirlineCode { get; set; }
+        public bool NotifyByEmail            { get; set; } = true;
+        public bool NotifyBookingConfirmation { get; set; } = true;
+        public bool NotifyApprovalRequired   { get; set; } = true;
+        public bool NotifyApprovalDecision   { get; set; } = true;
+        public bool NotifyTripReminders      { get; set; } = true;
+    }
+
+    private sealed class LoyaltyModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? ProgramCode      { get; set; }
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? ProgramName      { get; set; }
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? MembershipNumber { get; set; }
+        public string? TierName         { get; set; }
+        public DateOnly? ExpiryDate     { get; set; }
+    }
+
+    private sealed class ContactModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? Name         { get; set; }
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? Relationship { get; set; }
+        [System.ComponentModel.DataAnnotations.Required]
+        public string? Phone        { get; set; }
+        public string? Email        { get; set; }
+        public bool IsPrimary       { get; set; }
     }
 }

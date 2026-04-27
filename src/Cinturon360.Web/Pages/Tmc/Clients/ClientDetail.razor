@@ -1,0 +1,157 @@
+@page "/tmc/clients/{OrgId}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject OrgApiClient OrgApi
+@inject BookingApiClient BookingApi
+@inject ToastService Toast
+@inject NavigationManager Nav
+
+<PageTitle>Client — Cinturon360</PageTitle>
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading client…" />
+}
+else if (_org is null)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-danger)">Organisation not found.</p>
+        <a href="/tmc/clients" class="c-btn c-btn-secondary mt-4">Back to clients</a>
+    </div>
+}
+else
+{
+    <PageHeader Title="@_org.Name"
+                Subtitle="@($"Client organisation · {(_org.IsActive ? "Active" : "Inactive")} · Created {_org.CreatedAt:d MMM yyyy}")" >
+        <Actions>
+            <a href="/tmc/clients" class="c-btn c-btn-secondary">Back</a>
+        </Actions>
+    </PageHeader>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mb-6">
+        <div class="c-card p-5">
+            <p class="text-xs uppercase tracking-wide font-medium mb-3" style="color:var(--c-text-muted)">
+                Organisation details
+            </p>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Status</dt>
+                    <dd><StatusBadge Status="@(_org.IsActive ? "active" : "inactive")" /></dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Type</dt>
+                    <dd><StatusBadge Status="@_org.OrgType" /></dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Slug</dt>
+                    <dd class="font-mono text-xs">@_org.Slug</dd>
+                </div>
+                @if (!string.IsNullOrEmpty(_org.PrimaryEmail))
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Email</dt>
+                        <dd>@_org.PrimaryEmail</dd>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_org.PrimaryPhone))
+                {
+                    <div class="flex justify-between">
+                        <dt style="color:var(--c-text-muted)">Phone</dt>
+                        <dd>@_org.PrimaryPhone</dd>
+                    </div>
+                }
+            </dl>
+        </div>
+
+        <div class="c-card p-5">
+            <p class="text-xs uppercase tracking-wide font-medium mb-3" style="color:var(--c-text-muted)">
+                Locale
+            </p>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Language</dt>
+                    <dd>@_org.LanguageCode</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Timezone</dt>
+                    <dd>@_org.TimeZone</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt style="color:var(--c-text-muted)">Currency</dt>
+                    <dd>@_org.CurrencyCode</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Recent bookings for this org -->
+    <div class="max-w-2xl">
+        <h2 class="text-sm font-heading font-semibold mb-3" style="color:var(--c-text-primary)">
+            Recent Bookings
+        </h2>
+        @if (_bookingsLoading)
+        {
+            <LoadingSpinner Size="sm" Label="Loading bookings…" />
+        }
+        else if (_bookings.Count == 0)
+        {
+            <p class="text-sm" style="color:var(--c-text-muted)">No bookings found for this client.</p>
+        }
+        else
+        {
+            <div class="c-card overflow-hidden">
+                <table class="c-table">
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Status</th>
+                            <th>Amount</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in _bookings)
+                        {
+                            <tr>
+                                <td class="font-mono text-xs">@(b.Id.Length > 8 ? b.Id[..8] + "…" : b.Id)</td>
+                                <td><StatusBadge Status="@b.Status" /></td>
+                                <td>@b.TotalAmountGross.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-AU"))</td>
+                                <td class="text-right">
+                                    <a href="/client/bookings/@b.Id" class="text-xs text-brand-sky hover:underline font-medium">
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string OrgId { get; set; } = "";
+
+    private bool _loading = true;
+    private bool _bookingsLoading = true;
+    private Cinturon360.Contracts.Organizations.OrganisationResponse? _org;
+    private List<Cinturon360.Contracts.Bookings.BookingResponse> _bookings = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var orgResult = await OrgApi.GetOrgAsync(OrgId);
+        if (orgResult.IsSuccess) _org = orgResult.Value;
+        _loading = false;
+        StateHasChanged();
+
+        // Load bookings separately so the page renders faster
+        var bookingsResult = await BookingApi.ListBookingsAsync(page: 1, pageSize: 10);
+        if (bookingsResult.IsSuccess && bookingsResult.Value is not null)
+            _bookings = bookingsResult.Value.Items.ToList();
+        _bookingsLoading = false;
+        StateHasChanged();
+    }
+}
