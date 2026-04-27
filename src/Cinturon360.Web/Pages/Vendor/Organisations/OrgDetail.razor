@@ -16,15 +16,12 @@ else
 {
     <PageHeader Title="@(IsNew ? "Create Organisation" : (_org?.Name ?? "Organisation"))"
                 Subtitle="@(IsNew ? "Add a new organisation to the platform." : $"Created {_org?.CreatedAt:d MMM yyyy}")">
-        @if (!IsNew)
-        {
-            <Actions>
-                @if (!_editing)
-                {
-                    <button class="c-btn c-btn-secondary" @onclick="BeginEdit">Edit</button>
-                }
-            </Actions>
-        }
+        <Actions>
+            @if (!IsNew && !_editing)
+            {
+                <button class="c-btn c-btn-secondary" @onclick="BeginEdit">Edit</button>
+            }
+        </Actions>
     </PageHeader>
 
     @if (!IsNew && _org is not null && !_editing)

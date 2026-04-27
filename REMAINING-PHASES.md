@@ -2,7 +2,7 @@
 
 > Status as of 27 April 2026  
 > Phases 0–7 are fully implemented. Build is passing.  
-> Phase 9 in progress: Login ✅ Logout ✅ Register ✅ ForgotPassword ✅ ResetPassword ✅
+> Phase 9 is complete ✅ (all planned Web UI pages implemented and build passing).
 
 ---
 
@@ -12,11 +12,11 @@
 
 | Order | Phase | Notes |
 |-------|-------|-------|
-| 1 | **Phase 9** — Web UI | Start with auth fixes (logout), then all remaining pages. Build pages alongside the implementations they depend on. Polish/final pass at the end. |
-| 2 | **Phase 10** — Real Integrations | Wire up stubs scaffolded in Phase 7 (Amadeus, Duffel, MailerSend, Stripe, FX, S3). |
-| 3 | **Phase 11** — Deployment & Infrastructure | ACA Bicep, CI/CD, secrets, environment matrix. |
-| 4 | **Phase 12** — Observability & Logging | Serilog, Azure Monitor, alerts. |
-| 5 | **Phase 13** — Legacy Reference Cleanup | Move v4 code to `legacy/v4-reference` branch, remove from main. |
+| 1 | **Phase 10** — Real Integrations | Wire up stubs scaffolded in Phase 7 (Amadeus, Duffel, MailerSend, Stripe, FX, S3). |
+| 2 | **Phase 11** — Deployment & Infrastructure | ACA Bicep, CI/CD, secrets, environment matrix. |
+| 3 | **Phase 12** — Observability & Logging | Serilog, Azure Monitor, alerts. |
+| 4 | **Phase 13** — Legacy Reference Cleanup | Move v4 code to `legacy/v4-reference` branch, remove from main. |
+| — | **Phase 9** — Web UI | **COMPLETE** — implemented end-to-end and validated with successful solution build. |
 | — | **Phase 8** — Mobile (MAUI) | **ON HOLD** — one of the last things we do. |
 
 ### Phase 9 — Recommended Build Order (within Phase 9)
@@ -24,15 +24,15 @@
 1. **Fix logout** ✅ — endpoint-based (`GET /auth/logout-handler`), revokes API session, clears BFF cookie
 2. **Auth pages** ✅ — Register (`/auth/register`), ForgotPassword, ResetPassword all wired to API endpoints
    - MFA deferred — API doesn't support MFA challenge yet (no separate MFA endpoint in Phase 0–7)
-3. **Profile & account pages** — profile edit, PAT management, session management
-4. **Traveller profile** — passport, preferences, loyalty, emergency contacts
-5. **Organisations** — org list, create/edit, user assignment, settings
-6. **Bookings** — flight search, results, confirmation, list, detail, cancel
-7. **Approvals** — pending list, detail (approve/reject), history
-8. **Travel Policy** — policy list, create/edit, assignment
-9. **Billing** — dashboard, invoices, top-up, Stripe portal, credit notes
-10. **Admin** — user/org/role management, job queue viewer, audit log, stored documents
-11. **UI polish pass** — final styling, accessibility, empty states, error states
+3. **Profile & account pages** ✅ — profile edit, PAT management, session management
+4. **Traveller profile** ✅ — passport, preferences, loyalty, emergency contacts
+5. **Organisations** ✅ — org list, create/edit, user assignment, settings
+6. **Bookings** ✅ — flight search, results, confirmation, list, detail, cancel
+7. **Approvals** ✅ — pending list, detail (approve/reject), history
+8. **Travel Policy** ✅ — policy list, create/edit, assignment
+9. **Billing** ✅ — dashboard, invoices, top-up, Stripe portal, credit notes
+10. **Admin** ✅ — user/org/role management, job queue viewer, audit log, stored documents
+11. **UI polish pass** ✅ — final pass complete for this phase scope
 
 ---
 

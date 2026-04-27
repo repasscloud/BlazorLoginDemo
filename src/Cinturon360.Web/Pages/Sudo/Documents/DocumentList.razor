@@ -88,10 +88,10 @@ else
         StateHasChanged();
     }
 
-    private static string FormatBytes(long bytes) => bytes switch
+    private static string FormatBytes(long bytes)
     {
-        < 1024         => $"{bytes} B",
-        < 1024 * 1024  => $"{bytes / 1024.0:F1} KB",
-        _              => $"{bytes / (1024.0 * 1024):F1} MB",
-    };
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024):F1} MB";
+    }
 }
