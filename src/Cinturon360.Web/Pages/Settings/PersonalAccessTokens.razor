@@ -1,0 +1,195 @@
+@page "/settings/personal-access-tokens"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IdentityApiClient IdentityApi
+@inject ToastService Toast
+
+<PageTitle>Personal Access Tokens — Cinturon360</PageTitle>
+
+<PageHeader Title="Personal Access Tokens" Subtitle="Manage API tokens for scripts and integrations.">
+    <Actions>
+        <a href="/settings/security" class="c-btn c-btn-secondary">Back to security</a>
+    </Actions>
+</PageHeader>
+
+<div class="grid grid-cols-1 xl:grid-cols-[1.2fr,1fr] gap-4 max-w-6xl">
+    <div class="c-card p-6">
+        <h2 class="text-sm font-heading font-semibold mb-2" style="color:var(--c-text-primary)">
+            Create token
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--c-text-muted)">
+            The raw token is shown once. Save it somewhere secure.
+        </p>
+
+        @if (!string.IsNullOrWhiteSpace(_createError))
+        {
+            <div class="mb-4 rounded-xl p-3 text-sm border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20"
+                 style="color:var(--c-danger)" role="alert">
+                @_createError
+            </div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="HandleCreateAsync">
+            <DataAnnotationsValidator />
+
+            <div class="c-field">
+                <label class="c-label" for="name">Token name</label>
+                <InputText id="name" class="c-input" @bind-Value="_model.Name" />
+                <ValidationMessage For="() => _model.Name" class="c-field-error" />
+            </div>
+
+            <div class="c-field">
+                <label class="c-label" for="scopes">Scopes</label>
+                <InputText id="scopes" class="c-input" @bind-Value="_model.Scopes" />
+                <p class="text-xs mt-1" style="color:var(--c-text-muted)">Optional comma-separated scopes.</p>
+            </div>
+
+            <button type="submit" class="c-btn c-btn-primary mt-4" disabled="@_creating">
+                Create token
+            </button>
+        </EditForm>
+
+        @if (_latestToken is not null)
+        {
+            <div class="mt-6 rounded-2xl border border-subtle p-4">
+                <p class="text-xs uppercase tracking-wide font-medium mb-2" style="color:var(--c-text-muted)">
+                    Copy this token now
+                </p>
+                <p class="text-sm mb-2" style="color:var(--c-text-primary)">@_latestToken.Name (@_latestToken.TokenPrefix)</p>
+                <pre class="text-xs whitespace-pre-wrap break-all rounded-xl p-3" style="background:var(--c-surface-muted);color:var(--c-text-primary)">@_latestToken.RawToken</pre>
+            </div>
+        }
+    </div>
+
+    <div class="c-card p-6">
+        <h2 class="text-sm font-heading font-semibold mb-2" style="color:var(--c-text-primary)">
+            Active tokens
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--c-text-muted)">
+            Revoke tokens you no longer need.
+        </p>
+
+        @if (_loading)
+        {
+            <LoadingSpinner Label="Loading tokens…" />
+        }
+        else if (_tokens.Count == 0)
+        {
+            <p class="text-sm" style="color:var(--c-text-muted)">No active tokens.</p>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var token in _tokens)
+                {
+                    <div class="rounded-2xl border border-subtle p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-medium" style="color:var(--c-text-primary)">@token.Name</p>
+                                <p class="text-xs font-mono" style="color:var(--c-text-muted)">@token.TokenPrefix</p>
+                                <p class="text-xs mt-2" style="color:var(--c-text-muted)">
+                                    Created @token.CreatedAt.ToString("d MMM yyyy")
+                                    @if (token.ExpiresAt.HasValue)
+                                    {
+                                        <span> • Expires @token.ExpiresAt.Value.ToString("d MMM yyyy")</span>
+                                    }
+                                </p>
+                            </div>
+                            <button class="c-btn c-btn-danger text-sm"
+                                    disabled="@(_revokingTokenId == token.TokenId)"
+                                    @onclick="() => HandleRevokeAsync(token.TokenId)">
+                                Revoke
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly CreatePatModel _model = new();
+    private bool _loading = true;
+    private bool _creating;
+    private string? _revokingTokenId;
+    private string? _createError;
+    private Cinturon360.Contracts.Auth.CreatePatResponse? _latestToken;
+    private List<Cinturon360.Contracts.Auth.PatSummary> _tokens = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadTokensAsync();
+    }
+
+    private async Task LoadTokensAsync()
+    {
+        var result = await IdentityApi.ListPatsAsync();
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _tokens = result.Value.ToList();
+        }
+        else
+        {
+            Toast.Error(result.Error ?? "Unable to load personal access tokens.");
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleCreateAsync()
+    {
+        _creating = true;
+        _createError = null;
+
+        var result = await IdentityApi.CreatePatAsync(new Cinturon360.Contracts.Auth.CreatePatRequest(
+            _model.Name,
+            ExpiresAt: null,
+            Scopes: string.IsNullOrWhiteSpace(_model.Scopes) ? null : _model.Scopes));
+
+        _creating = false;
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _createError = result.Error ?? "Unable to create token.";
+            StateHasChanged();
+            return;
+        }
+
+        _latestToken = result.Value;
+        _model.Name = string.Empty;
+        _model.Scopes = string.Empty;
+        Toast.Success("Token created.");
+        await LoadTokensAsync();
+    }
+
+    private async Task HandleRevokeAsync(string tokenId)
+    {
+        _revokingTokenId = tokenId;
+
+        var result = await IdentityApi.RevokePatAsync(tokenId);
+
+        _revokingTokenId = null;
+
+        if (!result.IsSuccess)
+        {
+            Toast.Error(result.Error ?? "Unable to revoke token.");
+            StateHasChanged();
+            return;
+        }
+
+        _tokens.RemoveAll(token => token.TokenId == tokenId);
+        Toast.Success("Token revoked.");
+        StateHasChanged();
+    }
+
+    private sealed class CreatePatModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Token name is required.")]
+        public string Name { get; set; } = string.Empty;
+
+        public string Scopes { get; set; } = string.Empty;
+    }
+}

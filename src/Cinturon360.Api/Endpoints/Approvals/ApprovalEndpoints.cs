@@ -18,11 +18,15 @@ public static class ApprovalEndpoints
 
         group.MapGet("/{approvalRequestId}", GetById)
             .WithName("GetApprovalRequest")
-            .Produces<ApiResponse<ApprovalRequestResponse>>(200)
+            .Produces<ApiResponse<ApprovalDetailResponse>>(200)
             .Produces<ApiResponse<object>>(404);
 
         group.MapGet("/pending/{approverUserId}", ListPending)
             .WithName("ListPendingApprovals")
+            .Produces<ApiResponse<IEnumerable<ApprovalRequestResponse>>>(200);
+
+        group.MapGet("/history/{userId}", ListHistory)
+            .WithName("ListApprovalHistory")
             .Produces<ApiResponse<IEnumerable<ApprovalRequestResponse>>>(200);
 
         group.MapPost("/", Submit)
@@ -45,18 +49,27 @@ public static class ApprovalEndpoints
 
     private static async Task<IResult> GetById(string approvalRequestId, ISender mediator)
     {
-        var result = await mediator.Send(new GetApprovalRequestQuery(approvalRequestId));
+        var result = await mediator.Send(new GetApprovalDetailQuery(approvalRequestId));
         if (result.IsFailure)
             return Results.BadRequest(ApiResponse.Fail(new ApiError(result.Error.Code, result.Error.Description)));
 
         return result.Value is null
             ? Results.NotFound(ApiResponse.Fail(new ApiError("approval.not_found", "Approval request not found.")))
-            : Results.Ok(ApiResponse.Ok(MapApproval(result.Value)));
+            : Results.Ok(ApiResponse.Ok(MapApprovalDetail(result.Value)));
     }
 
     private static async Task<IResult> ListPending(string approverUserId, ISender mediator)
     {
         var result = await mediator.Send(new ListPendingApprovalsQuery(approverUserId));
+        if (result.IsFailure)
+            return Results.BadRequest(ApiResponse.Fail(new ApiError(result.Error.Code, result.Error.Description)));
+
+        return Results.Ok(ApiResponse.Ok(result.Value.Select(MapApproval)));
+    }
+
+    private static async Task<IResult> ListHistory(string userId, ISender mediator)
+    {
+        var result = await mediator.Send(new ListApprovalHistoryQuery(userId));
         if (result.IsFailure)
             return Results.BadRequest(ApiResponse.Fail(new ApiError(result.Error.Code, result.Error.Description)));
 
@@ -109,4 +122,16 @@ public static class ApprovalEndpoints
         a.Notes,
         a.CreatedAt,
         a.ResolvedAt);
+
+    private static ApprovalDecisionResponse MapDecision(ApprovalDecision decision) => new(
+        decision.Id,
+        decision.Level,
+        decision.ApproverUserId,
+        (int)decision.Decision,
+        decision.Comments,
+        decision.CreatedAt);
+
+    private static ApprovalDetailResponse MapApprovalDetail(Cinturon360.Application.Features.Approvals.Models.ApprovalDetailModel detail) => new(
+        MapApproval(detail.Approval),
+        detail.Decisions.Select(MapDecision).ToList());
 }

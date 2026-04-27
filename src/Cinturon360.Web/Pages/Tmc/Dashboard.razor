@@ -1,6 +1,7 @@
 @page "/tmc"
 @attribute [Authorize]
 @rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
 @inject BookingApiClient BookingApi
 @inject ApprovalApiClient ApprovalApi
 
@@ -47,8 +48,11 @@ else
     {
         if (!firstRender) return;
 
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
+
         var bTask = BookingApi.ListBookingsAsync(page: 1, pageSize: 1);
-        var aTask = ApprovalApi.ListPendingAsync();
+        var aTask = ApprovalApi.ListPendingAsync(userId);
         await Task.WhenAll(bTask, aTask);
 
         var bResult = await bTask;

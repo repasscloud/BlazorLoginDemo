@@ -94,6 +94,11 @@ public abstract class ApiClientBase
 
             if (string.IsNullOrWhiteSpace(body))
             {
+                if (typeof(T) == typeof(bool))
+                {
+                    return ApiResult<T>.Ok((T)(object)true);
+                }
+
                 return ApiResult<T>.Fail("The server returned an empty response.");
             }
 

@@ -23,6 +23,22 @@ internal sealed class ApprovalRepository : IApprovalRepository
         // Pending requests from the approver's org — the specific routing is handled at the app layer
         return await _db.ApprovalRequests
             .Where(x => x.Status == ApprovalStatus.Pending)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ApprovalRequest>> ListHistoryForUserAsync(string userId, CancellationToken ct)
+    {
+        var approvalIds = await _db.ApprovalDecisions
+            .Where(x => x.ApproverUserId == userId)
+            .Select(x => x.ApprovalRequestId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return await _db.ApprovalRequests
+            .Where(x => x.Status != ApprovalStatus.Pending &&
+                        (x.RequestedByUserId == userId || approvalIds.Contains(x.Id)))
+            .OrderByDescending(x => x.ResolvedAt ?? x.UpdatedAt)
             .ToListAsync(ct);
     }
 

@@ -7,7 +7,13 @@
 
 <PageTitle>Approvals — Cinturon360</PageTitle>
 
-<PageHeader Title="My Approvals" Subtitle="Review travel requests pending your approval." />
+<PageHeader Title="My Approvals" Subtitle="Review travel requests pending your approval.">
+    <Actions>
+        <a href="/client/approvals/history" class="c-btn c-btn-secondary">
+            View history
+        </a>
+    </Actions>
+</PageHeader>
 
 @if (_loading)
 {
@@ -34,6 +40,10 @@ else
                     </p>
                 </div>
                 <div class="flex gap-2">
+                    <a class="c-btn c-btn-secondary text-sm"
+                       href="/client/approvals/@item.Id">
+                        View details
+                    </a>
                     <button class="c-btn c-btn-primary text-sm"
                             @onclick="() => HandleApproveAsync(item.Id)">
                         Approve
@@ -58,7 +68,7 @@ else
         if (!firstRender) return;
         var auth = await AuthState.GetAuthenticationStateAsync();
         _userId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
-        var result = await ApprovalApi.ListPendingAsync();
+        var result = await ApprovalApi.ListPendingAsync(_userId);
         if (result.IsSuccess && result.Value is not null)
             _items = result.Value.Items.ToList();
         _loading = false;

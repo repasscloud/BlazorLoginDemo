@@ -1,0 +1,225 @@
+@page "/client/approvals/{ApprovalId}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+@inject ApprovalApiClient ApprovalApi
+@inject ToastService Toast
+@inject NavigationManager Nav
+
+<PageTitle>Approval Detail — Cinturon360</PageTitle>
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading approval…" />
+}
+else if (_approval is null)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-danger)">Approval request not found.</p>
+        <a href="/client/approvals" class="c-btn c-btn-secondary mt-4">Back to approvals</a>
+    </div>
+}
+else
+{
+    <PageHeader Title="Approval request"
+                Subtitle="@($"Subject {FormatSubjectType(_approval.Approval.SubjectType)} • Requested {_approval.Approval.CreatedAt:d MMM yyyy}")">
+        <Actions>
+            <a href="/client/approvals/history" class="c-btn c-btn-secondary">History</a>
+        </Actions>
+    </PageHeader>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-4 max-w-5xl">
+        <div class="space-y-4">
+            <div class="c-card p-5">
+                <p class="text-xs uppercase tracking-wide font-medium mb-3" style="color:var(--c-text-muted)">
+                    Request details
+                </p>
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between gap-4">
+                        <dt style="color:var(--c-text-muted)">Approval ID</dt>
+                        <dd class="font-mono" style="color:var(--c-text-primary)">@_approval.Approval.Id</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt style="color:var(--c-text-muted)">Subject</dt>
+                        <dd style="color:var(--c-text-primary)">@FormatSubjectType(_approval.Approval.SubjectType)</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt style="color:var(--c-text-muted)">Subject reference</dt>
+                        <dd class="font-mono" style="color:var(--c-text-primary)">@_approval.Approval.SubjectId</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt style="color:var(--c-text-muted)">Requested by</dt>
+                        <dd class="font-mono" style="color:var(--c-text-primary)">@_approval.Approval.RequestedByUserId</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt style="color:var(--c-text-muted)">Status</dt>
+                        <dd><StatusBadge Status="@FormatStatus(_approval.Approval.Status)" /></dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt style="color:var(--c-text-muted)">Level</dt>
+                        <dd style="color:var(--c-text-primary)">@_approval.Approval.CurrentLevel / @_approval.Approval.TotalLevels</dd>
+                    </div>
+                </dl>
+
+                @if (!string.IsNullOrWhiteSpace(_approval.Approval.Notes))
+                {
+                    <div class="mt-4 pt-4 border-t border-subtle">
+                        <p class="text-xs uppercase tracking-wide font-medium mb-2" style="color:var(--c-text-muted)">
+                            Notes
+                        </p>
+                        <p class="text-sm whitespace-pre-wrap" style="color:var(--c-text-primary)">@_approval.Approval.Notes</p>
+                    </div>
+                }
+            </div>
+
+            <div class="c-card p-5">
+                <p class="text-xs uppercase tracking-wide font-medium mb-3" style="color:var(--c-text-muted)">
+                    Decision history
+                </p>
+
+                @if (_approval.Decisions.Count == 0)
+                {
+                    <p class="text-sm" style="color:var(--c-text-muted)">No decisions have been recorded yet.</p>
+                }
+                else
+                {
+                    <div class="space-y-3">
+                        @foreach (var decision in _approval.Decisions)
+                        {
+                            <div class="rounded-2xl border border-subtle p-4">
+                                <div class="flex items-center justify-between gap-3 mb-2">
+                                    <div>
+                                        <p class="text-sm font-medium" style="color:var(--c-text-primary)">
+                                            Level @decision.Level
+                                        </p>
+                                        <p class="text-xs font-mono" style="color:var(--c-text-muted)">@decision.ApproverUserId</p>
+                                    </div>
+                                    <StatusBadge Status="@FormatStatus(decision.Decision)" />
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(decision.Comments))
+                                {
+                                    <p class="text-sm mb-2" style="color:var(--c-text-primary)">@decision.Comments</p>
+                                }
+                                <p class="text-xs" style="color:var(--c-text-muted)">@decision.CreatedAt.ToString("d MMM yyyy h:mm tt")</p>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="c-card p-5 h-fit">
+            <p class="text-xs uppercase tracking-wide font-medium mb-3" style="color:var(--c-text-muted)">
+                Decision
+            </p>
+
+            @if (_approval.Approval.Status != 1)
+            {
+                <p class="text-sm" style="color:var(--c-text-muted)">
+                    This request has already been resolved.
+                </p>
+            }
+            else
+            {
+                <div class="c-field">
+                    <label class="c-label" for="comments">Comments</label>
+                    <InputTextArea id="comments" class="c-input min-h-28" @bind-Value="_comments" />
+                </div>
+
+                <div class="flex gap-2 mt-4">
+                    <button class="c-btn c-btn-primary flex-1" disabled="@_busy" @onclick="HandleApproveAsync">
+                        Approve
+                    </button>
+                    <button class="c-btn c-btn-danger flex-1" disabled="@_busy" @onclick="HandleRejectAsync">
+                        Reject
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string ApprovalId { get; set; } = "";
+
+    private bool _loading = true;
+    private bool _busy;
+    private string _userId = "";
+    private string _comments = "";
+    private Cinturon360.Contracts.Approvals.ApprovalDetailResponse? _approval;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _userId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
+
+        var result = await ApprovalApi.GetApprovalAsync(ApprovalId);
+        if (result.IsSuccess)
+        {
+            _approval = result.Value;
+        }
+        else
+        {
+            Toast.Error(result.Error ?? "Unable to load approval request.");
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleApproveAsync()
+    {
+        await HandleDecisionAsync(approve: true);
+    }
+
+    private async Task HandleRejectAsync()
+    {
+        await HandleDecisionAsync(approve: false);
+    }
+
+    private async Task HandleDecisionAsync(bool approve)
+    {
+        if (_approval is null || string.IsNullOrWhiteSpace(_userId))
+        {
+            return;
+        }
+
+        _busy = true;
+
+        var result = approve
+            ? await ApprovalApi.ApproveAsync(ApprovalId, new Cinturon360.Contracts.Approvals.ApproveRequest(_userId, _comments))
+            : await ApprovalApi.RejectAsync(ApprovalId, new Cinturon360.Contracts.Approvals.RejectRequest(_userId, _comments));
+
+        _busy = false;
+
+        if (result.IsSuccess)
+        {
+            Toast.Success(approve ? "Request approved." : "Request rejected.");
+            Nav.NavigateTo("/client/approvals/history", forceLoad: true);
+            return;
+        }
+
+        Toast.Error(result.Error ?? "Unable to record decision.");
+        StateHasChanged();
+    }
+
+    private static string FormatSubjectType(int subjectType) => subjectType switch
+    {
+        1 => "Booking",
+        2 => "Quote",
+        3 => "Expense",
+        _ => "Unknown"
+    };
+
+    private static string FormatStatus(int status) => status switch
+    {
+        1 => "pending",
+        2 => "approved",
+        3 => "rejected",
+        4 => "cancelled",
+        5 => "escalated",
+        _ => "unknown"
+    };
+}

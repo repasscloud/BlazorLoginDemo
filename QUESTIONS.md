@@ -318,6 +318,24 @@ The page folder structure has `Sudo/`, `Vendor/`, `Tmc/`, `Client/` sections. Th
 
 **Options:**
 - (a) **Separate layouts per role group** — different nav/sidebar depending on the user's role (e.g. a TMC user sees a different shell than a Client user)
+
+---
+
+## Q18 — Approval Assignment Semantics
+
+Phase 9 approvals now has a working pending list, detail page, and history page, but the current repository implementation behind `ListPendingForApproverAsync` does **not** actually filter by approver. It currently returns all pending approvals.
+
+This means the UI workflow works technically, but the business rule for "who is allowed to approve what" is still undefined in code.
+
+**Options:**
+- (a) Filter by explicit approver assignment table per approval level
+- (b) Filter by organisation + role-based approver rules
+- (c) Filter by manager chain / org hierarchy
+- (d) Keep current broad queue temporarily for vendor/TMC operations, then tighten later
+
+**Decision needed:** Which approval assignment rule should Phase 9 enforce for pending approvals and approval actions?
+
+**Current temporary implementation:** Option (d) in effect, because no approver-assignment model exists yet.
 - (b) **One shared layout**, with nav items shown or hidden based on claims/permissions
 - (c) **One layout with separate route subtrees** — e.g. `/vendor/…`, `/tmc/…`, `/client/…` — same shell, different route namespaces
 

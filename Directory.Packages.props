@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
     <!-- ASP.NET Core / Hosting -->
@@ -10,7 +11,7 @@
     <!-- EF Core -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.4" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4" />
-    <PackageVersion Include="Npgsql" Version="10.0.1" />
+    <PackageVersion Include="Npgsql" Version="10.0.2" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
     <!-- MediatR -->
     <PackageVersion Include="MediatR" Version="12.4.1" />
@@ -36,6 +37,14 @@
     <PackageVersion Include="ITfoxtec.Identity.Saml2" Version="4.17.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Abstractions" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Logging" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Tokens.Saml" Version="8.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Xml" Version="8.15.0" />
     <!-- Stripe -->
     <PackageVersion Include="Stripe.net" Version="47.3.0" />
     <!-- AWS -->

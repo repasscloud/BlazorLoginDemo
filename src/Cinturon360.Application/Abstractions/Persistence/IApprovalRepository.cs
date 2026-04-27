@@ -8,6 +8,7 @@ public interface IApprovalRepository
     Task<ApprovalRequest?> GetByIdAsync(string id, CancellationToken ct = default);
     Task<ApprovalRequest?> GetActiveForSubjectAsync(string subjectId, CancellationToken ct = default);
     Task<IReadOnlyList<ApprovalRequest>> ListPendingForApproverAsync(string approverUserId, CancellationToken ct = default);
+    Task<IReadOnlyList<ApprovalRequest>> ListHistoryForUserAsync(string userId, CancellationToken ct = default);
     Task AddAsync(ApprovalRequest request, CancellationToken ct = default);
     void Update(ApprovalRequest request);
 

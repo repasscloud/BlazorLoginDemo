@@ -13,6 +13,15 @@ public sealed class IdentityApiClient : ApiClientBase
     public Task<ApiResult<AuthResponse>> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
         => PostAsync<AuthResponse>("api/v1/auth/register", request, ct);
 
+    public Task<ApiResult<IReadOnlyList<PatSummary>>> ListPatsAsync(CancellationToken ct = default)
+        => GetAsync<IReadOnlyList<PatSummary>>("api/v1/auth/pat", ct);
+
+    public Task<ApiResult<CreatePatResponse>> CreatePatAsync(CreatePatRequest request, CancellationToken ct = default)
+        => PostAsync<CreatePatResponse>("api/v1/auth/pat", request, ct);
+
+    public Task<ApiResult<bool>> RevokePatAsync(string tokenId, CancellationToken ct = default)
+        => DeleteAsync($"api/v1/auth/pat/{Uri.EscapeDataString(tokenId)}", ct);
+
     public Task<ApiResult<AuthResponse>> RefreshAsync(RefreshRequest request, CancellationToken ct = default)
         => PostAsync<AuthResponse>("api/v1/auth/refresh", request, ct);
 

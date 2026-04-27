@@ -1,0 +1,97 @@
+@page "/client/approvals/history"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+@inject ApprovalApiClient ApprovalApi
+@inject ToastService Toast
+
+<PageTitle>Approval History — Cinturon360</PageTitle>
+
+<PageHeader Title="Approval history" Subtitle="Resolved approval requests you requested or reviewed.">
+    <Actions>
+        <a href="/client/approvals" class="c-btn c-btn-secondary">Back to pending</a>
+    </Actions>
+</PageHeader>
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading approval history…" />
+}
+else if (_items.Count == 0)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-text-muted)">No resolved approvals yet.</p>
+    </div>
+}
+else
+{
+    <div class="space-y-4 max-w-4xl">
+        @foreach (var item in _items)
+        {
+            <div class="c-card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-1">
+                        <p class="text-sm font-medium" style="color:var(--c-text-primary)">
+                            @FormatSubjectType(item.SubjectType): @item.SubjectId
+                        </p>
+                        <StatusBadge Status="@FormatStatus(item.Status)" />
+                    </div>
+                    <p class="text-xs" style="color:var(--c-text-muted)">
+                        Requested @item.CreatedAt.ToString("d MMM yyyy")
+                        @if (item.ResolvedAt.HasValue)
+                        {
+                            <span> • Resolved @item.ResolvedAt.Value.ToString("d MMM yyyy")</span>
+                        }
+                    </p>
+                </div>
+                <a class="c-btn c-btn-secondary text-sm" href="/client/approvals/@item.Id">
+                    View details
+                </a>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<Cinturon360.Contracts.Approvals.ApprovalRequestResponse> _items = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var userId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
+
+        var result = await ApprovalApi.ListHistoryAsync(userId);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            _items = result.Value.Items.ToList();
+        }
+        else
+        {
+            Toast.Error(result.Error ?? "Unable to load approval history.");
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private static string FormatSubjectType(int subjectType) => subjectType switch
+    {
+        1 => "Booking",
+        2 => "Quote",
+        3 => "Expense",
+        _ => "Unknown"
+    };
+
+    private static string FormatStatus(int status) => status switch
+    {
+        1 => "pending",
+        2 => "approved",
+        3 => "rejected",
+        4 => "cancelled",
+        5 => "escalated",
+        _ => "unknown"
+    };
+}
