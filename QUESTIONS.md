@@ -779,3 +779,45 @@ Final model: inline for validation and context-specific errors, toast notificati
 ---
 
 *Last updated: 25 April 2026 — Phase 9 Web UI questions added (Q15–Q21)*
+
+---
+
+## Q22 — Phase 10 Provider Credentials & Production Defaults
+
+Phase 10 implementation has started and now includes real MailerSend and Stripe runtime integration (with safe fallback when keys are missing), plus S3/R2 env wiring.
+
+To complete Phase 10 fully without stubs, we still need the final production decisions below.
+
+**Decision needed:** Which provider/credential set should be treated as primary for each domain in production?
+
+Please provide:
+- MailerSend API token + sender identity (`FromEmail`, `FromName`)
+- Stripe live/test mode policy + keys (`SecretKey`, `PublishableKey`, `WebhookSecret`)
+- Cloudflare R2 bucket + endpoint + access credentials
+- Amadeus credentials (self-service or enterprise)
+- Duffel credentials (token + environment)
+- FX provider choice (`OpenExchangeRates` / `Frankfurter` / `ECB`) and API key if required
+- GitHub ticketing target (`owner/repo`) and PAT/App strategy
+
+**Autopilot default applied for now:**
+- Keep system operational with config-based fallback mode when provider keys are missing.
+- Do not hard-fail auth or billing flows in dev when external providers are not configured.
+
+---
+
+## Q23 — Hotels/Cars/Rail Provider Selection
+
+Phase 10 scope references Hotels/Cars/Rail, but no provider has been selected yet.
+
+**Decision needed:** Which providers should be used for initial rollout?
+
+Suggested baseline options:
+- Hotels: Booking.com Demand API or Expedia Rapid
+- Cars: Amadeus Cars or Rentalcars affiliate APIs
+- Rail: Trainline Partner API or Rail Europe B2B
+
+If no decision is made immediately, these modules should remain explicitly deferred to a later slice of Phase 10 while flights/email/payments/storage are finalized first.
+
+---
+
+*Last updated: 27 April 2026 — Phase 10 integration questions added (Q22–Q23)*

@@ -3,6 +3,7 @@
 > Status as of 27 April 2026  
 > Phases 0–7 are fully implemented. Build is passing.  
 > Phase 9 is complete ✅ (all planned Web UI pages implemented and build passing).
+> Phase 10 is in progress ⚙️ (MailerSend + Stripe + S3/R2 runtime wiring completed; provider integrations still pending).
 
 ---
 
@@ -12,7 +13,7 @@
 
 | Order | Phase | Notes |
 |-------|-------|-------|
-| 1 | **Phase 10** — Real Integrations | Wire up stubs scaffolded in Phase 7 (Amadeus, Duffel, MailerSend, Stripe, FX, S3). |
+| 1 | **Phase 10** — Real Integrations | IN PROGRESS — MailerSend, Stripe, and S3/R2 wiring completed; Amadeus, Duffel, FX, GitHub ticketing, and data jobs pending. |
 | 2 | **Phase 11** — Deployment & Infrastructure | ACA Bicep, CI/CD, secrets, environment matrix. |
 | 3 | **Phase 12** — Observability & Logging | Serilog, Azure Monitor, alerts. |
 | 4 | **Phase 13** — Legacy Reference Cleanup | Move v4 code to `legacy/v4-reference` branch, remove from main. |

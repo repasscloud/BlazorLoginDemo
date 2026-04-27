@@ -26,6 +26,17 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=cinturon360;Username=cinturon;Password=cinturon_dev_password"
+      MailerSend__ApiToken: "${MAILERSEND_API_TOKEN:-}"
+      MailerSend__FromEmail: "${MAILERSEND_FROM_EMAIL:-}"
+      MailerSend__FromName: "${MAILERSEND_FROM_NAME:-Cinturon360 Dev}"
+      Stripe__SecretKey: "${STRIPE_SECRET_KEY:-}"
+      Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY:-}"
+      Stripe__WebhookSecret: "${STRIPE_WEBHOOK_SECRET:-}"
+      Storage__BucketName: "${R2_BUCKET_NAME:-}"
+      Storage__Endpoint: "${R2_ENDPOINT:-}"
+      Storage__AccessKeyId: "${R2_ACCESS_KEY_ID:-}"
+      Storage__SecretAccessKey: "${R2_SECRET_ACCESS_KEY:-}"
+      Storage__PublicBaseUrl: "${R2_PUBLIC_BASE_URL:-}"
     ports:
       - "5100:8080"
     depends_on:

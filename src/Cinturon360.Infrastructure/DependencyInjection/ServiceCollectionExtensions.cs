@@ -34,10 +34,23 @@ public static class ServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
 
-        // Email service (MailerSend stub)
-        services.AddScoped<IEmailService, MailerSendEmailService>();
+        // Email service (MailerSend)
+        services.Configure<MailerSendSettings>(configuration.GetSection("MailerSend"));
+        services.AddHttpClient<MailerSendEmailService>(client =>
+        {
+            var baseUrl = configuration["MailerSend:BaseUrl"];
+            if (!string.IsNullOrWhiteSpace(baseUrl)
+                && Uri.TryCreate(baseUrl, UriKind.Absolute, out var parsed))
+            {
+                client.BaseAddress = parsed;
+            }
 
-        // Payment gateway (Stripe stub)
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+        services.AddScoped<IEmailService>(sp => sp.GetRequiredService<MailerSendEmailService>());
+
+        // Payment gateway (Stripe)
+        services.Configure<StripeSettings>(configuration.GetSection("Stripe"));
         services.AddScoped<IPaymentGateway, StripePaymentGateway>();
 
         // Object storage (Cloudflare R2 via S3 SDK)
