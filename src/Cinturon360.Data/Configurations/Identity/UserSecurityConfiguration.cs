@@ -15,6 +15,8 @@ public sealed class UserSecurityConfiguration : IEntityTypeConfiguration<UserSec
 
         builder.Property(x => x.UserId).IsRequired().HasMaxLength(50);
         builder.Property(x => x.PasswordHash).HasMaxLength(1000);
+        builder.Property(x => x.PasswordResetTokenHash).HasMaxLength(128);
+        builder.Property(x => x.PasswordResetExpiresAt);
 
         builder.HasIndex(x => x.UserId).IsUnique();
 

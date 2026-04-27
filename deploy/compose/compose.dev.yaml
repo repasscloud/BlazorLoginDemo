@@ -11,7 +11,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cinturon -d cinturon360"]
       interval: 10s
@@ -39,7 +39,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ApiSettings__BaseUrl: "http://api:8080"
+      Api__BaseUrl: "http://api:8080"
       DP_KEYS_PATH: "/app/dp-keys"
     ports:
       - "5001:8080"

@@ -1,7 +1,5 @@
 @page "/auth/logout"
 @layout EmptyLayout
-@rendermode InteractiveServer
-@inject UserSessionService SessionService
 @inject NavigationManager Nav
 
 <PageTitle>Signing out… — Cinturon360</PageTitle>
@@ -11,10 +9,8 @@
 </div>
 
 @code {
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnInitialized()
     {
-        if (!firstRender) return;
-        await SessionService.SignOutAsync();
-        Nav.NavigateTo("/auth/login", forceLoad: true);
+        Nav.NavigateTo("/auth/logout-handler", forceLoad: true);
     }
 }

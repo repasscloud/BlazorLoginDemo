@@ -3,6 +3,7 @@ using Cinturon360.Web.DependencyInjection;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Cinturon360.Web.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +55,9 @@ app.UseAntiforgery();
 
 // ── Static files ───────────────────────────────────────────────────────────
 app.MapStaticAssets();
+
+// ── API Endpoints ──────────────────────────────────────────────────────────
+app.MapAuthEndpoints();
 
 // ── Blazor ─────────────────────────────────────────────────────────────────
 app.MapRazorComponents<App>()

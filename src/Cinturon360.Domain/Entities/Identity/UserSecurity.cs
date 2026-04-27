@@ -25,6 +25,10 @@ public sealed class UserSecurity : Entity
     /// </summary>
     public bool AllowDirectLogin { get; private set; } = true;
 
+    // ── Password reset ────────────────────────────────────────────────────
+    public string? PasswordResetTokenHash { get; private set; }
+    public DateTimeOffset? PasswordResetExpiresAt { get; private set; }
+
     // ── Lockout tracking ──────────────────────────────────────────────────
     public int FailedLoginAttempts { get; private set; }
     public DateTimeOffset? LockoutUntil { get; private set; }
@@ -52,6 +56,26 @@ public sealed class UserSecurity : Entity
 
     public void EnableMfa()  { IsMfaEnabled = true;  UpdatedAt = DateTimeOffset.UtcNow; }
     public void DisableMfa() { IsMfaEnabled = false; UpdatedAt = DateTimeOffset.UtcNow; }
+
+    public void SetPasswordResetToken(string tokenHash, DateTimeOffset expiresAt)
+    {
+        PasswordResetTokenHash = tokenHash;
+        PasswordResetExpiresAt = expiresAt;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void ClearPasswordResetToken()
+    {
+        PasswordResetTokenHash = null;
+        PasswordResetExpiresAt = null;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public bool IsPasswordResetTokenValid(string tokenHash)
+        => PasswordResetTokenHash is not null
+           && PasswordResetExpiresAt.HasValue
+           && PasswordResetExpiresAt.Value > DateTimeOffset.UtcNow
+           && PasswordResetTokenHash == tokenHash;
 
     public void RecordFailedLogin()
     {

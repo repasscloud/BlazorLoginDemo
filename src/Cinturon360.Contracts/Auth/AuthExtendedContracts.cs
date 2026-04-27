@@ -3,6 +3,13 @@ namespace Cinturon360.Contracts.Auth;
 /// <summary>Token refresh request.</summary>
 public sealed record RefreshRequest(string RefreshToken, string SessionId);
 
+/// <summary>Self-registration request.</summary>
+public sealed record RegisterRequest(
+    string FirstName,
+    string LastName,
+    string Email,
+    string Password);
+
 /// <summary>Extended login response that includes MFA pending state and refresh token.</summary>
 public sealed record LoginResponse(
     bool RequiresMfa,

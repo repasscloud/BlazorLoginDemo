@@ -1,0 +1,95 @@
+@using Microsoft.AspNetCore.Components;
+@page "/auth/register"
+@layout EmptyLayout
+@rendermode InteractiveServer
+@attribute [AllowAnonymous]
+
+<PageTitle>Create account — Cinturon360</PageTitle>
+
+<div class="min-h-screen flex items-center justify-center bg-surface-muted px-4">
+    <div class="w-full max-w-sm">
+        <div class="text-center mb-8">
+            <span class="c-wordmark text-2xl"><span class="c360">Cinturon</span><span class="c360-num">360</span></span>
+            <p class="mt-1 text-sm" style="color:var(--c-text-muted)">Create your account</p>
+        </div>
+
+        <div class="c-card p-8">
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="mb-4 rounded-xl p-3 text-sm border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20"
+                     style="color:var(--c-danger)" role="alert">
+                    @_errorMessage
+                </div>
+            }
+
+            <form method="post" action="/auth/register-handler">
+                <AntiforgeryToken />
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="c-field">
+                        <label class="c-label" for="firstName">First name</label>
+                        <input id="firstName" class="c-input" type="text" name="firstName"
+                               autocomplete="given-name" required />
+                    </div>
+                    <div class="c-field">
+                        <label class="c-label" for="lastName">Last name</label>
+                        <input id="lastName" class="c-input" type="text" name="lastName"
+                               autocomplete="family-name" required />
+                    </div>
+                </div>
+
+                <div class="c-field">
+                    <label class="c-label" for="email">Email address</label>
+                    <input id="email" class="c-input" type="email" name="email"
+                           placeholder="you@example.com"
+                           autocomplete="email" required />
+                </div>
+
+                <div class="c-field">
+                    <label class="c-label" for="password">Password</label>
+                    <input id="password" class="c-input" type="password" name="password"
+                           minlength="8"
+                           autocomplete="new-password" required />
+                    <p class="text-xs mt-1" style="color:var(--c-text-muted)">At least 8 characters.</p>
+                </div>
+
+                <div class="c-field">
+                    <label class="c-label" for="confirmPassword">Confirm password</label>
+                    <input id="confirmPassword" class="c-input" type="password" name="confirmPassword"
+                           autocomplete="new-password" required />
+                </div>
+
+                <button type="submit" class="c-btn c-btn-primary w-full mt-4">
+                    Create account
+                </button>
+            </form>
+        </div>
+
+        <p class="text-center text-sm mt-6" style="color:var(--c-text-muted)">
+            Already have an account?
+            <a href="/auth/login" class="font-medium text-brand-sky hover:underline">Sign in</a>
+        </p>
+
+        <p class="text-center text-xs mt-4" style="color:var(--c-text-muted)">
+            © @DateTime.UtcNow.Year Cinturon360. All rights reserved.
+        </p>
+    </div>
+</div>
+
+@code {
+    private string? _errorMessage;
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _errorMessage = Error switch
+        {
+            "email_taken"         => "An account with that email address already exists.",
+            "password_mismatch"   => "Passwords do not match.",
+            "registration_failed" => "Registration failed. Please try again.",
+            _                     => null
+        };
+    }
+}

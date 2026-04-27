@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Cinturon360.Contracts.Common.Results;
 
 namespace Cinturon360.Web.Services.ApiClients;
 
@@ -89,8 +90,39 @@ public abstract class ApiClientBase
     {
         if (response.IsSuccessStatusCode)
         {
-            var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, ct);
-            return ApiResult<T>.Ok(result!);
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                return ApiResult<T>.Fail("The server returned an empty response.");
+            }
+
+            try
+            {
+                var envelope = JsonSerializer.Deserialize<ApiResponse<T>>(body, JsonOptions);
+                if (envelope is not null && (envelope.Data is not null || envelope.Error is not null || body.Contains("\"success\"", StringComparison.OrdinalIgnoreCase)))
+                {
+                    if (envelope.Success && envelope.Data is not null)
+                    {
+                        return ApiResult<T>.Ok(envelope.Data);
+                    }
+
+                    var envelopeError = envelope.Error?.Message ?? "The server returned an invalid response.";
+                    return ApiResult<T>.Fail(envelopeError);
+                }
+            }
+            catch
+            {
+                // Fall back to raw payload parsing for endpoints that are not wrapped.
+            }
+
+            var result = JsonSerializer.Deserialize<T>(body, JsonOptions);
+            if (result is not null)
+            {
+                return ApiResult<T>.Ok(result);
+            }
+
+            return ApiResult<T>.Fail("The server returned an unreadable response.");
         }
 
         var error = await ReadErrorAsync(response, ct);
@@ -106,7 +138,8 @@ public abstract class ApiClientBase
             {
                 using var doc = JsonDocument.Parse(body);
                 if (doc.RootElement.TryGetProperty("error", out var errEl) &&
-                    errEl.TryGetProperty("description", out var descEl))
+                    (errEl.TryGetProperty("description", out var descEl) ||
+                     errEl.TryGetProperty("message", out descEl)))
                 {
                     return descEl.GetString() ?? response.ReasonPhrase ?? "Unknown error";
                 }

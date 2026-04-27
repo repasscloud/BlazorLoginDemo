@@ -5,7 +5,6 @@ COMPOSE_FILE="deploy/compose/compose.dev.yaml"
 DATA_PROJECT="src/Cinturon360.Data"
 API_PROJECT="src/Cinturon360.Api"
 SQL_OUT="tools/db/migrations"
-PG_CONN="Host=localhost;Port=5432;Database=cinturon360;Username=cinturon;Password=cinturon_dev_password"
 
 # ── Step 1: Start Postgres ─────────────────────────────────────────────────
 echo "▶ Starting Postgres..."
@@ -55,14 +54,23 @@ done < "$MIGRATIONS_TMP"
 rm -f "$MIGRATIONS_TMP"
 echo "  SQL scripts up to date."
 
-# ── Step 3: Apply migrations to local Postgres ─────────────────────────────
-echo "▶ Applying EF migrations to local database..."
-dotnet ef database update \
-  --project "$DATA_PROJECT" \
-  --startup-project "$API_PROJECT" \
-  --connection "$PG_CONN"
+# ── Step 3: Apply generated SQL migrations to local Postgres ───────────────
+echo "▶ Applying SQL migration scripts to local database..."
+
+SCRIPT_COUNT=$(find "$SQL_OUT" -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')
+if [[ "$SCRIPT_COUNT" -eq 0 ]]; then
+  echo "  No SQL migration scripts found in $SQL_OUT"
+else
+  while IFS= read -r sql_file; do
+    echo "  Applying $(basename "$sql_file")"
+    docker compose -f "$COMPOSE_FILE" exec -T postgres \
+      psql -v ON_ERROR_STOP=1 -U cinturon -d cinturon360 < "$sql_file"
+  done < <(find "$SQL_OUT" -maxdepth 1 -type f -name '*.sql' | sort)
+  echo "  SQL migrations applied."
+fi
 
 # ── Step 4: Start remaining services ──────────────────────────────────────
 echo "▶ Building and starting all services..."
-docker compose -f "$COMPOSE_FILE" up --build
+docker compose -f "$COMPOSE_FILE" up --build -d
+echo "  All services started."
 

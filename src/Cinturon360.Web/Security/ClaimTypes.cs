@@ -14,6 +14,7 @@ public static class ClaimTypes
     public const string AccessToken  = "c360:at";
     public const string RefreshToken = "c360:rt";
     public const string TokenExpiry  = "c360:exp";
+    public const string SessionId    = "c360:sid";
     public const string Theme        = "c360:theme";
     public const string Language     = "c360:lang";
     public const string TimeZone     = "c360:tz";

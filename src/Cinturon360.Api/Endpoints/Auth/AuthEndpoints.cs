@@ -45,6 +45,25 @@ public static class AuthEndpoints
             .Produces(204)
             .Produces<ApiResponse<object>>(404);
 
+        group.MapPost("/register", Register)
+            .AllowAnonymous()
+            .WithName("Register")
+            .Produces<ApiResponse<AuthResponse>>(201)
+            .Produces<ApiResponse<object>>(400)
+            .Produces<ApiResponse<object>>(409);
+
+        group.MapPost("/password/forgot", ForgotPassword)
+            .AllowAnonymous()
+            .WithName("ForgotPassword")
+            .Produces(204)
+            .Produces<ApiResponse<object>>(400);
+
+        group.MapPost("/password/reset", ResetPassword)
+            .AllowAnonymous()
+            .WithName("ResetPassword")
+            .Produces(204)
+            .Produces<ApiResponse<object>>(400);
+
         return app;
     }
 
@@ -124,5 +143,54 @@ public static class AuthEndpoints
         return result.IsSuccess
             ? Results.NoContent()
             : Results.NotFound(ApiResponse.Fail(new ApiError(result.Error.Code, result.Error.Description)));
+    }
+
+    private static async Task<IResult> Register(
+        [FromBody] RegisterRequest request,
+        ISender mediator,
+        HttpContext ctx)
+    {
+        var command = new RegisterUserCommand(
+            FirstName: request.FirstName,
+            LastName: request.LastName,
+            Email: request.Email,
+            Password: request.Password,
+            IpAddress: ctx.Connection.RemoteIpAddress?.ToString(),
+            UserAgent: ctx.Request.Headers.UserAgent.ToString());
+
+        var result = await mediator.Send(command);
+
+        if (!result.IsSuccess)
+        {
+            var statusCode = result.Error.Code == "auth.email_already_registered" ? 409 : 400;
+            return Results.Json(
+                ApiResponse.Fail(new ApiError(result.Error.Code, result.Error.Description)),
+                statusCode: statusCode);
+        }
+
+        return Results.Created("/api/v1/auth/me", ApiResponse.Ok(result.Value));
+    }
+
+    private static async Task<IResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        ISender mediator)
+    {
+        // Always 204 — prevents email enumeration
+        await mediator.Send(new RequestPasswordResetCommand(request.Email));
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        ISender mediator)
+    {
+        var result = await mediator.Send(new ResetPasswordCommand(
+            Email: request.Email,
+            Token: request.Token,
+            NewPassword: request.NewPassword));
+
+        return result.IsSuccess
+            ? Results.NoContent()
+            : Results.BadRequest(ApiResponse.Fail(new ApiError(result.Error.Code, result.Error.Description)));
     }
 }

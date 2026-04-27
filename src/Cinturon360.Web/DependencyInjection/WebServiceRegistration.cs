@@ -22,12 +22,12 @@ public static class WebServiceRegistration
             {
                 options.Cookie.Name        = "c360.bff";
                 options.Cookie.HttpOnly    = true;
-                options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+                options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest;
                 options.Cookie.SameSite    = Microsoft.AspNetCore.Http.SameSiteMode.Strict;
                 options.ExpireTimeSpan     = TimeSpan.FromDays(1);
                 options.SlidingExpiration  = true;
                 options.LoginPath          = "/auth/login";
-                options.LogoutPath         = "/auth/logout";
+                options.LogoutPath         = "/auth/logout-handler";
                 options.AccessDeniedPath   = "/access-denied";
             });
 
