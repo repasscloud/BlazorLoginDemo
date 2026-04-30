@@ -56,4 +56,10 @@ public static class IdPrefix
 
     // ── Exchange Rates ────────────────────────────────────────────────────
     public const string ExchangeRate     = "fxr";
+
+    // ── Support Ticketing ─────────────────────────────────────────────────
+    public const string SupportTicket    = "stk";
+    public const string TicketComment    = "tkc";
+    public const string TicketEscalation = "tke";
+    public const string TicketAttachment = "tka";
 }

@@ -14,6 +14,7 @@ using Cinturon360.Api.Endpoints.Policies;
 using Cinturon360.Api.Endpoints.Approvals;
 using Cinturon360.Api.Endpoints.Billing;
 using Cinturon360.Api.Endpoints.System;
+using Cinturon360.Api.Endpoints.Ticketing;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -85,6 +86,7 @@ try
     app.MapApprovalEndpoints();
     app.MapBillingEndpoints();
     app.MapJobEndpoints();
+    app.MapTicketEndpoints();
 
     app.Run();
 }

@@ -1,0 +1,19 @@
+@using Cinturon360.Domain.Enums.Ticketing
+
+@{
+    var (bg, text, label) = Priority switch
+    {
+        TicketPriority.Low      => ("rgba(107,114,128,0.15)", "var(--c-text-muted)",  "Low"),
+        TicketPriority.Medium   => ("rgba(59,130,246,0.12)",  "var(--c-brand-sky)",   "Medium"),
+        TicketPriority.High     => ("rgba(249,115,22,0.12)",  "#f97316",              "High"),
+        TicketPriority.Critical => ("rgba(239,68,68,0.12)",   "var(--c-danger)",      "Critical"),
+        _                       => ("rgba(107,114,128,0.15)", "var(--c-text-muted)",  Priority.ToString())
+    };
+}
+
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+      style="background:@bg;color:@text">@label</span>
+
+@code {
+    [Parameter, EditorRequired] public TicketPriority Priority { get; set; }
+}

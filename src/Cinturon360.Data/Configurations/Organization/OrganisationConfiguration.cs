@@ -31,6 +31,9 @@ public sealed class OrganisationConfiguration : IEntityTypeConfiguration<Organis
         builder.Property(x => x.ChainName).HasMaxLength(200);
         builder.Property(x => x.BranchCode).HasMaxLength(50);
 
+        // Support team display name (shown on ticket replies)
+        builder.Property(x => x.SupportTeamName).HasMaxLength(200);
+
         builder.HasIndex(x => x.ChainCode);
 
         builder.HasIndex(x => x.Slug).IsUnique();

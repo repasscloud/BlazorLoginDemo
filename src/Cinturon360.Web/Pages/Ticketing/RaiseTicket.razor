@@ -1,0 +1,156 @@
+@page "/support/raise"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+@inject TicketApiClient TicketApi
+@inject NavigationManager Nav
+@inject ToastService Toast
+
+<PageTitle>Raise Support Ticket — Cinturon360</PageTitle>
+
+<PageHeader Title="Raise a Support Ticket"
+            Subtitle="Describe your issue and our support team will assist you." />
+
+<div class="max-w-2xl">
+    <div class="c-card p-6 space-y-5">
+
+        @if (!string.IsNullOrWhiteSpace(ErrorContext))
+        {
+            <div class="rounded-lg p-4 border" style="background:rgba(239,68,68,0.07);border-color:rgba(239,68,68,0.3)">
+                <p class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:var(--c-danger)">
+                    Error context attached
+                </p>
+                <p class="text-xs" style="color:var(--c-text-muted)">
+                    Technical details from the error have been pre-attached to this ticket so support can investigate the issue in the system logs.
+                </p>
+            </div>
+        }
+
+        @* Pre-filled subject from error page *@
+        <div>
+            <label class="c-label" for="subject">Subject <span style="color:var(--c-danger)">*</span></label>
+            <input id="subject" class="c-input" maxlength="500"
+                   @bind="_subject" placeholder="Brief summary of the issue" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="c-label" for="category">Category</label>
+                <select id="category" class="c-input" @bind="_category">
+                    @foreach (var cat in Enum.GetValues<TicketCategory>())
+                    {
+                        <option value="@((int)cat)">@FormatEnum(cat.ToString())</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="c-label" for="priority">Priority</label>
+                <select id="priority" class="c-input" @bind="_priority">
+                    @foreach (var pri in Enum.GetValues<TicketPriority>())
+                    {
+                        <option value="@((int)pri)">@FormatEnum(pri.ToString())</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <label class="c-label" for="description">Description <span style="color:var(--c-danger)">*</span></label>
+            <textarea id="description" class="c-input min-h-[120px] resize-y" maxlength="10000"
+                      @bind="_description"
+                      placeholder="Please describe your issue in as much detail as possible." />
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_errorMsg))
+        {
+            <p class="text-sm" style="color:var(--c-danger)">@_errorMsg</p>
+        }
+
+        <div class="flex gap-3 pt-2">
+            <button class="c-btn c-btn-primary" disabled="@_submitting" @onclick="SubmitAsync">
+                @(_submitting ? "Submitting…" : "Submit Ticket")
+            </button>
+            <a href="/support" class="c-btn c-btn-secondary">Cancel</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Pre-fill parameters — populated when navigating from an error page
+    [SupplyParameterFromQuery(Name = "subject")]  public string? PreSubject  { get; set; }
+    [SupplyParameterFromQuery(Name = "category")] public string? PreCategory { get; set; }
+
+    /// <summary>
+    /// JSON error context passed from error pages.
+    /// Contains: page, errorCode, traceId, message, timestamp.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "ctx")] public string? ErrorContext { get; set; }
+
+    private string _subject     = "";
+    private string _description = "";
+    private int    _category    = (int)TicketCategory.General;
+    private int    _priority    = (int)TicketPriority.Medium;
+    private bool   _submitting;
+    private string? _errorMsg;
+    private string  _userId = "";
+    private string  _orgId  = "";
+    private string  _firstName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _userId    = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
+        _orgId     = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.OrgId)?.Value  ?? "";
+        var display = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.DisplayName)?.Value ?? "User";
+        _firstName = display.Split(' ')[0];
+
+        if (!string.IsNullOrWhiteSpace(PreSubject))
+            _subject = PreSubject;
+
+        if (!string.IsNullOrWhiteSpace(PreCategory) && int.TryParse(PreCategory, out var cat))
+            _category = cat;
+        else if (ErrorContext is not null)
+            _category = (int)TicketCategory.SystemError;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _errorMsg = null;
+
+        if (string.IsNullOrWhiteSpace(_subject))
+        {
+            _errorMsg = "Please enter a subject.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_description))
+        {
+            _errorMsg = "Please describe the issue.";
+            return;
+        }
+
+        _submitting = true;
+        var result = await TicketApi.RaiseTicketAsync(
+            _orgId, _userId, _firstName,
+            orgSupportTeamName: null,
+            (TicketCategory)_category,
+            (TicketPriority)_priority,
+            _subject,
+            _description,
+            ErrorContext);
+
+        _submitting = false;
+
+        if (result.IsSuccess && result.Value is not null)
+        {
+            Toast.Show("Ticket raised successfully!", "success");
+            Nav.NavigateTo($"/support/{result.Value}");
+        }
+        else
+        {
+            _errorMsg = result.Error ?? "Failed to raise ticket. Please try again.";
+        }
+    }
+
+    private static string FormatEnum(string value)
+        => System.Text.RegularExpressions.Regex.Replace(value, "([A-Z])", " $1").Trim();
+}

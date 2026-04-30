@@ -1,0 +1,39 @@
+@* 
+    Reusable "Raise Support Ticket" button for inline error states on pages.
+    Pass ErrorCode, Page (URL), and an optional Message.
+    Navigates to /support/raise with pre-filled subject and error context.
+*@
+@inject NavigationManager Nav
+
+<button class="c-btn c-btn-secondary text-sm" @onclick="Navigate">
+    Raise Support Ticket
+</button>
+
+@code {
+    /// <summary>Machine-readable error code, e.g. "booking.not_found".</summary>
+    [Parameter] public string? ErrorCode { get; set; }
+
+    /// <summary>Human-readable message shown in the subject.</summary>
+    [Parameter] public string? Message { get; set; }
+
+    private void Navigate()
+    {
+        var page = Nav.Uri;
+        var ctx = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            page,
+            errorCode = ErrorCode ?? "unknown",
+            message   = Message  ?? "An error occurred.",
+            timestamp = DateTimeOffset.UtcNow
+        });
+
+        var rawSubject = string.IsNullOrWhiteSpace(Message)
+            ? $"Issue on {new Uri(page).AbsolutePath}"
+            : $"Error on {new Uri(page).AbsolutePath}: {Message[..Math.Min(Message.Length, 80)]}";
+
+        var subject    = Uri.EscapeDataString(rawSubject);
+        var encodedCtx = Uri.EscapeDataString(ctx);
+
+        Nav.NavigateTo($"/support/raise?subject={subject}&category=6&ctx={encodedCtx}");
+    }
+}

@@ -94,6 +94,11 @@ public static class WebServiceRegistration
             .AddHttpMessageHandler<BffTokenHandler>()
             .AddStandardResilienceHandler();
 
+        services
+            .AddHttpClient<TicketApiClient>(c => c.BaseAddress = new Uri(apiBase))
+            .AddHttpMessageHandler<BffTokenHandler>()
+            .AddStandardResilienceHandler();
+
         // ── Localisation ──────────────────────────────────────────
         services.AddLocalization(options => options.ResourcesPath = "Resources");
 

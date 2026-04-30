@@ -1,0 +1,109 @@
+@page "/support"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+@inject TicketApiClient TicketApi
+@inject NavigationManager Nav
+
+<PageTitle>My Support Tickets — Cinturon360</PageTitle>
+
+<PageHeader Title="Support Tickets" Subtitle="View and manage your support requests.">
+    <Actions>
+        <a href="/support/raise" class="c-btn c-btn-primary">+ Raise Ticket</a>
+    </Actions>
+</PageHeader>
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading tickets…" />
+}
+else if (_error is not null)
+{
+    <div class="c-card p-6 text-center">
+        <p class="text-sm mb-4" style="color:var(--c-danger)">@_error</p>
+        <button class="c-btn c-btn-secondary" @onclick="LoadAsync">Retry</button>
+    </div>
+}
+else if (_tickets?.Items.Count == 0)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-text-muted)">You haven't raised any support tickets yet.</p>
+        <a href="/support/raise" class="c-btn c-btn-primary mt-4">Raise your first ticket</a>
+    </div>
+}
+else
+{
+    <div class="space-y-3">
+        @foreach (var ticket in _tickets!.Items)
+        {
+            <a href="/support/@ticket.Id"
+               class="c-card p-4 flex items-start justify-between gap-4 hover:border-[var(--c-brand-sky)] transition-colors cursor-pointer block">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                        <span class="text-xs font-mono" style="color:var(--c-text-muted)">@ticket.Id</span>
+                        <TicketStatusBadge Status="@ticket.Status" />
+                        <TicketPriorityBadge Priority="@ticket.Priority" />
+                        <TicketQueueBadge Queue="@ticket.Queue" />
+                    </div>
+                    <p class="text-sm font-medium truncate" style="color:var(--c-text-primary)">@ticket.Subject</p>
+                    <p class="text-xs mt-1" style="color:var(--c-text-muted)">
+                        @ticket.Category — Updated @ticket.UpdatedAt.ToString("d MMM yyyy")
+                    </p>
+                </div>
+                @if (ticket.GitHubIssueNumber.HasValue)
+                {
+                    <a href="@ticket.GitHubIssueUrl" target="_blank"
+                       class="text-xs text-brand-sky hover:underline shrink-0"
+                       @onclick:stopPropagation>
+                        #@ticket.GitHubIssueNumber
+                    </a>
+                }
+            </a>
+        }
+    </div>
+
+    @if (_tickets!.Total > _pageSize)
+    {
+        <div class="flex justify-center gap-3 mt-6">
+            <button class="c-btn c-btn-secondary" disabled="@(_page <= 1)" @onclick="PrevPage">← Previous</button>
+            <span class="text-sm self-center" style="color:var(--c-text-muted)">Page @_page</span>
+            <button class="c-btn c-btn-secondary" disabled="@(_tickets.Total <= _page * _pageSize)" @onclick="NextPage">Next →</button>
+        </div>
+    }
+}
+
+@code {
+    private bool    _loading = true;
+    private string? _error;
+    private string  _userId  = "";
+    private Cinturon360.Contracts.Ticketing.TicketListResponse? _tickets;
+    private int     _page     = 1;
+    private const int _pageSize = 20;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _userId = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value ?? "";
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error   = null;
+        StateHasChanged();
+
+        var result = await TicketApi.ListMyTicketsAsync(_userId, _page, _pageSize);
+        if (result.IsSuccess)
+            _tickets = result.Value;
+        else
+            _error = result.Error ?? "Unable to load tickets.";
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task PrevPage() { _page--; await LoadAsync(); }
+    private async Task NextPage() { _page++; await LoadAsync(); }
+}

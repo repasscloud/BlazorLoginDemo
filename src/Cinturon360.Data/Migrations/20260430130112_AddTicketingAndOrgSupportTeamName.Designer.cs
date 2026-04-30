@@ -3,6 +3,7 @@ using System;
 using Cinturon360.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cinturon360.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260430130112_AddTicketingAndOrgSupportTeamName")]
+    partial class AddTicketingAndOrgSupportTeamName
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2682,67 +2685,6 @@ namespace Cinturon360.Data.Migrations
                     b.ToTable("support_tickets", (string)null);
                 });
 
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Ticketing.TicketAttachment", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<byte[]>("Content")
-                        .IsRequired()
-                        .HasColumnType("bytea")
-                        .HasColumnName("content");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("content_type");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("file_name");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint")
-                        .HasColumnName("file_size");
-
-                    b.Property<bool>("IsPrivate")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_private");
-
-                    b.Property<string>("TicketId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("ticket_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UploadedByUserId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("uploaded_by_user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_ticket_attachments");
-
-                    b.HasIndex("TicketId", "IsPrivate")
-                        .HasDatabaseName("ix_ticket_attachments_ticket_id_is_private");
-
-                    b.ToTable("ticket_attachments", (string)null);
-                });
-
             modelBuilder.Entity("Cinturon360.Domain.Entities.Ticketing.TicketComment", b =>
                 {
                     b.Property<string>("Id")
@@ -3316,16 +3258,6 @@ namespace Cinturon360.Data.Migrations
                     b.ToTable("OpenIddictTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Ticketing.TicketAttachment", b =>
-                {
-                    b.HasOne("Cinturon360.Domain.Entities.Ticketing.SupportTicket", null)
-                        .WithMany("Attachments")
-                        .HasForeignKey("TicketId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_ticket_attachments_support_tickets_ticket_id");
-                });
-
             modelBuilder.Entity("Cinturon360.Domain.Entities.Ticketing.TicketComment", b =>
                 {
                     b.HasOne("Cinturon360.Domain.Entities.Ticketing.SupportTicket", null)
@@ -3375,8 +3307,6 @@ namespace Cinturon360.Data.Migrations
 
             modelBuilder.Entity("Cinturon360.Domain.Entities.Ticketing.SupportTicket", b =>
                 {
-                    b.Navigation("Attachments");
-
                     b.Navigation("Comments");
 
                     b.Navigation("Escalations");

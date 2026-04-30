@@ -1,0 +1,18 @@
+@using Cinturon360.Domain.Enums.Ticketing
+
+@{
+    var (bg, text, label) = Queue switch
+    {
+        TicketQueue.Client => ("rgba(34,197,94,0.12)",  "var(--c-success)",  "Client"),
+        TicketQueue.Tmc    => ("rgba(59,130,246,0.12)", "var(--c-brand-sky)", "TMC"),
+        TicketQueue.Vendor => ("rgba(168,85,247,0.12)", "#a855f7",           "Vendor (GPS)"),
+        _                  => ("rgba(107,114,128,0.15)","var(--c-text-muted)", Queue.ToString())
+    };
+}
+
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+      style="background:@bg;color:@text">@label</span>
+
+@code {
+    [Parameter, EditorRequired] public TicketQueue Queue { get; set; }
+}

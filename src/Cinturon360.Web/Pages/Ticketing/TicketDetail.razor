@@ -1,0 +1,510 @@
+@page "/support/{TicketId}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+@inject TicketApiClient TicketApi
+@inject ToastService Toast
+@inject NavigationManager Nav
+
+<PageTitle>Ticket Detail — Cinturon360</PageTitle>
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading ticket…" />
+}
+else if (_detail is null)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-danger)">Ticket not found.</p>
+        <a href="/support" class="c-btn c-btn-secondary mt-4">Back to tickets</a>
+    </div>
+}
+else
+{
+    var t = _detail.Ticket;
+
+    <PageHeader Title="@t.Subject" Subtitle="@($"Raised {t.CreatedAt:d MMM yyyy} • {t.Category}")">
+        <Actions>
+            <a href="/support" class="c-btn c-btn-secondary">← All tickets</a>
+            @if (t.Status != TicketStatus.Closed && (t.RaisedByUserId == _userId || _isSupport))
+            {
+                <button class="c-btn c-btn-danger" @onclick="() => _showClose = true">Close ticket</button>
+            }
+        </Actions>
+    </PageHeader>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-4 max-w-5xl">
+
+        @* ── Comments thread ── *@
+        <div class="space-y-4">
+
+            @if (!_detail.Comments.Any())
+            {
+                <p class="text-sm" style="color:var(--c-text-muted)">No replies yet.</p>
+            }
+
+            @foreach (var c in _detail.Comments)
+            {
+                <div class="c-card p-4 @(c.IsPrivate ? "border-dashed" : "")"
+                     style="@(c.IsPrivate ? "border-color:var(--c-warning);background:rgba(250,204,21,0.04)" : "")">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold" style="color:var(--c-text-primary)">
+                            @c.AuthorDisplayName
+                        </span>
+                        <div class="flex items-center gap-2">
+                            @if (c.IsPrivate)
+                            {
+                                <span class="text-xs font-mono px-2 py-0.5 rounded"
+                                      style="background:rgba(250,204,21,0.2);color:var(--c-warning)">
+                                    PRIVATE
+                                </span>
+                            }
+                            <span class="text-xs" style="color:var(--c-text-muted)">
+                                @c.CreatedAt.ToString("d MMM yyyy HH:mm")
+                            </span>
+                        </div>
+                    </div>
+                    <p class="text-sm whitespace-pre-wrap" style="color:var(--c-text-secondary)">@c.Body</p>
+                </div>
+            }
+
+            @* ── Reply box ── *@
+            @if (t.Status != TicketStatus.Closed)
+            {
+                <div class="c-card p-4 space-y-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide" style="color:var(--c-text-muted)">
+                        Add a reply
+                    </p>
+                    <textarea class="c-input min-h-[100px] resize-y" maxlength="10000"
+                              @bind="_replyBody" placeholder="Type your reply…" />
+
+                    @if (_isSupport)
+                    {
+                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="checkbox" @bind="_replyPrivate" class="rounded" />
+                            <span style="color:var(--c-text-secondary)">Private note (only visible to support staff)</span>
+                        </label>
+                    }
+
+                    @if (_replyError is not null)
+                    {
+                        <p class="text-xs" style="color:var(--c-danger)">@_replyError</p>
+                    }
+
+                    <button class="c-btn c-btn-primary" disabled="@_replying" @onclick="SendReplyAsync">
+                        @(_replying ? "Sending…" : "Send reply")
+                    </button>
+                </div>
+            }
+        </div>
+
+        @* ── Sidebar ── *@
+        <div class="space-y-4">
+            @* ── Attachments ── *@
+            <div class="c-card p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide mb-3" style="color:var(--c-text-muted)">
+                    Attachments
+                </p>
+
+                @if (_detail.Attachments.Any())
+                {
+                    <ul class="space-y-2 mb-4">
+                        @foreach (var a in _detail.Attachments)
+                        {
+                            <li class="flex items-center justify-between gap-2">
+                                <div class="min-w-0">
+                                    <a href="@TicketApi.GetAttachmentDownloadUrl(t.Id, a.Id, _userId, _isSupport)"
+                                       target="_blank"
+                                       class="text-sm truncate hover:underline"
+                                       style="color:var(--c-brand-sky)">
+                                        @a.FileName
+                                    </a>
+                                    <p class="text-xs" style="color:var(--c-text-muted)">
+                                        @FormatFileSize(a.FileSize)
+                                        @if (a.IsPrivate)
+                                        {
+                                            <span class="ml-2 px-1 rounded font-mono"
+                                                  style="background:rgba(250,204,21,0.2);color:var(--c-warning)">
+                                                PRIVATE
+                                            </span>
+                                        }
+                                    </p>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-xs mb-3" style="color:var(--c-text-muted)">No attachments.</p>
+                }
+
+                @if (t.Status != TicketStatus.Closed)
+                {
+                    @if (_attachError is not null)
+                    {
+                        <p class="text-xs mb-2" style="color:var(--c-danger)">@_attachError</p>
+                    }
+                    <InputFile id="attachInput" OnChange="AttachFileAsync"
+                               class="hidden" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.zip,.docx,.xlsx,.mp4" />
+                    <label for="attachInput"
+                           class="c-btn c-btn-secondary text-sm w-full cursor-pointer text-center block">
+                        @(_uploading ? "Uploading…" : "+ Attach file")
+                    </label>
+                    @if (_isSupport)
+                    {
+                        <label class="flex items-center gap-2 text-xs mt-2 cursor-pointer">
+                            <input type="checkbox" @bind="_attachPrivate" class="rounded" />
+                            <span style="color:var(--c-text-secondary)">Private attachment</span>
+                        </label>
+                    }
+                }
+            </div>
+
+            <div class="c-card p-4 space-y-3">
+                <p class="text-xs font-semibold uppercase tracking-wide mb-2" style="color:var(--c-text-muted)">
+                    Ticket info
+                </p>
+                <DetailRow Label="Status">
+                    <TicketStatusBadge Status="@t.Status" />
+                </DetailRow>
+                <DetailRow Label="Priority">
+                    <TicketPriorityBadge Priority="@t.Priority" />
+                </DetailRow>
+                <DetailRow Label="Queue">
+                    <TicketQueueBadge Queue="@t.Queue" />
+                </DetailRow>
+                <DetailRow Label="Ticket ID">
+                    <span class="font-mono text-xs" style="color:var(--c-text-muted)">@t.Id</span>
+                </DetailRow>
+                @if (t.GitHubIssueNumber.HasValue)
+                {
+                    <DetailRow Label="GitHub">
+                        <a href="@t.GitHubIssueUrl" target="_blank"
+                           class="text-xs text-brand-sky hover:underline">
+                            #@t.GitHubIssueNumber
+                        </a>
+                    </DetailRow>
+                }
+            </div>
+
+            @* Support-only: escalation controls *@
+            @if (_isSupport && t.Status != TicketStatus.Closed)
+            {
+                <div class="c-card p-4 space-y-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide" style="color:var(--c-text-muted)">
+                        Support actions
+                    </p>
+
+                    @if (t.Queue != TicketQueue.Vendor)
+                    {
+                        <button class="c-btn c-btn-secondary w-full text-sm"
+                                @onclick="() => _showEscalate = true">
+                            Escalate ↑
+                        </button>
+                    }
+                    @if (t.Queue != TicketQueue.Client)
+                    {
+                        <button class="c-btn c-btn-secondary w-full text-sm"
+                                @onclick="() => _showDeescalate = true">
+                            De-escalate ↓
+                        </button>
+                    }
+                </div>
+            }
+
+            @* Escalation history *@
+            @if (_detail.Escalations.Any())
+            {
+                <div class="c-card p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide mb-3" style="color:var(--c-text-muted)">
+                        Escalation history
+                    </p>
+                    <div class="space-y-2">
+                        @foreach (var e in _detail.Escalations)
+                        {
+                            <div class="text-xs" style="color:var(--c-text-secondary)">
+                                <span class="font-medium">@(e.IsEscalation ? "↑ Escalated" : "↓ De-escalated")</span>
+                                <span style="color:var(--c-text-muted)"> @e.FromQueue → @e.ToQueue</span>
+                                <br />
+                                <span style="color:var(--c-text-muted)">@e.CreatedAt.ToString("d MMM yyyy")</span>
+                                @if (!string.IsNullOrWhiteSpace(e.Reason))
+                                {
+                                    <br /><em>@e.Reason</em>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@* ── Close dialog ── *@
+@if (_showClose)
+{
+    <ConfirmDialog Title="Close ticket?"
+                   Message="Are you sure you want to close this ticket? Closed tickets cannot be re-opened via the platform."
+                   ConfirmLabel="Close ticket"
+                   OnConfirm="CloseTicketAsync"
+                   OnCancel="() => _showClose = false" />
+}
+
+@* ── Escalate dialog ── *@
+@if (_showEscalate)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center"
+         style="background:rgba(0,0,0,0.5)">
+        <div class="c-card p-6 w-full max-w-sm space-y-4">
+            <h3 class="text-base font-heading font-semibold" style="color:var(--c-text-primary)">Escalate ticket</h3>
+            <div>
+                <label class="c-label">Escalate to queue</label>
+                <select class="c-input" @bind="_escalateTo">
+                    @if (_detail?.Ticket.Queue == TicketQueue.Client)
+                    {
+                        <option value="@((int)TicketQueue.Tmc)">TMC Support</option>
+                        <option value="@((int)TicketQueue.Vendor)">Vendor (GPS) Support</option>
+                    }
+                    else
+                    {
+                        <option value="@((int)TicketQueue.Vendor)">Vendor (GPS) Support</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="c-label">Reason (optional)</label>
+                <textarea class="c-input" @bind="_escalateReason" rows="3" />
+            </div>
+            <div class="flex gap-3">
+                <button class="c-btn c-btn-primary" @onclick="EscalateAsync">Escalate</button>
+                <button class="c-btn c-btn-secondary" @onclick="() => _showEscalate = false">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── De-escalate dialog ── *@
+@if (_showDeescalate)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center"
+         style="background:rgba(0,0,0,0.5)">
+        <div class="c-card p-6 w-full max-w-sm space-y-4">
+            <h3 class="text-base font-heading font-semibold" style="color:var(--c-text-primary)">De-escalate ticket</h3>
+            <div>
+                <label class="c-label">De-escalate to queue</label>
+                <select class="c-input" @bind="_deescalateTo">
+                    @if (_detail?.Ticket.Queue == TicketQueue.Vendor)
+                    {
+                        <option value="@((int)TicketQueue.Tmc)">TMC Support</option>
+                        <option value="@((int)TicketQueue.Client)">Client Support</option>
+                    }
+                    else
+                    {
+                        <option value="@((int)TicketQueue.Client)">Client Support</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="c-label">Reason (optional)</label>
+                <textarea class="c-input" @bind="_deescalateReason" rows="3" />
+            </div>
+            <div class="flex gap-3">
+                <button class="c-btn c-btn-primary" @onclick="DeescalateAsync">De-escalate</button>
+                <button class="c-btn c-btn-secondary" @onclick="() => _showDeescalate = false">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string TicketId { get; set; } = "";
+
+    private bool              _loading   = true;
+    private TicketDetailResponse? _detail;
+    private string            _userId    = "";
+    private string            _orgId     = "";
+    private string            _displayName = "";
+    private bool              _isSupport;
+
+    // Reply
+    private string  _replyBody    = "";
+    private bool    _replyPrivate;
+    private bool    _replying;
+    private string? _replyError;
+
+    // Attachments
+    private bool    _uploading;
+    private bool    _attachPrivate;
+    private string? _attachError;
+
+    // Dialogs
+    private bool    _showClose;
+    private bool    _showEscalate;
+    private bool    _showDeescalate;
+    private int     _escalateTo      = (int)TicketQueue.Tmc;
+    private string? _escalateReason;
+    private int     _deescalateTo    = (int)TicketQueue.Client;
+    private string? _deescalateReason;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var auth     = await AuthState.GetAuthenticationStateAsync();
+        _userId      = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserId)?.Value  ?? "";
+        _orgId       = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.OrgId)?.Value   ?? "";
+        _displayName = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.DisplayName)?.Value ?? "User";
+        var role     = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.PlatformRole)?.Value ?? "";
+        _isSupport   = role is "support" or "global_admin";
+
+        var result = await TicketApi.GetDetailAsync(TicketId, _isSupport);
+        if (result.IsSuccess) _detail = result.Value;
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task SendReplyAsync()
+    {
+        _replyError = null;
+        if (string.IsNullOrWhiteSpace(_replyBody))
+        {
+            _replyError = "Reply cannot be empty.";
+            return;
+        }
+
+        _replying = true;
+
+        var displayName = _isSupport
+            ? _displayName   // support uses own display name (first name captured server-side)
+            : _displayName.Split(' ')[0];
+
+        var result = await TicketApi.AddCommentAsync(
+            TicketId, _userId, displayName, _isSupport, _replyBody, _replyPrivate);
+
+        _replying = false;
+
+        if (result.IsSuccess)
+        {
+            Toast.Show("Reply sent.", "success");
+            _replyBody    = "";
+            _replyPrivate = false;
+            // Refresh
+            var refresh = await TicketApi.GetDetailAsync(TicketId, _isSupport);
+            if (refresh.IsSuccess) _detail = refresh.Value;
+        }
+        else
+        {
+            _replyError = result.Error ?? "Failed to send reply.";
+        }
+        StateHasChanged();
+    }
+
+    private async Task CloseTicketAsync()
+    {
+        _showClose = false;
+        var result = await TicketApi.CloseTicketAsync(
+            TicketId, _userId, _displayName.Split(' ')[0], resolutionNote: null);
+
+        if (result.IsSuccess)
+        {
+            Toast.Show("Ticket closed.", "success");
+            var refresh = await TicketApi.GetDetailAsync(TicketId, _isSupport);
+            if (refresh.IsSuccess) _detail = refresh.Value;
+            StateHasChanged();
+        }
+        else
+        {
+            Toast.Show(result.Error ?? "Failed to close ticket.", "error");
+        }
+    }
+
+    private async Task EscalateAsync()
+    {
+        _showEscalate = false;
+        var result = await TicketApi.EscalateAsync(
+            TicketId, _userId, _displayName,
+            (TicketQueue)_escalateTo, null, _escalateReason);
+
+        if (result.IsSuccess)
+        {
+            Toast.Show("Ticket escalated.", "success");
+            var refresh = await TicketApi.GetDetailAsync(TicketId, _isSupport);
+            if (refresh.IsSuccess) _detail = refresh.Value;
+            StateHasChanged();
+        }
+        else
+        {
+            Toast.Show(result.Error ?? "Failed to escalate.", "error");
+        }
+    }
+
+    private async Task DeescalateAsync()
+    {
+        _showDeescalate = false;
+        var result = await TicketApi.DeescalateAsync(
+            TicketId, _userId, _displayName,
+            (TicketQueue)_deescalateTo, _deescalateReason);
+
+        if (result.IsSuccess)
+        {
+            Toast.Show("Ticket de-escalated.", "success");
+            var refresh = await TicketApi.GetDetailAsync(TicketId, _isSupport);
+            if (refresh.IsSuccess) _detail = refresh.Value;
+            StateHasChanged();
+        }
+        else
+        {
+            Toast.Show(result.Error ?? "Failed to de-escalate.", "error");
+        }
+    }
+
+    private async Task AttachFileAsync(InputFileChangeEventArgs e)
+    {
+        _attachError = null;
+        _uploading   = true;
+        StateHasChanged();
+
+        const long maxBytes = 10 * 1024 * 1024;
+        var file = e.File;
+
+        if (file.Size > maxBytes)
+        {
+            _attachError = "File must be 10 MB or smaller.";
+            _uploading   = false;
+            StateHasChanged();
+            return;
+        }
+
+        using var ms = new System.IO.MemoryStream();
+        await file.OpenReadStream(maxBytes).CopyToAsync(ms);
+        var bytes = ms.ToArray();
+
+        var result = await TicketApi.UploadAttachmentAsync(
+            TicketId, _userId, _isSupport, _attachPrivate,
+            file.Name, file.ContentType, bytes);
+
+        _uploading = false;
+
+        if (result.IsSuccess)
+        {
+            Toast.Show("Attachment uploaded.", "success");
+            var refresh = await TicketApi.GetDetailAsync(TicketId, _isSupport);
+            if (refresh.IsSuccess) _detail = refresh.Value;
+        }
+        else
+        {
+            _attachError = result.Error ?? "Upload failed.";
+        }
+        StateHasChanged();
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024)             return $"{bytes} B";
+        if (bytes < 1024 * 1024)      return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F1} GB";
+    }
+}

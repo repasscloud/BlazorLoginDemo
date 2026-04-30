@@ -1,4 +1,6 @@
 @* Error boundary wrapper - shows a friendly fallback instead of crashing the whole page *@
+@inject NavigationManager Nav
+
 <ErrorBoundary @ref="_boundary">
     <ChildContent>
         @ChildContent
@@ -19,9 +21,12 @@
             <p class="text-sm mb-4" style="color:var(--c-text-muted)">
                 An unexpected error occurred on this page. You can try to recover or return home.
             </p>
-            <div class="flex gap-3 justify-center">
+            <div class="flex gap-3 justify-center flex-wrap">
                 <button class="c-btn c-btn-secondary" @onclick="Recover">Try to recover</button>
                 <a href="/" class="c-btn c-btn-primary">Go to home</a>
+                <button class="c-btn c-btn-secondary" @onclick="() => RaiseTicket(ex)">
+                    Raise Support Ticket
+                </button>
             </div>
         </div>
     </ErrorContent>
@@ -32,4 +37,18 @@
     private ErrorBoundary? _boundary;
 
     private void Recover() => _boundary?.Recover();
+
+    private void RaiseTicket(Exception ex)
+    {
+        var ctx = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            page      = Nav.Uri,
+            errorType = ex.GetType().Name,
+            message   = ex.Message,
+            timestamp = DateTimeOffset.UtcNow
+        });
+        var encodedCtx = Uri.EscapeDataString(ctx);
+        var subject    = Uri.EscapeDataString($"Error on {new Uri(Nav.Uri).AbsolutePath}: {ex.Message[..Math.Min(ex.Message.Length, 80)]}");
+        Nav.NavigateTo($"/support/raise?subject={subject}&category=6&ctx={encodedCtx}");
+    }
 }

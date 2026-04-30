@@ -1,0 +1,173 @@
+@page "/support/dashboard"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+@inject TicketApiClient TicketApi
+@inject NavigationManager Nav
+
+<PageTitle>Support Dashboard — Cinturon360</PageTitle>
+
+@if (!_authorised)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-danger)">Access denied. Support role required.</p>
+        <a href="/support" class="c-btn c-btn-secondary mt-4">Back</a>
+    </div>
+}
+else
+{
+    <PageHeader Title="Support Dashboard" Subtitle="All tickets for your organisation." />
+
+    @* ── Filters ── *@
+    <div class="c-card p-4 mb-4 flex flex-wrap gap-3 items-end">
+        <div>
+            <label class="c-label" for="filterStatus">Status</label>
+            <select id="filterStatus" class="c-input" @bind="_filterStatus" @bind:after="LoadAsync">
+                <option value="">All</option>
+                @foreach (var s in Enum.GetValues<TicketStatus>())
+                {
+                    <option value="@((int)s)">@s</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="c-label" for="filterQueue">Queue</label>
+            <select id="filterQueue" class="c-input" @bind="_filterQueue" @bind:after="LoadAsync">
+                <option value="">All</option>
+                @foreach (var q in Enum.GetValues<TicketQueue>())
+                {
+                    <option value="@((int)q)">@q</option>
+                }
+            </select>
+        </div>
+        <button class="c-btn c-btn-secondary self-end" @onclick="ClearFilters">Clear</button>
+    </div>
+
+    @if (_loading)
+    {
+        <LoadingSpinner Label="Loading tickets…" />
+    }
+    else if (_error is not null)
+    {
+        <div class="c-card p-6 text-center">
+            <p class="text-sm mb-4" style="color:var(--c-danger)">@_error</p>
+            <button class="c-btn c-btn-secondary" @onclick="LoadAsync">Retry</button>
+        </div>
+    }
+    else if (_tickets?.Items.Count == 0)
+    {
+        <div class="c-empty-state">
+            <p class="text-sm" style="color:var(--c-text-muted)">No tickets match the selected filters.</p>
+        </div>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-xs uppercase tracking-wide text-left border-b"
+                        style="color:var(--c-text-muted);border-color:var(--c-border)">
+                        <th class="py-2 pr-4">Ticket</th>
+                        <th class="py-2 pr-4">Status</th>
+                        <th class="py-2 pr-4">Priority</th>
+                        <th class="py-2 pr-4">Queue</th>
+                        <th class="py-2 pr-4">Category</th>
+                        <th class="py-2">Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ticket in _tickets!.Items)
+                    {
+                        <tr class="border-b hover:bg-[var(--c-surface-alt)] cursor-pointer transition-colors"
+                            style="border-color:var(--c-border)"
+                            @onclick="() => GoToTicket(ticket.Id)">
+                            <td class="py-2 pr-4">
+                                <span class="font-medium" style="color:var(--c-text-primary)">@ticket.Subject</span>
+                                <br />
+                                <span class="font-mono text-xs" style="color:var(--c-text-muted)">@ticket.Id</span>
+                            </td>
+                            <td class="py-2 pr-4"><TicketStatusBadge Status="@ticket.Status" /></td>
+                            <td class="py-2 pr-4"><TicketPriorityBadge Priority="@ticket.Priority" /></td>
+                            <td class="py-2 pr-4"><TicketQueueBadge Queue="@ticket.Queue" /></td>
+                            <td class="py-2 pr-4 text-xs" style="color:var(--c-text-secondary)">@ticket.Category</td>
+                            <td class="py-2 text-xs" style="color:var(--c-text-muted)">
+                                @ticket.UpdatedAt.ToString("d MMM yyyy")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_tickets!.Total > _pageSize)
+        {
+            <div class="flex justify-center gap-3 mt-6">
+                <button class="c-btn c-btn-secondary" disabled="@(_page <= 1)" @onclick="PrevPage">← Previous</button>
+                <span class="text-sm self-center" style="color:var(--c-text-muted)">
+                    Page @_page — @_tickets.Total total
+                </span>
+                <button class="c-btn c-btn-secondary" disabled="@(_tickets.Total <= _page * _pageSize)" @onclick="NextPage">Next →</button>
+            </div>
+        }
+    }
+}
+
+@code {
+    private bool   _authorised;
+    private bool   _loading = true;
+    private string? _error;
+    private string  _orgId = "";
+    private TicketListResponse? _tickets;
+    private int    _page     = 1;
+    private const int _pageSize = 50;
+    private string _filterStatus = "";
+    private string _filterQueue  = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var auth  = await AuthState.GetAuthenticationStateAsync();
+        _orgId    = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.OrgId)?.Value ?? "";
+        var role  = auth.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.PlatformRole)?.Value ?? "";
+        _authorised = role is "support" or "global_admin";
+
+        if (_authorised) await LoadAsync();
+        else _loading = false;
+
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error   = null;
+        StateHasChanged();
+
+        TicketStatus? status = _filterStatus is "" ? null
+            : Enum.TryParse<TicketStatus>(_filterStatus, out var s) ? s : (TicketStatus?)null;
+        TicketQueue?  queue  = _filterQueue  is "" ? null
+            : Enum.TryParse<TicketQueue>(_filterQueue, out var q) ? q : (TicketQueue?)null;
+
+        var result = await TicketApi.ListOrgTicketsAsync(_orgId, status, queue, _page, _pageSize);
+        if (result.IsSuccess)
+            _tickets = result.Value;
+        else
+            _error = result.Error ?? "Unable to load tickets.";
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task ClearFilters()
+    {
+        _filterStatus = "";
+        _filterQueue  = "";
+        _page         = 1;
+        await LoadAsync();
+    }
+
+    private async Task PrevPage() { _page--; await LoadAsync(); }
+    private async Task NextPage() { _page++; await LoadAsync(); }
+    private void GoToTicket(string id) => Nav.NavigateTo("/support/" + id);
+}

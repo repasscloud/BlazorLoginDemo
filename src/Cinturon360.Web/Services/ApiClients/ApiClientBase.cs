@@ -67,6 +67,20 @@ public abstract class ApiClientBase
         }
     }
 
+    protected async Task<ApiResult<T>> PostMultipartAsync<T>(string path, MultipartFormDataContent form, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await Http.PostAsync(path, form, ct);
+            return await MapResponseAsync<T>(response, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.LogError(ex, "POST(multipart) {Path} failed", path);
+            return ApiResult<T>.NetworkError("Unable to reach the server. Please check your connection.");
+        }
+    }
+
     protected async Task<ApiResult<bool>> DeleteAsync(string path, CancellationToken ct = default)
     {
         try

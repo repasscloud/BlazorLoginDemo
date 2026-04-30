@@ -37,6 +37,13 @@ public sealed class Organisation : SoftDeletableEntity
     public string? ChainName { get; private set; }
     public string? BranchCode { get; private set; }
 
+    /// <summary>
+    /// The name shown as the author on support ticket replies from this org's support staff.
+    /// Falls back to "Support Team" when null or empty.
+    /// e.g. "GPS Support", "Acme Travel Support", "Sunrise Travels Help Desk"
+    /// </summary>
+    public string? SupportTeamName { get; private set; }
+
     private Organisation() { }
 
     public static Organisation Create(
@@ -107,6 +114,16 @@ public sealed class Organisation : SoftDeletableEntity
         ChainName = chainName;
         BranchCode = branchCode;
         UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// Set or clear the support team display name for ticket replies.
+    /// Pass null to revert to the default "Support Team" label.
+    /// </summary>
+    public void SetSupportTeamName(string? name)
+    {
+        SupportTeamName = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        UpdatedAt       = DateTimeOffset.UtcNow;
     }
 
     public void Deactivate()

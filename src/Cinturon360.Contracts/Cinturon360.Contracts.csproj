@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Cinturon360.Common\Cinturon360.Common.csproj" />
+    <ProjectReference Include="..\Cinturon360.Domain\Cinturon360.Domain.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

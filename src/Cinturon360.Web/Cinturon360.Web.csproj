@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Cinturon360.Contracts\Cinturon360.Contracts.csproj" />
+    <ProjectReference Include="..\Cinturon360.Domain\Cinturon360.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

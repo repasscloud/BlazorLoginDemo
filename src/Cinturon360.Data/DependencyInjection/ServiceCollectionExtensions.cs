@@ -57,6 +57,9 @@ public static class ServiceCollectionExtensions
         // Phase 10 — Exchange Rates
         services.AddScoped<IExchangeRateRepository, ExchangeRateRepository>();
 
+        // Phase 10 — Support Ticketing
+        services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
+
         return services;
     }
 }
