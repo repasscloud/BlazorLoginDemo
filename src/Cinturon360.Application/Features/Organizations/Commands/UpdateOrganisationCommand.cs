@@ -9,6 +9,7 @@ public sealed record UpdateOrganisationCommand(
     string? PrimaryEmail,
     string? PrimaryPhone,
     string? Website,
+    string? SupportTicketEmailTemplateCode,
     string LanguageCode,
     string TimeZone,
     string CurrencyCode

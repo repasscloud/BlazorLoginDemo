@@ -13,6 +13,7 @@ public sealed record RaiseTicketRequest(
     TicketPriority Priority,
     string Subject,
     string Description,
+    bool EmailMeUpdates,
     string? ErrorContext);   // JSON: page, errorCode, traceId, message, timestamp
 
 public sealed record ReplyToTicketRequest(
@@ -36,6 +37,7 @@ public sealed record CloseTicketRequest(
 public sealed record TicketSummaryResponse(
     string         Id,
     string         RaisedByUserId,
+    bool           EmailMeUpdates,
     string         Subject,
     TicketStatus   Status,
     TicketPriority Priority,
@@ -78,3 +80,33 @@ public sealed record TicketDetailResponse(
 public sealed record TicketListResponse(
     IReadOnlyList<TicketSummaryResponse> Items,
     int Total);
+
+public sealed record TicketEmailPreferenceRequest(
+    bool EmailMeUpdates);
+
+public sealed record TicketEmailTemplateResponse(
+    string Id,
+    string Code,
+    string LanguageCode,
+    string? Description,
+    bool IsActive,
+    DateTimeOffset UpdatedAt);
+
+public sealed record TicketEmailTemplateDetailResponse(
+    string Id,
+    string Code,
+    string LanguageCode,
+    string HtmlBody,
+    string? PlainTextBody,
+    string? Description,
+    bool IsActive,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+public sealed record UpsertTicketEmailTemplateRequest(
+    string Code,
+    string LanguageCode,
+    string HtmlBody,
+    string? PlainTextBody,
+    string? Description,
+    bool IsActive = true);

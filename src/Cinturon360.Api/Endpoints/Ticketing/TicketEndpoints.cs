@@ -41,6 +41,11 @@ public static class TicketEndpoints
             .Produces<ApiResponse<object>>(204)
             .Produces<ApiResponse<object>>(400);
 
+        group.MapPut("/{ticketId}/email-preference", UpdateEmailPreference)
+            .WithName("UpdateTicketEmailPreference")
+            .Produces<ApiResponse<object>>(204)
+            .Produces<ApiResponse<object>>(400);
+
         // Support staff only
         group.MapGet("/org/{orgId}", ListForOrg)
             .WithName("ListOrgTickets")
@@ -112,6 +117,7 @@ public static class TicketEndpoints
             request.Priority,
             request.Subject,
             request.Description,
+            request.EmailMeUpdates,
             request.ErrorContext));
 
         return result.IsSuccess
@@ -149,6 +155,22 @@ public static class TicketEndpoints
             request.ActorUserId,
             request.ActorDisplayName,
             request.ResolutionNote));
+
+        return result.IsSuccess
+            ? Results.NoContent()
+            : Results.BadRequest(ApiResponse.Fail(new ApiError(result.Error.Code, result.Error.Description)));
+    }
+
+    private static async Task<IResult> UpdateEmailPreference(
+        string ticketId,
+        [FromBody] TicketEmailPreferenceApiRequest request,
+        ISender mediator)
+    {
+        var result = await mediator.Send(new UpdateTicketEmailPreferenceCommand(
+            ticketId,
+            request.ActorUserId,
+            request.CallerIsSupport,
+            request.EmailMeUpdates));
 
         return result.IsSuccess
             ? Results.NoContent()
@@ -212,6 +234,7 @@ public static class TicketEndpoints
         string ticketId,
         IFormFile file,
         [FromQuery] string uploaderUserId,
+        [FromQuery] string uploaderDisplayName,
         [FromQuery] bool   uploaderIsSupport,
         [FromQuery] bool   isPrivate,
         ISender mediator)
@@ -223,6 +246,7 @@ public static class TicketEndpoints
         var result = await mediator.Send(new UploadAttachmentCommand(
             ticketId,
             uploaderUserId,
+            uploaderDisplayName,
             uploaderIsSupport,
             file.FileName,
             file.ContentType,
@@ -271,7 +295,13 @@ public sealed record RaiseTicketApiRequest(
     TicketPriority Priority,
     string         Subject,
     string         Description,
+    bool           EmailMeUpdates,
     string?        ErrorContext);
+
+public sealed record TicketEmailPreferenceApiRequest(
+    string ActorUserId,
+    bool CallerIsSupport,
+    bool EmailMeUpdates);
 
 public sealed record AddCommentApiRequest(
     string AuthorUserId,

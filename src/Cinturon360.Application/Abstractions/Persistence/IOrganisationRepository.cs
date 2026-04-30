@@ -7,6 +7,7 @@ public interface IOrganisationRepository
 {
     Task<Organisation?> GetByIdAsync(string id, CancellationToken ct = default);
     Task<Organisation?> GetBySlugAsync(string slug, CancellationToken ct = default);
+    Task<Organisation?> GetByIdNoTrackingAsync(string id, CancellationToken ct = default);
     Task<IReadOnlyList<Organisation>> GetChildrenAsync(string parentOrgId, CancellationToken ct = default);
     Task<IReadOnlyList<Organisation>> GetByTypeAsync(OrgType orgType, CancellationToken ct = default);
     Task<IReadOnlyList<Organisation>> GetAllAsync(CancellationToken ct = default);

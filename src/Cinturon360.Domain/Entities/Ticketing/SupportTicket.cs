@@ -34,6 +34,12 @@ public sealed class SupportTicket : Entity
     /// </summary>
     public string? ErrorContext { get; private set; }
 
+    /// <summary>
+    /// Whether the ticket owner wants public updates emailed to them.
+    /// Defaults to false and can be changed per ticket.
+    /// </summary>
+    public bool EmailMeUpdates { get; private set; }
+
     // ── GitHub mirror ──────────────────────────────────────────────────────
     /// <summary>GitHub issue number in the ticketing repo. Null until sync completes.</summary>
     public int? GitHubIssueNumber { get; private set; }
@@ -64,6 +70,7 @@ public sealed class SupportTicket : Entity
         TicketPriority priority,
         string subject,
         string description,
+        bool emailMeUpdates = false,
         string? errorContext = null)
     {
         return new SupportTicket
@@ -79,8 +86,15 @@ public sealed class SupportTicket : Entity
             Queue           = TicketQueue.Client,
             Subject         = subject.Trim(),
             Description     = description.Trim(),
+            EmailMeUpdates  = emailMeUpdates,
             ErrorContext    = errorContext
         };
+    }
+
+    public void SetEmailMeUpdates(bool enabled)
+    {
+        EmailMeUpdates = enabled;
+        UpdatedAt      = DateTimeOffset.UtcNow;
     }
 
     public void SetGitHubIssue(int issueNumber, string issueUrl)

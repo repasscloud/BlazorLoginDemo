@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Cinturon360.Application.Abstractions.Persistence;
+using Cinturon360.Application.Abstractions.Services;
 using Cinturon360.Common.IdGeneration;
 using Cinturon360.Common.Results;
 using Cinturon360.Contracts.Ticketing;
@@ -28,6 +29,7 @@ public sealed record RaiseTicketCommand(
     TicketPriority Priority,
     string         Subject,
     string         Description,
+    bool           EmailMeUpdates,
     string?        ErrorContext) : IRequest<Result<string>>;
 
 public sealed class RaiseTicketHandler : IRequestHandler<RaiseTicketCommand, Result<string>>
@@ -60,6 +62,7 @@ public sealed class RaiseTicketHandler : IRequestHandler<RaiseTicketCommand, Res
             request.Priority,
             request.Subject,
             request.Description,
+            request.EmailMeUpdates,
             request.ErrorContext);
 
         await _tickets.AddAsync(ticket, ct);
@@ -131,17 +134,20 @@ public sealed class AddTicketCommentHandler : IRequestHandler<AddTicketCommentCo
 {
     private readonly ISupportTicketRepository _tickets;
     private readonly IGitHubTicketingService  _github;
+    private readonly ITicketUpdateNotificationService _notifications;
     private readonly IUnitOfWork              _uow;
     private readonly ILogger<AddTicketCommentHandler> _logger;
 
     public AddTicketCommentHandler(
         ISupportTicketRepository tickets,
         IGitHubTicketingService github,
+        ITicketUpdateNotificationService notifications,
         IUnitOfWork uow,
         ILogger<AddTicketCommentHandler> logger)
     {
         _tickets = tickets;
         _github  = github;
+        _notifications = notifications;
         _uow     = uow;
         _logger  = logger;
     }
@@ -193,6 +199,17 @@ public sealed class AddTicketCommentHandler : IRequestHandler<AddTicketCommentCo
             "EVT=TicketComment CAT=Ticketing ACT=AddComment OUT=Success TICKET={Ticket} PRIVATE={Private}",
             request.TicketId, request.IsPrivate);
 
+        if (!request.IsPrivate)
+        {
+            await _notifications.NotifyPublicUpdateAsync(
+                ticket,
+                "comment",
+                request.AuthorUserId,
+                request.AuthorDisplayName,
+                request.Body,
+                ct);
+        }
+
         return Result.Success(id);
     }
 }
@@ -210,15 +227,18 @@ public sealed class EscalateTicketHandler : IRequestHandler<EscalateTicketComman
 {
     private readonly ISupportTicketRepository _tickets;
     private readonly IGitHubTicketingService  _github;
+    private readonly ITicketUpdateNotificationService _notifications;
     private readonly IUnitOfWork              _uow;
 
     public EscalateTicketHandler(
         ISupportTicketRepository tickets,
         IGitHubTicketingService github,
+        ITicketUpdateNotificationService notifications,
         IUnitOfWork uow)
     {
         _tickets = tickets;
         _github  = github;
+        _notifications = notifications;
         _uow     = uow;
     }
 
@@ -254,6 +274,16 @@ public sealed class EscalateTicketHandler : IRequestHandler<EscalateTicketComman
             await _github.AddCommentAsync(ticket.GitHubIssueNumber.Value, note, ct);
         }
 
+        var publicNote = $"Ticket escalated to {request.ToQueue}."
+                       + (string.IsNullOrWhiteSpace(request.Reason) ? string.Empty : $" Reason: {request.Reason}");
+        await _notifications.NotifyPublicUpdateAsync(
+            ticket,
+            "escalated",
+            request.ActorUserId,
+            request.ActorDisplayName,
+            publicNote,
+            ct);
+
         return Result.Success();
     }
 }
@@ -270,15 +300,18 @@ public sealed class DeescalateTicketHandler : IRequestHandler<DeescalateTicketCo
 {
     private readonly ISupportTicketRepository _tickets;
     private readonly IGitHubTicketingService  _github;
+    private readonly ITicketUpdateNotificationService _notifications;
     private readonly IUnitOfWork              _uow;
 
     public DeescalateTicketHandler(
         ISupportTicketRepository tickets,
         IGitHubTicketingService github,
+        ITicketUpdateNotificationService notifications,
         IUnitOfWork uow)
     {
         _tickets = tickets;
         _github  = github;
+        _notifications = notifications;
         _uow     = uow;
     }
 
@@ -311,6 +344,16 @@ public sealed class DeescalateTicketHandler : IRequestHandler<DeescalateTicketCo
             await _github.AddCommentAsync(ticket.GitHubIssueNumber.Value, note, ct);
         }
 
+        var publicNote = $"Ticket moved back to {request.ToQueue}."
+                       + (string.IsNullOrWhiteSpace(request.Reason) ? string.Empty : $" Reason: {request.Reason}");
+        await _notifications.NotifyPublicUpdateAsync(
+            ticket,
+            "deescalated",
+            request.ActorUserId,
+            request.ActorDisplayName,
+            publicNote,
+            ct);
+
         return Result.Success();
     }
 }
@@ -326,17 +369,20 @@ public sealed class CloseTicketHandler : IRequestHandler<CloseTicketCommand, Res
 {
     private readonly ISupportTicketRepository _tickets;
     private readonly IGitHubTicketingService  _github;
+    private readonly ITicketUpdateNotificationService _notifications;
     private readonly IUnitOfWork              _uow;
     private readonly ILogger<CloseTicketHandler> _logger;
 
     public CloseTicketHandler(
         ISupportTicketRepository tickets,
         IGitHubTicketingService github,
+        ITicketUpdateNotificationService notifications,
         IUnitOfWork uow,
         ILogger<CloseTicketHandler> logger)
     {
         _tickets = tickets;
         _github  = github;
+        _notifications = notifications;
         _uow     = uow;
         _logger  = logger;
     }
@@ -364,6 +410,47 @@ public sealed class CloseTicketHandler : IRequestHandler<CloseTicketCommand, Res
             "EVT=TicketClosed CAT=Ticketing ACT=Close OUT=Success TICKET={Id}",
             request.TicketId);
 
+        await _notifications.NotifyPublicUpdateAsync(
+            ticket,
+            "closed",
+            request.ActorUserId,
+            request.ActorDisplayName,
+            string.IsNullOrWhiteSpace(request.ResolutionNote) ? "The ticket has been closed." : request.ResolutionNote!,
+            ct);
+
+        return Result.Success();
+    }
+}
+
+public sealed record UpdateTicketEmailPreferenceCommand(
+    string TicketId,
+    string ActorUserId,
+    bool CallerIsSupport,
+    bool EmailMeUpdates) : IRequest<Result>;
+
+public sealed class UpdateTicketEmailPreferenceHandler : IRequestHandler<UpdateTicketEmailPreferenceCommand, Result>
+{
+    private readonly ISupportTicketRepository _tickets;
+    private readonly IUnitOfWork _uow;
+
+    public UpdateTicketEmailPreferenceHandler(
+        ISupportTicketRepository tickets,
+        IUnitOfWork uow)
+    {
+        _tickets = tickets;
+        _uow = uow;
+    }
+
+    public async Task<Result> Handle(UpdateTicketEmailPreferenceCommand request, CancellationToken ct)
+    {
+        var ticket = await _tickets.GetByIdAsync(request.TicketId, ct);
+        if (ticket is null) return Result.Failure(TicketErrors.NotFound);
+
+        if (!request.CallerIsSupport && ticket.RaisedByUserId != request.ActorUserId)
+            return Result.Failure(TicketErrors.Forbidden);
+
+        ticket.SetEmailMeUpdates(request.EmailMeUpdates);
+        await _uow.SaveChangesAsync(ct);
         return Result.Success();
     }
 }
@@ -372,6 +459,7 @@ public sealed class CloseTicketHandler : IRequestHandler<CloseTicketCommand, Res
 public sealed record UploadAttachmentCommand(
     string TicketId,
     string UploaderUserId,
+    string UploaderDisplayName,
     bool   UploaderIsSupport,
     string FileName,
     string ContentType,
@@ -403,15 +491,18 @@ public sealed class UploadAttachmentHandler : IRequestHandler<UploadAttachmentCo
     };
 
     private readonly ISupportTicketRepository          _tickets;
+    private readonly ITicketUpdateNotificationService  _notifications;
     private readonly IUnitOfWork                       _uow;
     private readonly ILogger<UploadAttachmentHandler>  _logger;
 
     public UploadAttachmentHandler(
         ISupportTicketRepository tickets,
+        ITicketUpdateNotificationService notifications,
         IUnitOfWork uow,
         ILogger<UploadAttachmentHandler> logger)
     {
         _tickets = tickets;
+        _notifications = notifications;
         _uow     = uow;
         _logger  = logger;
     }
@@ -450,6 +541,90 @@ public sealed class UploadAttachmentHandler : IRequestHandler<UploadAttachmentCo
             "EVT=AttachmentUploaded CAT=Ticketing ACT=Upload OUT=Success TICKET={Ticket} ATTACH={Id} SIZE={Size}",
             request.TicketId, id, request.Content.Length);
 
+        if (!request.IsPrivate)
+        {
+            await _notifications.NotifyPublicUpdateAsync(
+                ticket,
+                "attachment",
+                request.UploaderUserId,
+                request.UploaderDisplayName,
+                $"A new attachment was added: {request.FileName}",
+                ct);
+        }
+
         return Result.Success(id);
+    }
+}
+
+public sealed record UpsertTicketEmailTemplateCommand(
+    string Code,
+    string LanguageCode,
+    string HtmlBody,
+    string? PlainTextBody,
+    string? Description,
+    bool IsActive) : IRequest<Result<string>>;
+
+public sealed class UpsertTicketEmailTemplateHandler : IRequestHandler<UpsertTicketEmailTemplateCommand, Result<string>>
+{
+    private readonly ITicketEmailTemplateRepository _templates;
+    private readonly IUnitOfWork _uow;
+
+    public UpsertTicketEmailTemplateHandler(
+        ITicketEmailTemplateRepository templates,
+        IUnitOfWork uow)
+    {
+        _templates = templates;
+        _uow = uow;
+    }
+
+    public async Task<Result<string>> Handle(UpsertTicketEmailTemplateCommand request, CancellationToken ct)
+    {
+        var existing = await _templates.GetByCodeAndLanguageAsync(request.Code, request.LanguageCode, ct);
+        if (existing is null)
+        {
+            var created = TicketEmailTemplate.Create(
+                IdGenerator.New(IdPrefix.TicketEmailTemplate),
+                request.Code,
+                request.LanguageCode,
+                request.HtmlBody,
+                request.PlainTextBody,
+                request.Description);
+
+            created.UpdateContent(request.HtmlBody, request.PlainTextBody, request.Description, request.IsActive);
+            await _templates.AddAsync(created, ct);
+            await _uow.SaveChangesAsync(ct);
+            return Result.Success(created.Id);
+        }
+
+        existing.UpdateContent(request.HtmlBody, request.PlainTextBody, request.Description, request.IsActive);
+        await _uow.SaveChangesAsync(ct);
+        return Result.Success(existing.Id);
+    }
+}
+
+public sealed record DeleteTicketEmailTemplateCommand(string TemplateId) : IRequest<Result>;
+
+public sealed class DeleteTicketEmailTemplateHandler : IRequestHandler<DeleteTicketEmailTemplateCommand, Result>
+{
+    private readonly ITicketEmailTemplateRepository _templates;
+    private readonly IUnitOfWork _uow;
+
+    public DeleteTicketEmailTemplateHandler(
+        ITicketEmailTemplateRepository templates,
+        IUnitOfWork uow)
+    {
+        _templates = templates;
+        _uow = uow;
+    }
+
+    public async Task<Result> Handle(DeleteTicketEmailTemplateCommand request, CancellationToken ct)
+    {
+        var template = await _templates.GetByIdAsync(request.TemplateId, ct);
+        if (template is null)
+            return Result.Failure(TicketErrors.NotFound);
+
+        _templates.Remove(template);
+        await _uow.SaveChangesAsync(ct);
+        return Result.Success();
     }
 }

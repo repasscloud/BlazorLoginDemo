@@ -165,6 +165,18 @@ else
                 <p class="text-xs font-semibold uppercase tracking-wide mb-2" style="color:var(--c-text-muted)">
                     Ticket info
                 </p>
+                @if (t.RaisedByUserId == _userId)
+                {
+                    <div class="rounded-lg border p-3" style="border-color:var(--c-border-subtle)">
+                        <label class="flex items-center gap-2 text-sm cursor-pointer mb-2">
+                            <input type="checkbox" @bind="_emailMeUpdates" class="rounded" />
+                            <span style="color:var(--c-text-secondary)">Email me public updates</span>
+                        </label>
+                        <button class="c-btn c-btn-secondary text-xs" disabled="@_savingEmailPreference" @onclick="UpdateEmailPreferenceAsync">
+                            @(_savingEmailPreference ? "Saving…" : "Save preference")
+                        </button>
+                    </div>
+                }
                 <DetailRow Label="Status">
                     <TicketStatusBadge Status="@t.Status" />
                 </DetailRow>
@@ -337,6 +349,8 @@ else
     private bool    _uploading;
     private bool    _attachPrivate;
     private string? _attachError;
+    private bool    _emailMeUpdates;
+    private bool    _savingEmailPreference;
 
     // Dialogs
     private bool    _showClose;
@@ -359,7 +373,11 @@ else
         _isSupport   = role is "support" or "global_admin";
 
         var result = await TicketApi.GetDetailAsync(TicketId, _isSupport);
-        if (result.IsSuccess) _detail = result.Value;
+        if (result.IsSuccess)
+        {
+            _detail = result.Value;
+            _emailMeUpdates = result.Value?.Ticket.EmailMeUpdates ?? false;
+        }
 
         _loading = false;
         StateHasChanged();
@@ -482,7 +500,7 @@ else
         var bytes = ms.ToArray();
 
         var result = await TicketApi.UploadAttachmentAsync(
-            TicketId, _userId, _isSupport, _attachPrivate,
+            TicketId, _userId, _displayName, _isSupport, _attachPrivate,
             file.Name, file.ContentType, bytes);
 
         _uploading = false;
@@ -497,6 +515,30 @@ else
         {
             _attachError = result.Error ?? "Upload failed.";
         }
+        StateHasChanged();
+    }
+
+    private async Task UpdateEmailPreferenceAsync()
+    {
+        _savingEmailPreference = true;
+        var result = await TicketApi.UpdateEmailPreferenceAsync(TicketId, _userId, _isSupport, _emailMeUpdates);
+        _savingEmailPreference = false;
+
+        if (result.IsSuccess)
+        {
+            Toast.Show("Email preference updated.", "success");
+            var refresh = await TicketApi.GetDetailAsync(TicketId, _isSupport);
+            if (refresh.IsSuccess)
+            {
+                _detail = refresh.Value;
+                _emailMeUpdates = refresh.Value?.Ticket.EmailMeUpdates ?? _emailMeUpdates;
+            }
+        }
+        else
+        {
+            Toast.Show(result.Error ?? "Failed to update email preference.", "error");
+        }
+
         StateHasChanged();
     }
 

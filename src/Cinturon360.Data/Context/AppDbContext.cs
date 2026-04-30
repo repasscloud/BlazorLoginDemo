@@ -84,6 +84,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<TicketComment>    TicketComments    => Set<TicketComment>();
     public DbSet<TicketEscalation> TicketEscalations => Set<TicketEscalation>();
     public DbSet<TicketAttachment> TicketAttachments => Set<TicketAttachment>();
+    public DbSet<TicketEmailTemplate> TicketEmailTemplates => Set<TicketEmailTemplate>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

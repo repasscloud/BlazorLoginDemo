@@ -16,6 +16,8 @@
             <Authorized>
                 @{
                     var cat = context.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.UserCategory)?.Value;
+                    var platformRole = context.User.FindFirst(Cinturon360.Web.Security.ClaimTypes.PlatformRole)?.Value;
+                    var canManageTicketTemplates = string.Equals(platformRole, Cinturon360.Common.Constants.Roles.GlobalAdmin, StringComparison.OrdinalIgnoreCase);
                 }
 
                 <!-- Client section (all authenticated users) -->
@@ -44,6 +46,10 @@
                     <p class="c-nav-group-label">Vendor</p>
                     <NavItem Href="/vendor" Icon="building" Label="Vendor Dashboard" />
                     <NavItem Href="/vendor/organisations" Icon="sitemap" Label="Organisations" />
+                    @if (canManageTicketTemplates)
+                    {
+                        <NavItem Href="/vendor/ticket-email-templates" Icon="mail" Label="Ticket Templates" />
+                    }
                     <NavItem Href="/vendor/billing" Icon="credit-card" Label="Billing Overview" />
                 }
 

@@ -33,6 +33,7 @@ public sealed class OrganisationConfiguration : IEntityTypeConfiguration<Organis
 
         // Support team display name (shown on ticket replies)
         builder.Property(x => x.SupportTeamName).HasMaxLength(200);
+        builder.Property(x => x.SupportTicketEmailTemplateCode).HasMaxLength(200);
 
         builder.HasIndex(x => x.ChainCode);
 

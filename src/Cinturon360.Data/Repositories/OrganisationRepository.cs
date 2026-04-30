@@ -11,6 +11,9 @@ public sealed class OrganisationRepository(AppDbContext db) : IOrganisationRepos
     public Task<Organisation?> GetByIdAsync(string id, CancellationToken ct = default)
         => db.Organisations.FirstOrDefaultAsync(o => o.Id == id, ct);
 
+    public Task<Organisation?> GetByIdNoTrackingAsync(string id, CancellationToken ct = default)
+        => db.Organisations.AsNoTracking().FirstOrDefaultAsync(o => o.Id == id, ct);
+
     public Task<Organisation?> GetBySlugAsync(string slug, CancellationToken ct = default)
         => db.Organisations.FirstOrDefaultAsync(o => o.Slug == slug, ct);
 

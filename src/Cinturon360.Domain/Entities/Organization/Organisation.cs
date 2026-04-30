@@ -44,6 +44,12 @@ public sealed class Organisation : SoftDeletableEntity
     /// </summary>
     public string? SupportTeamName { get; private set; }
 
+    /// <summary>
+    /// Template code used for support-ticket update emails for users in this org.
+    /// The system resolves language-specific variants from this code.
+    /// </summary>
+    public string? SupportTicketEmailTemplateCode { get; private set; }
+
     private Organisation() { }
 
     public static Organisation Create(
@@ -124,6 +130,12 @@ public sealed class Organisation : SoftDeletableEntity
     {
         SupportTeamName = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
         UpdatedAt       = DateTimeOffset.UtcNow;
+    }
+
+    public void SetSupportTicketEmailTemplateCode(string? code)
+    {
+        SupportTicketEmailTemplateCode = string.IsNullOrWhiteSpace(code) ? null : code.Trim();
+        UpdatedAt                      = DateTimeOffset.UtcNow;
     }
 
     public void Deactivate()

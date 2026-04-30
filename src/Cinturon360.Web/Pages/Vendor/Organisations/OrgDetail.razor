@@ -78,6 +78,13 @@ else
                     <dt style="color:var(--c-text-muted)">Currency</dt>
                     <dd>@_org.CurrencyCode</dd>
                 </div>
+                @if (!string.IsNullOrWhiteSpace(_org.SupportTicketEmailTemplateCode))
+                {
+                    <div class="flex justify-between gap-4">
+                        <dt style="color:var(--c-text-muted)">Support ticket email template</dt>
+                        <dd class="font-mono text-xs">@_org.SupportTicketEmailTemplateCode</dd>
+                    </div>
+                }
             </dl>
         </div>
     }
@@ -134,6 +141,11 @@ else
                 <div class="c-field">
                     <label class="c-label" for="website">Website <span class="text-xs text-muted">(optional)</span></label>
                     <InputText id="website" class="c-input" type="url" placeholder="https://" @bind-Value="_model.Website" />
+                </div>
+
+                <div class="c-field">
+                    <label class="c-label" for="supportTicketEmailTemplateCode">Support ticket email template code <span class="text-xs text-muted">(optional)</span></label>
+                    <InputText id="supportTicketEmailTemplateCode" class="c-input font-mono text-sm" @bind-Value="_model.SupportTicketEmailTemplateCode" />
                 </div>
 
                 <div class="grid grid-cols-3 gap-3">
@@ -216,6 +228,7 @@ else
                 _model.PrimaryEmail = _org.PrimaryEmail;
                 _model.PrimaryPhone = _org.PrimaryPhone;
                 _model.Website      = _org.Website;
+                _model.SupportTicketEmailTemplateCode = _org.SupportTicketEmailTemplateCode;
                 _model.LanguageCode = _org.LanguageCode;
                 _model.TimeZone     = _org.TimeZone;
                 _model.CurrencyCode = _org.CurrencyCode;
@@ -263,6 +276,7 @@ else
                 PrimaryEmail: _model.PrimaryEmail,
                 PrimaryPhone: _model.PrimaryPhone,
                 Website:      _model.Website,
+                SupportTicketEmailTemplateCode: _model.SupportTicketEmailTemplateCode,
                 LanguageCode: _model.LanguageCode ?? "en",
                 TimeZone:     _model.TimeZone ?? "UTC",
                 CurrencyCode: _model.CurrencyCode ?? "AUD"));
@@ -291,6 +305,7 @@ else
         public string? PrimaryEmail { get; set; }
         public string? PrimaryPhone { get; set; }
         public string? Website      { get; set; }
+        public string? SupportTicketEmailTemplateCode { get; set; }
         public string? LanguageCode { get; set; } = "en";
         public string? TimeZone     { get; set; } = "UTC";
         public string? CurrencyCode { get; set; } = "AUD";

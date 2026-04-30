@@ -17,6 +17,7 @@ public sealed class UpdateOrganisationCommandHandler(
 
         org.UpdateDetails(cmd.Name, cmd.PrimaryEmail, cmd.PrimaryPhone, cmd.Website);
         org.UpdateLocale(cmd.LanguageCode, cmd.TimeZone, cmd.CurrencyCode);
+        org.SetSupportTicketEmailTemplateCode(cmd.SupportTicketEmailTemplateCode);
 
         await unitOfWork.SaveChangesAsync(ct);
         return Result.Success();

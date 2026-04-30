@@ -86,6 +86,7 @@ try
     app.MapApprovalEndpoints();
     app.MapBillingEndpoints();
     app.MapJobEndpoints();
+    app.MapTicketEmailTemplateEndpoints();
     app.MapTicketEndpoints();
 
     app.Run();

@@ -1,0 +1,346 @@
+@page "/vendor/ticket-email-templates"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject SystemApiClient SystemApi
+
+<PageTitle>Ticket Templates — Cinturon360</PageTitle>
+
+<PageHeader Title="Ticket Templates" Subtitle="View rendered support-ticket templates and delete obsolete variants." />
+
+@if (_loading)
+{
+    <LoadingSpinner FullPage Label="Loading ticket email templates…" />
+}
+else if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="c-banner c-banner-danger">@_error</div>
+}
+else if (_templates.Count == 0)
+{
+    <div class="c-empty-state">
+        <p class="text-sm" style="color:var(--c-text-muted)">No ticket email templates found.</p>
+    </div>
+}
+else
+{
+    <div class="template-grid">
+        <aside class="c-card overflow-hidden">
+            <div class="template-list-header">
+                <span>Stored templates</span>
+                <span class="text-xs" style="color:var(--c-text-muted)">@_templates.Count total</span>
+            </div>
+
+            <div class="template-list">
+                @foreach (var template in _templates)
+                {
+                    <button type="button"
+                            class="template-list-item @(template.Id == _selectedTemplateId ? "is-active" : string.Empty)"
+                            @onclick="() => SelectTemplateAsync(template.Id)">
+                        <div class="template-list-item-top">
+                            <span class="font-medium">@template.Code</span>
+                            <StatusBadge Status="@(template.IsActive ? "active" : "inactive")" />
+                        </div>
+                        <div class="text-xs" style="color:var(--c-text-muted)">@template.LanguageCode</div>
+                        @if (!string.IsNullOrWhiteSpace(template.Description))
+                        {
+                            <div class="text-xs template-description">@template.Description</div>
+                        }
+                        <div class="text-xs" style="color:var(--c-text-muted)">Updated @template.UpdatedAt.ToString("d MMM yyyy HH:mm") UTC</div>
+                    </button>
+                }
+            </div>
+        </aside>
+
+        <section class="template-preview-column">
+            @if (_detailLoading)
+            {
+                <div class="c-card">
+                    <LoadingSpinner Label="Loading selected template…" />
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(_detailError))
+            {
+                <div class="c-banner c-banner-danger">@_detailError</div>
+            }
+            else if (_selectedTemplate is not null)
+            {
+                <div class="c-card template-detail-card">
+                    <div class="template-detail-header">
+                        <div>
+                            <div class="text-xs" style="color:var(--c-text-muted)">Template code</div>
+                            <h2 class="template-title">@_selectedTemplate.Code</h2>
+                            <div class="text-sm" style="color:var(--c-text-muted)">@_selectedTemplate.LanguageCode</div>
+                        </div>
+                        <div class="template-actions">
+                            <StatusBadge Status="@(_selectedTemplate.IsActive ? "active" : "inactive")" />
+                            <button type="button"
+                                    class="c-btn c-btn-danger"
+                                    disabled="@_deleting"
+                                    @onclick="DeleteSelectedAsync">
+                                @(_deleting ? "Deleting…" : "Delete template")
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(_selectedTemplate.Description))
+                    {
+                        <p class="text-sm" style="color:var(--c-text-muted)">@_selectedTemplate.Description</p>
+                    }
+
+                    <div class="template-meta-grid">
+                        <div>
+                            <div class="text-xs" style="color:var(--c-text-muted)">Created</div>
+                            <div>@_selectedTemplate.CreatedAt.ToString("d MMM yyyy HH:mm") UTC</div>
+                        </div>
+                        <div>
+                            <div class="text-xs" style="color:var(--c-text-muted)">Updated</div>
+                            <div>@_selectedTemplate.UpdatedAt.ToString("d MMM yyyy HH:mm") UTC</div>
+                        </div>
+                    </div>
+
+                    <div class="template-preview-block">
+                        <div class="template-preview-heading">Rendered HTML</div>
+                        <iframe class="template-preview-frame" sandbox="allow-same-origin" srcdoc="@_selectedTemplate.HtmlBody"></iframe>
+                    </div>
+
+                    <div class="template-preview-block">
+                        <div class="template-preview-heading">Plain text</div>
+                        <pre class="template-plain-text">@(_selectedTemplate.PlainTextBody ?? "No plain-text variant stored.")</pre>
+                    </div>
+                </div>
+            }
+        </section>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _detailLoading;
+    private bool _deleting;
+    private string? _error;
+    private string? _detailError;
+    private string? _selectedTemplateId;
+    private List<Cinturon360.Contracts.Ticketing.TicketEmailTemplateResponse> _templates = new();
+    private Cinturon360.Contracts.Ticketing.TicketEmailTemplateDetailResponse? _selectedTemplate;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await LoadTemplatesAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadTemplatesAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var result = await SystemApi.ListTicketEmailTemplatesAsync();
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _error = result.Error ?? "Unable to load ticket email templates.";
+            _loading = false;
+            return;
+        }
+
+        _templates = result.Value.ToList();
+        _loading = false;
+
+        if (_templates.Count == 0)
+        {
+            _selectedTemplateId = null;
+            _selectedTemplate = null;
+            return;
+        }
+
+        var targetId = _selectedTemplateId;
+        if (string.IsNullOrWhiteSpace(targetId) || !_templates.Any(x => x.Id == targetId))
+            targetId = _templates[0].Id;
+
+        await SelectTemplateAsync(targetId);
+    }
+
+    private async Task SelectTemplateAsync(string templateId)
+    {
+        if (string.IsNullOrWhiteSpace(templateId))
+            return;
+
+        _selectedTemplateId = templateId;
+        _detailLoading = true;
+        _detailError = null;
+
+        var result = await SystemApi.GetTicketEmailTemplateAsync(templateId);
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _selectedTemplate = null;
+            _detailError = result.Error ?? "Unable to load the selected template.";
+            _detailLoading = false;
+            return;
+        }
+
+        _selectedTemplate = result.Value;
+        _detailLoading = false;
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (_selectedTemplate is null)
+            return;
+
+        _deleting = true;
+        _detailError = null;
+
+        var deleteResult = await SystemApi.DeleteTicketEmailTemplateAsync(_selectedTemplate.Id);
+        if (!deleteResult.IsSuccess)
+        {
+            _detailError = deleteResult.Error ?? "Unable to delete the selected template.";
+            _deleting = false;
+            return;
+        }
+
+        _deleting = false;
+        await LoadTemplatesAsync();
+    }
+}
+
+<style>
+    .template-grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+        align-items: start;
+    }
+
+    .template-list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--c-border-subtle);
+        font-weight: 600;
+    }
+
+    .template-list {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .template-list-item {
+        width: 100%;
+        text-align: left;
+        padding: 1rem 1.25rem;
+        border: 0;
+        border-bottom: 1px solid var(--c-border-subtle);
+        background: transparent;
+        display: grid;
+        gap: 0.4rem;
+    }
+
+    .template-list-item:hover,
+    .template-list-item.is-active {
+        background: color-mix(in srgb, var(--c-brand-primary) 8%, white);
+    }
+
+    .template-list-item-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .template-description {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        color: var(--c-text-secondary);
+    }
+
+    .template-preview-column {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .template-detail-card {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .template-detail-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .template-actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: end;
+    }
+
+    .template-title {
+        margin: 0;
+        font-size: 1.5rem;
+        line-height: 1.2;
+    }
+
+    .template-meta-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .template-preview-block {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .template-preview-heading {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--c-text-secondary);
+    }
+
+    .template-preview-frame {
+        width: 100%;
+        min-height: 28rem;
+        border-radius: 1rem;
+        border: 1px solid var(--c-border-subtle);
+        background: white;
+    }
+
+    .template-plain-text {
+        margin: 0;
+        white-space: pre-wrap;
+        padding: 1rem;
+        border-radius: 1rem;
+        border: 1px solid var(--c-border-subtle);
+        background: var(--c-surface-subtle);
+        color: var(--c-text-primary);
+        font-size: 0.875rem;
+    }
+
+    @@media (max-width: 960px) {
+        .template-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .template-detail-header {
+            flex-direction: column;
+        }
+
+        .template-actions,
+        .template-list-item-top {
+            justify-content: space-between;
+        }
+
+        .template-meta-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

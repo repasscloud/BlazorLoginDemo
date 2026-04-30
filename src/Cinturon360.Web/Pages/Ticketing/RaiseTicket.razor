@@ -61,6 +61,11 @@
                       placeholder="Please describe your issue in as much detail as possible." />
         </div>
 
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" @bind="_emailMeUpdates" class="rounded" />
+            <span style="color:var(--c-text-secondary)">Email me updates</span>
+        </label>
+
         @if (!string.IsNullOrWhiteSpace(_errorMsg))
         {
             <p class="text-sm" style="color:var(--c-danger)">@_errorMsg</p>
@@ -90,6 +95,7 @@
     private string _description = "";
     private int    _category    = (int)TicketCategory.General;
     private int    _priority    = (int)TicketPriority.Medium;
+    private bool   _emailMeUpdates;
     private bool   _submitting;
     private string? _errorMsg;
     private string  _userId = "";
@@ -136,6 +142,7 @@
             (TicketPriority)_priority,
             _subject,
             _description,
+            _emailMeUpdates,
             ErrorContext);
 
         _submitting = false;

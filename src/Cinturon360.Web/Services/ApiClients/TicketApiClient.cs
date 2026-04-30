@@ -27,6 +27,7 @@ public sealed class TicketApiClient : ApiClientBase
         TicketPriority priority,
         string subject,
         string description,
+        bool emailMeUpdates,
         string? errorContext,
         CancellationToken ct = default)
         => PostAsync<string>("api/v1/tickets", new
@@ -39,7 +40,21 @@ public sealed class TicketApiClient : ApiClientBase
             Priority           = (int)priority,
             Subject            = subject,
             Description        = description,
+            EmailMeUpdates     = emailMeUpdates,
             ErrorContext       = errorContext
+        }, ct);
+
+    public Task<ApiResult<bool>> UpdateEmailPreferenceAsync(
+        string ticketId,
+        string actorUserId,
+        bool callerIsSupport,
+        bool emailMeUpdates,
+        CancellationToken ct = default)
+        => PutAsync<bool>($"api/v1/tickets/{ticketId}/email-preference", new
+        {
+            ActorUserId = actorUserId,
+            CallerIsSupport = callerIsSupport,
+            EmailMeUpdates = emailMeUpdates
         }, ct);
 
     public Task<ApiResult<string>> AddCommentAsync(
@@ -121,6 +136,7 @@ public sealed class TicketApiClient : ApiClientBase
     public async Task<ApiResult<string>> UploadAttachmentAsync(
         string ticketId,
         string uploaderUserId,
+        string uploaderDisplayName,
         bool   uploaderIsSupport,
         bool   isPrivate,
         string fileName,
@@ -130,6 +146,7 @@ public sealed class TicketApiClient : ApiClientBase
     {
         var url = $"api/v1/tickets/{ticketId}/attachments"
                 + $"?uploaderUserId={Uri.EscapeDataString(uploaderUserId)}"
+                + $"&uploaderDisplayName={Uri.EscapeDataString(uploaderDisplayName)}"
                 + $"&uploaderIsSupport={uploaderIsSupport}"
                 + $"&isPrivate={isPrivate}";
 

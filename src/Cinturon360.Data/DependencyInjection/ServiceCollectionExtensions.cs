@@ -59,6 +59,7 @@ public static class ServiceCollectionExtensions
 
         // Phase 10 — Support Ticketing
         services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
+        services.AddScoped<ITicketEmailTemplateRepository, TicketEmailTemplateRepository>();
 
         return services;
     }

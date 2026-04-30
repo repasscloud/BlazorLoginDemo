@@ -42,7 +42,7 @@ public sealed class GetTicketDetailHandler : IRequestHandler<GetTicketDetailQuer
                 .ToList());
 
     internal static TicketSummaryResponse MapSummary(SupportTicket t)
-        => new(t.Id, t.RaisedByUserId, t.Subject, t.Status, t.Priority, t.Queue, t.Category,
+        => new(t.Id, t.RaisedByUserId, t.EmailMeUpdates, t.Subject, t.Status, t.Priority, t.Queue, t.Category,
                t.GitHubIssueNumber, t.GitHubIssueUrl, t.CreatedAt, t.UpdatedAt);
 
     internal static TicketCommentResponse MapComment(TicketComment c)
@@ -120,5 +120,59 @@ public sealed class DownloadAttachmentHandler : IRequestHandler<DownloadAttachme
     {
         var attachment = await _tickets.GetAttachmentAsync(request.AttachmentId, ct);
         return Result.Success<TicketAttachment?>(attachment);
+    }
+}
+
+public sealed record GetTicketEmailTemplateQuery(string TemplateId)
+    : IRequest<Result<TicketEmailTemplateDetailResponse?>>;
+
+public sealed class GetTicketEmailTemplateHandler : IRequestHandler<GetTicketEmailTemplateQuery, Result<TicketEmailTemplateDetailResponse?>>
+{
+    private readonly ITicketEmailTemplateRepository _templates;
+
+    public GetTicketEmailTemplateHandler(ITicketEmailTemplateRepository templates) => _templates = templates;
+
+    public async Task<Result<TicketEmailTemplateDetailResponse?>> Handle(GetTicketEmailTemplateQuery request, CancellationToken ct)
+    {
+        var template = await _templates.GetByIdAsync(request.TemplateId, ct);
+        if (template is null)
+            return Result.Success<TicketEmailTemplateDetailResponse?>(null);
+
+        return Result.Success<TicketEmailTemplateDetailResponse?>(MapDetail(template));
+    }
+
+    internal static TicketEmailTemplateDetailResponse MapDetail(TicketEmailTemplate template)
+        => new(
+            template.Id,
+            template.Code,
+            template.LanguageCode,
+            template.HtmlBody,
+            template.PlainTextBody,
+            template.Description,
+            template.IsActive,
+            template.CreatedAt,
+            template.UpdatedAt);
+}
+
+public sealed record ListTicketEmailTemplatesQuery(string? Code = null)
+    : IRequest<Result<IReadOnlyList<TicketEmailTemplateResponse>>>;
+
+public sealed class ListTicketEmailTemplatesHandler : IRequestHandler<ListTicketEmailTemplatesQuery, Result<IReadOnlyList<TicketEmailTemplateResponse>>>
+{
+    private readonly ITicketEmailTemplateRepository _templates;
+
+    public ListTicketEmailTemplatesHandler(ITicketEmailTemplateRepository templates) => _templates = templates;
+
+    public async Task<Result<IReadOnlyList<TicketEmailTemplateResponse>>> Handle(ListTicketEmailTemplatesQuery request, CancellationToken ct)
+    {
+        var items = await _templates.ListAsync(request.Code, ct);
+        return Result.Success<IReadOnlyList<TicketEmailTemplateResponse>>(
+            items.Select(x => new TicketEmailTemplateResponse(
+                x.Id,
+                x.Code,
+                x.LanguageCode,
+                x.Description,
+                x.IsActive,
+                x.UpdatedAt)).ToList());
     }
 }

@@ -62,4 +62,5 @@ public static class IdPrefix
     public const string TicketComment    = "tkc";
     public const string TicketEscalation = "tke";
     public const string TicketAttachment = "tka";
+    public const string TicketEmailTemplate = "tet";
 }

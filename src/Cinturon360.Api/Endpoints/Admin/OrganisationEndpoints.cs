@@ -109,6 +109,7 @@ public static class OrganisationEndpoints
             PrimaryEmail: req.PrimaryEmail,
             PrimaryPhone: req.PrimaryPhone,
             Website: req.Website,
+            SupportTicketEmailTemplateCode: req.SupportTicketEmailTemplateCode,
             LanguageCode: req.LanguageCode,
             TimeZone: req.TimeZone,
             CurrencyCode: req.CurrencyCode));

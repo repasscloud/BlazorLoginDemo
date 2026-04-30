@@ -11,6 +11,7 @@ public sealed record OrganisationResponse(
     string? PrimaryEmail,
     string? PrimaryPhone,
     string? Website,
+    string? SupportTicketEmailTemplateCode,
     string LanguageCode,
     string TimeZone,
     string CurrencyCode,
