@@ -30,6 +30,13 @@ public sealed class Organisation : SoftDeletableEntity
     // Metadata
     public string? ExternalRef { get; private set; }
 
+    // TMC group / chain codes (applies to OrgType.Tmc only)
+    // A chain groups multiple TMC locations under one identity (e.g. Flight Centre Travel Group).
+    // ChainCode is assigned by the Vendor; BranchCode identifies an individual location.
+    public string? ChainCode { get; private set; }
+    public string? ChainName { get; private set; }
+    public string? BranchCode { get; private set; }
+
     private Organisation() { }
 
     public static Organisation Create(
@@ -86,6 +93,19 @@ public sealed class Organisation : SoftDeletableEntity
     public void SetExternalRef(string externalRef)
     {
         ExternalRef = externalRef;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// Set or update the TMC chain/group code and branch code.
+    /// ChainCode + ChainName identify the group (assigned by the Vendor).
+    /// BranchCode identifies this specific TMC location within the chain.
+    /// </summary>
+    public void SetChainCode(string? chainCode, string? chainName, string? branchCode)
+    {
+        ChainCode = chainCode;
+        ChainName = chainName;
+        BranchCode = branchCode;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

@@ -12,14 +12,15 @@ public enum JobStatus
 
 public enum JobType
 {
-    SendEmail          = 1,
-    GeneratePdf        = 2,
-    SyncAirports       = 3,
-    SendApprovalNotice = 4,
-    ProcessPayment     = 5,
-    ArchiveBooking     = 6,
+    SendEmail             = 1,
+    GeneratePdf           = 2,
+    SyncAirports          = 3,
+    SendApprovalNotice    = 4,
+    ProcessPayment        = 5,
+    ArchiveBooking        = 6,
     CleanupExpiredSessions = 7,
-    ReportGeneration   = 8
+    ReportGeneration      = 8,
+    SyncExchangeRates     = 9
 }
 
 public enum DocumentType

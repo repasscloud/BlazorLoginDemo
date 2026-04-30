@@ -71,7 +71,7 @@
     <!-- Data Protection -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.0" />
     <!-- Misc utilities -->
-    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="System.Text.Json" Version="10.0.0" />
   </ItemGroup>
 </Project>

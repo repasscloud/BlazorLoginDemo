@@ -54,6 +54,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IStoredDocumentRepository, StoredDocumentRepository>();
 
+        // Phase 10 — Exchange Rates
+        services.AddScoped<IExchangeRateRepository, ExchangeRateRepository>();
+
         return services;
     }
 }

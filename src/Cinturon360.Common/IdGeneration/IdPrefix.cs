@@ -53,4 +53,7 @@ public static class IdPrefix
     // ── Documents / Jobs ──────────────────────────────────────────────────
     public const string Document         = "doc";
     public const string Job              = "job";
+
+    // ── Exchange Rates ────────────────────────────────────────────────────
+    public const string ExchangeRate     = "fxr";
 }

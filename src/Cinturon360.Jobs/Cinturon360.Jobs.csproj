@@ -16,5 +16,6 @@
     <ProjectReference Include="..\Cinturon360.Application\Cinturon360.Application.csproj" />
     <ProjectReference Include="..\Cinturon360.Data\Cinturon360.Data.csproj" />
     <ProjectReference Include="..\Cinturon360.Infrastructure\Cinturon360.Infrastructure.csproj" />
+    <ProjectReference Include="..\Cinturon360.Integrations\Cinturon360.Integrations.csproj" />
   </ItemGroup>
 </Project>

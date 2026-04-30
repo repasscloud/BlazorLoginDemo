@@ -7,6 +7,7 @@ using Cinturon360.Domain.Entities.Booking;
 using Cinturon360.Domain.Entities.Policy;
 using Cinturon360.Domain.Entities.Approval;
 using Cinturon360.Domain.Entities.Billing;
+using Cinturon360.Domain.Entities.Pricing;
 using Cinturon360.Domain.Entities.System;
 
 namespace Cinturon360.Data.Context;
@@ -74,7 +75,8 @@ public sealed class AppDbContext : DbContext
     // ── System ────────────────────────────────────────────────────────────
     public DbSet<Job> Jobs => Set<Job>();
     public DbSet<StoredDocument> StoredDocuments => Set<StoredDocument>();
-
+    // ── Exchange Rates ───────────────────────────────────────────────
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

@@ -26,6 +26,13 @@ public sealed class OrganisationConfiguration : IEntityTypeConfiguration<Organis
         builder.Property(x => x.CurrencyCode).IsRequired().HasMaxLength(3).HasDefaultValue("USD");
         builder.Property(x => x.ExternalRef).HasMaxLength(200);
 
+        // TMC chain / group codes
+        builder.Property(x => x.ChainCode).HasMaxLength(50);
+        builder.Property(x => x.ChainName).HasMaxLength(200);
+        builder.Property(x => x.BranchCode).HasMaxLength(50);
+
+        builder.HasIndex(x => x.ChainCode);
+
         builder.HasIndex(x => x.Slug).IsUnique();
         builder.HasIndex(x => x.OrgType);
         builder.HasIndex(x => x.ParentOrgId);
