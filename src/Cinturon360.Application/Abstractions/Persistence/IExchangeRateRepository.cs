@@ -19,7 +19,17 @@ public interface IExchangeRateRepository
     Task<ExchangeRate?> GetByCurrencyCodeAsync(string currencyCode, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the latest stored rate per currency code.
+    /// </summary>
+    Task<IReadOnlyList<ExchangeRate>> ListLatestAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Upserts a batch of rates (insert if not exists, update rate/date if currency code matches).
     /// </summary>
     Task UpsertAsync(IReadOnlyList<ExchangeRate> rates, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes historical snapshots older than the provided UTC cutoff.
+    /// </summary>
+    Task<int> DeleteOlderThanAsync(DateTimeOffset cutoffUtc, CancellationToken ct = default);
 }

@@ -56,6 +56,7 @@ public static class ServiceCollectionExtensions
 
         // Phase 10 — Exchange Rates
         services.AddScoped<IExchangeRateRepository, ExchangeRateRepository>();
+        services.AddScoped<IDuffelOrgConfigurationRepository, DuffelOrgConfigurationRepository>();
 
         // Phase 10 — Support Ticketing
         services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();

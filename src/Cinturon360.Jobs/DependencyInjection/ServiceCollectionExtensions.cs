@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     {
         // ── Recurring data-feed jobs ───────────────────────────────────────
         services.AddHostedService<ExchangeRateSyncJob>();
+        services.AddHostedService<ExchangeRateCleanupJob>();
 
         return services;
     }

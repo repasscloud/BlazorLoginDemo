@@ -27,29 +27,17 @@ public sealed class RefreshExchangeRatesCommandHandler(
             return Result.Success();
         }
 
-        // Get existing records so we can update rather than always inserting
-        var existing = await repository.GetAllAsync(ct);
-        var existingByCode = existing.ToDictionary(r => r.CurrencyCode, StringComparer.OrdinalIgnoreCase);
-
         var toUpsert = new List<ExchangeRate>(rates.Count);
 
         foreach (var dto in rates)
         {
-            if (existingByCode.TryGetValue(dto.CurrencyCode, out var current))
-            {
-                current.UpdateRate(dto.Rate, dto.RateDate);
-                toUpsert.Add(current);
-            }
-            else
-            {
-                toUpsert.Add(ExchangeRate.Create(
-                    IdGenerator.New(IdPrefix.ExchangeRate),
-                    dto.CurrencyCode,
-                    dto.CurrencyName,
-                    dto.Rate,
-                    dto.RateDate
-                ));
-            }
+            toUpsert.Add(ExchangeRate.Create(
+                IdGenerator.New(IdPrefix.ExchangeRate),
+                dto.CurrencyCode,
+                dto.CurrencyName,
+                dto.Rate,
+                dto.RateDate
+            ));
         }
 
         await repository.UpsertAsync(toUpsert, ct);

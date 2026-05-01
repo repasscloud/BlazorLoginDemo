@@ -51,6 +51,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<Country> Countries => Set<Country>();
     public DbSet<City> Cities => Set<City>();
     public DbSet<Airport> Airports => Set<Airport>();
+    public DbSet<DuffelOrgConfiguration> DuffelOrgConfigurations => Set<DuffelOrgConfiguration>();
 
     // ── Bookings ──────────────────────────────────────────────────────────
     public DbSet<Booking> Bookings => Set<Booking>();

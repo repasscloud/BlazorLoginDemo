@@ -56,6 +56,7 @@ public static class IdPrefix
 
     // ── Exchange Rates ────────────────────────────────────────────────────
     public const string ExchangeRate     = "fxr";
+    public const string DuffelConfig     = "dfc";
 
     // ── Support Ticketing ─────────────────────────────────────────────────
     public const string SupportTicket    = "stk";

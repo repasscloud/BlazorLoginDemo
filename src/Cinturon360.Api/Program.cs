@@ -86,6 +86,8 @@ try
     app.MapApprovalEndpoints();
     app.MapBillingEndpoints();
     app.MapJobEndpoints();
+    app.MapExchangeRateEndpoints();
+    app.MapDuffelConfigurationEndpoints();
     app.MapTicketEmailTemplateEndpoints();
     app.MapTicketEndpoints();
 

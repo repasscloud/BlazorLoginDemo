@@ -31,8 +31,9 @@ public sealed class ExchangeRateConfiguration : IEntityTypeConfiguration<Exchang
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.UpdatedAt).IsRequired();
 
-        // One row per currency — currency code must be unique
-        builder.HasIndex(x => x.CurrencyCode).IsUnique();
+        // Snapshot model — multiple rows per currency over time
+        builder.HasIndex(x => x.CurrencyCode);
+        builder.HasIndex(x => new { x.CurrencyCode, x.FetchedAt });
         builder.HasIndex(x => x.RateDate);
     }
 }

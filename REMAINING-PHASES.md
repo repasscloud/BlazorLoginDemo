@@ -3,7 +3,7 @@
 > Status as of 27 April 2026  
 > Phases 0–7 are fully implemented. Build is passing.  
 > Phase 9 is complete ✅ (all planned Web UI pages implemented and build passing).
-> Phase 10 is in progress ⚙️ (MailerSend + Stripe + S3/R2 runtime wiring completed; provider integrations still pending).
+> Phase 10 is in progress ⚙️ (MailerSend + Stripe + S3/R2 runtime wiring completed; ECB FX sync/cleanup and Duffel config backend implemented; provider transaction flows still pending).
 
 ---
 
@@ -13,7 +13,7 @@
 
 | Order | Phase | Notes |
 |-------|-------|-------|
-| 1 | **Phase 10** — Real Integrations | IN PROGRESS — MailerSend, Stripe, and S3/R2 wiring completed; Amadeus, Duffel, FX, GitHub ticketing, and data jobs pending. |
+| 1 | **Phase 10** — Real Integrations | IN PROGRESS — MailerSend, Stripe, and S3/R2 wiring completed; ECB FX sync/cleanup and Duffel config management implemented; Amadeus/Duffel transaction flows, GitHub ticketing hardening, and remaining data jobs pending. |
 | 2 | **Phase 11** — Deployment & Infrastructure | ACA Bicep, CI/CD, secrets, environment matrix. |
 | 3 | **Phase 12** — Observability & Logging | Serilog, Azure Monitor, alerts. |
 | 4 | **Phase 13** — Legacy Reference Cleanup | Move v4 code to `legacy/v4-reference` branch, remove from main. |
@@ -132,6 +132,10 @@ Pages and components to build:
   - Order creation
   - Cancellation
 
+Status update:
+- Duffel org configuration backend is implemented (TMC-scoped credentials, chain-wide sharing option, capability/search-function flags, effective-config resolution for client orgs via assigned TMC)
+- Remaining work is transactional provider API flows (search/order/cancel and related lifecycle operations)
+
 ### Email — MailerSend (confirmed Q11)
 - Wire `Cinturon360.Infrastructure/Email/` with MailerSend SDK
 - Template IDs for: booking confirmation, approval request, approval decision, invoice, password reset, MFA OTP, invite
@@ -149,6 +153,12 @@ Pages and components to build:
 - Choose FX provider (e.g. Open Exchange Rates, Frankfurter, ECB)
 - Scaffold `Cinturon360.Integrations/ExchangeRates/`
 - Scheduled refresh job (daily or hourly)
+
+Status update:
+- ECB selected and integrated
+- Exchange-rate sync job runs every 5 minutes in Jobs worker
+- Daily UTC cleanup job removes snapshots older than 24 hours
+- Conversion query uses latest DB-stored EUR-base rates
 
 ### Geography Reference Data
 - Airports, cities, countries data import

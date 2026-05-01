@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Cinturon360.Integrations.ExchangeRates;
+using Cinturon360.Integrations.Flights.Duffel;
 using Cinturon360.Integrations.GitHub.Services;
 
 namespace Cinturon360.Integrations.DependencyInjection;
@@ -20,6 +21,14 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddScoped<IExchangeRateProvider, EcbExchangeRateProvider>();
+
+        // ── Duffel provider integration ──────────────────────────────────
+        services.AddHttpClient("DuffelApi", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        });
+        services.AddScoped<IDuffelApiClient, DuffelApiClient>();
 
         // ── GitHub Ticketing ──────────────────────────────────────────────
         var ghPat   = configuration["GitHub:TicketingPat"];
