@@ -31,6 +31,21 @@
         AppState.OnChange += OnAppStateChanged;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            _isDark = await JS.InvokeAsync<bool>("c360.isDark");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            // Ignore JS readiness issues; the next render/click will sync state.
+        }
+    }
+
     private async Task ToggleTheme()
     {
         var newTheme = _isDark ? "light" : "dark";
@@ -41,8 +56,26 @@
 
     private void OnAppStateChanged()
     {
-        _isDark = AppState.Theme == "dark";
-        InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(async () =>
+        {
+            if (AppState.Theme == "system")
+            {
+                try
+                {
+                    _isDark = await JS.InvokeAsync<bool>("c360.isDark");
+                }
+                catch
+                {
+                    _isDark = false;
+                }
+            }
+            else
+            {
+                _isDark = AppState.Theme == "dark";
+            }
+
+            StateHasChanged();
+        });
     }
 
     public void Dispose() => AppState.OnChange -= OnAppStateChanged;

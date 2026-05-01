@@ -13,7 +13,7 @@
 
 | Order | Phase | Notes |
 |-------|-------|-------|
-| 1 | **Phase 10** — Real Integrations | IN PROGRESS — MailerSend, Stripe, and S3/R2 wiring completed; ECB FX sync/cleanup and Duffel config management implemented; Amadeus/Duffel transaction flows, GitHub ticketing hardening, and remaining data jobs pending. |
+| 1 | **Phase 10** — Real Integrations | IN PROGRESS — MailerSend, Stripe, and S3/R2 wiring completed; ECB FX sync/cleanup, Duffel config management, and Duffel transactional flows implemented; Amadeus transaction flows, GitHub ticketing hardening, and remaining data jobs pending. |
 | 2 | **Phase 11** — Deployment & Infrastructure | ACA Bicep, CI/CD, secrets, environment matrix. |
 | 3 | **Phase 12** — Observability & Logging | Serilog, Azure Monitor, alerts. |
 | 4 | **Phase 13** — Legacy Reference Cleanup | Move v4 code to `legacy/v4-reference` branch, remove from main. |
@@ -134,7 +134,12 @@ Pages and components to build:
 
 Status update:
 - Duffel org configuration backend is implemented (TMC-scoped credentials, chain-wide sharing option, capability/search-function flags, effective-config resolution for client orgs via assigned TMC)
-- Remaining work is transactional provider API flows (search/order/cancel and related lifecycle operations)
+- Duffel transactional flows are implemented: offer search, order creation, cancellation lifecycle ✅
+  - `IDuffelConfigResolver` resolves effective config for any org (client → TMC → chain-wide)
+  - `DuffelSearchOffersCommand` — creates offer request, fetches offers list, stores result as Quote
+  - `DuffelCreateOrderCommand` — creates Duffel order, creates/updates Booking + BookingItems
+  - `DuffelCancelOrderCommand` — initiates and confirms cancellation, updates local Booking status
+  - API endpoints: `POST /api/v1/flights/duffel/search`, `POST /api/v1/flights/duffel/orders`, `POST /api/v1/flights/duffel/orders/{id}/cancel`
 
 ### Email — MailerSend (confirmed Q11)
 - Wire `Cinturon360.Infrastructure/Email/` with MailerSend SDK

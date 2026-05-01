@@ -5,6 +5,7 @@ using Serilog;
 using Cinturon360.Application.DependencyInjection;
 using Cinturon360.Data.DependencyInjection;
 using Cinturon360.Infrastructure.DependencyInjection;
+using Cinturon360.Integrations.DependencyInjection;
 using Cinturon360.Api.Endpoints.Auth;
 using Cinturon360.Api.Endpoints;
 using Cinturon360.Api.Endpoints.Admin;
@@ -15,6 +16,7 @@ using Cinturon360.Api.Endpoints.Approvals;
 using Cinturon360.Api.Endpoints.Billing;
 using Cinturon360.Api.Endpoints.System;
 using Cinturon360.Api.Endpoints.Ticketing;
+using Cinturon360.Api.Endpoints.Flights;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -63,6 +65,7 @@ try
     builder.Services.AddApplicationServices();
     builder.Services.AddDataServices(builder.Configuration);
     builder.Services.AddInfrastructureServices(builder.Configuration);
+    builder.Services.AddIntegrationServices(builder.Configuration);
 
     var app = builder.Build();
 
@@ -90,6 +93,7 @@ try
     app.MapDuffelConfigurationEndpoints();
     app.MapTicketEmailTemplateEndpoints();
     app.MapTicketEndpoints();
+    app.MapDuffelFlightEndpoints();
 
     app.Run();
 }

@@ -6,6 +6,7 @@ using Cinturon360.Application.Behaviors.Validation;
 using Cinturon360.Application.Behaviors.Logging;
 using Cinturon360.Application.Behaviors.Authorization;
 using Cinturon360.Application.Abstractions.Services;
+using Cinturon360.Application.Features.Integrations.Duffel.Services;
 using Cinturon360.Application.Features.Ticketing.Services;
 
 namespace Cinturon360.Application.DependencyInjection;
@@ -30,6 +31,7 @@ public static class ServiceCollectionExtensions
         TypeAdapterConfig.GlobalSettings.Scan(assembly);
 
         services.AddScoped<ITicketUpdateNotificationService, TicketUpdateNotificationService>();
+        services.AddScoped<IDuffelConfigResolver, DuffelConfigResolver>();
 
         return services;
     }
