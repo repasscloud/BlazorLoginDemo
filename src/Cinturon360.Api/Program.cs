@@ -17,6 +17,7 @@ using Cinturon360.Api.Endpoints.Billing;
 using Cinturon360.Api.Endpoints.System;
 using Cinturon360.Api.Endpoints.Ticketing;
 using Cinturon360.Api.Endpoints.Flights;
+using Cinturon360.Api.Infrastructure;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -60,6 +61,8 @@ try
         });
 
     builder.Services.AddAuthorization();
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
 
     // ── Application Layers ────────────────────────────────────────────────
     builder.Services.AddApplicationServices();
@@ -69,8 +72,7 @@ try
 
     var app = builder.Build();
 
-    // ── Middleware pipeline ───────────────────────────────────────────────
-    app.UseSerilogRequestLogging();
+    // ── Middleware pipeline ───────────────────────────────────────────────    app.UseExceptionHandler();    app.UseSerilogRequestLogging();
 
     if (app.Environment.IsDevelopment())
         app.MapOpenApi();

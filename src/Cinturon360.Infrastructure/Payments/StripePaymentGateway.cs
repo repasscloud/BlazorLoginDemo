@@ -130,6 +130,34 @@ internal sealed class StripePaymentGateway : IPaymentGateway
 
     private bool IsConfigured() => !string.IsNullOrWhiteSpace(_settings.SecretKey);
 
+    public StripeWebhookEvent? ParseWebhookEvent(string rawBody, string stripeSignatureHeader)
+    {
+        if (string.IsNullOrWhiteSpace(_settings.WebhookSecret))
+        {
+            _logger.LogWarning("Stripe webhook secret not configured — cannot verify webhook signature.");
+            return null;
+        }
+
+        try
+        {
+            var stripeEvent = EventUtility.ConstructEvent(rawBody, stripeSignatureHeader, _settings.WebhookSecret);
+
+            if (stripeEvent.Data.Object is PaymentIntent intent)
+            {
+                intent.Metadata.TryGetValue("orgId", out var orgId);
+                var amountDecimal = intent.Amount / 100m;
+                return new StripeWebhookEvent(stripeEvent.Type, intent.Id, amountDecimal, intent.Currency, orgId);
+            }
+
+            return new StripeWebhookEvent(stripeEvent.Type, null, null, null, null);
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogWarning(ex, "Stripe webhook signature verification failed");
+            return null;
+        }
+    }
+
     private static long ToMinorUnits(decimal amount)
     {
         var rounded = Math.Round(amount * 100m, 0, MidpointRounding.AwayFromZero);

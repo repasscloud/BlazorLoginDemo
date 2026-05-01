@@ -1,5 +1,7 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using Cinturon360.Application.Abstractions.Persistence;
+using Cinturon360.Application.Abstractions.Services;
 using Cinturon360.Common.IdGeneration;
 using Cinturon360.Common.Results;
 using Cinturon360.Domain.Entities.Billing;
@@ -129,6 +131,126 @@ public sealed class CreditPrepaidBalanceHandler : IRequestHandler<CreditPrepaidB
         }
 
         await _uow.SaveChangesAsync(ct);
+        return Result.Success();
+    }
+}
+
+// ── Initiate prepaid top-up via Stripe ────────────────────────────────────
+/// <summary>
+/// Creates a Stripe PaymentIntent for a prepaid top-up. Returns the client secret
+/// so the frontend can complete payment with Stripe.js.
+/// Call <see cref="ConfirmTopUpCommand"/> from the Stripe webhook after payment succeeds.
+/// </summary>
+public sealed record InitiateTopUpCommand(
+    string OrgId,
+    decimal Amount,
+    string CurrencyCode,
+    string BillingEmail,
+    string BillingName) : IRequest<Result<InitiateTopUpResult>>;
+
+public sealed record InitiateTopUpResult(string PaymentIntentId, string ClientSecret);
+
+public sealed class InitiateTopUpHandler(
+    IBillingRepository repo,
+    IPaymentGateway paymentGateway,
+    IUnitOfWork uow,
+    ILogger<InitiateTopUpHandler> logger) : IRequestHandler<InitiateTopUpCommand, Result<InitiateTopUpResult>>
+{
+    public async Task<Result<InitiateTopUpResult>> Handle(InitiateTopUpCommand request, CancellationToken ct)
+    {
+        var billingConfig = await repo.GetBillingConfigAsync(request.OrgId, ct);
+
+        string customerId;
+
+        if (billingConfig?.StripeCustomerId is not null)
+        {
+            customerId = billingConfig.StripeCustomerId;
+        }
+        else
+        {
+            var customerResult = await paymentGateway.CreateCustomerAsync(
+                request.OrgId, request.BillingEmail, request.BillingName, ct);
+
+            if (!customerResult.Success || customerResult.CustomerId is null)
+            {
+                logger.LogError("Failed to create Stripe customer for org {OrgId}: {Error}", request.OrgId, customerResult.Error);
+                return Result.Failure<InitiateTopUpResult>(new("billing.stripe_customer_failed", "Failed to create Stripe customer."));
+            }
+
+            customerId = customerResult.CustomerId;
+
+            if (billingConfig is null)
+            {
+                var configId = IdGenerator.New(IdPrefix.PrepaidBalance); // reuse prefix for config ID
+                billingConfig = OrgBillingConfig.Create(configId, request.OrgId,
+                    stripeCustomerId: customerId,
+                    billingEmail: request.BillingEmail,
+                    billingName: request.BillingName,
+                    currencyCode: request.CurrencyCode);
+                await repo.AddBillingConfigAsync(billingConfig, ct);
+            }
+            else
+            {
+                billingConfig.SetStripeCustomerId(customerId);
+                repo.UpdateBillingConfig(billingConfig);
+            }
+
+            await uow.SaveChangesAsync(ct);
+        }
+
+        var intentResult = await paymentGateway.CreatePaymentIntentAsync(
+            customerId, request.Amount, request.CurrencyCode,
+            $"Prepaid top-up for org {request.OrgId}", ct);
+
+        if (!intentResult.Success || intentResult.PaymentIntentId is null || intentResult.ClientSecret is null)
+        {
+            logger.LogError("Failed to create Stripe payment intent for org {OrgId}: {Error}", request.OrgId, intentResult.Error);
+            return Result.Failure<InitiateTopUpResult>(new("billing.stripe_intent_failed", "Failed to create payment intent."));
+        }
+
+        return Result.Success(new InitiateTopUpResult(intentResult.PaymentIntentId, intentResult.ClientSecret));
+    }
+}
+
+// ── Confirm top-up after Stripe webhook ──────────────────────────────────
+/// <summary>
+/// Called by the Stripe webhook handler when payment_intent.succeeded fires.
+/// Credits the prepaid balance and records the payment.
+/// </summary>
+public sealed record ConfirmTopUpCommand(
+    string OrgId,
+    decimal Amount,
+    string CurrencyCode,
+    string StripePaymentIntentId) : IRequest<Result>;
+
+public sealed class ConfirmTopUpHandler(
+    IBillingRepository repo,
+    IUnitOfWork uow) : IRequestHandler<ConfirmTopUpCommand, Result>
+{
+    public async Task<Result> Handle(ConfirmTopUpCommand request, CancellationToken ct)
+    {
+        // Credit prepaid balance
+        var balance = await repo.GetPrepaidBalanceAsync(request.OrgId, ct);
+        if (balance is null)
+        {
+            var balanceId = IdGenerator.New(IdPrefix.PrepaidBalance);
+            balance = PrepaidBalance.Create(balanceId, request.OrgId, request.CurrencyCode);
+            balance.Credit(request.Amount);
+            await repo.AddPrepaidBalanceAsync(balance, ct);
+        }
+        else
+        {
+            balance.Credit(request.Amount);
+            repo.UpdatePrepaidBalance(balance);
+        }
+
+        // Record payment
+        var paymentId = IdGenerator.New(IdPrefix.Payment);
+        var payment = Payment.Create(paymentId, request.OrgId, request.Amount, request.CurrencyCode,
+            PaymentMethod.Card, invoiceId: null, request.StripePaymentIntentId);
+        await repo.AddPaymentAsync(payment, ct);
+
+        await uow.SaveChangesAsync(ct);
         return Result.Success();
     }
 }

@@ -1,5 +1,7 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using Cinturon360.Application.Abstractions.Persistence;
+using Cinturon360.Application.Abstractions.Services;
 using Cinturon360.Common.IdGeneration;
 using Cinturon360.Common.Results;
 using Cinturon360.Domain.Entities.Booking;
@@ -71,28 +73,47 @@ public sealed record ConfirmBookingCommand(
     string? PnrCode,
     string? SupplierRef) : IRequest<Result>;
 
-public sealed class ConfirmBookingHandler : IRequestHandler<ConfirmBookingCommand, Result>
+public sealed class ConfirmBookingHandler(
+    IBookingRepository repo,
+    IUserRepository userRepo,
+    IEmailService email,
+    IUnitOfWork uow,
+    ILogger<ConfirmBookingHandler> logger) : IRequestHandler<ConfirmBookingCommand, Result>
 {
-    private readonly IBookingRepository _repo;
-    private readonly IUnitOfWork _uow;
-
-    public ConfirmBookingHandler(IBookingRepository repo, IUnitOfWork uow)
-    {
-        _repo = repo;
-        _uow = uow;
-    }
-
     public async Task<Result> Handle(ConfirmBookingCommand request, CancellationToken ct)
     {
-        var booking = await _repo.GetByIdAsync(request.BookingId, ct);
+        var booking = await repo.GetByIdAsync(request.BookingId, ct);
         if (booking is null) return Result.Failure(BookingErrors.NotFound);
 
         if (booking.Status is not (BookingStatus.Draft or BookingStatus.Approved))
             return Result.Failure(BookingErrors.InvalidStatus);
 
         booking.Confirm(request.PnrCode, request.SupplierRef);
-        _repo.Update(booking);
-        await _uow.SaveChangesAsync(ct);
+        repo.Update(booking);
+        await uow.SaveChangesAsync(ct);
+
+        // Send booking confirmation email to traveller
+        var traveller = await userRepo.GetByIdAsync(booking.TravellerUserId, ct);
+        if (traveller is not null)
+        {
+            try
+            {
+                await email.SendAsync(
+                    traveller.Email,
+                    traveller.FullName,
+                    $"Booking Confirmed — {booking.Id}",
+                    $"<p>Hi {traveller.FirstName},</p>" +
+                    $"<p>Your booking <strong>{booking.Id}</strong> has been confirmed." +
+                    (request.PnrCode is not null ? $" PNR: <strong>{request.PnrCode}</strong>." : string.Empty) +
+                    "</p><p>Thank you for booking with Cinturon360.</p>",
+                    ct: ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to send booking confirmation email for {BookingId}", booking.Id);
+            }
+        }
+
         return Result.Success();
     }
 }

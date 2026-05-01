@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Cinturon360.Application.Abstractions.Services;
 using Cinturon360.Application.Features.Billing.Commands;
 using Cinturon360.Application.Features.Billing.Queries;
 using Cinturon360.Contracts.Billing;
@@ -39,6 +40,18 @@ public static class BillingEndpoints
             .WithName("CreditPrepaidBalance")
             .Produces<ApiResponse<object>>(204)
             .Produces<ApiResponse<object>>(400);
+
+        group.MapPost("/prepaid/topup", InitiateTopUp)
+            .WithName("InitiateTopUp")
+            .Produces<ApiResponse<InitiateTopUpResponse>>(200)
+            .Produces<ApiResponse<object>>(400);
+
+        // Stripe webhook — no auth, signature verified internally
+        app.MapPost("/api/v1/webhooks/stripe", HandleStripeWebhook)
+            .WithTags("Webhooks")
+            .WithName("StripeWebhook")
+            .Produces(204)
+            .Produces(400);
 
         return app;
     }
@@ -111,6 +124,77 @@ public static class BillingEndpoints
         return result.IsSuccess
             ? Results.NoContent()
             : Results.BadRequest(ApiResponse.Fail(new ApiError(result.Error.Code, result.Error.Description)));
+    }
+
+    private static async Task<IResult> InitiateTopUp(
+        string orgId,
+        [FromBody] InitiateTopUpRequest request,
+        ISender mediator)
+    {
+        if (request.Amount <= 0)
+            return Results.BadRequest(ApiResponse.Fail(new ApiError("billing.invalid_amount", "Amount must be greater than zero.")));
+
+        var result = await mediator.Send(new InitiateTopUpCommand(
+            orgId, request.Amount, request.CurrencyCode, request.BillingEmail, request.BillingName));
+
+        return result.IsSuccess
+            ? Results.Ok(ApiResponse.Ok(new InitiateTopUpResponse(result.Value.PaymentIntentId, result.Value.ClientSecret)))
+            : Results.BadRequest(ApiResponse.Fail(new ApiError(result.Error.Code, result.Error.Description)));
+    }
+
+    private static async Task<IResult> HandleStripeWebhook(
+        HttpRequest httpRequest,
+        ISender mediator,
+        IPaymentGateway paymentGateway,
+        ILoggerFactory loggerFactory)
+    {
+        // Read raw body — must not use buffering/JSON middleware here
+        httpRequest.EnableBuffering();
+        using var reader = new global::System.IO.StreamReader(httpRequest.Body, leaveOpen: true);
+        var rawBody = await reader.ReadToEndAsync();
+        httpRequest.Body.Position = 0;
+
+        var logger = loggerFactory.CreateLogger("StripeWebhook");
+
+        if (!httpRequest.Headers.TryGetValue("Stripe-Signature", out var sig))
+            return Results.BadRequest("Missing Stripe-Signature header.");
+
+        var webhookEvent = paymentGateway.ParseWebhookEvent(rawBody, sig!);
+        if (webhookEvent is null)
+            return Results.BadRequest("Webhook signature verification failed.");
+
+        switch (webhookEvent.EventType)
+        {
+            case "payment_intent.succeeded":
+            {
+                if (webhookEvent.OrgId is null || webhookEvent.Amount is null || webhookEvent.Currency is null)
+                {
+                    logger.LogWarning("payment_intent.succeeded missing orgId/amount/currency metadata — skipping");
+                    break;
+                }
+
+                await mediator.Send(new ConfirmTopUpCommand(
+                    webhookEvent.OrgId,
+                    webhookEvent.Amount.Value,
+                    webhookEvent.Currency.ToUpperInvariant(),
+                    webhookEvent.RelatedObjectId ?? string.Empty));
+                break;
+            }
+
+            case "payment_intent.payment_failed":
+                logger.LogWarning("Stripe payment failed for intent {IntentId}", webhookEvent.RelatedObjectId);
+                break;
+
+            case "charge.dispute.created":
+                logger.LogWarning("Stripe dispute created for charge {ChargeId}", webhookEvent.RelatedObjectId);
+                break;
+
+            default:
+                logger.LogDebug("Unhandled Stripe event type: {EventType}", webhookEvent.EventType);
+                break;
+        }
+
+        return Results.NoContent();
     }
 
     private static OrgLicenseResponse MapLicense(OrgLicense l) => new(

@@ -1,5 +1,7 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using Cinturon360.Application.Abstractions.Persistence;
+using Cinturon360.Application.Abstractions.Services;
 using Cinturon360.Common.IdGeneration;
 using Cinturon360.Common.Results;
 using Cinturon360.Domain.Entities.Approval;
@@ -52,20 +54,16 @@ public sealed record ApproveCommand(
     string ApproverUserId,
     string? Comments) : IRequest<Result>;
 
-public sealed class ApproveHandler : IRequestHandler<ApproveCommand, Result>
+public sealed class ApproveHandler(
+    IApprovalRepository repo,
+    IUserRepository userRepo,
+    IEmailService email,
+    IUnitOfWork uow,
+    ILogger<ApproveHandler> logger) : IRequestHandler<ApproveCommand, Result>
 {
-    private readonly IApprovalRepository _repo;
-    private readonly IUnitOfWork _uow;
-
-    public ApproveHandler(IApprovalRepository repo, IUnitOfWork uow)
-    {
-        _repo = repo;
-        _uow = uow;
-    }
-
     public async Task<Result> Handle(ApproveCommand request, CancellationToken ct)
     {
-        var approval = await _repo.GetByIdAsync(request.ApprovalRequestId, ct);
+        var approval = await repo.GetByIdAsync(request.ApprovalRequestId, ct);
         if (approval is null) return Result.Failure(ApprovalErrors.NotFound);
         if (approval.Status != ApprovalStatus.Pending) return Result.Failure(ApprovalErrors.AlreadyDone);
 
@@ -73,10 +71,33 @@ public sealed class ApproveHandler : IRequestHandler<ApproveCommand, Result>
         var decision = ApprovalDecision.Create(decisionId, request.ApprovalRequestId,
             approval.CurrentLevel, request.ApproverUserId, ApprovalStatus.Approved, request.Comments);
 
-        await _repo.AddDecisionAsync(decision, ct);
+        await repo.AddDecisionAsync(decision, ct);
         approval.AdvanceLevel();
-        _repo.Update(approval);
-        await _uow.SaveChangesAsync(ct);
+        repo.Update(approval);
+        await uow.SaveChangesAsync(ct);
+
+        // Notify the requester that their request was approved
+        var requester = await userRepo.GetByIdAsync(approval.RequestedByUserId, ct);
+        if (requester is not null)
+        {
+            try
+            {
+                await email.SendAsync(
+                    requester.Email,
+                    requester.FullName,
+                    $"Approval Request Approved — {approval.SubjectId}",
+                    $"<p>Hi {requester.FirstName},</p>" +
+                    $"<p>Your approval request for <strong>{approval.SubjectId}</strong> has been <strong>approved</strong>.</p>" +
+                    (request.Comments is not null ? $"<p>Comments: {request.Comments}</p>" : string.Empty) +
+                    "<p>Thank you,<br/>Cinturon360</p>",
+                    ct: ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to send approval decision email for {ApprovalId}", approval.Id);
+            }
+        }
+
         return Result.Success();
     }
 }
@@ -87,20 +108,16 @@ public sealed record RejectCommand(
     string ApproverUserId,
     string? Reason) : IRequest<Result>;
 
-public sealed class RejectHandler : IRequestHandler<RejectCommand, Result>
+public sealed class RejectHandler(
+    IApprovalRepository repo,
+    IUserRepository userRepo,
+    IEmailService email,
+    IUnitOfWork uow,
+    ILogger<RejectHandler> logger) : IRequestHandler<RejectCommand, Result>
 {
-    private readonly IApprovalRepository _repo;
-    private readonly IUnitOfWork _uow;
-
-    public RejectHandler(IApprovalRepository repo, IUnitOfWork uow)
-    {
-        _repo = repo;
-        _uow = uow;
-    }
-
     public async Task<Result> Handle(RejectCommand request, CancellationToken ct)
     {
-        var approval = await _repo.GetByIdAsync(request.ApprovalRequestId, ct);
+        var approval = await repo.GetByIdAsync(request.ApprovalRequestId, ct);
         if (approval is null) return Result.Failure(ApprovalErrors.NotFound);
         if (approval.Status != ApprovalStatus.Pending) return Result.Failure(ApprovalErrors.AlreadyDone);
 
@@ -108,10 +125,33 @@ public sealed class RejectHandler : IRequestHandler<RejectCommand, Result>
         var decision = ApprovalDecision.Create(decisionId, request.ApprovalRequestId,
             approval.CurrentLevel, request.ApproverUserId, ApprovalStatus.Rejected, request.Reason);
 
-        await _repo.AddDecisionAsync(decision, ct);
+        await repo.AddDecisionAsync(decision, ct);
         approval.Reject(request.Reason);
-        _repo.Update(approval);
-        await _uow.SaveChangesAsync(ct);
+        repo.Update(approval);
+        await uow.SaveChangesAsync(ct);
+
+        // Notify the requester that their request was rejected
+        var requester = await userRepo.GetByIdAsync(approval.RequestedByUserId, ct);
+        if (requester is not null)
+        {
+            try
+            {
+                await email.SendAsync(
+                    requester.Email,
+                    requester.FullName,
+                    $"Approval Request Rejected — {approval.SubjectId}",
+                    $"<p>Hi {requester.FirstName},</p>" +
+                    $"<p>Your approval request for <strong>{approval.SubjectId}</strong> has been <strong>rejected</strong>.</p>" +
+                    (request.Reason is not null ? $"<p>Reason: {request.Reason}</p>" : string.Empty) +
+                    "<p>Thank you,<br/>Cinturon360</p>",
+                    ct: ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to send rejection email for {ApprovalId}", approval.Id);
+            }
+        }
+
         return Result.Success();
     }
 }

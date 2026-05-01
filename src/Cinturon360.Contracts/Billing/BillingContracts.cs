@@ -20,6 +20,16 @@ public sealed record CreditPrepaidBalanceRequest(
     decimal Amount,
     string CurrencyCode);
 
+public sealed record InitiateTopUpRequest(
+    decimal Amount,
+    string CurrencyCode,
+    string BillingEmail,
+    string BillingName);
+
+public sealed record InitiateTopUpResponse(
+    string PaymentIntentId,
+    string ClientSecret);
+
 public sealed record OrgLicenseResponse(
     string Id,
     string OrgId,

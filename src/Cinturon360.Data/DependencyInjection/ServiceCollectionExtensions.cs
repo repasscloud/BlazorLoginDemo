@@ -62,6 +62,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
         services.AddScoped<ITicketEmailTemplateRepository, TicketEmailTemplateRepository>();
 
+        // Permissions
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
+
         return services;
     }
 }

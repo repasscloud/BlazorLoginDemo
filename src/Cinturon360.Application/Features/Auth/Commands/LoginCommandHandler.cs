@@ -14,6 +14,7 @@ public sealed class LoginCommandHandler(
     IUserRepository userRepo,
     IUserSecurityRepository securityRepo,
     IUserSessionRepository sessionRepo,
+    IPermissionRepository permissionRepo,
     IPasswordHasher passwordHasher,
     ITokenService tokenService,
     IUnitOfWork uow,
@@ -64,8 +65,7 @@ public sealed class LoginCommandHandler(
         var jti = Guid.NewGuid().ToString();
         var expiresAt = DateTimeOffset.UtcNow.Add(AccessTokenLifetime);
 
-        // TODO: resolve permissions from role assignments
-        var permissions = new List<string>();
+        var permissions = (await permissionRepo.GetPermissionsForUserAsync(user.Id, ct)).ToList();
 
         var accessToken = tokenService.GenerateAccessToken(user.Id, user.HomeOrgId, jti, permissions);
 
