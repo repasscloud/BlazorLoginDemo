@@ -2,9 +2,10 @@
 
 > Status as of 27 April 2026  
 > Phases 0–7 are fully implemented. Build is passing.  
-> Phase 9 is complete ✅ (all planned Web UI pages implemented and build passing).
-> Phase 10 is in progress ⚙️ (MailerSend + Stripe + S3/R2 runtime wiring completed; ECB FX sync/cleanup and Duffel config backend implemented; provider transaction flows still pending).
-> 2 May 2026 update: Stripe moved to provider-neutral billing architecture foundation (provider connections, billing relationships, provider customers/payment methods, setup-link flow, connection-scoped webhooks, webhook idempotency table). License-model v2 and full policy-driven billing execution remain pending.
+> Phase 9 is complete ✅ (all planned Web UI pages implemented and build passing).  
+> Phase 10 is in progress ⚙️ (MailerSend + Stripe + S3/R2 runtime wiring completed; ECB FX sync/cleanup and Duffel config backend implemented; provider transaction flows still pending).  
+> 2 May 2026 update: Stripe moved to provider-neutral billing architecture foundation (provider connections, billing relationships, provider customers/payment methods, setup-link flow, connection-scoped webhooks, webhook idempotency table).  
+> 3 May 2026 update: License model v2 domain layer complete — `LicenseAgreement`, `LicenseAgreementEntitlement`, `LicenseCollectionPolicy`, `BillingAccount`, and accounting stub entities added. `TravelPolicyBillingRule` renamed to `PolicyBillingRule` with `PolicyType` discriminator. `IsPrimary` added to `PaymentProviderConnection` with partial unique index. `SetPrimaryProviderConnectionCommand` and three `LicenseAgreement` application commands added. Migration `RefactorBillingModelToLicenseAgreement` applied. **Pending:** billing execution runtime (LicenseAgreement evaluation at booking time, invoice generation, collection enforcement, policy-driven billing).  
 
 ---
 
@@ -157,7 +158,7 @@ Status update:
 
 Status update (2 May 2026):
 - Provider-neutral billing scaffolding implemented in core domain/data/application layers:
-  - `PaymentProviderConnection`, `BillingRelationship`, `ProviderCustomer`, `ProviderPaymentMethod`, `OrganisationBillingProfile`, `TravelPolicyBillingRule`, `ProviderWebhookEvent`
+  - `PaymentProviderConnection`, `BillingRelationship`, `ProviderCustomer`, `ProviderPaymentMethod`, `OrganisationBillingProfile`, `PolicyBillingRule` (formerly `TravelPolicyBillingRule`), `ProviderWebhookEvent`
 - New management/API flows implemented:
   - configure Stripe provider connection
   - create seller/buyer billing relationship
@@ -166,9 +167,17 @@ Status update (2 May 2026):
   - relationship-based prepaid top-up intent creation
 - New Stripe webhook routes implemented:
   - `/api/v1/webhooks/payment-providers/stripe/{connectionId}`
-  - `/api/v1/webhooks/stripe/{vendor|tmc|client}/{orgId}`
+  - `/api/v1/webhooks/stripe/{vendor|tmc|client}/{orgId}` (now uses `IsPrimary` connection routing)
 - Webhook idempotency implemented with unique `(connectionId, providerEventId)` persistence.
-- Remaining Stripe work: automated Stripe webhook endpoint provisioning during onboarding, invoice/payment collection orchestration, policy/expense processor runtime execution path, and full license-driven billing model integration.
+
+Status update (3 May 2026):
+- License model v2 domain entities created: `LicenseAgreement`, `LicenseAgreementEntitlement`, `LicenseCollectionPolicy`, `BillingAccount`
+- Accounting stub entities created: `BillingLedgerEntry`, `BillingInvoice`, `BillingInvoiceLine`, `PaymentAttempt`, `JournalEntry`, `JournalLine`
+- `PaymentProviderConnection.IsPrimary` (bool) + partial unique index `ux_payment_provider_connection_primary` added
+- Application commands added: `SetPrimaryProviderConnectionCommand`, `CreateLicenseAgreementCommand`, `ActivateLicenseAgreementCommand`, `SupersedeLicenseAgreementCommand`
+- New endpoint: `PUT /api/v1/billing/provider-connections/{connectionId}/primary`
+- EF migration `RefactorBillingModelToLicenseAgreement` generated and applied
+- Remaining Stripe/billing work: automated Stripe webhook endpoint provisioning during onboarding ✅ (done in prior session), invoice/payment collection orchestration, `LicenseAgreement` evaluation at booking time, `BillingAccount` activation workflow, `LicenseCollectionPolicy` enforcement (block bookings when overdue), full policy-driven billing execution.
 
 ### Exchange Rates
 - Choose FX provider (e.g. Open Exchange Rates, Frankfurter, ECB)

@@ -1,6 +1,6 @@
 # Cinturon360 v5 — Feature Backlog & Deferred Items
 
-> Last updated: 1 May 2026  
+> Last updated: 4 May 2026  
 > This file tracks everything that is intentionally deferred, partially implemented, or out of scope for the current build phase.  
 > Use this as the source of truth when raising GitHub Issues.  
 > Format: `[area] short title — detail`
@@ -127,15 +127,20 @@ Raise one GitHub Issue per bullet point. Suggested labels are noted inline as `[
 
 ## Stripe / Payments
 
-> `StripePaymentGateway` is implemented with real Stripe SDK calls (falls back to stub if unconfigured). `IPaymentGateway` interface is defined. **No Application layer command handlers use `IPaymentGateway` yet.**
+> Provider-neutral billing architecture is implemented. `PaymentProviderConnection`, `BillingRelationship`, `ProviderCustomer`, `ProviderPaymentMethod`, setup-link flow, connection-scoped webhooks, and webhook idempotency are all in place. Stripe webhook signature verification is implemented in the new connection-scoped handlers. The following gaps remain.
 
-- 🔴 `CreateStripeCustomerCommand` — call on org creation or first payment attempt `[billing] [stripe]`
-- 🔴 `CreatePaymentIntentCommand` — called from top-up / invoice payment flow `[billing] [stripe]`
-- 🔴 Stripe webhook endpoint — `POST /api/v1/webhooks/stripe` handles `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.dispute.created` `[billing] [stripe] [webhooks]`
+- ✅ `ConfigureStripeProviderConnectionCommand` — done
+- ✅ Stripe webhook endpoint — done (connection-scoped + org-scoped routes with idempotency)
+- ✅ Stripe webhook signature verification — done in connection-scoped handlers
+- ✅ Billing setup link (Stripe setup-mode checkout) — done
+- ✅ Provider payment method sync — done
+- ✅ Relationship-based prepaid top-up intent creation + confirmation — done
+- ✅ `SetPrimaryProviderConnectionCommand` + `PUT .../provider-connections/{id}/primary` — done
+- 🔴 Invoice/payment collection orchestration — no command creates charges from `BillingInvoice` records `[billing] [stripe]`
 - 🔴 Stripe billing portal session — `POST /api/v1/billing/stripe-portal-session` for card management redirect `[billing] [stripe]`
-- 🔴 Invoice sync — sync Stripe invoice status back to internal `Invoice` entity `[billing] [stripe]`
-- 🔵 Stripe webhook signature verification — webhook endpoint must validate `Stripe-Signature` header before processing `[billing] [stripe] [security]`
+- 🔴 Invoice sync — sync Stripe invoice status back to internal `BillingInvoice` entity `[billing] [stripe]`
 - 🔴 Refund flow — trigger `RefundAsync` from a cancellation command and record refund on booking `[billing] [stripe]`
+- 🔴 Idempotency key support on Stripe payment intent creation `[billing] [stripe]`
 
 ---
 
@@ -207,13 +212,20 @@ Raise one GitHub Issue per bullet point. Suggested labels are noted inline as `[
 
 ## Billing
 
-> Billing entities, billing commands, and Stripe SDK wiring exist. The following are not yet connected end-to-end.
+> Provider-neutral billing entities, application commands, and Stripe SDK wiring exist. License model v2 domain layer (LicenseAgreement, LicenseAgreementEntitlement, LicenseCollectionPolicy, BillingAccount) and accounting stubs are complete. The execution layer is not yet implemented.
 
-- 🔵 Prepaid top-up flow — Web UI page exists; API handler does not call `IPaymentGateway` `[billing] [stripe]`
-- 🔴 Invoice generation — no command creates `Invoice` records from billable events (bookings, license fees) `[billing]`
-- 🔴 Credit note creation `[billing]`
+- ✅ Prepaid top-up flow — `InitiateRelationshipTopUpCommand` + `ConfirmRelationshipTopUpCommand` implemented
+- ✅ `LicenseAgreement` CRUD commands — `CreateLicenseAgreementCommand`, `ActivateLicenseAgreementCommand`, `SupersedeLicenseAgreementCommand` done
+- 🔴 `BillingAccount` activation — no command creates/activates a `BillingAccount` when a `LicenseAgreement` is activated `[billing]`
+- 🔴 `LicenseAgreement` evaluation at booking time — resolve active agreement for org, check `BillingAccount.AccountStatus`, enforce prepaid balance or credit limit `[billing]`
+- 🔴 `LicenseCollectionPolicy` enforcement — block bookings when org is overdue per `BlockBookingsWhenOverdue` flag `[billing]`
+- 🔴 Invoice generation job — generate `BillingInvoice` records from billable events on billing cycle dates `[billing] [jobs]`
+- 🔴 Billing ledger posting — post `BillingLedgerEntry` rows when charges or credits occur `[billing]`
+- 🔴 Journal entry creation — double-entry `JournalEntry`/`JournalLine` posting from invoice/payment events `[billing]`
+- 🔴 Credit note creation — command to create credit against org balance `[billing]`
 - 🔴 Billing cycle enforcement — prepaid orgs must be blocked from bookings when balance is zero `[billing]`
-- 🔴 License fee auto-invoicing — generate invoices on billing cycle dates `[billing]`
+- 🔴 License fee auto-invoicing — generate invoices on billing cycle dates per `LicenseAgreement.BillingPeriod` `[billing]`
+- 🔴 `LicenseAgreementEntitlement` evaluation — resolve feature entitlements for an org at runtime `[billing]`
 
 ---
 

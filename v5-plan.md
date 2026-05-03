@@ -243,6 +243,9 @@ Travel policy will be a rich, configurable module covering: included/excluded ai
 |---|---|
 | `Prepaid` | Must not spend outside prepaid balance |
 | `Postpaid` | Prepaid balance first, then charge on file |
+| `PayAsYouGo` | Charge per transaction with no prepaid requirement |
+
+Billing mode is set on the `LicenseAgreement` via the `BillingModel` enum (`Prepaid`, `Postpaid`, `PayAsYouGo`). A `BillingAccount` links an org to its active `LicenseAgreement` and carries runtime status (`Active`, `Suspended`, `Closed`, `UnderReview`).
 
 All transactions are linked to an **org** and optionally attributed to a **user** (or system/null for system transactions).
 
@@ -254,9 +257,13 @@ All transactions are linked to an **org** and optionally attributed to a **user*
 - Invoice flag: license fees can auto-invoice or auto-charge
 - License can restrict features/access as well as set user count limits
 
-License model note (2 May 2026):
-- A full License v2 model is still to be created and will become the authoritative configuration source for billing/access execution.
-- Current implementation includes `OrgLicenseId` linkage points in billing relationships so migration to License v2 does not require endpoint redesign.
+License model note (3 May 2026):
+- The License v2 domain layer is complete. `LicenseAgreement` is the seller-owned commercial contract between a Seller org and a Buyer org. It carries `BillingModel`, `BillingPeriod`, `CollectionMode`, payment terms, credit limit, access package code, and effective dates.
+- `LicenseAgreementEntitlement` stores per-feature entitlement values (boolean, quantity, money, percentage, duration).
+- `LicenseCollectionPolicy` stores collection rules (grace period, block-on-overdue, action after grace).
+- `BillingAccount` links an org to its active `LicenseAgreement` and carries runtime account status.
+- Accounting stub tables exist: `BillingLedgerEntry`, `BillingInvoice`, `BillingInvoiceLine`, `PaymentAttempt`, `JournalEntry`, `JournalLine`.
+- **Pending execution layer:** evaluating `LicenseAgreement` at booking time, generating invoices on billing cycle, enforcing `LicenseCollectionPolicy` (block bookings when overdue), activating `BillingAccount` on agreement activation.
 
 ---
 
