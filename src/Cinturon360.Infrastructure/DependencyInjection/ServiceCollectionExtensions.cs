@@ -11,6 +11,7 @@ using Cinturon360.Application.Abstractions.Services;
 using Cinturon360.Infrastructure.Email;
 using Cinturon360.Infrastructure.Storage;
 using Cinturon360.Infrastructure.Payments;
+using Cinturon360.Infrastructure.Secrets;
 
 namespace Cinturon360.Infrastructure.DependencyInjection;
 
@@ -52,6 +53,14 @@ public static class ServiceCollectionExtensions
         // Payment gateway (Stripe)
         services.Configure<StripeSettings>(configuration.GetSection("Stripe"));
         services.AddScoped<IPaymentGateway, StripePaymentGateway>();
+        services.AddScoped<IPaymentProviderGateway, StripePaymentProviderGateway>();
+
+        // Secret store (Key Vault in production, in-memory fallback for local/dev)
+        var keyVaultUri = configuration["KeyVault:VaultUri"];
+        if (!string.IsNullOrWhiteSpace(keyVaultUri))
+            services.AddSingleton<ISecretStore, AzureKeyVaultSecretStore>();
+        else
+            services.AddSingleton<ISecretStore, InMemorySecretStore>();
 
         // Object storage (Cloudflare R2 via S3 SDK)
         var storageSection = configuration.GetSection("Storage");

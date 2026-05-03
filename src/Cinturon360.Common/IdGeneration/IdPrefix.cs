@@ -49,6 +49,16 @@ public static class IdPrefix
     public const string Invoice          = "inv";
     public const string Payment          = "pay";
     public const string PrepaidBalance   = "ppb";
+    public const string ProviderConnection = "ppc";
+    public const string BillingRelationship = "blr";
+    public const string ProviderCustomer = "prc";
+    public const string ProviderPaymentMethod = "ppm";
+    public const string BillingProfile = "bpr";
+    public const string PolicyBillingRule = "pbr";
+    public const string ProviderWebhookEvent = "pwe";
+    public const string LicenseAgreement = "la";
+    public const string LicenseCollectionPolicy = "lcp";
+    public const string BillingAccount   = "bac";
 
     // ── Documents / Jobs ──────────────────────────────────────────────────
     public const string Document         = "doc";

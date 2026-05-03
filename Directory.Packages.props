@@ -47,6 +47,8 @@
     <PackageVersion Include="Microsoft.IdentityModel.Xml" Version="8.15.0" />
     <!-- Stripe -->
     <PackageVersion Include="Stripe.net" Version="47.3.0" />
+    <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.8.0" />
+    <PackageVersion Include="Azure.Identity" Version="1.14.2" />
     <!-- AWS -->
     <PackageVersion Include="AWSSDK.S3" Version="4.0.4" />
     <PackageVersion Include="AWSSDK.Core" Version="4.0.4" />

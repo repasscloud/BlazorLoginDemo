@@ -3,8 +3,6 @@
 Questions that require decisions before the next phase of development.
 Captured during the initial v5 scaffold session.
 
----
-
 ## Q1 — Auth Server Choice
 
 **Provisionally selected:** OpenIddict 5.4.0
@@ -241,8 +239,6 @@ Once v5 reaches full feature parity and the legacy branch has not been needed fo
 
 ---
 
----
-
 ## Q15 — CSS / UI Framework
 
 The Web project scaffold has Bootstrap 5 loaded by default.
@@ -267,22 +263,1437 @@ Fluent UI Blazor should be used for operational back-office workflows such as ad
 
 Travel-agent screens should be hybrid: Fluent UI for queue/workbench operations, and Tailwind/custom components for search, booking, itinerary, policy, and traveller-facing workflows.
 
-Area	Primary UI direction	Reason
-Public website	Tailwind	Brand, marketing, modern visual identity
-Login / onboarding	Tailwind	First impression matters
-Traveller / end-user pages	Tailwind	Needs to feel modern, guided, consumer-grade
-Booking/search flow	Tailwind	This is core product differentiation
-Itinerary / trip timeline	Tailwind	Needs custom travel-specific UX
-AI recommendation panels	Tailwind	Needs product-specific visual treatment
-Admin console	Fluent UI Blazor	Enterprise controls, tables, command bars
-Support desk	Fluent UI Blazor	Queues, cases, notes, status workflows
-Finance team	Fluent UI Blazor	Tables, reconciliation, exports, audit trails
-Travel agent queue	Hybrid	Fluent for queues/tables, Tailwind for booking/itinerary experience
-Reporting dashboards	Hybrid	Tailwind layout, charts/tables as needed
+Recommended UI direction by area:
+
+- Public website: Tailwind. Brand, marketing, modern visual identity.
+- Login / onboarding: Tailwind. First impression matters.
+- Traveller / end-user pages: Tailwind. Needs to feel modern, guided, consumer-grade.
+- Booking/search flow: Tailwind. Core product differentiation.
+- Itinerary / trip timeline: Tailwind. Needs custom travel-specific UX.
+- AI recommendation panels: Tailwind. Needs product-specific visual treatment.
+- Admin console: Fluent UI Blazor. Enterprise controls, tables, command bars.
+- Support desk: Fluent UI Blazor. Queues, cases, notes, status workflows.
+- Finance team: Fluent UI Blazor. Tables, reconciliation, exports, audit trails.
+- Travel agent queue: Hybrid. Fluent for queues/tables, Tailwind for booking/itinerary experience.
+- Reporting dashboards: Hybrid. Tailwind layout, charts/tables as needed.
 
 ---
 
-## Q16 — Flight Search UI: Live Provider or Stub Data?
+## Q16 — License v2 Canonical Model (Billing + Access)
+
+### Reference Documents
+
+Primary reference:
+
+```text
+docs/architecture/cinturon360-v5-billing-licensing-entitlements-accounting-reference.md
+```
+
+Supporting previous reference:
+
+```text
+docs/architecture/cinturon360-billing-stripe-architecture-reference.md
+```
+
+
+### Decision Needed
+
+Stripe and provider-neutral billing foundations are now in place, but the final license model is still pending.
+
+Confirm the canonical License v2 shape and ownership rules used by billing execution.
+
+Proposed minimum fields:
+
+- `SellerOrgId`
+- `BuyerOrgId`
+- `BillingMode`
+- `BillingFrequency`
+- `CollectionMode`
+- `PaymentTermsDays`
+- `CreditLimit`
+- `RequirePaymentBeforeTicketing`
+- Access package/features
+- `EffectiveFrom`
+- `EffectiveTo`
+
+Options:
+
+- (a) seller-owned contract object
+- (b) buyer-owned plan object
+- (c) hybrid with both seller and buyer segments
+
+
+### Answer
+
+Use **(a) seller-owned contract object**.
+
+License v2 should be the canonical seller-owned commercial contract that defines the billing, access, entitlement, credit, collection, and effective-date rules between a `SellerOrgId` and a `BuyerOrgId`.
+
+This model should be treated as the source of truth for billing execution.
+
+The buyer may have billing profiles, payment methods, policy-specific payment rules, and UI-facing plan summaries, but those are derived from or linked to the seller-owned License v2 / billing relationship. They are not the canonical commercial contract.
+
+
+### Ownership Rule
+
+The seller organisation owns the licence because the seller is the party:
+
+- granting access;
+- setting commercial terms;
+- defining billing model;
+- setting credit limits;
+- deciding payment collection rules;
+- extending credit;
+- collecting payment;
+- carrying commercial risk.
+
+Examples:
+
+```text
+Avanōa Technology sells/licences platform access to a TMC.
+A TMC sells/licences travel platform access and billing terms to a Client organisation.
+A Vendor may sell/licence access to a child Vendor or TMC.
+```
+
+The organisation hierarchy must not automatically determine billing responsibility.
+
+Billing responsibility is defined by the seller/buyer licence relationship.
+
+### Final Decision
+
+License v2 is a:
+
+```text
+seller-owned, seller-issued, buyer-targeted commercial contract
+```
+
+Buyer-side billing profiles, payment methods, policy billing rules, and plan summaries may exist, but they must be linked to the seller-owned licence/billing relationship and must not override it unless an explicit seller-approved override exists.
+
+
+### Canonical License v2 Minimum Shape
+
+```csharp
+public sealed class LicenseAgreement
+{
+    public required string Id { get; init; }
+
+    // Commercial parties
+    public required string SellerOrgId { get; init; }
+    public required string BuyerOrgId { get; init; }
+
+    // Billing execution model
+    public BillingModel BillingModel { get; init; }
+    public BillingPeriod BillingPeriod { get; init; }
+    public CollectionMode CollectionMode { get; init; }
+
+    // Credit and collection rules
+    public int PaymentTermsDays { get; init; }
+    public decimal? CreditLimitAmount { get; init; }
+    public string CurrencyCode { get; init; } = "AUD";
+    public bool RequirePaymentBeforeTicketing { get; init; }
+
+    // Access and entitlements
+    public required string AccessPackageCode { get; init; }
+    public List<LicenseAgreementEntitlement> Entitlements { get; init; } = [];
+
+    // Effective dating
+    public DateOnly EffectiveFrom { get; init; }
+    public DateOnly? EffectiveTo { get; init; }
+
+    // Lifecycle
+    public LicenseAgreementStatus Status { get; set; } = LicenseAgreementStatus.Draft;
+
+    // Versioning
+    public int VersionNumber { get; init; } = 1;
+    public string? PreviousLicenseAgreementId { get; init; }
+    public string? SupersededByLicenseAgreementId { get; set; }
+
+    // Audit
+    public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+```
+
+
+### Billing Model
+
+Use this split:
+
+```csharp
+public enum BillingModel
+{
+    Prepaid = 1,
+    Postpaid = 2,
+    PayAsYouGo = 3
+}
+
+public enum BillingAccountStatus
+{
+    Active = 1,
+    Suspended = 2,
+    Closed = 3,
+    UnderReview = 4
+}
+```
+
+`BillingModel` defines how spend is authorised.
+
+
+- BillingModel: `Prepaid`; Meaning: Buyer can only spend from available loaded balance/credit.
+- BillingModel: `Postpaid`; Meaning: Buyer can consume first and pay after invoice issue, subject to credit and suspension rules.
+- BillingModel: `PayAsYouGo`; Meaning: Buyer is charged per transaction or near-immediately.
+
+
+`BillingAccountStatus` controls whether the billing account can currently transact.
+
+Suspension should not be treated as a billing model.
+
+This allows combinations such as:
+
+```text
+Prepaid + Active
+Prepaid + Suspended
+Postpaid + Active
+Postpaid + UnderReview
+PayAsYouGo + Active
+PayAsYouGo + Suspended
+```
+
+
+### Billing Period
+
+`BillingPeriod` defines how often recurring billing is actioned, especially for:
+
+- access fees;
+- recurring platform fees;
+- subscription-style charges;
+- usage aggregation;
+- minimum-spend checks;
+- invoice generation.
+
+Recommended enum:
+
+```csharp
+public enum BillingPeriod
+{
+    None = 0,
+    PerTransaction = 1,
+    Daily = 2,
+    Weekly = 3,
+    Fortnightly = 4,
+    Monthly = 5,
+    Quarterly = 6,
+    BiAnnual = 7,
+    Annual = 8,
+    Manual = 9
+}
+```
+
+Example:
+
+```text
+AccessFeeAmount = 500
+CurrencyCode = AUD
+BillingPeriod = Monthly
+```
+
+Meaning:
+
+```text
+Invoice or charge AUD 500 per month for system access.
+```
+
+
+### Payment Terms
+
+`PaymentTermsDays` defines how many days after invoice issue the buyer has to pay before the invoice becomes overdue.
+
+Collection and suspension behaviour should be controlled separately through collection rules.
+
+Example:
+
+```csharp
+public sealed class LicenseCollectionPolicy
+{
+    public required string LicenseAgreementId { get; init; }
+
+    public int PaymentTermsDays { get; init; }
+    public int GracePeriodDays { get; init; }
+
+    public bool BlockBookingsWhenOverdue { get; init; }
+    public bool RequirePaymentBeforeTicketing { get; init; }
+
+    public CollectionActionAfterGrace ActionAfterGrace { get; init; }
+}
+```
+
+Example timeline:
+
+```text
+Invoice issued: 1 May 2026
+PaymentTermsDays: 14
+Due date: 15 May 2026
+GracePeriodDays: 3
+Collection action may begin: 18 May 2026
+```
+
+
+### Collection Mode
+
+`CollectionMode` defines how payment is collected.
+
+```csharp
+public enum CollectionMode
+{
+    None = 0,
+    Manual = 1,
+    Automatic = 2,
+    ExternalReferenceOnly = 3
+}
+```
+
+
+- CollectionMode: `Automatic`; Meaning: Stripe or another payment provider collects automatically.
+- CollectionMode: `Manual`; Meaning: Invoice is issued but payment is manually reconciled.
+- CollectionMode: `ExternalReferenceOnly`; Meaning: Cinturon360 records billing but external systems collect payment.
+- CollectionMode: `None`; Meaning: No payable billing; useful for trial, internal, shadow, or no-charge arrangements.
+
+
+
+### Access Package and Features
+
+The licence should not store a random flat list of booleans.
+
+It should reference:
+
+```text
+AccessPackageCode
+```
+
+and contain explicit entitlement rows.
+
+Use grouped entitlement IDs:
+
+```text
+100–199    Organisation / tenant capacity
+200–299    User / identity / access
+300–399    Traveller profile / personal travel data
+400–499    Booking / travel operations
+500–599    Public / search / marketplace
+600–699    API / integration / automation
+700–799    Reporting / analytics / finance visibility
+800–899    Support / service desk / operational tools
+900–999    Security / compliance / audit
+1000–1099  Billing / accountancy / settlement
+1100–1199  AI / automation / assistant features
+1200–1299  Data retention / storage / documents
+9000–9999  Internal / experimental / migration
+```
+
+Use the agreed `EntitlementType` enum from:
+
+```text
+docs/architecture/cinturon360-v5-billing-licensing-entitlements-accounting-reference.md
+```
+
+as the initial canonical entitlement catalogue.
+
+
+### Entitlement Instance Shape
+
+```csharp
+public sealed class LicenseAgreementEntitlement
+{
+    public required string Id { get; init; }
+
+    public required string LicenseAgreementId { get; init; }
+
+    public EntitlementType Type { get; init; }
+
+    public EntitlementValueKind ValueKind { get; init; }
+
+    public bool? BooleanValue { get; init; }
+
+    public decimal? NumericValue { get; init; }
+
+    public string? TextValue { get; init; }
+
+    public bool IsUnlimited { get; init; }
+
+    public DateOnly EffectiveFrom { get; init; }
+
+    public DateOnly? EffectiveTo { get; init; }
+
+    public bool IsActive { get; set; } = true;
+
+    public string? Notes { get; init; }
+}
+```
+
+```csharp
+public enum EntitlementValueKind
+{
+    Boolean = 1,
+    Quantity = 2,
+    Money = 3,
+    Percentage = 4,
+    DurationDays = 5,
+    DurationMonths = 6,
+    StorageGb = 7,
+    RequestsPerPeriod = 8
+}
+```
+
+
+### Billing Execution Rules
+
+Billing execution should resolve from the seller-owned licence.
+
+### 1. Find active licence
+
+Find active licence where:
+
+```text
+SellerOrgId = seller
+BuyerOrgId = buyer
+EffectiveFrom <= today
+EffectiveTo == null || EffectiveTo >= today
+Status = Active
+```
+
+### 2. Resolve billing model
+
+```text
+Prepaid:
+  Check available balance before allowing chargeable activity.
+
+Postpaid:
+  Allow usage subject to credit limit, collection state, overdue state, and billing account status.
+
+PayAsYouGo:
+  Require immediate or near-immediate charge.
+```
+
+### 3. Resolve collection mode
+
+```text
+Automatic:
+  Execute collection through configured provider connection.
+
+Manual:
+  Generate invoice and await manual reconciliation.
+
+ExternalReferenceOnly:
+  Record/export billing but do not collect inside Cinturon360.
+
+None:
+  Calculate only if required for shadow/reporting.
+```
+
+### 4. Resolve entitlements
+
+Resolve:
+
+- base access package;
+- explicit entitlement overrides;
+- quantity limits;
+- feature/module access;
+- expiry/effective dates;
+- inherited access where applicable.
+
+Examples:
+
+```text
+User accounts
+Travellers
+API requests
+Bookings
+Storage
+SSO
+SCIM
+Finance reporting
+Support desk
+AI assistant
+```
+
+### 5. Generate accounting-safe billing records
+
+Billing execution must generate or update appropriate financial records:
+
+- invoice;
+- invoice lines;
+- payment attempts;
+- billing ledger entries;
+- later, DR/CR journal entries.
+
+
+### Accounting Compatibility
+
+License v2 must not be the accounting ledger.
+
+The licence defines the commercial rules.
+
+Financial truth belongs to:
+
+- invoices;
+- invoice lines;
+- payment attempts;
+- billing ledger entries;
+- journal entries;
+- exports to external finance systems.
+
+Do not store mutable financial truth directly on the licence, such as:
+
+```text
+PrepaidBalance
+CurrentOutstandingAmount
+LatestPaymentStatus
+LastInvoiceStatus
+```
+
+Those should be derived from ledger, invoice, and payment records.
+
+
+### Postpaid Accounting Treatment
+
+For postpaid billing:
+
+```text
+Invoice issued:
+DR Accounts Receivable
+CR Revenue
+CR Tax Payable
+
+Payment received:
+DR Cash / Provider Clearing
+CR Accounts Receivable
+```
+
+Example:
+
+```text
+Invoice total: AUD 110.00
+Revenue: AUD 100.00
+GST: AUD 10.00
+```
+
+Journal:
+
+
+- Account: Accounts Receivable; DR: 110.00
+- Account: Platform Revenue; CR: 100.00
+- Account: GST Payable; CR: 10.00
+
+
+Payment received:
+
+
+- Account: Cash / Provider Clearing; DR: 110.00
+- Account: Accounts Receivable; CR: 110.00
+
+
+
+### Prepaid Accounting Treatment
+
+For prepaid billing:
+
+```text
+Top-up received:
+DR Cash / Provider Clearing
+CR Customer Credits Liability
+
+Service consumed:
+DR Customer Credits Liability
+CR Revenue
+CR Tax Payable
+```
+
+Example top-up:
+
+```text
+Buyer loads AUD 1,100.00 credit.
+```
+
+Journal:
+
+
+- Account: Cash / Provider Clearing; DR: 1,100.00
+- Account: Customer Credits Liability; CR: 1,100.00
+
+
+Example consumption:
+
+```text
+AUD 110.00 of service consumed.
+Revenue: AUD 100.00
+GST: AUD 10.00
+```
+
+Journal:
+
+
+- Account: Customer Credits Liability; DR: 110.00
+- Account: Platform Revenue; CR: 100.00
+- Account: GST Payable; CR: 10.00
+
+
+
+### Pay-As-You-Go Accounting Treatment
+
+For pay-as-you-go billing, collection may happen immediately or near-immediately.
+
+```text
+Usage event occurs.
+Payment is collected.
+Invoice/receipt is generated.
+Accounting entries are created.
+```
+
+Typical journal:
+
+```text
+DR Cash / Provider Clearing
+CR Revenue
+CR Tax Payable
+```
+
+### Why Not Buyer-Owned Plan Object
+
+A buyer-owned plan object is not sufficient because the buyer does not own:
+
+- commercial terms;
+- credit exposure;
+- payment collection mode;
+- provider connection;
+- billing risk;
+- entitlement grant;
+- seller-issued pricing;
+- suspension/collection policy.
+
+The same buyer may also be billed by different sellers in different contexts.
+
+Example:
+
+```text
+Buyer organisation may be billed by:
+- Avanōa Technology for platform-level access;
+- a TMC for travel services;
+- another partner/vendor for a different commercial arrangement.
+```
+
+The buyer cannot be the canonical owner of all those commercial contracts.
+
+### Why Not Hybrid
+
+A hybrid model creates ambiguity over which side is authoritative.
+
+Buyer-side records are still useful for UI and operational defaults, but they should reference the seller-owned licence rather than becoming a competing source of truth.
+
+Avoid:
+
+```text
+Seller licence says one thing.
+Buyer plan says another thing.
+Billing resolver has to guess which is authoritative.
+```
+
+Use:
+
+```text
+Seller-owned licence = source of truth.
+Buyer-side profile = operational view/configuration linked to licence.
+```
+
+### Relationship to Provider-Neutral Billing
+
+License v2 must remain provider-neutral.
+
+The licence should not contain Stripe-specific fields such as:
+
+```text
+StripeCustomerId
+StripePaymentMethodId
+StripeAccountId
+CardLast4
+CardFingerprint
+```
+
+Those belong to provider-neutral payment/billing records such as:
+
+```text
+PaymentProviderConnection
+ProviderCustomer
+ProviderPaymentMethod
+PaymentMethodAssignment
+PaymentAttempt
+```
+
+Stripe is an execution channel only.
+
+Cinturon360 owns the billing logic.
+
+### Recommended Supporting Objects
+
+License v2 should work alongside these records:
+
+```text
+LicenseAgreement
+LicenseAgreementEntitlement
+LicenseCollectionPolicy
+BillingAccount
+BillingLedgerEntry
+BillingInvoice
+BillingInvoiceLine
+PaymentProviderConnection
+ProviderCustomer
+ProviderPaymentMethod
+PaymentMethodAssignment
+PaymentAttempt
+JournalEntry
+JournalLine
+```
+
+---
+
+# Q17 — Stripe Webhook Endpoint Auto-Provisioning
+
+## Question
+
+Current implementation supports connection-scoped webhook handling and secret storage, but webhook endpoint creation is still manually completed in Stripe Dashboard.
+
+## Decision Needed
+
+Should API auto-create Stripe webhook endpoints on connection setup now?
+
+Options:
+
+```text
+(a) Auto-create immediately during ConfigureStripeProviderConnection
+(b) Keep manual creation for now and move auto-create to next phase
+```
+
+## Answer
+
+Use **(b) keep manual creation for now and move auto-create to the next phase**.
+
+Do not auto-create Stripe webhook endpoints during `ConfigureStripeProviderConnection` yet.
+
+The current implementation already supports the important foundation:
+
+```text
+Connection-scoped webhook handling
+Webhook secret storage
+Provider connection records
+Stripe provider configuration
+Secret storage abstraction
+```
+
+That is enough for the current phase.
+
+Auto-provisioning Stripe webhook endpoints should be added in the next phase once the provider onboarding lifecycle, environment handling, webhook URL generation, idempotency, rotation, and failure recovery rules are fully defined.
+
+
+## Reference
+
+This decision is aligned with the provider-neutral billing / Stripe architecture reference:
+
+```text
+docs/architecture/cinturon360-billing-stripe-architecture-reference.md
+```
+
+That document defines the future target state where webhook endpoint creation can happen during provider onboarding, but the current implementation can safely remain manual while the connection-scoped webhook handling and secret storage foundations are stabilised.
+
+
+## Reasoning
+
+Auto-creating Stripe webhook endpoints is useful, but it introduces additional operational complexity.
+
+Before enabling automatic webhook creation, the system should have clear rules for:
+
+```text
+Webhook URL generation
+Live vs test mode separation
+Connection-specific endpoint selection
+Webhook event selection
+Idempotent setup retries
+Failed setup recovery
+Secret storage and rotation
+Duplicate endpoint detection
+Webhook endpoint disable/delete behaviour
+Environment-specific API base URLs
+Provider connection re-verification
+Audit logging
+```
+
+If this is added too early, `ConfigureStripeProviderConnection` may become responsible for too much at once.
+
+A safer phased approach is:
+
+```text
+Current phase:
+  Configure provider connection.
+  Store provider secrets.
+  Support connection-scoped webhook endpoint.
+  Manually create webhook endpoint in Stripe Dashboard.
+  Store webhook secret reference.
+
+Next phase:
+  API creates Stripe webhook endpoint automatically.
+  API stores returned webhook endpoint ID.
+  API stores returned webhook signing secret in Key Vault.
+  API marks webhook provisioning status.
+  API supports rotation/recreate/disable operations.
+```
+
+## Recommended Current Behaviour
+
+During the current phase:
+
+```text
+1. Admin configures Stripe provider connection.
+2. API stores Stripe credentials in secret storage.
+3. API verifies the connection.
+4. Admin manually creates webhook endpoint in Stripe Dashboard.
+5. Admin enters or stores webhook signing secret through Cinturon360.
+6. API stores webhook secret in Key Vault or equivalent.
+7. Connection-scoped webhook handler receives events.
+```
+
+Recommended webhook endpoint format:
+
+```text
+/api/v1/webhooks/payment-providers/stripe/{connectionId}
+```
+
+The connection-specific endpoint is preferred because it is deterministic and audit-safe.
+
+## Future Auto-Provisioning Shape
+
+When this is moved to the next phase, the flow should be:
+
+```text
+1. Create PaymentProviderConnection in PendingSetup.
+2. Store Stripe API credentials in Key Vault.
+3. Verify Stripe key.
+4. Generate connection-specific webhook URL.
+5. Create Stripe webhook endpoint using the seller organisation's Stripe key.
+6. Store Stripe webhook endpoint ID on PaymentProviderConnection.
+7. Store returned webhook signing secret in Key Vault.
+8. Mark webhook provisioning as complete.
+9. Mark provider connection as Verified.
+```
+
+Recommended future endpoint creation target:
+
+```text
+https://api.cinturon360.com/api/v1/webhooks/payment-providers/stripe/{connectionId}
+```
+
+
+## Future Provider Connection Fields
+
+```csharp
+public sealed class PaymentProviderConnection
+{
+    public required string Id { get; init; }
+
+    public required string OwnerOrgId { get; init; }
+
+    public PaymentProviderType ProviderType { get; init; }
+
+    public bool IsLiveMode { get; init; }
+
+    public bool IsEnabled { get; set; }
+
+    public bool IsPrimary { get; set; }
+
+    public ProviderConnectionStatus Status { get; set; }
+
+    public string SecretBundleReference { get; set; } = "";
+
+    public string? ProviderAccountId { get; set; }
+
+    public string? ProviderAccountName { get; set; }
+
+    public string? WebhookEndpointId { get; set; }
+
+    public string? WebhookSecretReference { get; set; }
+
+    public ProviderUsageScope UsageScope { get; set; }
+
+    public DateTimeOffset? VerifiedAtUtc { get; set; }
+
+    public DateTimeOffset? WebhookProvisionedAtUtc { get; set; }
+
+    public DateTimeOffset? LastWebhookReceivedAtUtc { get; set; }
+
+    public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset UpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+```
+
+
+**Answer:** Use **(b) keep manual creation for now and move auto-create to the next phase**.
+
+Do not auto-create Stripe webhook endpoints during `ConfigureStripeProviderConnection` yet.
+
+The current implementation already supports the required foundation: connection-scoped webhook handling and webhook secret storage. Keep webhook endpoint creation manual for the current phase while the provider connection lifecycle, environment handling, webhook URL generation, idempotency, secret rotation, and failure recovery rules are stabilised.
+
+The next phase should add automatic Stripe webhook endpoint creation during provider onboarding. At that point the API should create the Stripe webhook endpoint, store the returned webhook endpoint ID, store the webhook signing secret in Key Vault, and mark webhook provisioning as complete.
+
+Reference:
+
+```text
+docs/architecture/cinturon360-billing-stripe-architecture-reference.md
+```
+
+---
+
+# Q18 — Expense Policy Billing Rule Model
+
+## Question
+
+Travel policy billing rule foundation exists:
+
+```text
+TravelPolicyBillingRule
+```
+
+Expense policies are not yet modeled.
+
+## Decision Needed
+
+Should Expense Policy billing rules reuse the same table/model with a `PolicyType` discriminator, or be a separate entity?
+
+Options:
+
+```text
+(a) Single shared billing-rule model with discriminator
+(b) Separate entity per policy domain
+```
+
+## Answer
+
+Use **(a) single shared billing-rule model with discriminator**.
+
+Expense policy billing rules should reuse the same billing-rule foundation as travel policy billing rules, with a policy discriminator such as `PolicyType`.
+
+This keeps billing resolution consistent across policy domains and avoids duplicating payment method selection, billing model overrides, collection mode overrides, effective dating, provider customer resolution, and provider connection resolution.
+
+Domain-specific behaviour should remain in the travel or expense policy engines.
+
+Billing-specific behaviour should remain in the shared billing-rule resolver.
+
+
+## Reference
+
+This decision aligns with the canonical License v2 / billing architecture reference:
+
+```text
+docs/architecture/cinturon360-v5-billing-licensing-entitlements-accounting-reference.md
+```
+
+It also aligns with the provider-neutral billing reference:
+
+```text
+docs/architecture/cinturon360-billing-stripe-architecture-reference.md
+```
+
+The billing resolver should remain provider-neutral and policy-domain aware, without duplicating the same payment resolution model for each domain.
+
+
+## Reasoning
+
+Travel policies and expense policies are different policy domains, but their billing resolution requirements are mostly the same.
+
+Both need to answer:
+
+```text
+Which organisation owns this policy?
+Which seller/buyer licence applies?
+Which payment provider connection should be used?
+Which provider customer should be used?
+Which payment method should be used?
+Should the default organisation billing setup be used?
+Is there a policy-specific override?
+Is the billing model overridden?
+Is the collection mode overridden?
+What effective dates apply?
+Is this billing rule currently enabled?
+```
+
+Because those concerns are shared, they should not be duplicated into separate tables unless the billing semantics become materially different later.
+
+A shared model also allows the billing resolver to operate consistently:
+
+```text
+Organisation default billing
+        ↓
+Policy billing rule override
+        ↓
+Transaction override
+        ↓
+Resolved billing instruction
+        ↓
+Billing execution
+```
+
+
+## Recommended Model
+
+Use a generic model:
+
+```csharp
+public sealed class PolicyBillingRule
+{
+    public required string Id { get; init; }
+
+    public required string OrganisationId { get; init; }
+
+    public PolicyType PolicyType { get; init; }
+
+    public required string PolicyId { get; init; }
+
+    public BillingResolutionMode ResolutionMode { get; init; }
+
+    public string? PaymentProviderConnectionId { get; init; }
+
+    public string? ProviderCustomerId { get; init; }
+
+    public string? ProviderPaymentMethodId { get; init; }
+
+    public BillingModel? BillingModelOverride { get; init; }
+
+    public CollectionMode? CollectionModeOverride { get; init; }
+
+    public bool RequirePaymentBeforeExecution { get; init; }
+
+    public DateOnly EffectiveFrom { get; init; }
+
+    public DateOnly? EffectiveTo { get; init; }
+
+    public bool IsEnabled { get; set; } = true;
+
+    public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset UpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+```
+
+
+## Policy Type
+
+```csharp
+public enum PolicyType
+{
+    Travel = 1,
+    Expense = 2
+}
+```
+
+Future policy domains can be added without introducing new billing-rule tables:
+
+```csharp
+public enum PolicyType
+{
+    Travel = 1,
+    Expense = 2,
+    Procurement = 3,
+    CorporateCard = 4,
+    Reimbursement = 5
+}
+```
+
+
+## Billing Resolution Mode
+
+```csharp
+public enum BillingResolutionMode
+{
+    Default = 0,
+    SpecificPaymentMethod = 1,
+    SpecificBillingProfile = 2,
+    Manual = 3,
+    External = 4,
+    NoCharge = 5
+}
+```
+
+| Mode | Description |
+|---|---|
+| `Default` | Use organisation default billing setup. |
+| `SpecificPaymentMethod` | Use a specific stored payment method. |
+| `SpecificBillingProfile` | Use a specific billing profile or licence-linked billing setup. |
+| `Manual` | Generate records/invoice but do not auto-collect. |
+| `External` | Record billing but collection happens outside Cinturon360. |
+| `NoCharge` | Used for internal, trial, waived, or shadow-only rules. |
+
+
+## Billing Model
+
+Use the agreed billing model split:
+
+```csharp
+public enum BillingModel
+{
+    Prepaid = 1,
+    Postpaid = 2,
+    PayAsYouGo = 3
+}
+
+public enum BillingAccountStatus
+{
+    Active = 1,
+    Suspended = 2,
+    Closed = 3,
+    UnderReview = 4
+}
+```
+
+`BillingModel` defines how spend is authorised.
+
+`BillingAccountStatus` controls whether the billing account can currently transact.
+
+Suspension should not be treated as a billing model.
+
+## Collection Mode
+
+```csharp
+public enum CollectionMode
+{
+    None = 0,
+    Manual = 1,
+    Automatic = 2,
+    ExternalReferenceOnly = 3
+}
+```
+
+
+## Database Constraint Recommendation
+
+The model should enforce deterministic policy billing rules.
+
+Recommended unique constraint:
+
+```text
+OrganisationId
+PolicyType
+PolicyId
+EffectiveFrom
+```
+
+Optional stricter rule:
+
+```text
+Only one active billing rule per OrganisationId + PolicyType + PolicyId for the same effective date window.
+```
+
+This prevents duplicate active rules for the same policy.
+
+
+## Resolver Behaviour
+
+The resolver should follow this order:
+
+```text
+1. Resolve organisation default billing setup.
+2. Look for active PolicyBillingRule by OrganisationId + PolicyType + PolicyId.
+3. If no policy rule exists, use organisation default.
+4. If policy rule exists, apply allowed overrides.
+5. Return ResolvedBillingInstruction.
+```
+
+Example output:
+
+```csharp
+public sealed class ResolvedBillingInstruction
+{
+    public required string PaymentProviderConnectionId { get; init; }
+
+    public string? ProviderCustomerId { get; init; }
+
+    public string? ProviderPaymentMethodId { get; init; }
+
+    public BillingModel BillingModel { get; init; }
+
+    public CollectionMode CollectionMode { get; init; }
+
+    public BillingResolutionSource Source { get; init; }
+}
+```
+
+```csharp
+public enum BillingResolutionSource
+{
+    OrganisationDefault = 0,
+    PolicyOverride = 1,
+    TransactionOverride = 2
+}
+```
+
+**Answer:** Use **(a) single shared billing-rule model with discriminator**.
+
+Travel and expense policy billing rules should use one shared `PolicyBillingRule` model with a `PolicyType` discriminator.
+
+This keeps billing resolution consistent across policy domains and avoids duplicating payment method selection, billing model overrides, collection mode overrides, effective dating, provider customer resolution, and provider connection resolution.
+
+Use `PolicyType = Travel` for travel policies and `PolicyType = Expense` for expense policies.
+
+Domain-specific behaviour should remain in the travel or expense policy engines. Billing-specific behaviour should remain in the shared billing-rule resolver.
+
+Reference:
+
+```text
+docs/architecture/cinturon360-v5-billing-licensing-entitlements-accounting-reference.md
+```
+
+---
+
+# Q19 — Org-Scope Webhook Resolution
+
+## Question
+
+Route supported:
+
+```text
+/api/v1/webhooks/stripe/{vendor|tmc|client}/{orgId}
+```
+
+Current behavior resolves the active primary Stripe provider connection for that org.
+
+## Decision Needed
+
+If an org has multiple active Stripe connections, how should the scope route choose one?
+
+Options:
+
+```text
+(a) Reject with 409 until caller uses connection-specific endpoint
+(b) Use latest verified connection
+(c) Use explicit Primary flag on provider connection
+```
+
+## Answer
+
+Use **(c) explicit `Primary` flag on provider connection**.
+
+Org-scoped webhook routes must resolve only the active primary provider connection for that organisation and provider.
+
+If more than one active primary connection exists, reject with a `409 Conflict` because the configuration is invalid.
+
+If no active primary connection exists, reject with a `404 Not Found` or equivalent provider-not-configured response.
+
+Connection-specific webhook endpoints should remain available for cases where the caller knows the exact provider connection.
+
+
+## Reference
+
+This decision aligns with the provider-neutral billing / Stripe architecture reference:
+
+```text
+docs/architecture/cinturon360-billing-stripe-architecture-reference.md
+```
+
+That reference recommends connection-specific webhook endpoints for provider webhooks and deterministic provider connection resolution.
+
+## Recommended Behaviour
+
+| Situation | Result |
+|---|---|
+| One active primary Stripe connection | Use it |
+| Multiple active Stripe connections, one primary | Use the primary connection |
+| Multiple active primary Stripe connections | Return `409 Conflict` |
+| Multiple active Stripe connections, none primary | Return `409 Conflict` or provider configuration error |
+| No active Stripe connection | Return `404 Not Found` |
+| Connection-specific endpoint used | Use specified connection directly |
+
+## Provider Connection Shape
+
+```csharp
+public sealed class PaymentProviderConnection
+{
+    public required string Id { get; init; }
+
+    public required string OwnerOrgId { get; init; }
+
+    public PaymentProviderType ProviderType { get; init; }
+
+    public ProviderConnectionStatus Status { get; set; }
+
+    public bool IsEnabled { get; set; }
+
+    public bool IsPrimary { get; set; }
+
+    public bool IsLiveMode { get; init; }
+
+    public ProviderUsageScope UsageScope { get; init; }
+
+    public DateTimeOffset? VerifiedAtUtc { get; set; }
+
+    public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset UpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+```
+
+
+## Provider Type
+
+```csharp
+public enum PaymentProviderType
+{
+    None = 0,
+    Stripe = 1,
+    Airwallex = 2,
+    Braintree = 3,
+    PayPal = 4,
+    Square = 5,
+    Manual = 6,
+    External = 7
+}
+```
+
+
+## Provider Connection Status
+
+```csharp
+public enum ProviderConnectionStatus
+{
+    PendingSetup = 0,
+    PendingVerification = 1,
+    Verified = 2,
+    FailedVerification = 3,
+    Disabled = 4
+}
+```
+
+
+## Provider Usage Scope
+
+```csharp
+public enum ProviderUsageScope
+{
+    OwnerOnly = 0,
+    DirectChildren = 1,
+    Descendants = 2
+}
+```
+
+
+## Database Constraint Recommendation
+
+Enforce one active primary connection per organisation/provider/environment/scope.
+
+Recommended uniqueness rule:
+
+```text
+OwnerOrgId
+ProviderType
+IsLiveMode
+UsageScope
+IsPrimary = true
+IsEnabled = true
+```
+
+For PostgreSQL, this should be a filtered/partial unique index.
+
+Conceptual example:
+
+```sql
+CREATE UNIQUE INDEX ux_payment_provider_connection_primary
+ON billing.payment_provider_connections
+(
+    owner_org_id,
+    provider_type,
+    is_live_mode,
+    usage_scope
+)
+WHERE is_primary = true
+  AND is_enabled = true
+  AND status = 'Verified';
+```
+
+This prevents multiple verified primary Stripe connections for the same owner org, environment, and usage scope.
+
+
+## Preferred Endpoint Strategy
+
+The org-scope route is convenient:
+
+```text
+/api/v1/webhooks/stripe/{vendor|tmc|client}/{orgId}
+```
+
+But the connection-specific route is more deterministic and audit-safe:
+
+```text
+/api/v1/webhooks/payment-providers/stripe/{connectionId}
+```
+
+Recommended:
+
+```text
+Provider-created webhook endpoints should use the connection-specific endpoint where possible.
+Org-scope endpoints may remain as a compatibility/convenience route.
+Org-scope routes must use the explicit primary connection rule.
+```
+
+## Why Not Latest Verified Connection
+
+Do not use:
+
+```text
+latest verified connection
+```
+
+Reason:
+
+```text
+Non-deterministic
+Changes behaviour when a new connection is verified
+Can silently route provider events to the wrong account
+Makes audit history harder
+Can break existing webhook registrations
+Dangerous if live/test connections coexist
+```
+
+Webhook routing must be stable, explicit, and audit-safe.
+
+## Why Not Always 409
+
+Option (a) is safer than latest verified, but too restrictive if the organisation has deliberately marked one connection as primary.
+
+A `409 Conflict` should be used when configuration is ambiguous:
+
+```text
+Multiple active connections and no primary
+Multiple active primaries
+```
+
+
+**Answer:** Use **(c) explicit `Primary` flag on provider connection**.
+
+Org-scoped webhook routes must resolve only the active primary provider connection for that organisation and provider.
+
+If more than one active primary connection exists, reject with a `409 Conflict` because the configuration is invalid.
+
+If no active primary connection exists, reject with a `404 Not Found` or equivalent provider-not-configured response.
+
+Connection-specific webhook endpoints should remain available for cases where the caller knows the exact provider connection.
+
+Do not use “latest verified connection” because webhook routing must be deterministic and audit-safe.
+
+Reference:
+
+```text
+docs/architecture/cinturon360-billing-stripe-architecture-reference.md
+```
+
+
+---
+
+## Q20 — Flight Search UI: Live Provider or Stub Data?
 
 The booking pages need a flight search form. The real integrations (Amadeus, Duffel) are planned for Phase 10.
 
@@ -312,16 +1723,42 @@ Phase 10:
 
 ---
 
-## Q17 — Role-Based Navigation Layout
+## Q21 — Role-Based Navigation Layout
 
 The page folder structure has `Sudo/`, `Vendor/`, `Tmc/`, `Client/` sections. These represent different user role groups.
 
 **Options:**
-- (a) **Separate layouts per role group** — different nav/sidebar depending on the user's role (e.g. a TMC user sees a different shell than a Client user)
+- (a) **Separate layouts per role group** — different nav/sidebar depending on the user's role, e.g. a TMC user sees a different shell than a Client user
+- (b) **One shared layout** — nav items shown or hidden based on claims/permissions
+- (c) **One layout with separate route subtrees** — e.g. `/vendor/...`, `/tmc/...`, `/client/...`; same shell, different route namespaces
+
+**Decision needed:** Which navigation model?
+
+**Answer:**
+Decision: Option C — one shared layout with separate route subtrees.
+
+Use one consistent application shell, but keep role-group areas separated by route namespace:
+
+```text
+/sudo/...
+/vendor/...
+/tmc/...
+/client/...
+```
+
+Reason: The application should feel like one unified product, not separate applications for each role group. A shared shell keeps branding, account controls, notifications, tenant switching, search, help, and general layout behaviour consistent. Separate route subtrees keep each role group cleanly organised and easier to secure, test, document, and reason about.
+
+Navigation items inside the shared shell should be shown or hidden based on claims and permissions. The route namespace helps organise the application, but it must not be treated as the only security boundary. Access must still be enforced through authorization policies.
+
+Do not create separate layouts per role group unless there is a genuine product-level reason. Do not let Sudo, Vendor, TMC, or Client areas infer different Tailwind or Fluent UI styling. The role/route determines access and navigation visibility, not the CSS framework.
+
+Tailwind should act as the global design system, while Fluent UI Blazor should be available for specific operational components or pages where enterprise controls are needed.
+
+Final model: one shared shell, separate role-based route namespaces, permission-filtered navigation, policy-based authorization, and page/component-level choice of Tailwind or Fluent UI where appropriate.
 
 ---
 
-## Q18 — Approval Assignment Semantics
+## Q22 — Approval Assignment Semantics
 
 Phase 9 approvals now has a working pending list, detail page, and history page, but the current repository implementation behind `ListPendingForApproverAsync` does **not** actually filter by approver. It currently returns all pending approvals.
 
@@ -336,34 +1773,10 @@ This means the UI workflow works technically, but the business rule for "who is 
 **Decision needed:** Which approval assignment rule should Phase 9 enforce for pending approvals and approval actions?
 
 **Current temporary implementation:** Option (d) in effect, because no approver-assignment model exists yet.
-- (b) **One shared layout**, with nav items shown or hidden based on claims/permissions
-- (c) **One layout with separate route subtrees** — e.g. `/vendor/…`, `/tmc/…`, `/client/…` — same shell, different route namespaces
-
-**Decision needed:** Which navigation model?
-
-**Answer:**
-Decision: Option C — one shared layout with separate route subtrees.
-
-Use one consistent application shell, but keep role-group areas separated by route namespace:
-
-/sudo/...
-/vendor/...
-/tmc/...
-/client/...
-
-Reason: The application should feel like one unified product, not separate applications for each role group. A shared shell keeps branding, account controls, notifications, tenant switching, search, help, and general layout behaviour consistent. Separate route subtrees keep each role group cleanly organised and easier to secure, test, document, and reason about.
-
-Navigation items inside the shared shell should be shown or hidden based on claims and permissions. The route namespace helps organise the application, but it must not be treated as the only security boundary. Access must still be enforced through authorization policies.
-
-Do not create separate layouts per role group unless there is a genuine product-level reason. Do not let Sudo, Vendor, TMC, or Client areas infer different Tailwind or Fluent UI styling. The role/route determines access and navigation visibility, not the CSS framework.
-
-Tailwind should act as the global design system, while Fluent UI Blazor should be available for specific operational components or pages where enterprise controls are needed.
-
-Final model: one shared shell, separate role-based route namespaces, permission-filtered navigation, policy-based authorization, and page/component-level choice of Tailwind or Fluent UI where appropriate.
 
 ---
 
-## Q18 — Web Auth State Management
+## Q23 — Web Auth State Management
 
 The API owns authentication (JWT). The Blazor app is server-side. How should the Web project maintain auth state between the browser and the API?
 
@@ -394,7 +1807,7 @@ Final model: browser uses a secure cookie to the Blazor Server Web app; Web app 
 
 ---
 
-## Q19 — Brand & Design Direction
+## Q24 — Brand & Design Direction
 
 Before building layouts and components, it helps to know what the UI should look and feel like.
 
@@ -407,9 +1820,8 @@ Before building layouts and components, it helps to know what the UI should look
 **Decision needed:** What is the brand/design direction for the Web UI?
 
 **Answer:**
-# Q19 — Brand & Design Direction
 
-## Decision
+### Decision
 
 **New modern product design direction with production-ready theming, localisation, and user preferences.**
 
@@ -428,7 +1840,7 @@ The design system must support:
 - UTC storage for persisted date/time values
 - Clear separation between editable application data and read-only provider/search result data
 
-## Logo & Typography
+### Logo & Typography
 
 ### Logo
 
@@ -438,18 +1850,18 @@ The Cinturon360 wordmark is rendered as styled text using:
 - **Weight:** 800 (extrabold)
 - **Style:** `tracking-tight`, no letter-spacing expansion
 
-| Segment | Colour | Hex | Tailwind Token |
-|---|---|---|---|
-| Cinturon | Sky Blue | `#38bdf8` | `sky-400` |
-| 360 | Vibrant Orange | `#f97316` | `orange-500` |
+
+- Segment: Cinturon; Colour: Sky Blue; Hex: `#38bdf8`; Tailwind Token: `sky-400`
+- Segment: 360; Colour: Vibrant Orange; Hex: `#f97316`; Tailwind Token: `orange-500`
+
 
 ### Type Scale
 
-| Role | Font | Weight | Notes |
-|---|---|---|---|
-| Headings | Plus Jakarta Sans | 700 / 800 | `font-heading` Tailwind token |
-| Body | Inter | 400 / 500 | `font-sans` Tailwind token |
-| Mono | System mono stack | 400 | Code, data, IDs |
+
+- Role: Headings; Font: Plus Jakarta Sans; Weight: 700 / 800; Notes: `font-heading` Tailwind token
+- Role: Body; Font: Inter; Weight: 400 / 500; Notes: `font-sans` Tailwind token
+- Role: Mono; Font: System mono stack; Weight: 400; Notes: Code, data, IDs
+
 
 Font weights:
 
@@ -460,58 +1872,58 @@ Plus Jakarta Sans: 600, 700, 800
 
 Fonts should use an approved delivery strategy and should not create avoidable runtime dependency or compliance risk.
 
-## Colour Palette
+### Colour Palette
 
 The application must support both light and dark themes. Colour tokens should be semantic, not hard-coded directly into components.
 
 ### Brand Primaries
 
-| Name | Hex | Usage |
-|---|---|---|
-| Sky / Cinturon | `#38bdf8` | Primary CTA, links, active states, accents |
-| Orange / 360 | `#f97316` | Secondary accent, highlights, badges, brand moments |
+
+- Name: Sky / Cinturon; Hex: `#38bdf8`; Usage: Primary CTA, links, active states, accents
+- Name: Orange / 360; Hex: `#f97316`; Usage: Secondary accent, highlights, badges, brand moments
+
 
 Primary actions should usually use Sky. Orange should be reserved for secondary emphasis, highlights, alerts, brand moments, or conversion-oriented CTAs.
 
 ### Light Theme Tokens
 
-| Token | Suggested Value | Usage |
-|---|---:|---|
-| `background` | `#f8fafc` | Main app background |
-| `surface` | `#ffffff` | Cards, panels, page sections |
-| `surface-muted` | `#f1f5f9` | Secondary sections, table headers |
-| `surface-hover` | `#e2e8f0` | Hover and selected row states |
-| `border-subtle` | `rgba(15,23,42,0.08)` | Card edges, dividers |
-| `border-strong` | `rgba(15,23,42,0.14)` | Inputs, menus, modals |
-| `text-primary` | `#0f172a` | Primary headings and body |
-| `text-secondary` | `#334155` | Secondary body text |
-| `text-muted` | `#64748b` | Hints, placeholders, metadata |
-| `text-disabled` | `#94a3b8` | Disabled and tertiary text |
+
+- Token: `background`; Suggested Value: `#f8fafc`; Usage: Main app background
+- Token: `surface`; Suggested Value: `#ffffff`; Usage: Cards, panels, page sections
+- Token: `surface-muted`; Suggested Value: `#f1f5f9`; Usage: Secondary sections, table headers
+- Token: `surface-hover`; Suggested Value: `#e2e8f0`; Usage: Hover and selected row states
+- Token: `border-subtle`; Suggested Value: `rgba(15,23,42,0.08)`; Usage: Card edges, dividers
+- Token: `border-strong`; Suggested Value: `rgba(15,23,42,0.14)`; Usage: Inputs, menus, modals
+- Token: `text-primary`; Suggested Value: `#0f172a`; Usage: Primary headings and body
+- Token: `text-secondary`; Suggested Value: `#334155`; Usage: Secondary body text
+- Token: `text-muted`; Suggested Value: `#64748b`; Usage: Hints, placeholders, metadata
+- Token: `text-disabled`; Suggested Value: `#94a3b8`; Usage: Disabled and tertiary text
+
 
 ### Dark Theme Tokens
 
-| Token | Suggested Value | Usage |
-|---|---:|---|
-| `background` | `#05080f` | Main app background |
-| `surface` | `#0d1424` | Cards, panels, page sections |
-| `surface-muted` | `#111827` | Secondary sections, table headers |
-| `surface-hover` | `#1e2a3a` | Hover and selected row states |
-| `border-subtle` | `rgba(255,255,255,0.07)` | Card edges, dividers |
-| `border-strong` | `rgba(255,255,255,0.12)` | Inputs, menus, modals |
-| `text-primary` | `#f8fafc` | Primary headings and body |
-| `text-secondary` | `#cbd5e1` | Secondary body text |
-| `text-muted` | `#94a3b8` | Hints, placeholders, metadata |
-| `text-disabled` | `#64748b` | Disabled and tertiary text |
+
+- Token: `background`; Suggested Value: `#05080f`; Usage: Main app background
+- Token: `surface`; Suggested Value: `#0d1424`; Usage: Cards, panels, page sections
+- Token: `surface-muted`; Suggested Value: `#111827`; Usage: Secondary sections, table headers
+- Token: `surface-hover`; Suggested Value: `#1e2a3a`; Usage: Hover and selected row states
+- Token: `border-subtle`; Suggested Value: `rgba(255,255,255,0.07)`; Usage: Card edges, dividers
+- Token: `border-strong`; Suggested Value: `rgba(255,255,255,0.12)`; Usage: Inputs, menus, modals
+- Token: `text-primary`; Suggested Value: `#f8fafc`; Usage: Primary headings and body
+- Token: `text-secondary`; Suggested Value: `#cbd5e1`; Usage: Secondary body text
+- Token: `text-muted`; Suggested Value: `#94a3b8`; Usage: Hints, placeholders, metadata
+- Token: `text-disabled`; Suggested Value: `#64748b`; Usage: Disabled and tertiary text
+
 
 ### Semantic / Status Colours
 
-| Name | Hex | Usage |
-|---|---|---|
-| Success | `#22c55e` | Approved, confirmed, on-policy |
-| Warning | `#f59e0b` | Pending approval, near-limit policy breach |
-| Danger | `#ef4444` | Out-of-policy, failed, rejected |
-| Info | `#38bdf8` | Informational, in-progress, travel context hints |
-| Purple | `#a855f7` | Premium, VIP tier, loyalty level indicators |
+
+- Name: Success; Hex: `#22c55e`; Usage: Approved, confirmed, on-policy
+- Name: Warning; Hex: `#f59e0b`; Usage: Pending approval, near-limit policy breach
+- Name: Danger; Hex: `#ef4444`; Usage: Out-of-policy, failed, rejected
+- Name: Info; Hex: `#38bdf8`; Usage: Informational, in-progress, travel context hints
+- Name: Purple; Hex: `#a855f7`; Usage: Premium, VIP tier, loyalty level indicators
+
 
 ### Gradient Usage
 
@@ -528,7 +1940,7 @@ background: radial-gradient(ellipse at top, rgba(56,189,248,0.16) 0%, transparen
 background: radial-gradient(ellipse at top, rgba(56,189,248,0.12) 0%, transparent 60%);
 ```
 
-## Theme Preference
+### Theme Preference
 
 The application must support a visible light/dark mode switch.
 
@@ -543,11 +1955,11 @@ Theme behaviour:
 
 Theme preference values:
 
-| Value | Meaning |
-|---|---|
-| `light` | Force light mode |
-| `dark` | Force dark mode |
-| `system` | Follow the user's device/browser preference |
+
+- Value: `light`; Meaning: Force light mode
+- Value: `dark`; Meaning: Force dark mode
+- Value: `system`; Meaning: Follow the user's device/browser preference
+
 
 Default:
 
@@ -555,7 +1967,7 @@ Default:
 system
 ```
 
-## Language & Localisation
+### Language & Localisation
 
 Language support is required across the application.
 
@@ -573,14 +1985,14 @@ Language behaviour:
 
 User profile should include:
 
-| Preference | Example |
-|---|---|
-| Theme | `light`, `dark`, `system` |
-| Language | `en-AU`, `en-NZ`, `en-US`, etc. |
-| Time zone | `Australia/Sydney`, `Pacific/Auckland`, etc. |
-| Locale / culture | `en-AU`, `en-NZ`, etc. |
 
-## Date, Time & Time Zone Behaviour
+- Preference: Theme; Example: `light`, `dark`, `system`
+- Preference: Language; Example: `en-AU`, `en-NZ`, `en-US`, etc.
+- Preference: Time zone; Example: `Australia/Sydney`, `Pacific/Auckland`, etc.
+- Preference: Locale / culture; Example: `en-AU`, `en-NZ`, etc.
+
+
+### Date, Time & Time Zone Behaviour
 
 All editable application date/time entry must be localised from the user's perspective and stored in UTC.
 
@@ -598,13 +2010,13 @@ For user-entered or application-owned data:
 
 Examples:
 
-| Scenario | UI Behaviour | Storage Behaviour |
-|---|---|---|
-| Create approval deadline | User enters local date/time | Store UTC |
-| Schedule report | User selects local date/time | Store UTC |
-| Add reminder | User enters local date/time | Store UTC |
-| Update support SLA due time | User sees local date/time | Store UTC |
-| Create internal task | User enters local date/time | Store UTC |
+
+- Scenario: Create approval deadline; UI Behaviour: User enters local date/time; Storage Behaviour: Store UTC
+- Scenario: Schedule report; UI Behaviour: User selects local date/time; Storage Behaviour: Store UTC
+- Scenario: Add reminder; UI Behaviour: User enters local date/time; Storage Behaviour: Store UTC
+- Scenario: Update support SLA due time; UI Behaviour: User sees local date/time; Storage Behaviour: Store UTC
+- Scenario: Create internal task; UI Behaviour: User enters local date/time; Storage Behaviour: Store UTC
+
 
 ### Read-only Provider/Search Result Data
 
@@ -620,13 +2032,13 @@ For provider/search result data:
 
 Examples:
 
-| Scenario | UI Behaviour |
-|---|---|
-| Flight departs Sydney at 10:25 | Show Sydney-local departure time |
-| Flight arrives Singapore at 16:40 | Show Singapore-local arrival time |
-| Hotel check-in at 15:00 | Show hotel-local check-in time |
-| Car pickup at airport local time | Show pickup-location local time |
-| Search result fare expiry | Show provider/context time with clear label |
+
+- Scenario: Flight departs Sydney at 10:25; UI Behaviour: Show Sydney-local departure time
+- Scenario: Flight arrives Singapore at 16:40; UI Behaviour: Show Singapore-local arrival time
+- Scenario: Hotel check-in at 15:00; UI Behaviour: Show hotel-local check-in time
+- Scenario: Car pickup at airport local time; UI Behaviour: Show pickup-location local time
+- Scenario: Search result fare expiry; UI Behaviour: Show provider/context time with clear label
+
 
 Rule:
 
@@ -635,7 +2047,7 @@ Application-owned editable data: user-local input/output, UTC storage.
 Provider/search result data: preserve and display travel/provider-local context as read-only.
 ```
 
-## Design System Direction
+### Design System Direction
 
 ### Stack
 
@@ -660,10 +2072,10 @@ Any Fluent UI Blazor components must be themed to align with the Cinturon360 tok
 
 ### Screen Tiers
 
-| Screen Type | Tone & Feel |
-|---|---|
-| End-user / Traveller | Guided, consumer-grade, warm, clear, step-by-step |
-| Back-office / Admin | Professional, structured, data-dense, enterprise |
+
+- Screen Type: End-user / Traveller; Tone & Feel: Guided, consumer-grade, warm, clear, step-by-step
+- Screen Type: Back-office / Admin; Tone & Feel: Professional, structured, data-dense, enterprise
+
 
 ### What to Avoid
 
@@ -677,7 +2089,7 @@ Any Fluent UI Blazor components must be themed to align with the Cinturon360 tok
 - Un-themed Fluent UI components that visually clash with the Tailwind design system
 - Storing user-entered local date/time values without UTC normalisation
 
-## Brand Voice in UI
+### Brand Voice in UI
 
 - Prioritise clarity and confidence
 - Avoid jargon without context
@@ -686,7 +2098,7 @@ Any Fluent UI Blazor components must be themed to align with the Cinturon360 tok
 - Travel context should feel aspirational, clean, and practical
 - Localised text should preserve the intended meaning, not just literal wording
 
-## Implementation Path
+### Implementation Path
 
 Build the design system in this order:
 
@@ -702,7 +2114,7 @@ Build the design system in this order:
 
 ---
 
-## Q20 — API Communication from Web: HttpClient or Typed Client?
+## Q25 — API Communication from Web: HttpClient or Typed Client?
 
 The Web project calls the API over HTTP. The `Services/ApiClients/` folder is scaffolded but empty.
 
@@ -739,7 +2151,7 @@ Final model: use one typed API client per domain, registered through IHttpClient
 
 ---
 
-## Q21 — Error & Validation UX
+## Q26 — Error & Validation UX
 
 When API calls fail or form validation errors occur, how should errors surface to the user?
 
@@ -776,13 +2188,10 @@ Do not use modal dialogs as the default error pattern. Modals should be reserved
 Do not use inline-only errors for everything, because global API failures, connectivity issues, background failures, and unexpected errors can be missed or placed too far away from the user's current focus.
 
 Final model: inline for validation and context-specific errors, toast notifications for non-critical/recoverable API failures, dedicated states for access/not-found, and full error pages/error boundaries for unhandled exceptions.
----
-
-*Last updated: 25 April 2026 — Phase 9 Web UI questions added (Q15–Q21)*
 
 ---
 
-## Q22 — Phase 10 Provider Credentials & Production Defaults
+## Q27 — Phase 10 Provider Credentials & Production Defaults
 
 Phase 10 implementation has started and now includes real MailerSend and Stripe runtime integration (with safe fallback when keys are missing), plus S3/R2 env wiring.
 
@@ -805,7 +2214,7 @@ Please provide:
 
 ---
 
-## Q23 — Hotels/Cars/Rail Provider Selection
+## Q28 — Hotels/Cars/Rail Provider Selection
 
 Phase 10 scope references Hotels/Cars/Rail, but no provider has been selected yet.
 
@@ -820,4 +2229,20 @@ If no decision is made immediately, these modules should remain explicitly defer
 
 ---
 
-*Last updated: 27 April 2026 — Phase 10 integration questions added (Q22–Q23)*
+
+---
+
+## Implementation Status Update (2026-05-03)
+
+### Q17 — Stripe Webhook Auto-Provisioning
+Auto-provisioning was implemented in a prior session. The full flow (`VerifyConnection` → `RegisterWebhookEndpoint` → store webhook secret → `MarkVerified`) is complete and smoke-tested (12 scenarios passing). This question is superseded.
+
+### Q16 — License Agreement Architecture
+`LicenseAgreement`, `LicenseAgreementEntitlement`, `LicenseCollectionPolicy`, `BillingAccount`, and accounting stub entities (`BillingLedgerEntry`, `BillingInvoice`, `BillingInvoiceLine`, `PaymentAttempt`, `JournalEntry`, `JournalLine`) created in Domain. EF configurations added. Migration `RefactorBillingModelToLicenseAgreement` generated and applied. Application commands added: `CreateLicenseAgreementCommand`, `ActivateLicenseAgreementCommand`, `SupersedeLicenseAgreementCommand`.
+
+### Q18 — Policy Billing Rule Discriminator
+`TravelPolicyBillingRule` renamed to `PolicyBillingRule` with `PolicyType` enum discriminator + `PolicyId` string. `travel_policy_billing_rules` table dropped and replaced by `policy_billing_rules` (dev-only data, user confirmed DROP+CREATE). Migration applied.
+
+### Q19 — IsPrimary on PaymentProviderConnection
+`IsPrimary` (bool, default false) and `WebhookProvisionedAtUtc` (DateTimeOffset?) added to `PaymentProviderConnection`. Partial unique index `ux_payment_provider_connection_primary` enforces uniqueness on `(OwnerOrganisationId, ProviderType, IsLiveMode, UsageScope)` where `is_primary = true AND is_enabled = true AND status = 2`. `SetPrimaryProviderConnectionCommand` added. Org-scoped webhook handler (`/webhooks/stripe/{orgScope}/{orgId}`) now uses `IsPrimary`-aware query. New endpoint `PUT /api/v1/billing/provider-connections/{connectionId}/primary` added.
+

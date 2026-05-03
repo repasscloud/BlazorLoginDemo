@@ -4,6 +4,7 @@
 > Phases 0–7 are fully implemented. Build is passing.  
 > Phase 9 is complete ✅ (all planned Web UI pages implemented and build passing).
 > Phase 10 is in progress ⚙️ (MailerSend + Stripe + S3/R2 runtime wiring completed; ECB FX sync/cleanup and Duffel config backend implemented; provider transaction flows still pending).
+> 2 May 2026 update: Stripe moved to provider-neutral billing architecture foundation (provider connections, billing relationships, provider customers/payment methods, setup-link flow, connection-scoped webhooks, webhook idempotency table). License-model v2 and full policy-driven billing execution remain pending.
 
 ---
 
@@ -153,6 +154,21 @@ Status update:
 - Webhook handler (payment succeeded, failed, disputed)
 - Stripe billing portal session (for card management)
 - Invoice sync
+
+Status update (2 May 2026):
+- Provider-neutral billing scaffolding implemented in core domain/data/application layers:
+  - `PaymentProviderConnection`, `BillingRelationship`, `ProviderCustomer`, `ProviderPaymentMethod`, `OrganisationBillingProfile`, `TravelPolicyBillingRule`, `ProviderWebhookEvent`
+- New management/API flows implemented:
+  - configure Stripe provider connection
+  - create seller/buyer billing relationship
+  - generate + email billing setup link (Stripe setup-mode checkout)
+  - list/sync provider payment methods
+  - relationship-based prepaid top-up intent creation
+- New Stripe webhook routes implemented:
+  - `/api/v1/webhooks/payment-providers/stripe/{connectionId}`
+  - `/api/v1/webhooks/stripe/{vendor|tmc|client}/{orgId}`
+- Webhook idempotency implemented with unique `(connectionId, providerEventId)` persistence.
+- Remaining Stripe work: automated Stripe webhook endpoint provisioning during onboarding, invoice/payment collection orchestration, policy/expense processor runtime execution path, and full license-driven billing model integration.
 
 ### Exchange Rates
 - Choose FX provider (e.g. Open Exchange Rates, Frankfurter, ECB)

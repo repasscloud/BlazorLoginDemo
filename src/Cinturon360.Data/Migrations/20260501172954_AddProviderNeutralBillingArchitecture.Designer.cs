@@ -3,6 +3,7 @@ using System;
 using Cinturon360.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cinturon360.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260501172954_AddProviderNeutralBillingArchitecture")]
+    partial class AddProviderNeutralBillingArchitecture
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -145,285 +148,6 @@ namespace Cinturon360.Data.Migrations
                         .HasDatabaseName("ix_approval_requests_subject_id");
 
                     b.ToTable("approval_requests", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.BillingAccount", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<int>("AccountStatus")
-                        .HasColumnType("integer")
-                        .HasColumnName("account_status");
-
-                    b.Property<int>("BillingModel")
-                        .HasColumnType("integer")
-                        .HasColumnName("billing_model");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("CurrencyCode")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasDefaultValue("AUD")
-                        .HasColumnName("currency_code");
-
-                    b.Property<string>("LicenseAgreementId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("license_agreement_id");
-
-                    b.Property<string>("OwnerOrgId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("owner_org_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_billing_accounts");
-
-                    b.HasIndex("OwnerOrgId")
-                        .HasDatabaseName("ix_billing_accounts_owner_org_id");
-
-                    b.ToTable("billing_accounts", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.BillingInvoice", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<string>("BuyerOrgId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("buyer_org_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("CurrencyCode")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasDefaultValue("AUD")
-                        .HasColumnName("currency_code");
-
-                    b.Property<DateOnly>("DueOn")
-                        .HasColumnType("date")
-                        .HasColumnName("due_on");
-
-                    b.Property<string>("InvoiceNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("invoice_number");
-
-                    b.Property<DateOnly>("IssuedOn")
-                        .HasColumnType("date")
-                        .HasColumnName("issued_on");
-
-                    b.Property<string>("LicenseAgreementId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("license_agreement_id");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("notes");
-
-                    b.Property<DateTimeOffset?>("PaidAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("paid_at");
-
-                    b.Property<string>("SellerOrgId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("seller_org_id");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<decimal>("SubtotalAmount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("subtotal_amount");
-
-                    b.Property<decimal>("TaxAmount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("tax_amount");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("total_amount");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_billing_invoices");
-
-                    b.HasIndex("InvoiceNumber")
-                        .IsUnique()
-                        .HasDatabaseName("ix_billing_invoices_invoice_number");
-
-                    b.HasIndex("SellerOrgId", "BuyerOrgId", "Status")
-                        .HasDatabaseName("ix_billing_invoices_seller_org_id_buyer_org_id_status");
-
-                    b.ToTable("billing_invoices", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.BillingInvoiceLine", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<string>("BillingInvoiceId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("billing_invoice_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<decimal>("LineTotal")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("line_total");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantity");
-
-                    b.Property<string>("RelatedEntityId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("related_entity_id");
-
-                    b.Property<string>("RelatedEntityType")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("related_entity_type");
-
-                    b.Property<decimal>("TaxAmount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("tax_amount");
-
-                    b.Property<decimal>("UnitAmount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("unit_amount");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_billing_invoice_lines");
-
-                    b.HasIndex("BillingInvoiceId")
-                        .HasDatabaseName("ix_billing_invoice_lines_billing_invoice_id");
-
-                    b.ToTable("billing_invoice_lines", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.BillingLedgerEntry", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("amount");
-
-                    b.Property<string>("BillingAccountId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("billing_account_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("CurrencyCode")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasDefaultValue("AUD")
-                        .HasColumnName("currency_code");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<DateTimeOffset>("EntryDateUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("entry_date_utc");
-
-                    b.Property<string>("LicenseAgreementId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("license_agreement_id");
-
-                    b.Property<string>("RelatedEntityId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("related_entity_id");
-
-                    b.Property<string>("RelatedEntityType")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("related_entity_type");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_billing_ledger_entries");
-
-                    b.HasIndex("BillingAccountId")
-                        .HasDatabaseName("ix_billing_ledger_entries_billing_account_id");
-
-                    b.ToTable("billing_ledger_entries", (string)null);
                 });
 
             modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.BillingRelationship", b =>
@@ -650,340 +374,6 @@ namespace Cinturon360.Data.Migrations
                         .HasDatabaseName("ix_invoices_org_id");
 
                     b.ToTable("invoices", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.JournalEntry", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<string>("BillingInvoiceId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("billing_invoice_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<DateOnly>("EntryDate")
-                        .HasColumnType("date")
-                        .HasColumnName("entry_date");
-
-                    b.Property<string>("LicenseAgreementId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("license_agreement_id");
-
-                    b.Property<string>("PaymentAttemptId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("payment_attempt_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_journal_entries");
-
-                    b.HasIndex("BillingInvoiceId")
-                        .HasDatabaseName("ix_journal_entries_billing_invoice_id");
-
-                    b.ToTable("journal_entries", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.JournalLine", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<string>("AccountCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("account_code");
-
-                    b.Property<string>("AccountName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("account_name");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<decimal>("CreditAmount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("credit_amount");
-
-                    b.Property<string>("CurrencyCode")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasDefaultValue("AUD")
-                        .HasColumnName("currency_code");
-
-                    b.Property<decimal>("DebitAmount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("debit_amount");
-
-                    b.Property<string>("JournalEntryId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("journal_entry_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_journal_lines");
-
-                    b.HasIndex("JournalEntryId")
-                        .HasDatabaseName("ix_journal_lines_journal_entry_id");
-
-                    b.ToTable("journal_lines", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.LicenseAgreement", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<string>("AccessPackageCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("access_package_code");
-
-                    b.Property<int>("BillingModel")
-                        .HasColumnType("integer")
-                        .HasColumnName("billing_model");
-
-                    b.Property<int>("BillingPeriod")
-                        .HasColumnType("integer")
-                        .HasColumnName("billing_period");
-
-                    b.Property<string>("BuyerOrgId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("buyer_org_id");
-
-                    b.Property<int>("CollectionMode")
-                        .HasColumnType("integer")
-                        .HasColumnName("collection_mode");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<decimal?>("CreditLimitAmount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("credit_limit_amount");
-
-                    b.Property<string>("CurrencyCode")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasDefaultValue("AUD")
-                        .HasColumnName("currency_code");
-
-                    b.Property<DateOnly>("EffectiveFrom")
-                        .HasColumnType("date")
-                        .HasColumnName("effective_from");
-
-                    b.Property<DateOnly?>("EffectiveTo")
-                        .HasColumnType("date")
-                        .HasColumnName("effective_to");
-
-                    b.Property<int>("PaymentTermsDays")
-                        .HasColumnType("integer")
-                        .HasColumnName("payment_terms_days");
-
-                    b.Property<string>("PreviousLicenseAgreementId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("previous_license_agreement_id");
-
-                    b.Property<bool>("RequirePaymentBeforeTicketing")
-                        .HasColumnType("boolean")
-                        .HasColumnName("require_payment_before_ticketing");
-
-                    b.Property<string>("SellerOrgId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("seller_org_id");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<string>("SupersededByLicenseAgreementId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("superseded_by_license_agreement_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int>("VersionNumber")
-                        .HasColumnType("integer")
-                        .HasColumnName("version_number");
-
-                    b.HasKey("Id")
-                        .HasName("pk_license_agreements");
-
-                    b.HasIndex("SellerOrgId", "BuyerOrgId", "Status")
-                        .HasDatabaseName("ix_license_agreements_seller_org_id_buyer_org_id_status");
-
-                    b.ToTable("license_agreements", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.LicenseAgreementEntitlement", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<bool?>("BooleanValue")
-                        .HasColumnType("boolean")
-                        .HasColumnName("boolean_value");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateOnly>("EffectiveFrom")
-                        .HasColumnType("date")
-                        .HasColumnName("effective_from");
-
-                    b.Property<DateOnly?>("EffectiveTo")
-                        .HasColumnType("date")
-                        .HasColumnName("effective_to");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsUnlimited")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_unlimited");
-
-                    b.Property<string>("LicenseAgreementId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("license_agreement_id");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("notes");
-
-                    b.Property<decimal?>("NumericValue")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("numeric_value");
-
-                    b.Property<string>("TextValue")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("text_value");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int>("ValueKind")
-                        .HasColumnType("integer")
-                        .HasColumnName("value_kind");
-
-                    b.HasKey("Id")
-                        .HasName("pk_license_agreement_entitlements");
-
-                    b.HasIndex("LicenseAgreementId", "Type", "IsActive")
-                        .HasDatabaseName("ix_license_agreement_entitlements_license_agreement_id_type_is");
-
-                    b.ToTable("license_agreement_entitlements", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.LicenseCollectionPolicy", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<int>("ActionAfterGrace")
-                        .HasColumnType("integer")
-                        .HasColumnName("action_after_grace");
-
-                    b.Property<bool>("BlockBookingsWhenOverdue")
-                        .HasColumnType("boolean")
-                        .HasColumnName("block_bookings_when_overdue");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<int>("GracePeriodDays")
-                        .HasColumnType("integer")
-                        .HasColumnName("grace_period_days");
-
-                    b.Property<string>("LicenseAgreementId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("license_agreement_id");
-
-                    b.Property<int>("PaymentTermsDays")
-                        .HasColumnType("integer")
-                        .HasColumnName("payment_terms_days");
-
-                    b.Property<bool>("RequirePaymentBeforeTicketing")
-                        .HasColumnType("boolean")
-                        .HasColumnName("require_payment_before_ticketing");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_license_collection_policies");
-
-                    b.HasIndex("LicenseAgreementId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_license_collection_policies_license_agreement_id");
-
-                    b.ToTable("license_collection_policies", (string)null);
                 });
 
             modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.OrgBillingConfig", b =>
@@ -1271,76 +661,6 @@ namespace Cinturon360.Data.Migrations
                     b.ToTable("payments", (string)null);
                 });
 
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.PaymentAttempt", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("amount");
-
-                    b.Property<string>("BillingAccountId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("billing_account_id");
-
-                    b.Property<string>("BillingInvoiceId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("billing_invoice_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("CurrencyCode")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasDefaultValue("AUD")
-                        .HasColumnName("currency_code");
-
-                    b.Property<string>("FailureReason")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("failure_reason");
-
-                    b.Property<string>("PaymentProviderConnectionId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("payment_provider_connection_id");
-
-                    b.Property<DateTimeOffset?>("ProcessedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processed_at");
-
-                    b.Property<string>("ProviderPaymentIntentId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("provider_payment_intent_id");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_payment_attempts");
-
-                    b.HasIndex("BillingInvoiceId")
-                        .HasDatabaseName("ix_payment_attempts_billing_invoice_id");
-
-                    b.ToTable("payment_attempts", (string)null);
-                });
-
             modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.PaymentProviderConnection", b =>
                 {
                     b.Property<string>("Id")
@@ -1381,10 +701,6 @@ namespace Cinturon360.Data.Migrations
                     b.Property<bool>("IsLiveMode")
                         .HasColumnType("boolean")
                         .HasColumnName("is_live_mode");
-
-                    b.Property<bool>("IsPrimary")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_primary");
 
                     b.Property<DateTimeOffset?>("LastRotatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1445,10 +761,6 @@ namespace Cinturon360.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("webhook_endpoint_id");
 
-                    b.Property<DateTimeOffset?>("WebhookProvisionedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("webhook_provisioned_at_utc");
-
                     b.Property<string>("WebhookSecretReference")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -1460,95 +772,7 @@ namespace Cinturon360.Data.Migrations
                     b.HasIndex("OwnerOrganisationId", "ProviderType", "IsEnabled")
                         .HasDatabaseName("ix_payment_provider_connections_owner_organisation_id_provider");
 
-                    b.HasIndex("OwnerOrganisationId", "ProviderType", "IsLiveMode", "UsageScope")
-                        .IsUnique()
-                        .HasDatabaseName("ux_payment_provider_connection_primary")
-                        .HasFilter("is_primary = true AND is_enabled = true AND status = 2");
-
                     b.ToTable("payment_provider_connections", (string)null);
-                });
-
-            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.PolicyBillingRule", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("id");
-
-                    b.Property<int?>("BillingModeOverride")
-                        .HasColumnType("integer")
-                        .HasColumnName("billing_mode_override");
-
-                    b.Property<int?>("CollectionModeOverride")
-                        .HasColumnType("integer")
-                        .HasColumnName("collection_mode_override");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateOnly>("EffectiveFrom")
-                        .HasColumnType("date")
-                        .HasColumnName("effective_from");
-
-                    b.Property<DateOnly?>("EffectiveTo")
-                        .HasColumnType("date")
-                        .HasColumnName("effective_to");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_enabled");
-
-                    b.Property<string>("OrganisationId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("organisation_id");
-
-                    b.Property<string>("PaymentProviderConnectionId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("payment_provider_connection_id");
-
-                    b.Property<string>("PolicyId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("policy_id");
-
-                    b.Property<int>("PolicyType")
-                        .HasColumnType("integer")
-                        .HasColumnName("policy_type");
-
-                    b.Property<string>("ProviderCustomerId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("provider_customer_id");
-
-                    b.Property<string>("ProviderPaymentMethodId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("provider_payment_method_id");
-
-                    b.Property<bool>("RequirePaymentBeforeExecution")
-                        .HasColumnType("boolean")
-                        .HasColumnName("require_payment_before_execution");
-
-                    b.Property<int>("ResolutionMode")
-                        .HasColumnType("integer")
-                        .HasColumnName("resolution_mode");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_policy_billing_rules");
-
-                    b.HasIndex("OrganisationId", "PolicyType", "PolicyId", "IsEnabled")
-                        .HasDatabaseName("ix_policy_billing_rules_organisation_id_policy_type_policy_id_");
-
-                    b.ToTable("policy_billing_rules", (string)null);
                 });
 
             modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.PrepaidBalance", b =>
@@ -1843,6 +1067,81 @@ namespace Cinturon360.Data.Migrations
                         .HasDatabaseName("ix_provider_webhook_events_payment_provider_connection_id_prov");
 
                     b.ToTable("provider_webhook_events", (string)null);
+                });
+
+            modelBuilder.Entity("Cinturon360.Domain.Entities.Billing.TravelPolicyBillingRule", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("BillingModeOverride")
+                        .HasColumnType("integer")
+                        .HasColumnName("billing_mode_override");
+
+                    b.Property<int?>("CollectionModeOverride")
+                        .HasColumnType("integer")
+                        .HasColumnName("collection_mode_override");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_from");
+
+                    b.Property<DateOnly?>("EffectiveTo")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_to");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<string>("OrganisationId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<string>("PaymentProviderConnectionId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("payment_provider_connection_id");
+
+                    b.Property<string>("ProviderCustomerId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider_customer_id");
+
+                    b.Property<string>("ProviderPaymentMethodId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider_payment_method_id");
+
+                    b.Property<int>("ResolutionMode")
+                        .HasColumnType("integer")
+                        .HasColumnName("resolution_mode");
+
+                    b.Property<string>("TravelPolicyId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("travel_policy_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_travel_policy_billing_rules");
+
+                    b.HasIndex("OrganisationId", "TravelPolicyId", "IsEnabled")
+                        .HasDatabaseName("ix_travel_policy_billing_rules_organisation_id_travel_policy_i");
+
+                    b.ToTable("travel_policy_billing_rules", (string)null);
                 });
 
             modelBuilder.Entity("Cinturon360.Domain.Entities.Booking.Booking", b =>

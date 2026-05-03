@@ -73,6 +73,24 @@ public sealed class AppDbContext : DbContext
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PrepaidBalance> PrepaidBalances => Set<PrepaidBalance>();
+    public DbSet<PaymentProviderConnection> PaymentProviderConnections => Set<PaymentProviderConnection>();
+    public DbSet<BillingRelationship> BillingRelationships => Set<BillingRelationship>();
+    public DbSet<ProviderCustomer> ProviderCustomers => Set<ProviderCustomer>();
+    public DbSet<ProviderPaymentMethod> ProviderPaymentMethods => Set<ProviderPaymentMethod>();
+    public DbSet<OrganisationBillingProfile> OrganisationBillingProfiles => Set<OrganisationBillingProfile>();
+    public DbSet<PolicyBillingRule> PolicyBillingRules => Set<PolicyBillingRule>();
+    public DbSet<ProviderWebhookEvent> ProviderWebhookEvents => Set<ProviderWebhookEvent>();
+    // Q16 — License Agreement, accounting, and journal stubs
+    public DbSet<LicenseAgreement> LicenseAgreements => Set<LicenseAgreement>();
+    public DbSet<LicenseAgreementEntitlement> LicenseAgreementEntitlements => Set<LicenseAgreementEntitlement>();
+    public DbSet<LicenseCollectionPolicy> LicenseCollectionPolicies => Set<LicenseCollectionPolicy>();
+    public DbSet<BillingAccount> BillingAccounts => Set<BillingAccount>();
+    public DbSet<BillingLedgerEntry> BillingLedgerEntries => Set<BillingLedgerEntry>();
+    public DbSet<BillingInvoice> BillingInvoices => Set<BillingInvoice>();
+    public DbSet<BillingInvoiceLine> BillingInvoiceLines => Set<BillingInvoiceLine>();
+    public DbSet<PaymentAttempt> PaymentAttempts => Set<PaymentAttempt>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+    public DbSet<JournalLine> JournalLines => Set<JournalLine>();
 
     // ── System ────────────────────────────────────────────────────────────
     public DbSet<Job> Jobs => Set<Job>();
