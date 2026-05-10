@@ -7,6 +7,7 @@
 ## Context
 
 Cinturon360 processes Stripe webhooks to reconcile payment events with internal billing state. Two webhook routes are currently implemented:
+
 - `POST /api/v1/webhooks/payment-providers/stripe/{connectionId}` — connection-scoped, used by the provider-neutral billing model
 - `POST /api/v1/webhooks/stripe/{vendor|tmc|client}/{orgId}` — legacy org-scoped route
 - A legacy single-endpoint route also exists
@@ -14,6 +15,7 @@ Cinturon360 processes Stripe webhooks to reconcile payment events with internal 
 The connection-scoped handler has Stripe signature verification (`StripePaymentGateway` / `StripePaymentProviderGateway`). Idempotency is handled via a unique `(connectionId, providerEventId)` index on `ProviderWebhookEvent`.
 
 Documented gaps (per `BACKLOG.md` and `docs/runbooks/runbook-stripe-payments.md`):
+
 - No idempotency keys on Stripe payment intent creation (Stripe-side duplicate prevention)
 - No replay/retry mechanism for failed webhook processing (if the handler throws, Stripe retries — but there is no DLQ or alerting)
 - No rotation runbook for `WebhookSecret` per connection
@@ -21,6 +23,7 @@ Documented gaps (per `BACKLOG.md` and `docs/runbooks/runbook-stripe-payments.md`
 - `docs/architecture/stripe-payments.md` notes that "Legacy entities remain for compatibility while migration completes"
 
 Evidence:
+
 - `src/Cinturon360.Infrastructure/Payments/StripePaymentProviderGateway.cs`
 - `src/Cinturon360.Infrastructure/Payments/StripePaymentGateway.cs`
 - `docs/architecture/stripe-payments.md`
@@ -48,6 +51,7 @@ Evidence:
 ## Consequences
 
 **Recommended decisions:**
+
 - Canonical route: connection-scoped only.
 - Signature verification: required on all routes; enforced by a middleware or base handler class.
 - Idempotency (inbound): `ProviderWebhookEvent` unique index (already implemented); extend status field (`Pending`, `Processed`, `Failed`).
@@ -56,6 +60,7 @@ Evidence:
 - Secret rotation: documented two-phase rotation (register new secret, drain old, remove old) per `runbook-stripe-payments.md`.
 
 **Required follow-up:**
+
 - Add `Status` field to `ProviderWebhookEvent` (Pending / Processed / Failed).
 - Add Stripe idempotency keys to all payment-intent creation calls.
 - Deprecate legacy org-scoped webhook routes (set a removal milestone).

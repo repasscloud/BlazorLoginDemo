@@ -7,6 +7,7 @@
 ## Context
 
 `Cinturon360.Integrations/IdentityProviders/{Apple,Facebook,Google,Microsoft,Oidc,Saml,Scim}` folders are all empty scaffolds. The following packages are referenced but not wired:
+
 - `ITfoxtec.Identity.Saml2 4.17.0`
 - `OpenIddict 5.4.0` (only EF Core tables are created via `UseOpenIddict()`)
 

@@ -11,16 +11,19 @@
 The domain model also includes `UserSession.TokenClass` variants: `InteractiveWebSession`, `Mobile`, `API`, etc., covering PATs and service accounts.
 
 There is no documented format for the token string itself — no prefix convention, no length guarantee beyond "32-byte base64", and no rotation policy. This matters because:
+
 - Without a prefix, a leaked token cannot be identified as a Cinturon360 PAT by secret-scanning tools (GitHub Advanced Security, `truffleHog`, etc.).
 - Without a defined length, the base64 output length varies if the random source changes.
 - Service account tokens are not distinguished from PAT tokens by format alone.
 - No rotation mechanism or expiry enforcement is implemented.
 
 The industry best practice (used by GitHub, Stripe, and others) is a structured prefix + encoded random bytes + optional checksum:
+
 - Example: `c360pat_<base62-encoded-random-bytes>` (PAT)
 - Example: `c360svc_<base62-encoded-random-bytes>` (service account)
 
-Evidence:
+**Evidence:**
+
 - `src/Cinturon360.Infrastructure/Security/TokenService.cs` — `GeneratePat` method
 - `src/Cinturon360.Domain/Entities/Identity/UserApiToken.cs` — token entity
 - `src/Cinturon360.Domain/Enums/Identity/TokenClass.cs` — `InteractiveWebSession`, `Mobile`, `API`, etc.
@@ -41,6 +44,7 @@ Evidence:
 ## Consequences
 
 **If a prefix + base62 format is adopted:**
+
 - `TokenService.GeneratePat` must be updated to produce `c360pat_<base62(32 random bytes)>`.
 - A new `GenerateServiceAccountToken` method must produce `c360svc_<base62(32 random bytes)>`.
 - The hash stored in `UserApiToken.TokenHash` must be derived from the full token string including the prefix (so the prefix is part of the secret material).
@@ -49,6 +53,7 @@ Evidence:
 - Add `ExpiresAt` (nullable) to `UserApiToken` if not already present; enforce expiry in the token validation path.
 
 **Required follow-up:**
+
 - Define the canonical prefix list in `Cinturon360.Common.Constants.TokenPrefixes`.
 - Update `TokenService.GeneratePat` and add `GenerateServiceAccountToken`.
 - Author a migration for existing tokens if any are in use.

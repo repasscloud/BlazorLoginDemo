@@ -9,6 +9,7 @@
 `UserAuditEvent` exists as a domain entity and `DbSet` in `AppDbContext`, but no code writes to it. The `src/Cinturon360.Data/Interceptors/` directory is empty (only `.gitkeep`). The `src/Cinturon360.Application/SysLog/{Models,Writers,Enrichers,Events}/` directories are also empty.
 
 `BACKLOG.md` notes the following as missing:
+
 - Audit log export
 - Impersonation audit
 - Audit log archival
@@ -16,6 +17,7 @@
 The intended design (per `v5-plan.md` and architecture references) includes an EF Core interceptor that automatically emits `UserAuditEvent` rows when domain mutations occur. This is a compliance requirement for enterprise travel management platforms (expense policy enforcement, booking approval chains, user access changes).
 
 Current state:
+
 - `UserAuditEvent` entity has the schema but nothing writes to it.
 - Domain mutations (`User.Create`, `Booking.Create`, role assignments, etc.) are not instrumented.
 - No audit log page in the Sudo dashboard surfaces these events (the `Sudo/Audit/AuditLog.razor` page exists as a stub).
@@ -31,6 +33,7 @@ Options:
 ## Decision
 
 *Not yet decided.* The recommended approach is **Option A** (EF Core interceptor) because:
+
 - It is automatic — new auditable entities are covered without updating every handler.
 - It captures the `Before` and `After` state of changed properties.
 - It does not require domain event infrastructure (which is also empty at this time).
@@ -46,6 +49,7 @@ Additionally, the following questions must be answered:
 ## Consequences
 
 **If Option A is chosen:**
+
 - Implement `AuditInterceptor : SaveChangesInterceptor` in `src/Cinturon360.Data/Interceptors/`.
 - Register the interceptor in `AppDbContext` configuration.
 - `ICurrentUser` must be available in the interceptor (inject via DI factory).
@@ -54,10 +58,12 @@ Additionally, the following questions must be answered:
 - Background jobs that mutate data must populate `ICurrentUser` with a system user identity to avoid null audit entries.
 
 **Retention:**
+
 - Add a cleanup job to `Cinturon360.Jobs` that archives or deletes `UserAuditEvent` rows older than the retention threshold.
 - Consider a separate append-only audit schema or a partitioned table for large volumes.
 
 **Required follow-up:**
+
 - Define `IAuditableEntity` marker.
 - Implement and register `AuditInterceptor`.
 - Define retention policy.

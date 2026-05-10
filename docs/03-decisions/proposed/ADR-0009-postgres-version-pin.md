@@ -9,7 +9,7 @@
 There are currently three different PostgreSQL versions specified across three sources in the same repository, all claiming to be authoritative:
 
 | Source | Version |
-|---|---|
+| --- | --- |
 | `v5-plan.md §13` | `postgres:16` |
 | `README.md` line 21 | PostgreSQL 17 |
 | `deploy/compose/compose.dev.yaml` | `postgres:18-alpine3.22` |
@@ -19,6 +19,7 @@ There are currently three different PostgreSQL versions specified across three s
 Impact: a new contributor reading the README will provision Postgres 17, encounter the Postgres 18 volume-path difference, and fail on first `dev-start.sh` run.
 
 No Postgres version is specified in:
+
 - `deploy/azure/` (empty)
 - CI matrix (no CI exists)
 - Any staging/production compose file (none exists)
@@ -26,6 +27,7 @@ No Postgres version is specified in:
 ## Decision
 
 *Not yet decided.* The decision must specify:
+
 1. A single supported PostgreSQL major version for **development** (the dev compose).
 2. A single supported PostgreSQL major version for **production** (Azure Database for PostgreSQL Flexible Server or compose-based prod).
 3. Whether dev and production use the same major version, or whether dev trails one behind the production major.
@@ -40,22 +42,26 @@ Rationale: Postgres 18 is not yet GA as of the discovery date (2026-05-10); usin
 ## Consequences
 
 **Whichever version is chosen:**
+
 - `deploy/compose/compose.dev.yaml` image tag, `README.md`, and `v5-plan.md §13` must be updated to the same value simultaneously.
 - The CI matrix (once created) must test against the pinned version.
 - Azure Database for PostgreSQL Flexible Server tier must be confirmed to support the chosen major.
 - `SESSION-NOTES-2026-04-27.md` volume-path documentation must reflect the authoritative mount path.
 
 **If Postgres 17 is chosen:**
+
 - Revert `compose.dev.yaml` image to `postgres:17-alpine3.22` (or a specific patch).
 - The volume mount path reverts to `/var/lib/postgresql/data`.
 - Existing developer machines running Postgres 18 will need their volumes recreated.
 
 **If Postgres 18 is chosen (beta):**
+
 - Pin to a specific patch tag.
 - Document known limitations and a migration plan to GA once it is released.
 - Note that Azure Database for PostgreSQL Flexible Server may not support Postgres 18 until after GA.
 
 **Required follow-up:**
+
 - Update all three sources to a single version simultaneously in one commit.
 - Add a `POSTGRES_VERSION` variable at the top of `compose.dev.yaml` so future version bumps are a one-line change.
 - Include the agreed version in the CI matrix once CI is created.

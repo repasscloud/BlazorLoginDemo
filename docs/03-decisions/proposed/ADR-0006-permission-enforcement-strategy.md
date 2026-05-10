@@ -19,6 +19,7 @@ Three approaches are available:
 **Option C — Both (defence-in-depth):** Endpoint policy checks at the HTTP layer (fast, returns 403 before MediatR pipeline starts); command tagging as a second layer for commands dispatched from non-HTTP contexts (jobs, event handlers).
 
 Evidence:
+
 - `src/Cinturon360.Application/Behaviors/Authorization/AuthorizationBehavior.cs`
 - `src/Cinturon360.Application/Behaviors/Authorization/IRequirePermission.cs`
 - `src/Cinturon360.Common/Constants/AppConstants.cs:21–30` — `PolicyNames` constants already defined
@@ -27,6 +28,7 @@ Evidence:
 ## Decision
 
 *Not yet decided.* The recommended option is **C** (both layers) because:
+
 - Endpoint policies provide a fast rejection path at the HTTP boundary.
 - Command tagging ensures permissions are enforced when commands are dispatched from background jobs or integration events.
 - The `PolicyNames` constants (`RequireAuthenticated`, `RequireSudo`, etc.) are already defined and simply need registering.
@@ -34,6 +36,7 @@ Evidence:
 ## Consequences
 
 **If Option C is chosen:**
+
 - `AddAuthorization(opts => { opts.AddPolicy("bookings.read", p => p.RequireClaim("perm", "bookings.read")); ... })` must be registered for every permission code.
 - Every authoritative command/query must implement `IRequirePermission` with its required `PermissionCode`.
 - Read-only queries that require authentication but no specific permission may implement `IRequireAuthenticated` (a weaker marker) or nothing (relying on endpoint policy alone).
@@ -41,10 +44,12 @@ Evidence:
 - `Cinturon360.Application/Security/PermissionEvaluation/` should house the org-scope resolver (given user + target `OrgId`, returns allowed?).
 
 **Risks:**
+
 - Registering ~30 policies by hand is error-prone; a loop over `PermissionCodes` constants is safer.
 - Org-scope traversal (`ScopeMode.Self` vs `ScopeMode.SelfAndDescendants`) must be evaluated at claim-generation time (in `TokenService`) not re-evaluated per-request, or the scope must be embedded in the JWT.
 
 **Required follow-up:**
+
 - Populate `Cinturon360.Application/Security/` skeleton.
 - Register all policies in a loop.
 - Tag every command/query with `IRequirePermission`.

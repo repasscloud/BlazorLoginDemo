@@ -7,6 +7,7 @@
 ## Context
 
 `notes.txt` (informal session notes) describes a requirement for a "vendor search function" model: a Vendor organisation can enable or disable specific travel booking categories for its downstream TMC and Client organisations. The categories mentioned include:
+
 - Flights
 - Hotels
 - Car hire
@@ -22,6 +23,7 @@ The current domain model has no entity or flag for this concept. There is no `Ve
 Provider-side, only Duffel (flights) is integrated. Hotels, cars, rail, and tour operators have empty `Cinturon360.Integrations/{Hotels,Cars,Rail}/` folders with no provider chosen.
 
 Evidence:
+
 - `notes.txt` — search function category model
 - `Cinturon360.Integrations/` directory structure
 - `src/Cinturon360.Domain/Enums/System/OrgType.cs`
@@ -34,16 +36,20 @@ Evidence:
 1. **The data model for search function entitlements:**
 
    **Option A — Flat flag table on Organisation:**
-   ```
+
+   ```csharp
    OrgSearchFunction { OrgId, Category (enum), IsEnabled, EnabledBy (VendorOrgId), EnabledAt }
    ```
+
    Simple; each org has a set of enabled categories. Admin endpoint enables/disables per org per category.
 
    **Option B — Entitlement within LicenseAgreement:**
+
    Add `SearchCategory` as a type of `LicenseAgreementEntitlement`. A `LicenseAgreement` between a Vendor and a TMC/Client defines which categories are included.
    Aligned with the billing model; categories can be gated by billing tier.
 
    **Option C — Vendor-level default + per-org override:**
+
    A Vendor sets default enabled categories for all its downstream orgs. Individual orgs can be further restricted (but not expanded beyond the vendor default).
    Supports the Flight Centre model where corporate policy restricts certain booking types.
 
@@ -56,6 +62,7 @@ Evidence:
 **Recommended decision:** Option C (Vendor-level default + per-org override) because it matches the commercial model — a Vendor licenses a bundle of categories to a TMC, and the TMC may restrict its Clients to a subset.
 
 **If Option C is chosen:**
+
 - New entities: `VendorSearchDefaults { VendorOrgId, Category, IsEnabled }` and `OrgSearchOverride { OrgId, Category, IsEnabled, OverriddenBy }`.
 - Admin endpoints: `PUT /api/v1/vendor/search-defaults/{category}` and `PUT /api/v1/org/{id}/search-override/{category}`.
 - At booking creation time, check `OrgSearchOverride` (falling back to `VendorSearchDefaults`) to determine if the requested category is enabled.
@@ -64,6 +71,7 @@ Evidence:
 **Integration dependency:** This decision is most useful once at least one non-flight provider is integrated. Until Hotels, Cars, or Rail are implemented, only the Flights category needs to be operational.
 
 **Required follow-up:**
+
 - Define `SearchCategory` enum in `Cinturon360.Domain.Enums`.
 - Author the entities and a migration.
 - Build admin UI for Vendor search-function configuration (Vendor dashboard).

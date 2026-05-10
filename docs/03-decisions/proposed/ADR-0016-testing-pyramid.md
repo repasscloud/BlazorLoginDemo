@@ -7,6 +7,7 @@
 ## Context
 
 All seven test projects contain only the default xUnit stub `UnitTest1.Test1()`. No real test exercises any of the mature testing packages already in `Directory.Packages.props`:
+
 - `xunit 2.9.3`
 - `Moq 4.20.72`
 - `FluentAssertions 8.3.0`
@@ -17,6 +18,7 @@ All seven test projects contain only the default xUnit stub `UnitTest1.Test1()`.
 There is no CI pipeline, no `dotnet test` invocation, and no coverage gate.
 
 The seven test projects are:
+
 - `tests/Cinturon360.Api.Tests/`
 - `tests/Cinturon360.Application.Tests/`
 - `tests/Cinturon360.Architecture.Tests/`
@@ -30,7 +32,7 @@ The `v5-plan.md` does not define coverage thresholds. `BACKLOG.md` lists "all te
 The recommended testing pyramid for this platform:
 
 | Layer | Project | Tool | Target |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Architecture | `Architecture.Tests` | ArchUnitNET | Layer boundaries, naming, ADR rules |
 | Domain | `Domain.Tests` | xUnit + FluentAssertions | Entity factory methods, value objects, invariants |
 | Application | `Application.Tests` | xUnit + Moq + FluentAssertions | Command/query handlers, validators, behaviors |
@@ -52,7 +54,7 @@ The recommended testing pyramid for this platform:
 Recommended coverage thresholds:
 
 | Layer | Minimum |
-|---|---|
+| --- | --- |
 | Architecture | 100% (all rules pass or the build fails) |
 | Domain | 80% line coverage |
 | Application | 70% line coverage |
@@ -62,6 +64,7 @@ Recommended coverage thresholds:
 | Web | Deferred to v5.2 |
 
 Recommended first tests (unblock the most risk):
+
 1. `Architecture.Tests` — layer boundary rules (catches the Web→Domain and Contracts→Domain leaks already identified).
 2. `Domain.Tests` — `User.Create`, `Organisation.Create`, `Booking.Create` factory invariants.
 3. `Application.Tests` — `LoginCommandHandler`, `CreateLicenseAgreementCommandHandler`.
@@ -70,6 +73,7 @@ Recommended first tests (unblock the most risk):
 ## Consequences
 
 **If these decisions are accepted:**
+
 - Remove `Microsoft.EntityFrameworkCore.InMemory` from `Directory.Packages.props` for `Data.Tests` and `Integration.Tests` (or add a lint rule prohibiting its use in those projects).
 - Add a shared `TestContainerFixture` in `Integration.Tests` for the Postgres container.
 - Define a test builder pattern (e.g., `UserBuilder`, `OrganisationBuilder`) in a `tests/TestCommon/` project.
@@ -77,6 +81,7 @@ Recommended first tests (unblock the most risk):
 - ArchUnitNET tests should run in CI before all other tests (fastest feedback on architectural violations).
 
 **Required follow-up:**
+
 - Create `tests/TestCommon/` project with shared builders and container fixtures.
 - Write ArchUnitNET layer-boundary tests first (highest leverage, lowest cost).
 - Define coverage enforcement in the CI workflow (Coverlet + ReportGenerator).

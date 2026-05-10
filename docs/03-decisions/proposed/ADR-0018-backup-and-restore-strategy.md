@@ -7,12 +7,14 @@
 ## Context
 
 There is currently no documented backup or restore strategy for Cinturon360. The `deploy/` tree contains only a dev compose file. No production infrastructure exists yet. However, defining the strategy now is important because:
+
 - Schema migrations are applied with `psql` from idempotent SQL scripts; there is no automatic rollback if a migration goes wrong.
 - The billing domain holds financial records (`BillingInvoice`, `JournalEntry`, `PaymentAttempt`) that have regulatory retention requirements.
 - The secrets managed by Azure Key Vault (JWT signing key, Stripe webhook secrets, API keys) must also be backed up.
 - A developer accidentally applied an empty migration (`YourMigrationName`) to a shared database, demonstrating that operational mistakes can reach the database.
 
 The database will run on Azure Database for PostgreSQL Flexible Server (per ADR-0017). This service provides:
+
 - Automated backups with point-in-time restore (PITR) — default 7 days, configurable to 35 days.
 - Geo-redundant backup (optional; higher cost).
 - Manual on-demand backups via the Azure portal or CLI.
@@ -46,6 +48,7 @@ The database will run on Azure Database for PostgreSQL Flexible Server (per ADR-
 ## Consequences
 
 **If these decisions are accepted:**
+
 - Enable 35-day PITR on the production PostgreSQL Flexible Server in Bicep.
 - Enable geo-redundant backup in Bicep (`backupRetentionDays: 35`, `geoRedundantBackup: "Enabled"`).
 - Add a scheduled job (`PgDumpExportJob`) to `Cinturon360.Jobs` that runs `pg_dump` and uploads the result to Azure Blob Storage on a daily schedule.
@@ -55,6 +58,7 @@ The database will run on Azure Database for PostgreSQL Flexible Server (per ADR-
 - Define alerting: if the daily `pg_dump` job fails, a Slack/email alert must fire within 1 hour.
 
 **Required follow-up:**
+
 - Confirm RPO/RTO targets with stakeholders.
 - Confirm Azure region pair (e.g., Australia East + Australia Southeast).
 - Test a PITR restore in staging before first production deployment.

@@ -7,6 +7,7 @@
 ## Context
 
 The current logging posture:
+
 - Serilog 4.2.0 is configured in `Cinturon360.Api` with a Console sink and a custom template: `[{Timestamp:HH:mm:ss} {Level:u3}] {CorrelationId} {Message:lj}{NewLine}{Exception}`.
 - `Serilog.Sinks.PostgreSQL.Alternative` is in `Directory.Packages.props` but not wired (decision in `QUESTIONS.md Q13`: stdout only in prod).
 - `Serilog.Enrichers.{Environment,Thread,CorrelationId}` are referenced; correlation is via `Enrich.FromLogContext()` only — no middleware sets `X-Correlation-Id`.
@@ -38,7 +39,7 @@ Recommended decisions:
 **Mandatory structured fields:**
 
 | Field | Source |
-|---|---|
+| --- | --- |
 | `Timestamp` | Serilog default |
 | `Level` | Serilog default |
 | `Message` | Serilog default |
@@ -50,6 +51,7 @@ Recommended decisions:
 | `Environment` | `ASPNETCORE_ENVIRONMENT` |
 
 **Sinks:**
+
 - Development: Console (human-readable).
 - Production: Console with `CompactJsonFormatter` (Azure Monitor picks up stdout).
 - Remove `Serilog.Sinks.PostgreSQL.Alternative` from `Directory.Packages.props` if it will never be used.
@@ -63,6 +65,7 @@ Recommended decisions:
 ## Consequences
 
 **If these decisions are accepted:**
+
 - Implement `CorrelationIdMiddleware` in `Cinturon360.Api/Infrastructure/`.
 - Add a Serilog user/org enricher that reads the JWT claims.
 - Switch `appsettings.Production.json` to use `CompactJsonFormatter`.
@@ -73,5 +76,6 @@ Recommended decisions:
 - Populate `Cinturon360.Application/SysLog/` with application-level event models (distinct from entity audit events in ADR-0014).
 
 **Required follow-up:**
+
 - Define Azure Monitor workspace name and Log Analytics workspace ID for production.
 - Wire OpenTelemetry traces in a future ADR (once ACA deployment is defined in ADR-0017).
